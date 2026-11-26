@@ -1,4 +1,4 @@
-import { FRESHNESS_THRESHOLDS_MS, positionAge } from '@huntclub/core';
+import { FRESHNESS_THRESHOLDS_MS, SECOND_MS, positionAge } from '@huntclub/core';
 
 import { colors } from '../theme';
 import type { MeshStatus } from './types';
@@ -23,7 +23,7 @@ export const MESH_QUIET_DETAIL =
 export const MESH_QUIET_AFTER_MS = FRESHNESS_THRESHOLDS_MS.stale;
 
 function shortDuration(ms: number): string {
-  const seconds = Math.floor(ms / 1000);
+  const seconds = Math.floor(ms / SECOND_MS);
   if (seconds < 60) return `${seconds}s`;
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes} min`;
