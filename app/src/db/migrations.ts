@@ -205,6 +205,18 @@ ALTER TABLE app_state ADD COLUMN initials TEXT;
 `;
 
 /**
+ * The free party this phone is in (core PartyService's StoredParty, as JSON).
+ * One row at most. It holds the party's join link, which contains the channel
+ * key: never log it.
+ */
+const freeParty = `
+CREATE TABLE party (
+  id INTEGER PRIMARY KEY NOT NULL CHECK (id = 1),
+  data TEXT NOT NULL
+);
+`;
+
+/**
  * Club layer (Milestone 9): this phone's membership and cached entitlement on the
  * club's group row, an invite waiting to be redeemed when online, and the server's
  * mesh ids for stands and areas (what check-ins send over the radio).
@@ -231,5 +243,6 @@ export const migrations: readonly Migration[] = [
   { version: 4, name: 'harvest places', sql: harvestPlaces },
   { version: 5, name: 'app state', sql: appState },
   { version: 6, name: 'my profile', sql: myProfile },
-  { version: 7, name: 'club membership and mesh ids', sql: clubMembership },
+  { version: 7, name: 'free party', sql: freeParty },
+  { version: 8, name: 'club membership and mesh ids', sql: clubMembership },
 ];

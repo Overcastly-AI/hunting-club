@@ -5,10 +5,13 @@ import {
   DeliveryTracker,
   HarvestSharer,
   HelpRequester,
+  MemoryPartyStore,
   OverdueMonitor,
+  PartyService,
   ReceiptService,
   type CoreConfig,
   type CoreContext,
+  type PartyStore,
 } from '@huntclub/core';
 import type { MeshClient } from '@huntclub/mesh';
 
@@ -30,6 +33,8 @@ export type RadioServicesOptions = Omit<CoreContext, 'client'> & {
   /** Test hooks: receipt policy and help retry schedule overrides. */
   receipts?: Partial<CoreConfig['receipts']>;
   helpSchedule?: Partial<CoreConfig['help']>;
+  /** Where the free party is kept (the app: SQLite). Default: in memory. */
+  partyStore?: PartyStore;
 };
 
 export const DEFAULT_SERVICES_OPTIONS: RadioServicesOptions = {
@@ -50,6 +55,7 @@ export class RadioServices {
   readonly receipts: ReceiptService;
   readonly delivery: DeliveryTracker;
   readonly sharer: HarvestSharer;
+  readonly party: PartyService;
 
   readonly mapRadio: MapRadio;
   readonly checkInRadio: CheckInRadio;
@@ -62,7 +68,8 @@ export class RadioServices {
     readonly client: MeshClient,
     readonly options: RadioServicesOptions = DEFAULT_SERVICES_OPTIONS,
   ) {
-    const { audience, graceMinutes, names, receipts, helpSchedule, ...context } = options;
+    const { audience, graceMinutes, names, receipts, helpSchedule, partyStore, ...context } =
+      options;
     const ctx: CoreContext = { ...context, client };
     const club = audience === 'club';
 
@@ -71,6 +78,8 @@ export class RadioServices {
     this.receipts = new ReceiptService(ctx, receipts).start();
     this.delivery = new DeliveryTracker(client);
     this.sharer = new HarvestSharer(ctx);
+    this.party = new PartyService(ctx, { store: partyStore ?? new MemoryPartyStore() });
+    void this.party.restore();
     this.help = new HelpRequester(ctx, {
       getLocation: () => {
         const mine = client.nodes.get(client.myNodeNum);
@@ -115,6 +124,7 @@ export class RadioServices {
   }
 
   dispose(): void {
+    this.party.dispose();
     this.overdue.stop();
     this.receipts.stop();
     this.help.dispose();

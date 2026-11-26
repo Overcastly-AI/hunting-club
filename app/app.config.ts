@@ -38,6 +38,13 @@ const RADIO_PLUGINS: NonNullable<ExpoConfig['plugins']> = [
   './plugins/withRadioPermissions',
 ];
 
+/**
+ * iOS camera prompt. The camera only scans Party and Club QR codes; the
+ * in-app explanation before it is in src/permissions/camera.ts.
+ */
+const CAMERA_USAGE =
+  'Hunt Club Mesh uses the camera only to scan party and club QR codes. No photos are taken or saved.';
+
 const config: ExpoConfig = {
   name: 'Hunt Club Mesh',
   slug: 'hunt-club-mesh',
@@ -88,6 +95,11 @@ const config: ExpoConfig = {
     ],
     '@maplibre/maplibre-react-native',
     ...RADIO_PLUGINS,
+    [
+      'expo-camera',
+      { cameraPermission: CAMERA_USAGE, microphonePermission: false, recordAudioAndroid: false },
+    ],
+    'expo-notifications',
   ],
 };
 

@@ -1,5 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 
+import { partyCopy } from '../../party/copy';
 import { radioCopy } from '../../radio/copy';
 import { renderWithRadio } from '../../test-utils/renderWithRadio';
 import { resetBluetoothForTests } from '../../test-utils/resetBluetooth';
@@ -14,7 +15,7 @@ jest.mock(
 beforeEach(resetBluetoothForTests);
 
 describe('OnboardingScreen', () => {
-  it('welcome → pair your radio (set up later) → name → finished', async () => {
+  it('welcome → pair your radio, party (set up later) → name → finished', async () => {
     const onFinish = jest.fn();
     const onProfile = jest.fn().mockResolvedValue(undefined);
     await renderWithRadio(<OnboardingScreen onFinish={onFinish} onProfile={onProfile} />);
@@ -23,6 +24,9 @@ describe('OnboardingScreen', () => {
     await fireEvent.press(screen.getByRole('button', { name: onboardingCopy.welcome.start }));
 
     expect(screen.getByText(radioCopy.pair.title)).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: radioCopy.pair.setUpLater }));
+
+    expect(screen.getByText(partyCopy.step.title)).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: radioCopy.pair.setUpLater }));
 
     await fireEvent.changeText(screen.getByLabelText(onboardingCopy.name.nameLabel), 'Jake Smith');
