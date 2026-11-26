@@ -31,9 +31,11 @@ export const CLUB_PRICE_LINE = `${intervals.year.price} or ${intervals.month.pri
 /** Paths of the pages, for links. Each is registered in ROUTES below. */
 export const PAGE_PATHS = {
   home: '/',
+  features: '/features',
   clubs: '/clubs',
   pricing: '/pricing',
   download: '/download',
+  faq: '/faq',
   contact: '/contact',
   privacy: LEGAL_PATHS.privacy,
   terms: LEGAL_PATHS.terms,
@@ -44,6 +46,12 @@ export const ROUTES = [
     path: PAGE_PATHS.home,
     title: 'Hunt Club Mesh: hunting party map and chat, no cell service',
     description: `A live map, chat and check-in for your hunting party over Meshtastic radios, with no cell service. Free for parties of up to ${FREE_PARTY_MAX_MEMBERS}; clubs subscribe.`,
+  },
+  {
+    path: PAGE_PATHS.features,
+    title: 'Features: map, check-in, chat, safety | Hunt Club Mesh',
+    description:
+      'A live offline map, check-in at a stand, a spot or on the move, radio chat, Ask for a Hand and overdue alerts. What is free and what clubs add.',
   },
   {
     path: PAGE_PATHS.clubs,
@@ -61,6 +69,12 @@ export const ROUTES = [
     title: 'Get Hunt Club Mesh for iPhone and Android',
     description:
       'Hunt Club Mesh is being tested on iPhone and Android before it goes into the stores. See what you need: a phone and a Meshtastic radio with GPS.',
+  },
+  {
+    path: PAGE_PATHS.faq,
+    title: 'FAQ: cell service, radios and clubs | Hunt Club Mesh',
+    description:
+      'Plain answers about Hunt Club Mesh: cell service, which radio you need, what is free, what clubs pay for, your data and safety.',
   },
   {
     path: PAGE_PATHS.contact,
@@ -84,14 +98,10 @@ export const ROUTES = [
 
 export type SitePath = (typeof ROUTES)[number]['path'];
 
-/** Sections of the home page that the navigation links to (ids on the page). */
+/** Sections of the home page that other pages link to (ids on the page). */
 export const HOME_SECTIONS = {
-  features: 'features',
   forClubs: 'for-clubs',
-  faq: 'faq',
 } as const;
-
-const homeSection = (id: string) => `/#${id}`;
 
 export interface SiteLink {
   readonly label: string;
@@ -100,10 +110,10 @@ export interface SiteLink {
 
 /** Header navigation, in order. */
 export const NAV_LINKS: readonly SiteLink[] = [
-  { label: 'Features', href: homeSection(HOME_SECTIONS.features) },
+  { label: 'Features', href: PAGE_PATHS.features },
   { label: 'For clubs', href: PAGE_PATHS.clubs },
   { label: 'Pricing', href: PAGE_PATHS.pricing },
-  { label: 'FAQ', href: homeSection(HOME_SECTIONS.faq) },
+  { label: 'FAQ', href: PAGE_PATHS.faq },
 ];
 
 /** The header's main action. */
@@ -119,8 +129,10 @@ export const FOOTER_GROUPS: readonly { heading: string; links: readonly SiteLink
   {
     heading: 'Product',
     links: [
+      { label: 'Features', href: PAGE_PATHS.features },
       { label: 'Pricing', href: PAGE_PATHS.pricing },
       { label: 'Download', href: PAGE_PATHS.download },
+      { label: 'FAQ', href: PAGE_PATHS.faq },
     ],
   },
   {
