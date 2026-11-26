@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 
-import { makeStyles, opacity, radii, sizes, spacing, textStyles } from '../../theme';
+import { makeStyles, radii, sizes, spacing, textStyles } from '../../theme';
 import type { LatLon } from '@huntclub/mesh';
 import type { WeatherDisplay } from '../../weather/display';
 import { ConditionsPanel } from './ConditionsPanel';
@@ -24,7 +24,7 @@ export function TopBar({ groupLabel, onGroupPress, conditionsPlace, now, weather
         accessibilityLabel={groupLabel}
         accessibilityHint="Opens your party or club"
         onPress={onGroupPress}
-        style={({ pressed }) => [styles.group, pressed && { opacity: opacity.pressed }]}
+        style={({ pressed }) => [styles.group, pressed && styles.pressed]}
       >
         <Text style={styles.groupText} numberOfLines={2}>
           {groupLabel}
@@ -41,10 +41,13 @@ const useStyles = makeStyles((theme) => ({
     minWidth: sizes.control + spacing.lg,
     minHeight: sizes.control,
     backgroundColor: theme.colors.surface0,
-    borderRadius: radii.control,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: theme.colors.borderControl,
     paddingHorizontal: spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  pressed: { backgroundColor: theme.colors.surface2 },
   groupText: { ...textStyles.label, color: theme.colors.text },
 }));

@@ -1,4 +1,7 @@
+import { Radio, RadioOff } from 'lucide-react-native';
 import { Text, View } from 'react-native';
+
+import { Badge } from '../../components/Badge';
 
 import { makeStyles, spacing, textStyles } from '../../theme';
 import { radioCopy } from '../copy';
@@ -26,34 +29,20 @@ export function RadioStatus() {
   const name = radio?.longName ?? pairedRadio?.name;
 
   return (
-    <View style={styles.row} accessibilityRole="summary">
-      <View style={[styles.dot, ready ? styles.dotReady : styles.dotIdle]} />
-      <View style={styles.text}>
-        <Text style={styles.status}>{radioCopy.link[link]}</Text>
-        {name ? <Text style={styles.detail}>{name}</Text> : null}
-        {details.length > 0 ? <Text style={styles.detail}>{details.join(' · ')}</Text> : null}
-      </View>
+    <View style={styles.status} accessibilityRole="summary">
+      <Badge
+        tone={ready ? 'success' : 'neutral'}
+        icon={ready ? Radio : RadioOff}
+        label={radioCopy.link[link]}
+      />
+      {name ? <Text style={styles.name}>{name}</Text> : null}
+      {details.length > 0 ? <Text style={styles.detail}>{details.join(' · ')}</Text> : null}
     </View>
   );
 }
 
-const DOT = 14;
-
 const useStyles = makeStyles((theme) => ({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-  },
-  dot: {
-    width: DOT,
-    height: DOT,
-    borderRadius: DOT / 2,
-    marginTop: spacing.xs,
-  },
-  dotReady: { backgroundColor: theme.colors.success },
-  dotIdle: { backgroundColor: theme.colors.textSecondary },
-  text: { flex: 1, gap: spacing.xs },
-  status: { ...textStyles.label, color: theme.colors.text },
+  status: { gap: spacing.xs },
+  name: { ...textStyles.label, color: theme.colors.text },
   detail: { ...textStyles.body, color: theme.colors.textSecondary },
 }));

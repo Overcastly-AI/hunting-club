@@ -8,6 +8,7 @@ import {
   themeCss,
   themeVariables,
 } from '../../src/css';
+import { BUTTON_HEIGHT, STATUS_TONE_COLORS, STATUS_TONES } from '../../src/components';
 import { radii, space, spacing } from '../../src/sizes';
 import {
   THEME_ATTRIBUTE,
@@ -204,5 +205,22 @@ describe('theme choice labels', () => {
     const labels = THEME_PREFERENCES.map((p) => THEME_PREFERENCE_LABELS[p]);
     expect(labels).toEqual(['System', 'Dark', 'Light']);
     expect(Object.keys(THEME_PREFERENCE_LABELS).sort()).toEqual([...THEME_PREFERENCES].sort());
+  });
+});
+
+describe('component sizes and status tones', () => {
+  it('keeps every button at the 48 px tap minimum or more', () => {
+    for (const height of Object.values(BUTTON_HEIGHT)) {
+      expect(height).toBeGreaterThanOrEqual(48);
+    }
+    expect(BUTTON_HEIGHT).toEqual({ sm: 48, md: 48, lg: 56 });
+  });
+
+  it.each(THEME_NAMES)('draws every status tone readably in the %s theme', (name) => {
+    const c = themes[name].colors;
+    for (const tone of STATUS_TONES) {
+      const { foreground, background } = STATUS_TONE_COLORS[tone];
+      expect(contrastRatio(c[foreground], c[background])).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
+    }
   });
 });

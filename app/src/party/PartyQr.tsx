@@ -2,8 +2,10 @@ import { FREE_PARTY_MAX_MEMBERS } from '@huntclub/core';
 import { useContext } from 'react';
 import { Text, View } from 'react-native';
 
+import { Banner } from '../components/Banner';
+import { Card } from '../components/Card';
 import { QrCode } from '../components/QrCode';
-import { makeStyles, spacing, textStyles } from '../theme';
+import { makeStyles, radii, textStyles } from '../theme';
 import { partyCopy } from './copy';
 import { PartyRadioContext } from './PartyRadio';
 import { usePartyView } from './usePartyView';
@@ -25,10 +27,7 @@ export function PartyQr() {
 
   const link = service.qrLink();
   return (
-    <View style={styles.section}>
-      <Text accessibilityRole="header" style={styles.heading}>
-        {copy.title}
-      </Text>
+    <Card title={copy.title}>
       {link ? (
         <>
           <Text style={styles.body}>{copy.body}</Text>
@@ -37,15 +36,14 @@ export function PartyQr() {
           </View>
         </>
       ) : (
-        <Text style={styles.body}>{copy.full(FREE_PARTY_MAX_MEMBERS)}</Text>
+        <Banner tone="info">{copy.full(FREE_PARTY_MAX_MEMBERS)}</Banner>
       )}
-    </View>
+    </Card>
   );
 }
 
 const useStyles = makeStyles((theme) => ({
-  section: { gap: spacing.sm },
-  heading: { ...textStyles.label, color: theme.colors.text },
   body: { ...textStyles.body, color: theme.colors.textSecondary },
-  code: { alignItems: 'center' },
+  // The code keeps its own white quiet zone; the rounded frame only sets it off the card.
+  code: { alignSelf: 'center', borderRadius: radii.md, overflow: 'hidden' },
 }));

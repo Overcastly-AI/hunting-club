@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import { makeStyles, opacity, radii, sizes, spacing, textStyles } from '../../theme';
+import { makeStyles, radii, sizes, spacing, textStyles } from '../../theme';
 import { LayersIcon, LocateIcon, NorthIcon } from '../../components/icons';
 
 type Props = { onLayers: () => void; onNorthUp: () => void; onCenterOnMe: () => void };
@@ -50,7 +50,7 @@ function ControlButton({
       accessibilityRole="button"
       accessibilityLabel={a11y}
       onPress={onPress}
-      style={({ pressed }) => [styles.button, pressed && { opacity: opacity.pressed }]}
+      style={({ pressed }) => [styles.button, pressed && styles.pressed]}
     >
       {icon}
       <Text style={styles.label}>{label}</Text>
@@ -63,11 +63,15 @@ const useStyles = makeStyles((theme) => ({
   button: {
     width: sizes.control,
     minHeight: sizes.control,
-    borderRadius: radii.control,
+    borderRadius: radii.md,
+    // Floating over the map in either theme: a 3:1 control edge so the button reads on imagery.
+    borderWidth: 1,
+    borderColor: theme.colors.borderControl,
     backgroundColor: theme.colors.surface0,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.xs,
   },
-  label: { ...textStyles.mapLabel, color: theme.colors.text },
+  pressed: { backgroundColor: theme.colors.surface2 },
+  label: { ...textStyles.badge, color: theme.colors.text },
 }));

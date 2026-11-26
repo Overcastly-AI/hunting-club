@@ -16,7 +16,7 @@ import { Choice } from '../components/Choice';
 import { OptionButtons } from '../components/OptionButtons';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { SlideToConfirm } from '../components/SlideToConfirm';
-import { TextField } from '../components/TextField';
+import { Field } from '../components/Field';
 import { onboardingCopy } from '../onboarding/copy';
 import { MapDownloadStep } from '../onboarding/MapDownloadStep';
 import { NameStep } from '../onboarding/NameStep';
@@ -167,7 +167,7 @@ describe('shared controls at 200 % text (every tappable thing outside the map)',
         />
         <OptionButtons options={['Buck', 'Doe'] as const} onPress={jest.fn()} />
         <SlideToConfirm label="Slide to ask for a hand" tone="help" onConfirm={jest.fn()} />
-        <TextField placeholder="Name this area (optional)" />
+        <Field label="Name this area (optional)" />
       </View>,
     );
     expect(problems).toEqual([]);
