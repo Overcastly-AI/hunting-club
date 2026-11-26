@@ -19,9 +19,9 @@
  */
 import { BinaryReader, BinaryWriter, WireType } from '@bufbuild/protobuf/wire';
 import { encodeUtf8 } from '../runtime';
-import { CheckInMode, HarvestSex, enumValues } from '../domain';
+import { CheckInMode, HARVEST_SEX_CODES, type HarvestSex, enumValues } from '../domain';
 
-export { CheckInMode, HarvestSex } from '../domain';
+export { CheckInMode, HARVEST_SEX_CODES, type HarvestSex } from '../domain';
 
 export const HUNTCLUB_PORT = 314;
 export const APP_PROTOCOL_VERSION = 1;
@@ -145,8 +145,8 @@ export const FIELDS: Readonly<Record<FieldName, FieldSpec>> = {
   sex: {
     kind: 'enum',
     no: 14,
-    values: enumValues(HarvestSex),
-    omitValue: HarvestSex.Unknown,
+    values: Object.values(HARVEST_SEX_CODES),
+    omitValue: HARVEST_SEX_CODES.unknown,
   },
 };
 
