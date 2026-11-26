@@ -22,6 +22,7 @@ import { ClubEntitlementContext, entitlementOf } from './entitlement';
 import type { RadioClub } from '../radio/RadioServices';
 import type { SecureStorage } from '../storage/secure';
 import { type LocalClub, loadClubs, loadRadioClub } from './store';
+import { type LocalClubMapPack, type MapPackSync, loadClubMapPacks } from './mapPacks';
 import { joinClubFromLink, syncAllClubs } from './sync';
 
 export type ClubServices = {
@@ -29,6 +30,8 @@ export type ClubServices = {
   api: ClubApiClient | undefined;
   /** Where the Club QR link (with the channel key) is kept: the app's secure storage. */
   secrets: SecureStorage;
+  /** Downloads the club's map packs during sync (absent in tests that don't need them). */
+  mapPacks?: MapPackSync;
 };
 
 export type ClubState = {
@@ -50,6 +53,13 @@ export type ClubState = {
 };
 
 const ClubContext = createContext<ClubState | null>(null);
+
+/** Club map packs on this phone; empty outside ClubProvider (free users) and before the first sync. */
+const ClubMapPacksContext = createContext<readonly LocalClubMapPack[]>([]);
+
+export function useClubMapPacks(): readonly LocalClubMapPack[] {
+  return useContext(ClubMapPacksContext);
+}
 
 export function useClub(): ClubState {
   const state = useContext(ClubContext);
@@ -86,29 +96,33 @@ export function ClubStateProvider({
   children: ReactNode;
   now?: () => number;
 }) {
-  const { session, api, secrets } = services;
+  const { session, api, secrets, mapPacks: mapPackSync } = services;
   const [clubs, setClubs] = useState<LocalClub[]>([]);
   const [signedIn, setSignedIn] = useState(false);
   const myProfile: MyProfile | null = useProfile().profile ?? null;
   const [radioClub, setRadioClub] = useState<RadioClub | null>(null);
+  const [mapPacks, setMapPacks] = useState<LocalClubMapPack[]>([]);
 
   const reload = useCallback(
     () =>
-      Promise.all([loadClubs(db), session.isSignedIn()]).then(async ([loaded, isSignedIn]) => {
-        const radio = loaded[0] ? await loadRadioClub(db, secrets, loaded[0]) : null;
-        setClubs(loaded);
-        setSignedIn(isSignedIn);
-        setRadioClub(radio);
-      }),
+      Promise.all([loadClubs(db), session.isSignedIn(), loadClubMapPacks(db)]).then(
+        async ([loaded, isSignedIn, packs]) => {
+          const radio = loaded[0] ? await loadRadioClub(db, secrets, loaded[0]) : null;
+          setClubs(loaded);
+          setSignedIn(isSignedIn);
+          setRadioClub(radio);
+          setMapPacks(packs);
+        },
+      ),
     [db, secrets, session],
   );
 
   const sync = useCallback(async () => {
     if (!api || !(await session.isSignedIn())) return { failed: 0 };
-    const { failed } = await syncAllClubs(db, api, now());
+    const { failed } = await syncAllClubs(db, api, now(), mapPackSync);
     await reload();
     return { failed: failed.length };
-  }, [api, db, now, reload, session]);
+  }, [api, db, mapPackSync, now, reload, session]);
 
   const join = useCallback(
     async (url: string, profile: MemberJoin) => {
@@ -144,7 +158,7 @@ export function ClubStateProvider({
   return (
     <ClubContext.Provider value={state}>
       <ClubEntitlementContext.Provider value={firstPaid}>
-        {children}
+        <ClubMapPacksContext.Provider value={mapPacks}>{children}</ClubMapPacksContext.Provider>
       </ClubEntitlementContext.Provider>
     </ClubContext.Provider>
   );

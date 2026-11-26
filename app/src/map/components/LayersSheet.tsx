@@ -3,6 +3,8 @@ import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { colors, spacing, textStyles } from '../../theme';
 import { BASEMAP_IDS, BASEMAPS, basemapBySource, type BasemapId } from '../basemaps';
+import type { LocalClubMapPack } from '../../club/mapPacks';
+import { formatShortDate } from '../../conditions/clock';
 import type { MapPack } from '../mapPacks';
 import { formatBytes } from '../tiles';
 import { Choice } from '../../components/Choice';
@@ -12,6 +14,8 @@ type Props = {
   visible: boolean;
   basemap: BasemapId;
   packs: readonly MapPack[];
+  /** The club's map pack for this basemap, when one is downloaded. */
+  clubPack?: LocalClubMapPack;
   progress: Record<string, number>;
   onSelect: (id: BasemapId) => void;
   onDownload: () => void;
@@ -25,11 +29,18 @@ export function packStatusText(pack: MapPack, percentage: number | undefined): s
   return pack.sizeBytes ? `Ready offline · ${formatBytes(pack.sizeBytes)}` : 'Ready offline';
 }
 
-/** Topo or aerial, map credits, and downloaded areas. */
+/** "Club map: downloaded Nov 26, 48 MB". */
+export function clubPackText(pack: LocalClubMapPack): string {
+  const date = formatShortDate(new Date(pack.downloadedAt));
+  return `Club map: downloaded ${date}, ${formatBytes(pack.sizeBytes)}`;
+}
+
+/** Topo or aerial, map credits, the club's map, and downloaded areas. */
 export function LayersSheet({
   visible,
   basemap,
   packs,
+  clubPack,
   progress,
   onSelect,
   onDownload,
@@ -55,6 +66,7 @@ export function LayersSheet({
         ))}
       </View>
       <Text style={styles.credit}>Map data: {BASEMAPS[basemap].attribution}</Text>
+      {clubPack && <Text style={styles.credit}>{clubPackText(clubPack)}</Text>}
 
       <Button variant="primary" label="Download the map for this area" onPress={onDownload} />
 
