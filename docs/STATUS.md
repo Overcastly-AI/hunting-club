@@ -98,6 +98,13 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 - Tab icon set (dependency choice).
 - `messages` table needs recipient/group column before chat (M7).
 
+## UAT and UI review (Grok Bot)
+
+Owner rule (2026-11-26): Grok Bot runs UAT and reviews UI decisions by email. Every finding is logged here and answered in its thread.
+
+| Date | Thread / subject | Finding | Decision | PR |
+|---|---|---|---|---|
+
 ## Rotate later (secrets that travelled by email)
 
 | Secret | Parameter name | Sent | Rotated |
