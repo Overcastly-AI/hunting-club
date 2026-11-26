@@ -14,11 +14,18 @@ const APP_ID = 'com.overcastly.huntclub';
 const ANDROID_MIN_SDK = 26;
 
 /**
+ * Plain-language reason for location, shown by iOS in the system prompt. The
+ * in-app explanation before it is in src/permissions/location.ts.
+ */
+const LOCATION_USAGE =
+  'Hunt Club Mesh uses your location to put you on the map and center the map on you. It stays on this phone. Your party or club only sees where you are while you are checked in.';
+
+/**
  * Radio link (Bluetooth to the Meshtastic radio). See docs/research/meshtastic.md §3.
  * iOS: keep the link in the background. Android: Bluetooth permissions with
- * BLUETOOTH_SCAN `neverForLocation`; legacy permissions and location only up
- * to API 30 (./plugins/withRadioPermissions). The Android foreground service
- * is declared by app/modules/radio-service itself.
+ * BLUETOOTH_SCAN `neverForLocation`; legacy permissions only up to API 30
+ * (./plugins/withRadioPermissions). The Android foreground service is declared
+ * by app/modules/radio-service itself.
  */
 const RADIO_IOS_BACKGROUND_MODES = ['bluetooth-central'];
 const RADIO_PLUGINS: NonNullable<ExpoConfig['plugins']> = [
@@ -45,6 +52,7 @@ const config: ExpoConfig = {
     supportsTablet: true,
     bundleIdentifier: APP_ID,
     infoPlist: {
+      NSLocationWhenInUseUsageDescription: LOCATION_USAGE,
       UIBackgroundModes: RADIO_IOS_BACKGROUND_MODES,
     },
   },
@@ -57,6 +65,10 @@ const config: ExpoConfig = {
       monochromeImage: './assets/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
+    permissions: [
+      'android.permission.ACCESS_COARSE_LOCATION',
+      'android.permission.ACCESS_FINE_LOCATION',
+    ],
   },
   web: {
     favicon: './assets/favicon.png',
@@ -74,6 +86,7 @@ const config: ExpoConfig = {
         imageWidth: 200,
       },
     ],
+    '@maplibre/maplibre-react-native',
     ...RADIO_PLUGINS,
   ],
 };
