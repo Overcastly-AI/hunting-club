@@ -155,7 +155,21 @@ ALTER TABLE map_packs ADD COLUMN status TEXT NOT NULL DEFAULT 'complete'
 ALTER TABLE map_packs ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0;
 `;
 
+/**
+ * The radio this phone is paired with, so the app reconnects to it on launch.
+ * One row at most: one phone talks to one radio at a time.
+ */
+const pairedRadio = `
+CREATE TABLE paired_radio (
+  id INTEGER PRIMARY KEY NOT NULL CHECK (id = 1),
+  peripheral_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  paired_at INTEGER NOT NULL
+);
+`;
+
 export const migrations: readonly Migration[] = [
   { version: 1, name: 'initial local schema', sql: initialSchema },
   { version: 2, name: 'map pack downloads', sql: mapPackDownloads },
+  { version: 3, name: 'paired radio', sql: pairedRadio },
 ];

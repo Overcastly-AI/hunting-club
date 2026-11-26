@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { DATABASE_NAME, initDatabase } from '../db';
+import { AppRadioProvider } from '../radio/AppRadioProvider';
 import { colors, fontSources } from '../theme';
 
 void SplashScreen.preventAutoHideAsync();
@@ -26,17 +27,19 @@ export default function RootLayout() {
 
   return (
     <SQLiteProvider databaseName={DATABASE_NAME} onInit={initDatabase}>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.surface },
-          // The app is portrait; only the clubhouse board turns landscape.
-          orientation: 'portrait',
-        }}
-      >
-        <Stack.Screen name="board" options={{ orientation: 'landscape' }} />
-      </Stack>
+      <AppRadioProvider>
+        <StatusBar style="light" />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: colors.surface },
+            // The app is portrait; only the clubhouse board turns landscape.
+            orientation: 'portrait',
+          }}
+        >
+          <Stack.Screen name="board" options={{ orientation: 'landscape' }} />
+        </Stack>
+      </AppRadioProvider>
     </SQLiteProvider>
   );
 }

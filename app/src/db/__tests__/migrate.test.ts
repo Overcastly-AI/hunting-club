@@ -12,6 +12,7 @@ const EXPECTED_TABLES = [
   'map_packs',
   'members',
   'messages',
+  'paired_radio',
   'positions',
   'radios',
   'stands',
@@ -140,7 +141,7 @@ describe('migration 2: map pack downloads', () => {
       )
       .run();
 
-    await expect(migrate(db, migrations)).resolves.toBe(2);
+    await expect(migrate(db, migrations)).resolves.toBe(migrations.length);
 
     const row = db.raw.prepare(`SELECT * FROM map_packs WHERE id = 'p1'`).get();
     expect(row).toEqual(
