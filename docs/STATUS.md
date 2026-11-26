@@ -9,11 +9,26 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 - Commit messages never credit Claude or other AI tools (enforced by `.githooks/commit-msg`).
 - Stop and ask the owner before: spending money, open decisions in `docs/SPEC.md`, emails to anyone other than the owner, deleting anything.
 
+## AWS environment (dev)
+
+| Item | Value |
+|---|---|
+| AWS account | 054825383623 |
+| Region | us-east-1 (everything, incl. CloudFront certs) |
+| Dev domain | `huntclub-dev.jaycobjones.com` (parent `jaycobjones.com`, zone Z034387627ELT5Y50SBHP) |
+| Dev hosted zone | Z041480814OY68TGPM84F |
+| ACM certificate (ISSUED) | arn:aws:acm:us-east-1:054825383623:certificate/ece3d63e-c299-4106-b448-88b7bb3dcb48 (covers apex + `*.huntclub-dev.jaycobjones.com`) |
+| Budget | `hunt-club-mesh-monthly`, $5/month, alerts 50/80/100% |
+| Tags | Project=hunt-club-mesh, Env=dev |
+| Deploys | Grok Bot runs `cdk deploy` from the repo when a request says "deploy" (after synth + diff checks) |
+
+**Reading Grok Bot replies:** always open the full thread with `get_thread`. Search previews show stale message counts and miss replies.
+
 ## AWS requests (Grok Bot)
 
 | # | Sent | Request | Status | Result |
 |---|---|---|---|---|
-| 1 | 2026-11-26 | Dev subdomain `huntclub-dev.<domain>`: Route 53 hosted zone, delegation from parent, ACM wildcard cert in us-east-1 | Waiting for reply (Grok Bot checks email every 30 min) | |
+| 1 | 2026-11-26 | Dev subdomain: Route 53 hosted zone, delegation, ACM wildcard cert | **Done** 06:07 UTC (verified NS via public DNS) | See "AWS environment" below |
 
 ## How the project runs
 
