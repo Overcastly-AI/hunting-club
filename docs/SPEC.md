@@ -127,6 +127,7 @@ Everything that matters in the field travels over the LoRa mesh, with no server 
 | Cloud functions + hosting | AWS Lambda, S3, CloudFront, EventBridge via CDK | Pay-per-use, nothing always running |
 | Payments | Stripe Checkout + webhooks on the web admin page | No app store cut; per-sale fees only |
 | Sun and wind | Sunrise and sunset computed on device; wind from forecast when online, cached | Works offline after the morning sync |
+| Icons | Lucide: `lucide-react` (web admin) and `lucide-react-native` (app, drawn through react-native-svg), exact pinned versions | Approved in docs/UI_REDESIGN.md (coordinator decisions); one icon set on both, stand-type icons shared through `STAND_TYPE_ICON_NAMES` in `@huntclub/shared` |
 
 ## Clubs and subscriptions
 

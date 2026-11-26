@@ -2,12 +2,12 @@ import { ChannelUrlError, decodeJoinUrl } from '@huntclub/mesh';
 import { type MemberJoin, MemberJoinSchema } from '@huntclub/shared';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { Text } from 'react-native';
 
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
 import { TextField } from '../components/TextField';
-import { colors, textStyles } from '../theme';
+import { makeStyles, textStyles } from '../theme';
 import { useClub } from './ClubProvider';
 import { clubCopy } from './copy';
 import { SIGN_IN_ROUTE } from './routes';
@@ -27,6 +27,7 @@ function linkKind(url: string | null): 'club' | 'party' | 'bad' {
 
 /** Opened by a Club QR code (huntclub://join?…&club=…&invite=…). Works offline. */
 export function JoinClubScreen({ url, onDone }: { url: string | null; onDone: () => void }) {
+  const styles = useStyles();
   const { join, signedIn, cloudAvailable, myProfile } = useClub();
   const [joined, setJoined] = useState(false);
   const kind = linkKind(url);
@@ -102,6 +103,6 @@ function JoinForm({
   );
 }
 
-const styles = StyleSheet.create({
-  body: { ...textStyles.body, color: colors.text },
-});
+const useStyles = makeStyles((theme) => ({
+  body: { ...textStyles.body, color: theme.colors.text },
+}));

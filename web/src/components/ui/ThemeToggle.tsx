@@ -1,16 +1,12 @@
-import { THEME_PREFERENCES, type ThemePreference } from '@huntclub/design';
+import {
+  THEME_PREFERENCE_LABELS,
+  THEME_PREFERENCES,
+  type ThemePreference,
+} from '@huntclub/design';
 import { Monitor, Moon, Sun, type LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import { applyThemePreference, readThemePreference } from '../../theme/preference';
 import { Segmented, type ChoiceOption } from './Choice';
-
-// TODO(P5a merge): import THEME_PREFERENCE_LABELS from @huntclub/design (being added next to
-// THEME_PREFERENCES by the app's theme work) and delete this stand-in of the same name.
-const THEME_PREFERENCE_LABELS: Record<ThemePreference, string> = {
-  system: 'System',
-  dark: 'Dark',
-  light: 'Light',
-};
 
 const ICONS: Record<ThemePreference, LucideIcon> = { system: Monitor, dark: Moon, light: Sun };
 

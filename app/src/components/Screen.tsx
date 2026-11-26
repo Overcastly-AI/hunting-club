@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, spacing, textStyles } from '../theme';
+import { makeStyles, spacing, textStyles } from '../theme';
 
 type Props = {
   title: string;
@@ -14,6 +14,7 @@ type Props = {
 
 /** Standard screen frame: safe area, sheet-style title, optional description. */
 export function Screen({ title, description, scroll = true, children }: Props) {
+  const styles = useStyles();
   const header = (
     <>
       <Text accessibilityRole="header" style={styles.title}>
@@ -39,10 +40,10 @@ export function Screen({ title, description, scroll = true, children }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: theme.colors.surface0,
   },
   content: {
     padding: spacing.lg,
@@ -53,10 +54,10 @@ const styles = StyleSheet.create({
   },
   title: {
     ...textStyles.sheetTitle,
-    color: colors.text,
+    color: theme.colors.text,
   },
   description: {
     ...textStyles.bodyLarge,
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
   },
-});
+}));

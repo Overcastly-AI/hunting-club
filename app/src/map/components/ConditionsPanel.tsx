@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { SUN } from '@huntclub/core';
 import type { LatLon } from '@huntclub/mesh';
@@ -6,7 +6,7 @@ import type { LatLon } from '@huntclub/mesh';
 import { WindArrowIcon } from '../../components/icons';
 import { formatClockTime } from '../../conditions/clock';
 import { UNKNOWN_VALUE } from '../../conditions/display';
-import { colors, radii, sizes, spacing, textStyles } from '../../theme';
+import { makeStyles, radii, sizes, spacing, textStyles } from '../../theme';
 import { UNKNOWN_WEATHER, type WeatherDisplay } from '../../weather/display';
 
 type Props = {
@@ -44,6 +44,7 @@ export function sunSentence(sun: { sunrise: string; sunset: string }): string {
 }
 
 export function ConditionsPanel({ place, now, weather = UNKNOWN_WEATHER }: Props) {
+  const styles = useStyles();
   const { sunrise, sunset } = sunLine(place, now);
   const spoken = [
     `Sunrise ${sunrise}, sunset ${sunset}.`,
@@ -70,11 +71,11 @@ export function ConditionsPanel({ place, now, weather = UNKNOWN_WEATHER }: Props
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   panel: {
     flex: 1,
     minHeight: sizes.control,
-    backgroundColor: colors.surface,
+    backgroundColor: theme.colors.surface0,
     borderRadius: radii.control,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
@@ -82,7 +83,7 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   windGroup: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  primary: { ...textStyles.labelNarrow, color: colors.text },
-  secondary: { ...textStyles.body, color: colors.textSecondary },
-  wind: { color: colors.wind },
-});
+  primary: { ...textStyles.labelNarrow, color: theme.colors.text },
+  secondary: { ...textStyles.body, color: theme.colors.textSecondary },
+  wind: { color: theme.colors.info },
+}));

@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { colors, opacity, radii, sizes, spacing, textStyles } from '../../theme';
+import { makeStyles, opacity, radii, sizes, spacing, textStyles } from '../../theme';
 import { LayersIcon, LocateIcon, NorthIcon } from '../../components/icons';
 
 type Props = { onLayers: () => void; onNorthUp: () => void; onCenterOnMe: () => void };
 
 /** Right-side controls: map layers, north-up, center on me. Each has a word label. */
 export function MapControls({ onLayers, onNorthUp, onCenterOnMe }: Props) {
+  const styles = useStyles();
   return (
     <View style={styles.column}>
       <ControlButton
@@ -43,6 +44,7 @@ function ControlButton({
   onPress: () => void;
   icon: ReactNode;
 }) {
+  const styles = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -56,16 +58,16 @@ function ControlButton({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   column: { gap: spacing.sm },
   button: {
     width: sizes.control,
     minHeight: sizes.control,
     borderRadius: radii.control,
-    backgroundColor: colors.surface,
+    backgroundColor: theme.colors.surface0,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.xs,
   },
-  label: { ...textStyles.mapLabel, color: colors.text },
-});
+  label: { ...textStyles.mapLabel, color: theme.colors.text },
+}));

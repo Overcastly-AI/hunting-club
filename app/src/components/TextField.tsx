@@ -1,6 +1,6 @@
-import { StyleSheet, TextInput, type TextInputProps } from 'react-native';
+import { TextInput, type TextInputProps } from 'react-native';
 
-import { colors, radii, sizes, spacing, textStyles } from '../theme';
+import { makeStyles, radii, sizes, spacing, textStyles, useTheme } from '../theme';
 
 /** One-line text field. The placeholder doubles as the spoken label. */
 export function TextField({
@@ -8,26 +8,28 @@ export function TextField({
   style,
   ...props
 }: TextInputProps & { placeholder: string }) {
+  const theme = useTheme();
+  const styles = useStyles();
   return (
     <TextInput
       accessibilityLabel={placeholder}
       placeholder={placeholder}
-      placeholderTextColor={colors.textSecondary}
+      placeholderTextColor={theme.colors.textSecondary}
       style={[styles.input, style]}
       {...props}
     />
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   input: {
     ...textStyles.body,
-    color: colors.text,
+    color: theme.colors.text,
     minHeight: sizes.minTapTarget,
     borderRadius: radii.primaryButton,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceRaised,
+    borderColor: theme.colors.borderSubtle,
+    backgroundColor: theme.colors.surface2,
     paddingHorizontal: spacing.md,
   },
-});
+}));

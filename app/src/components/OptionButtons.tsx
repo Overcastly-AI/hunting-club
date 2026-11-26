@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { colors, opacity, radii, sizes, spacing, textStyles } from '../theme';
+import { makeStyles, opacity, radii, sizes, spacing, textStyles } from '../theme';
 
 type Props<T extends string> = {
   options: readonly T[];
@@ -20,6 +20,7 @@ export function OptionButtons<T extends string>({
   selected,
   disabled,
 }: Props<T>) {
+  const styles = useStyles();
   return (
     <View style={styles.row}>
       {options.map((option) => (
@@ -43,17 +44,17 @@ export function OptionButtons<T extends string>({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   option: {
     minHeight: sizes.minTapTarget,
     borderRadius: radii.primaryButton,
     borderWidth: sizes.hairline,
-    borderColor: colors.surfaceRaised,
-    backgroundColor: colors.surfaceRaised,
+    borderColor: theme.colors.surface2,
+    backgroundColor: theme.colors.surface2,
     paddingHorizontal: spacing.md,
     justifyContent: 'center',
   },
-  selected: { borderColor: colors.text },
-  text: { ...textStyles.label, color: colors.text },
-});
+  selected: { borderColor: theme.colors.text },
+  text: { ...textStyles.label, color: theme.colors.text },
+}));

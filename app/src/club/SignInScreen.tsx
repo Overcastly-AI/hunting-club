@@ -1,11 +1,11 @@
 import { codeDigits, CognitoAuthError, emailCodeRules, type CodeChallenge } from '@huntclub/shared';
 import { useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { Text } from 'react-native';
 
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
 import { TextField } from '../components/TextField';
-import { colors, textStyles } from '../theme';
+import { makeStyles, textStyles } from '../theme';
 import { useClub } from './ClubProvider';
 import { clubCopy } from './copy';
 
@@ -17,6 +17,7 @@ const copy = clubCopy.signIn;
  * sign-in code differ.
  */
 export function SignInScreen({ onDone }: { onDone: () => void }) {
+  const styles = useStyles();
   const { session, reload, sync } = useClub();
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -101,6 +102,6 @@ export function SignInScreen({ onDone }: { onDone: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
-  body: { ...textStyles.body, color: colors.text },
-});
+const useStyles = makeStyles((theme) => ({
+  body: { ...textStyles.body, color: theme.colors.text },
+}));

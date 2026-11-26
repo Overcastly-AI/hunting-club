@@ -1,4 +1,5 @@
 import { CHECK_IN_MODE_KEYS, MAX_TEXT_CHARS } from '@huntclub/mesh';
+import { DEFAULT_THEME_PREFERENCE, THEME_PREFERENCES } from '@huntclub/design';
 import { MEMBER_ROLES, STAND_TYPES } from '@huntclub/shared';
 
 import { CHAT_ITEM_KINDS, SEND_STATES } from '../chat/model';
@@ -290,6 +291,12 @@ CREATE TABLE club_map_packs (
 );
 `;
 
+/** The hunter's theme choice (Settings → Theme): follow the phone, or always dark or light. */
+const themePreference = `
+ALTER TABLE app_state ADD COLUMN theme_preference TEXT NOT NULL DEFAULT '${DEFAULT_THEME_PREFERENCE}'
+  CHECK (theme_preference IN (${sqlList(THEME_PREFERENCES)}));
+`;
+
 export const migrations: readonly Migration[] = [
   { version: 1, name: 'initial local schema', sql: initialSchema },
   { version: 2, name: 'map pack downloads', sql: mapPackDownloads },
@@ -301,4 +308,5 @@ export const migrations: readonly Migration[] = [
   { version: 8, name: 'club membership and mesh ids', sql: clubMembership },
   { version: 9, name: 'chat history', sql: chatHistory },
   { version: 10, name: 'club map packs', sql: clubMapPacks },
+  { version: 11, name: 'theme preference', sql: themePreference },
 ];

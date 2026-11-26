@@ -1,11 +1,12 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import type { ClubStand } from '../../checkin/placement';
 import { OPEN_STAND } from '../../map/labels';
-import { colors, spacing, textStyles } from '../../theme';
+import { makeStyles, spacing, textStyles } from '../../theme';
 
 /** Club stands nobody is in, listed apart from the hunters. */
 export function OpenStandsList({ stands }: { stands: readonly ClubStand[] }) {
+  const styles = useStyles();
   return (
     <View style={styles.section}>
       <Text accessibilityRole="header" style={styles.heading}>
@@ -20,9 +21,9 @@ export function OpenStandsList({ stands }: { stands: readonly ClubStand[] }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   section: { gap: spacing.sm },
-  heading: { ...textStyles.boardName, color: colors.text },
-  empty: { ...textStyles.boardDetail, color: colors.textSecondary },
-  list: { ...textStyles.boardDetail, color: colors.text },
-});
+  heading: { ...textStyles.boardName, color: theme.colors.text },
+  empty: { ...textStyles.boardDetail, color: theme.colors.textSecondary },
+  list: { ...textStyles.boardDetail, color: theme.colors.text },
+}));

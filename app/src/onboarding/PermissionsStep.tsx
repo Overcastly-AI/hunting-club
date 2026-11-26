@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
@@ -11,7 +11,7 @@ import {
   NOTIFICATIONS_PERMISSION_COPY,
 } from '../permissions/notifications';
 import { radioCopy } from '../radio/copy';
-import { colors, radii, spacing, textStyles } from '../theme';
+import { makeStyles, radii, spacing, textStyles } from '../theme';
 import { onboardingCopy } from './copy';
 
 const copy = onboardingCopy.permissions;
@@ -65,6 +65,7 @@ const OUTCOME_TEXT: Record<Outcome, string> = {
  * one is optional; the hunter can continue either way.
  */
 export function PermissionsStep({ onNext }: { onNext: () => void }) {
+  const styles = useStyles();
   const [outcomes, setOutcomes] = useState<Partial<Record<Row['id'], Outcome>>>({});
   const [asking, setAsking] = useState<Row['id'] | null>(null);
 
@@ -104,15 +105,15 @@ export function PermissionsStep({ onNext }: { onNext: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   card: {
     gap: spacing.sm,
     padding: spacing.md,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.colors.borderSubtle,
   },
-  cardTitle: { ...textStyles.label, color: colors.text },
-  body: { ...textStyles.body, color: colors.textSecondary },
-  outcome: { ...textStyles.label, color: colors.text },
-});
+  cardTitle: { ...textStyles.label, color: theme.colors.text },
+  body: { ...textStyles.body, color: theme.colors.textSecondary },
+  outcome: { ...textStyles.label, color: theme.colors.text },
+}));

@@ -16,6 +16,17 @@ export const STAND_TYPES = ['tree_stand', 'ladder', 'ground_blind'] as const;
 export const StandTypeSchema = z.enum(STAND_TYPES);
 export type StandType = z.infer<typeof StandTypeSchema>;
 
+/**
+ * Lucide icon (PascalCase export name) for each stand type, the same in the app
+ * (lucide-react-native) and the club admin (lucide-react). Display only.
+ */
+export const STAND_TYPE_ICON_NAMES = {
+  tree_stand: 'TreePine',
+  ladder: 'ArrowUpFromLine',
+  ground_blind: 'Tent',
+} as const satisfies Record<StandType, string>;
+export type StandTypeIconName = (typeof STAND_TYPE_ICON_NAMES)[StandType];
+
 /** Harvest sex keys. Their wire codes live in @huntclub/mesh (HARVEST_SEX_CODES). */
 export const HARVEST_SEXES = ['male', 'female', 'unknown'] as const;
 export const HarvestSexSchema = z.enum(HARVEST_SEXES);

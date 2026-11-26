@@ -15,7 +15,7 @@ export function OpenStandMarker({ stand }: { stand: OpenStandOnMap }) {
       style={styles.container}
     >
       <View style={styles.square}>
-        <StandTypeIcon type={stand.type} />
+        <StandTypeIcon type={stand.type} color={colors.text} />
       </View>
       <HaloText style={styles.name} numberOfLines={1}>
         {stand.name}
