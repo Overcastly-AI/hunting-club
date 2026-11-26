@@ -16,6 +16,10 @@ jest.mock(
   () => jest.requireActual('../../test-utils/fakeQrScanner').fakeCameraPermissionModule,
 );
 
+// Simulated time: the radio link, provisioning and party discovery never wait on the clock.
+beforeEach(() => jest.useFakeTimers());
+afterEach(() => jest.useRealTimers());
+
 const REMEMBERED = { peripheralId: 'AA:BB', name: 'Meshtastic 3c4d', pairedAt: 1 };
 const copy = partyCopy.step;
 
