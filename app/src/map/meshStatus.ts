@@ -1,4 +1,5 @@
-import { FRESHNESS_THRESHOLDS_MS, positionAge } from './freshness';
+import { FRESHNESS_THRESHOLDS_MS, positionAge } from '@huntclub/core';
+
 import type { MeshStatus } from './types';
 
 export type MeshTone = 'ok' | 'quiet' | 'none';

@@ -60,9 +60,11 @@ export function localCalendarDay(date: Date): CalendarDay {
   return { year: date.getFullYear(), month: date.getMonth() + 1, day: date.getDate() };
 }
 
-/** Local clock time such as "6:52 AM". */
-export function formatClockTime(date: Date): string {
-  const hours = date.getHours();
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${hours % 12 === 0 ? 12 : hours % 12}:${minutes} ${hours < 12 ? 'AM' : 'PM'}`;
+/** What overdue and the conditions panel need from the sun. Tests inject fixed times through this. */
+export interface SunApi {
+  sunTimes(day: CalendarDay, lat: number, lon: number): SunTimes;
+  localCalendarDay(date: Date): CalendarDay;
 }
+
+/** The on-device implementation. */
+export const SUN: SunApi = { sunTimes, localCalendarDay };

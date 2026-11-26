@@ -2,7 +2,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '../../components/Button';
 import { colors, opacity, radii, sizes, spacing, textStyles } from '../../theme';
-import { describeAge, positionAge } from '../freshness';
+import { positionAge } from '@huntclub/core';
+
+import { describeAge } from '../age';
 import { placeLabel } from '../labels';
 import type { HunterPlace } from '../types';
 

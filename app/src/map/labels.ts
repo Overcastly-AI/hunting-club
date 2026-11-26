@@ -1,11 +1,16 @@
 import { STAND_TYPE_LABELS } from '../domain/stands';
-import { describeAge, positionAge, classifyFreshness } from './freshness';
+import { classifyFreshness, positionAge } from '@huntclub/core';
+
+import { describeAge } from './age';
 import type { HunterOnMap, HunterPlace, OpenStandOnMap } from './types';
 
 /** Shown under a hunter who is walking. */
 export const ON_THE_MOVE = 'On the move';
 /** Shown under a hunter at an unnamed spot. */
 export const UNNAMED_SPOT = 'Spot';
+/** Shown when a club stand or area name isn't on this phone yet. */
+export const UNNAMED_STAND = 'Club stand';
+export const UNNAMED_AREA = 'Club area';
 /** Shown under a club stand nobody is in. */
 export const OPEN_STAND = 'Open';
 /** Label beside your scent cone. */

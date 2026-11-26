@@ -1,7 +1,7 @@
 import { LocationManager, type GeolocationPosition } from '@maplibre/maplibre-react-native';
 import { Alert, Linking } from 'react-native';
 
-import type { LatLon } from '../domain/location';
+import type { LatLon } from '@huntclub/mesh';
 
 /**
  * The one place the app asks for location. Every feature that needs the

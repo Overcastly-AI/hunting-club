@@ -14,6 +14,8 @@ npm run typecheck
 | `overdue.ts`       | `overdueAt()` (sunset + grace, or a later extension) and `OverdueMonitor`. At our own deadline it prompts first (`selfPrompt`; answer with `extend()` or check-out) and alerts after `selfPromptMinutes` of silence. Other phones wait `othersDelayMinutes`, then one of them alerts |
 | `help.ts`          | `HelpRequester`: Ask for a Hand. Retries with the same message id until the first Receipt or `cancel()`, with airtime-aware backoff                                                                                                                                                  |
 | `receipts.ts`      | `ReceiptService` (de-duplicated, per-sender rate-limited, jittered receipts) and `DeliveryTracker` ("Delivered to N of M")                                                                                                                                                           |
+| `sun.ts`           | `sunTimes()` / `SUN`: sunrise and sunset on the device (NOAA sunrise equation); no legal shooting hours                                                                                                                                                                              |
+| `freshness.ts`     | `FRESHNESS_THRESHOLDS_MS`, `classifyFreshness`, `positionAge`                                                                                                                                                                                                                        |
 | `party.ts`         | `FREE_PARTY_MAX_MEMBERS` (3), `canJoinParty`, `assertCanJoinParty`, `shouldShowPartyQr`                                                                                                                                                                                              |
 | `testing/party.ts` | Test harness: a party of phones on one FakeAir with the core services running                                                                                                                                                                                                        |
 
@@ -21,4 +23,6 @@ All tunables (receipt rate limits, help backoff, overdue grace, prompt and wait 
 
 Every service takes a `CoreContext` (`client`, plus optional `random`, `timers` and `now`), so tests can drive time and randomness.
 
-Sunrise and sunset come from the map work (`app/src/conditions/sun.ts`, PR #6) and are passed in as `SunApi`. The module can be passed as is: `new OverdueMonitor(ctx, { sun: { sunTimes, localCalendarDay }, ... })`.
+Sunrise and sunset are computed on the device by `sun.ts` (`SUN`, `sunTimes`, `localCalendarDay`). `OverdueMonitor` uses `SUN` by default; tests pass a fixed `SunApi` instead.
+
+`freshness.ts` holds the position freshness thresholds (fresh under 2 min, stale to 10 min, faded after) and `classifyFreshness`; the map, the board and mesh-down warnings use them.
