@@ -150,3 +150,8 @@ export function boundsAround(points: readonly LatLon[]): Bounds | undefined {
   const [south, north] = pad(Math.min(...lats), Math.max(...lats));
   return [west, south, east, north];
 }
+
+/** [west, south, east, north] reaching `radius` metres north, south, east and west of `center`. */
+export function boundsAroundPoint(center: LatLon, radius: number): Bounds {
+  return boundsAround([0, 90, 180, 270].map((bearing) => destination(center, bearing, radius)))!;
+}
