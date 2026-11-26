@@ -24,7 +24,8 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 | Data layer owner | CloudFormation stack `HuntClubMeshDataDev`, built by Grok Bot at the owner's direction (06:32 UTC), Retain policies. **The CDK references these, never defines them.** |
 | DynamoDB table | `hunt-club-mesh-dev` (arn:aws:dynamodb:us-east-1:054825383623:table/hunt-club-mesh-dev), PK/SK (S), GSI1 = GSI1PK/GSI1SK (ALL), on-demand, PITR off, deletion protection on, TTL `expiresAt` (Request #2) |
 | Cognito user pool | `us-east-1_0W2YbjVht` (Essentials, email username, first factors PASSWORD + EMAIL_OTP; the app uses EMAIL_OTP only), default email sender (~50/day; SES later per owner) |
-| Cognito app client | `5dn1jcrnef1v6cfv6da0i7qtne` (public, ALLOW_USER_AUTH + refresh); web client via Request #2 |
+| Cognito app client | `5dn1jcrnef1v6cfv6da0i7qtne` (public, ALLOW_USER_AUTH + refresh) |
+| Cognito web client | `6mpfpr6nrdqddim7trfqckegu5` (`hunt-club-mesh-dev-web`, no hosted UI) |
 
 **Reading Grok Bot replies:** always open the full thread with `get_thread`. Search previews show stale message counts and miss replies.
 
@@ -32,10 +33,12 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 | # | Sent | Request | Status | Result |
 |---|---|---|---|---|
-| 2 | 2026-11-26 | Enable TTL `expiresAt` on the table; add web app client to the user pool | Sent 06:36 UTC | |
+| 2 | 2026-11-26 | Enable TTL `expiresAt` on the table; add web app client to the user pool | **Done** 06:37 UTC | TTL enabled; web client `6mpfpr6nrdqddim7trfqckegu5` |
 | 1 | 2026-11-26 | Dev subdomain: Route 53 hosted zone, delegation, ACM wildcard cert | **Done** 06:07 UTC (verified NS via public DNS) | See "AWS environment" below |
 
 ## How the project runs
+
+- **Usage limit (2026-11-26):** 7 workers + coordinator hit the plan's 5-hour usage limit at ~06:55 UTC; everything stopped until the 09:30 reset. Run at most 3 workers at a time, prioritise merges, and keep worker messages short.
 
 - The owner delegated full control to the coordinator (2026-11-26). Hard limits that still need the owner: spending money beyond free tiers and the dev DNS zone, deleting the owner's data, emails to anyone but the owner.
 - Coordinator session: `session_01QS5dr3XTYjo26Gf4MeA3GC`. Wakes hourly at :34 via scheduled task `trig_01SRzKhjqQDZWWfR6krcCifn`: checks Grok Bot email, workers and PRs; reviews and merges; starts the next tasks.
@@ -50,17 +53,15 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 | Task | Session | Branch / PR | Status |
 |---|---|---|---|
-| M1: app project setup | session_01QS5dr4qFtLFfyf7oVjMNAj | PR #2 | Merged |
-| M2 research | session_01QS5dr5ia6B5X5renWEXyAe | PR #1 | Merged |
-| M2 part 1: packages/mesh | session_01QS5dr5jAZ6wC472f8hsUHW | PR #4 | Merged 06:08 UTC |
-| CI Android build + Archivo variable font + minSdk 26 | session_01QS5dr4qFtLFfyf7oVjMNAj | PR #3 | Approved; waiting on first Android CI build |
-| M8: Supabase schema, RLS, invite RPC, packages/shared | session_01QS5dr5ia6B5X5renWEXyAe | PR #5 | Approved, CI green; resolving lockfile conflict |
-| M4: offline map | session_01QS5dr3kB1sf3Bt86wVb3qW | PR #6 | Approved; moving config to app.config.ts after #3 |
-| M2 part 2: BLE transport, pairing, Android service | session_01QS5dr7YPxgw1iqGybujET3 | PR #7 (draft) | Switching to @huntclub/mesh imports; then app.config.ts after #3 |
-| Weather: NWS wind/temperature, offline cache | session_01QS5dr7o9U9xBRJaR86iMuW | agent/weather | Started 06:10 UTC (builds on #6) |
-| HarvestSex single source + Stripe/Auth research | session_01QS5dr5ia6B5X5renWEXyAe | PR #8 | Merged 06:16 UTC |
-| infra/: CDK stacks (web+CloudFront, webhook Lambda stub, ops schedules) | session_01QS5dr5ia6B5X5renWEXyAe | agent/m2-research | Started 06:15 UTC |
-| packages/core: check-in, overdue, help retries, receipts, party cap | session_01QS5dr5jAZ6wC472f8hsUHW | agent/m2-mesh-client (new PR) | Started 06:09 UTC |
+| Merged so far | — | #1–#6, #8, #9, #11–#15, #17, #18 | research, setup, CI/font, mesh, schema→DynamoDB data layer, map, core, infra, party, map polish, Check In, safety, Android CI speed-up |
+| M2 part 2: BLE transport, RadioProvider, pairing | session_01QS5dr7YPxgw1iqGybujET3 | PR #7 | Top priority: merging main, then ready |
+| Weather (NWS) | session_01QS5dr7o9U9xBRJaR86iMuW | PR #10 | Approved; resolving conflict with main |
+| Onboarding flow + QR scan | session_01QS5dr7o9U9xBRJaR86iMuW | agent/weather | Next after #10 |
+| Mesh-sim CI (real meshtasticd) + TcpTransport | session_01QS5dr5jAZ6wC472f8hsUHW | PR #16 | Waiting on first real sim run |
+| Tab bar + conditions panel layout fix | session_01QS5dr4qFtLFfyf7oVjMNAj | agent/m1-scaffold | PR opening |
+| Chat UI (M7); then wire Check In/Safety/map into RadioProvider after #7 | session_01QS5dr3kB1sf3Bt86wVb3qW | agent/m4-offline-map | In progress |
+| Web admin page + packages/design | session_01QS5dr5ia6B5X5renWEXyAe | agent/m2-research | In progress |
+| Club API + Stripe webhook Lambdas (M9) | session_01QS5dr3GmkJjvaYfcNrAN3b | agent/club-data | Started 06:52 UTC |
 
 ## Decisions log
 

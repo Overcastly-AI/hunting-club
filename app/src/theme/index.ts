@@ -9,6 +9,7 @@ import {
   fontWeight,
   fontWidth,
   mapTextHalo,
+  maxFontScale,
   textStyles,
 } from './typography';
 
@@ -23,6 +24,7 @@ export {
   fontWeight,
   fontWidth,
   mapTextHalo,
+  maxFontScale,
   opacity,
   radii,
   sizes,
