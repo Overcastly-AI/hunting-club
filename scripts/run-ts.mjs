@@ -1,8 +1,8 @@
 // The repo's TypeScript runner: `node <repo>/scripts/run-ts.mjs <entry.ts> [args...]`,
 // run from the package directory (entry and output are relative to it). esbuild
 // compiles the entry, including the @huntclub/* workspace sources, into one file in
-// .run-ts/; aws-cdk-lib and constructs stay external. Used by infra (cdk.json, smoke)
-// and club-data (seed:dev). No ts-node/tsx dependency needed.
+// .run-ts/; aws-cdk-lib, constructs and native modules stay external. Used by infra (cdk.json, smoke),
+// club-data (seed:dev) and design (icons). No ts-node/tsx dependency needed.
 import { build } from 'esbuild';
 import { spawnSync } from 'node:child_process';
 import { basename, join } from 'node:path';
@@ -22,7 +22,8 @@ await build({
   platform: 'node',
   format: 'cjs',
   target: 'node22',
-  external: ['aws-cdk-lib', 'constructs', 'esbuild'],
+  // Large or native packages are loaded from node_modules, not bundled.
+  external: ['aws-cdk-lib', 'constructs', 'esbuild', '@resvg/resvg-js'],
   logLevel: 'warning',
 });
 
