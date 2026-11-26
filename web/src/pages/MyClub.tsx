@@ -61,11 +61,14 @@ function ClubSummary({ club, created }: { club: Club; created: boolean }) {
   );
 }
 
+/** From the shared initials rule (initialsSchema), so the hint never drifts from it. */
+const INITIALS_HINT = `Up to ${INITIALS_MAX} letters or numbers, shown on the map`;
+
 /** Inline errors, by the request schema's field path. */
 const CREATE_ERRORS = {
   'club.name': 'Enter the club name.',
   'admin.displayName': 'Enter your name.',
-  'admin.initials': 'Enter your initials (letters or numbers, up to 3).',
+  'admin.initials': `Enter your initials: up to ${INITIALS_MAX} letters or numbers.`,
 } as const;
 type CreateField = keyof typeof CREATE_ERRORS;
 
@@ -132,7 +135,7 @@ function CreateClub(props: { api: ClubApi; onCreated: () => void }) {
       />
       <Field
         label="Your initials"
-        hint="2 to 3 letters, shown on the map"
+        hint={INITIALS_HINT}
         required
         maxLength={INITIALS_MAX}
         error={invalid['admin.initials']}

@@ -13,6 +13,7 @@ import {
   CLUB_PRICING,
   type ClubApiClient,
   emailCodeRules,
+  INITIALS_MAX,
   LEGAL_DRAFT_NOTICE,
   LEGAL_PATHS,
   privacyPolicy,
@@ -227,7 +228,9 @@ describe('club pages', () => {
     const name = await screen.findByLabelText('Club name');
     const create = screen.getByRole('button', { name: 'Create club' }) as HTMLButtonElement;
     expect(create.disabled).toBe(false);
-    expect(screen.getByText('2 to 3 letters, shown on the map')).toBeTruthy();
+    expect(
+      screen.getByText(`Up to ${INITIALS_MAX} letters or numbers, shown on the map`),
+    ).toBeTruthy();
     fireEvent.click(create);
     expectFieldError(name, 'Enter the club name.');
     expectFieldError(screen.getByLabelText('Your name'), 'Enter your name.');
