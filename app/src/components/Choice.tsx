@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { colors, opacity, radii, sizes, spacing, textStyles } from '../theme';
+import { makeStyles, opacity, radii, sizes, spacing, textStyles } from '../theme';
 
 type Props = {
   label: string;
@@ -12,6 +12,7 @@ type Props = {
 
 /** One option in a list of choices (radio-button style). Selection is shown with a white outline and the word "Selected", not orange. */
 export function Choice({ label, detail, selected, disabled, onPress }: Props) {
+  const styles = useStyles();
   return (
     <Pressable
       accessibilityRole="radio"
@@ -34,20 +35,20 @@ export function Choice({ label, detail, selected, disabled, onPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   choice: {
     minHeight: sizes.primaryButtonMinHeight,
     borderRadius: radii.primaryButton,
     borderWidth: sizes.hairline,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceRaised,
+    borderColor: theme.colors.borderSubtle,
+    backgroundColor: theme.colors.surface2,
     paddingHorizontal: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
   },
-  selected: { borderColor: colors.text },
+  selected: { borderColor: theme.colors.text },
   texts: { flex: 1, paddingVertical: spacing.sm },
-  label: { ...textStyles.label, color: colors.text },
-  detail: { ...textStyles.body, color: colors.textSecondary },
-});
+  label: { ...textStyles.label, color: theme.colors.text },
+  detail: { ...textStyles.body, color: theme.colors.textSecondary },
+}));

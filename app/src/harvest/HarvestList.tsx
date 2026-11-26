@@ -1,10 +1,10 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useContext, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { Button } from '../components/Button';
 import { formatClockTime, formatShortDate } from '../conditions/clock';
-import { colors, spacing, textStyles } from '../theme';
+import { makeStyles, spacing, textStyles } from '../theme';
 import { SEX_LABELS, SHARE_LABELS } from './form';
 import { HarvestRadioContext, shareHarvest } from './HarvestRadio';
 import { HarvestSheet } from './HarvestSheet';
@@ -26,6 +26,7 @@ export function harvestSummary(h: LocalHarvest): string {
 
 /** My harvests (Party/Club tab): private unless shared, with a share button for private ones. */
 export function HarvestList() {
+  const styles = useStyles();
   const db = useSQLiteContext();
   const radio = useContext(HarvestRadioContext);
   const harvests = useHarvests();
@@ -64,10 +65,15 @@ export function HarvestList() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   section: { gap: spacing.sm },
-  heading: { ...textStyles.label, color: colors.text },
-  row: { gap: spacing.xs, borderTopWidth: 1, borderColor: colors.border, paddingTop: spacing.sm },
-  summary: { ...textStyles.bodyLarge, color: colors.text },
-  body: { ...textStyles.body, color: colors.textSecondary },
-});
+  heading: { ...textStyles.label, color: theme.colors.text },
+  row: {
+    gap: spacing.xs,
+    borderTopWidth: 1,
+    borderColor: theme.colors.borderSubtle,
+    paddingTop: spacing.sm,
+  },
+  summary: { ...textStyles.bodyLarge, color: theme.colors.text },
+  body: { ...textStyles.body, color: theme.colors.textSecondary },
+}));

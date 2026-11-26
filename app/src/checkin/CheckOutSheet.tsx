@@ -1,8 +1,8 @@
-import { StyleSheet, Text } from 'react-native';
+import { Text } from 'react-native';
 
 import { Sheet } from '../components/Sheet';
 import { SlideToConfirm } from '../components/SlideToConfirm';
-import { colors, textStyles } from '../theme';
+import { makeStyles, textStyles } from '../theme';
 import { useCheckInActions, type CheckInRadio } from './CheckInRadio';
 import { SendStatusText } from './SendStatusText';
 
@@ -12,6 +12,7 @@ type Props = { radio: CheckInRadio | null; visible: boolean; onClose: () => void
 
 /** Check Out from the map: the same slide-to-confirm as the Check In tab. */
 export function CheckOutSheet({ radio, visible, onClose }: Props) {
+  const styles = useStyles();
   const { checkOut, status } = useCheckInActions(radio);
   return (
     <Sheet visible={visible} title="Check out" onClose={onClose}>
@@ -29,4 +30,6 @@ export function CheckOutSheet({ radio, visible, onClose }: Props) {
   );
 }
 
-const styles = StyleSheet.create({ body: { ...textStyles.body, color: colors.textSecondary } });
+const useStyles = makeStyles((theme) => ({
+  body: { ...textStyles.body, color: theme.colors.textSecondary },
+}));

@@ -1,7 +1,7 @@
 import { HARVEST_SEXES } from '@huntclub/shared';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useContext, useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { Text } from 'react-native';
 
 import { useCheckInState } from '../checkin/CheckInRadio';
 import { Button } from '../components/Button';
@@ -9,7 +9,7 @@ import { OptionButtons } from '../components/OptionButtons';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { Sheet } from '../components/Sheet';
 import { TextField } from '../components/TextField';
-import { colors, textStyles } from '../theme';
+import { makeStyles, textStyles } from '../theme';
 import {
   COMMON_SPECIES,
   EMPTY_DRAFT,
@@ -27,6 +27,7 @@ type Props = { visible: boolean; onClose: () => void };
 
 /** Log a harvest: private by default, saved on this phone; optionally shared over the radio. */
 export function HarvestSheet({ visible, onClose }: Props) {
+  const styles = useStyles();
   const db = useSQLiteContext();
   const radio = useContext(HarvestRadioContext);
   const { current } = useCheckInState();
@@ -110,7 +111,7 @@ export function HarvestSheet({ visible, onClose }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  body: { ...textStyles.body, color: colors.textSecondary },
-  status: { ...textStyles.body, color: colors.fresh },
-});
+const useStyles = makeStyles((theme) => ({
+  body: { ...textStyles.body, color: theme.colors.textSecondary },
+  status: { ...textStyles.body, color: theme.colors.success },
+}));

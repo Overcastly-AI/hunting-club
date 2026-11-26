@@ -1,7 +1,16 @@
 import { readFileSync } from 'node:fs';
 
 import { colors, opacity } from '..';
-import { MIN_TEXT_CONTRAST, blendOver, contrastRatio } from '@huntclub/design';
+import {
+  MIN_TEXT_CONTRAST,
+  MIN_UI_CONTRAST,
+  blendOver,
+  contrastRatio,
+  themes,
+  type Theme,
+  type ThemeColorToken,
+  type ThemeName,
+} from '@huntclub/design';
 import { SRC, sourceFiles } from '../../test-utils/sourceFiles';
 
 describe('contrastRatio', () => {
@@ -18,29 +27,9 @@ describe('contrastRatio', () => {
 /** Every text colour drawn on the map sits on the map-halo outline. */
 const MAP_TEXT = ['text', 'textSecondary', 'fresh', 'help', 'waterLabel'] as const;
 
-/** Text on floating panels, the bottom sheet and buttons: [text, background]. */
-const PANEL_TEXT: [keyof typeof colors, keyof typeof colors][] = [
-  ['text', 'surface'],
-  ['textSecondary', 'surface'],
-  ['wind', 'surface'],
-  ['help', 'surface'],
-  ['text', 'surfaceRaised'],
-  ['textSecondary', 'surfaceRaised'],
-  ['surface', 'accent'], // primary button label
-];
-
-describe('text contrast (spec: at least 4.5:1)', () => {
+describe('map text contrast (spec: at least 4.5:1)', () => {
   it.each(MAP_TEXT)('map label in %s on its halo', (token) => {
     expect(contrastRatio(colors[token], colors.mapHalo)).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
-  });
-
-  it.each(PANEL_TEXT)('%s on %s', (fg, bg) => {
-    expect(contrastRatio(colors[fg], colors[bg])).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
-  });
-
-  it('keeps disabled choices readable', () => {
-    const dimmed = blendOver(colors.textSecondary, colors.surfaceRaised, opacity.pressed);
-    expect(contrastRatio(dimmed, colors.surfaceRaised)).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
   });
 
   it('would fail if faded markers dimmed their labels, which is why only the circle fades', () => {
@@ -49,30 +38,54 @@ describe('text contrast (spec: at least 4.5:1)', () => {
   });
 });
 
-/** Backgrounds every screen, sheet and card is drawn on. */
-const SCREEN_BACKGROUNDS = ['surface', 'surfaceRaised'] as const;
+/** Backgrounds every screen, sheet and card is drawn on (the app's surface0 and surface2). */
+const SCREEN_BACKGROUNDS = ['surface0', 'surface2'] as const satisfies readonly ThemeColorToken[];
+const THEMES = Object.entries(themes) as [ThemeName, Theme][];
 
-/** Every token the app's source uses as a text colour (`color: colors.x`), so new ones are checked too. */
-function textColorTokens(): (keyof typeof colors)[] {
+/** Every theme token the app's source uses as a text colour (`color: theme.colors.x`). */
+function textColorTokens(): ThemeColorToken[] {
   const used = sourceFiles(SRC, /\.tsx?$/).flatMap((file) =>
-    [...readFileSync(file, 'utf8').matchAll(/\bcolor: colors\.(\w+)/g)].map((m) => m[1]!),
+    [...readFileSync(file, 'utf8').matchAll(/\bcolor: theme\.colors\.(\w+)/g)].map((m) => m[1]!),
   );
-  return [...new Set(used)].sort() as (keyof typeof colors)[];
+  return [...new Set(used)].sort() as ThemeColorToken[];
 }
 
-describe('every text colour in the app on every screen background', () => {
+describe.each(THEMES)('%s theme: app text contrast (at least 4.5:1)', (_name, theme) => {
+  const c = theme.colors;
   const tokens = textColorTokens();
-  // A background colour used as text (the primary button label) is checked as a pair above.
-  const onScreens = tokens.filter((t) => !(SCREEN_BACKGROUNDS as readonly string[]).includes(t));
 
   it('finds the text colours it checks', () => {
-    expect(onScreens).toEqual(expect.arrayContaining(['text', 'textSecondary', 'help']));
+    expect(tokens).toEqual(
+      expect.arrayContaining(['text', 'textSecondary', 'warning', 'onAccent']),
+    );
   });
 
-  it.each(onScreens.flatMap((fg) => SCREEN_BACKGROUNDS.map((bg) => [fg, bg] as const)))(
-    '%s on %s',
-    (fg, bg) => {
-      expect(contrastRatio(colors[fg], colors[bg])).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
-    },
-  );
+  // Text on an accent fill (the primary button label) is checked on the accent itself.
+  it.each(tokens.filter((t) => t !== 'onAccent'))('%s on every screen background', (fg) => {
+    for (const bg of SCREEN_BACKGROUNDS) {
+      expect({ fg, bg, ratio: contrastRatio(c[fg], c[bg]) >= MIN_TEXT_CONTRAST }).toEqual({
+        fg,
+        bg,
+        ratio: true,
+      });
+    }
+  });
+
+  it('primary button label on the accent', () => {
+    expect(contrastRatio(c.onAccent, c.accent)).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
+  });
+
+  it('slide-to-confirm chevrons on their thumbs (3:1 for graphics)', () => {
+    expect(contrastRatio(c.onAccent, c.accent)).toBeGreaterThanOrEqual(MIN_UI_CONTRAST);
+    expect(contrastRatio(c.surface0, c.warning)).toBeGreaterThanOrEqual(MIN_UI_CONTRAST);
+  });
+
+  it('keeps disabled choices readable', () => {
+    // Disabled controls fade to opacity.pressed. Dark keeps text contrast; light keeps
+    // 3:1 (WCAG exempts disabled controls) until P5b moves the controls to the new
+    // variants with their own disabled colours.
+    const min = theme.colorScheme === 'dark' ? MIN_TEXT_CONTRAST : MIN_UI_CONTRAST;
+    const dimmed = blendOver(c.textSecondary, c.surface2, opacity.pressed);
+    expect(contrastRatio(dimmed, c.surface2)).toBeGreaterThanOrEqual(min);
+  });
 });

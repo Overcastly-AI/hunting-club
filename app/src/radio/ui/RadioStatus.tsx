@@ -1,6 +1,6 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
-import { colors, spacing, textStyles } from '../../theme';
+import { makeStyles, spacing, textStyles } from '../../theme';
 import { radioCopy } from '../copy';
 import { useRadio } from '../RadioProvider';
 
@@ -9,6 +9,7 @@ const PLUGGED_IN_LEVEL = 101;
 
 /** One-line link status, plus the radio's name, battery and software when known. */
 export function RadioStatus() {
+  const styles = useStyles();
   const { link, radio, pairedRadio } = useRadio();
   const ready = link === 'ready';
   const details: string[] = [];
@@ -38,7 +39,7 @@ export function RadioStatus() {
 
 const DOT = 14;
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -50,9 +51,9 @@ const styles = StyleSheet.create({
     borderRadius: DOT / 2,
     marginTop: spacing.xs,
   },
-  dotReady: { backgroundColor: colors.fresh },
-  dotIdle: { backgroundColor: colors.textSecondary },
+  dotReady: { backgroundColor: theme.colors.success },
+  dotIdle: { backgroundColor: theme.colors.textSecondary },
   text: { flex: 1, gap: spacing.xs },
-  status: { ...textStyles.label, color: colors.text },
-  detail: { ...textStyles.body, color: colors.textSecondary },
-});
+  status: { ...textStyles.label, color: theme.colors.text },
+  detail: { ...textStyles.body, color: theme.colors.textSecondary },
+}));

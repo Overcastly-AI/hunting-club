@@ -157,6 +157,12 @@ export type ThemeColorToken = keyof ThemeColors;
 export const THEME_PREFERENCES = ['system', 'dark', 'light'] as const;
 export type ThemePreference = (typeof THEME_PREFERENCES)[number];
 export const DEFAULT_THEME_PREFERENCE: ThemePreference = 'system';
+/** Word for each theme choice (the app's Settings → Theme and the admin's theme menu). */
+export const THEME_PREFERENCE_LABELS = {
+  system: 'System',
+  dark: 'Dark',
+  light: 'Light',
+} as const satisfies Record<ThemePreference, string>;
 
 /** Web: localStorage key holding the reader's ThemePreference. */
 export const THEME_STORAGE_KEY = 'hcm-theme';

@@ -1,5 +1,5 @@
 import { MAX_TEXT_CHARS } from '@huntclub/mesh';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { Button } from '../components/Button';
 import { OptionButtons } from '../components/OptionButtons';
@@ -7,7 +7,7 @@ import { TextField } from '../components/TextField';
 import { formatClockTime } from '../conditions/clock';
 import { QUICK_REPLIES } from '../domain/quickReplies';
 import { placeLabel } from '../map/labels';
-import { colors, radii, spacing, textStyles } from '../theme';
+import { makeStyles, radii, spacing, textStyles } from '../theme';
 import type { ChatItem } from './model';
 import { bubbleLabel, charactersLeft, deliveryText } from './wording';
 
@@ -16,6 +16,7 @@ type System = Extract<ChatItem, { kind: 'system' }>;
 
 /** A message: sender, their stand/spot/area or On the move, time, and delivery for ours. */
 export function MessageBubble({ item }: { item: Text_ }) {
+  const styles = useStyles();
   const time = formatClockTime(new Date(item.at));
   const delivery = deliveryText(item);
   return (
@@ -38,6 +39,7 @@ export function MessageBubble({ item }: { item: Text_ }) {
 
 /** Check-ins, help requests and shared harvests in the stream. */
 export function SystemCard({ item }: { item: System }) {
+  const styles = useStyles();
   const time = formatClockTime(new Date(item.at));
   return (
     <View
@@ -78,6 +80,7 @@ type ComposerProps = {
 
 /** Text field with the live 200-character counter. */
 export function Composer({ value, onChange, onSend, disabled }: ComposerProps) {
+  const styles = useStyles();
   const counter = charactersLeft(value);
   const nearLimit = counter.left <= 20;
   return (
@@ -108,35 +111,35 @@ export function Composer({ value, onChange, onSend, disabled }: ComposerProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   bubble: {
     maxWidth: '86%',
     borderRadius: radii.primaryButton,
     padding: spacing.sm + spacing.xs,
     gap: spacing.xs,
   },
-  mine: { alignSelf: 'flex-end', backgroundColor: colors.surfaceRaised },
+  mine: { alignSelf: 'flex-end', backgroundColor: theme.colors.surface2 },
   theirs: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.surface,
+    backgroundColor: theme.colors.surface0,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.colors.borderSubtle,
   },
-  meta: { ...textStyles.body, color: colors.textSecondary },
-  body: { ...textStyles.bodyLarge, color: colors.text },
-  problem: { color: colors.help },
+  meta: { ...textStyles.body, color: theme.colors.textSecondary },
+  body: { ...textStyles.bodyLarge, color: theme.colors.text },
+  problem: { color: theme.colors.warning },
   card: {
     alignSelf: 'center',
     borderRadius: radii.primaryButton,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.colors.borderSubtle,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     alignItems: 'center',
   },
-  helpCard: { borderColor: colors.help },
-  cardText: { ...textStyles.label, color: colors.text, textAlign: 'center' },
-  helpText: { color: colors.help },
+  helpCard: { borderColor: theme.colors.warning },
+  cardText: { ...textStyles.label, color: theme.colors.text, textAlign: 'center' },
+  helpText: { color: theme.colors.warning },
   composer: { gap: spacing.sm },
   field: { paddingVertical: spacing.sm },
   composerRow: {
@@ -145,4 +148,4 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: spacing.md,
   },
-});
+}));

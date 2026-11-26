@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { colors, opacity, radii, sizes, spacing, textStyles } from '../theme';
+import { makeStyles, opacity, radii, sizes, spacing, textStyles } from '../theme';
 
 type Props<T extends string> = {
   segments: readonly T[];
@@ -16,6 +16,7 @@ export function SegmentedControl<T extends string>({
   selected,
   onSelect,
 }: Props<T>) {
+  const styles = useStyles();
   return (
     <View accessibilityRole="tablist" style={styles.row}>
       {segments.map((segment) => {
@@ -43,19 +44,19 @@ export function SegmentedControl<T extends string>({
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: spacing.xs, backgroundColor: colors.surface },
+const useStyles = makeStyles((theme) => ({
+  row: { flexDirection: 'row', gap: spacing.xs, backgroundColor: theme.colors.surface0 },
   segment: {
     flex: 1,
     minHeight: sizes.minTapTarget,
     borderRadius: radii.primaryButton,
     borderWidth: sizes.hairline,
-    borderColor: colors.border,
+    borderColor: theme.colors.borderSubtle,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.sm,
   },
-  selected: { backgroundColor: colors.surfaceRaised, borderColor: colors.text },
-  label: { ...textStyles.label, color: colors.textSecondary },
-  selectedLabel: { color: colors.text },
-});
+  selected: { backgroundColor: theme.colors.surface2, borderColor: theme.colors.text },
+  label: { ...textStyles.label, color: theme.colors.textSecondary },
+  selectedLabel: { color: theme.colors.text },
+}));
