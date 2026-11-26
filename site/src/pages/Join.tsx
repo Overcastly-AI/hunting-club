@@ -16,6 +16,11 @@ function In(props: { states: readonly JoinState[]; children: ReactNode; as?: 'sp
 
 const INVITES: readonly JoinState[] = ['club', 'party'];
 
+/** What /join says with no invite, or a broken one, and the one thing to do about it. */
+export const JOIN_INVALID_HEADING = 'This invite link is missing or invalid';
+export const JOIN_INVALID_NEXT_STEP =
+  'Ask the person who invited you to send a new invite link or QR code.';
+
 /**
  * The invite landing page. Every state is in the HTML; the script shows the one the
  * invite link's fragment calls for. With no script it reads as a general invite.
@@ -24,28 +29,27 @@ export function Join() {
   return (
     <section className="hero join">
       <div className="wrap">
-        <p className="eyebrow">You&apos;re invited</p>
+        <In states={['generic', ...INVITES]}>
+          <p className="eyebrow">You&apos;re invited</p>
+        </In>
         <h1>
           <In as="span" states={['generic']}>
             Hunt with {APP_NAME}
           </In>
           <In as="span" states={['club']}>
-            Join your hunting club
+            <span {...{ [JOIN_HOOKS.clubName]: '' }}>Join your hunting club</span>
           </In>
           <In as="span" states={['party']}>
             Hunt with your party
           </In>
           <In as="span" states={['invalid']}>
-            This invite link is not complete
+            {JOIN_INVALID_HEADING}
           </In>
         </h1>
 
         <In states={['invalid']}>
           <p className="lead" role="alert">
-            Ask for a new invite link or QR code.
-          </p>
-          <p>
-            Still stuck? <a href={PAGE_PATHS.contact}>Contact us</a>.
+            {JOIN_INVALID_NEXT_STEP}
           </p>
         </In>
 

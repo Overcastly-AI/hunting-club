@@ -1,5 +1,14 @@
 import { fontFaceCss, rootVariablesCss, textScale, textStyleCss } from '@huntclub/design';
 
+/** The home hero's class: the tall hero with the dawn scene behind it (pages/Home.tsx). */
+export const HERO_WITH_ART_CLASS = 'hero--art';
+
+/**
+ * The home hero's bottom padding: the dawn pause button's offset from the bottom
+ * (var(--space-md), from dawnSceneCss), its height (the tap minimum) and a gap above it.
+ */
+export const HERO_ART_BOTTOM_PADDING = 'calc(var(--space-md) + var(--tap-min) + var(--space-md))';
+
 /** Phones and small tablets: the header is the logo and one Menu button. */
 export const PHONE_HEADER_MAX_WIDTH = 860;
 /** The narrowest phone the layout must fit with no sideways scrolling. */
@@ -63,10 +72,15 @@ section { padding: var(--space-xl) 0; }
 /* Accent is under 3:1 on the light background, so a primary button there keeps a dark edge. */
 .band-light .button.primary { color: var(--color-surface); background: var(--color-accent); border-color: var(--color-text-on-light); }
 .band-light :focus-visible { outline-color: var(--color-link-on-light); }
-/* The minimum height grows with the width so the dawn scene's sun and its brightest light stay
-   below the hero's text and buttons (the scene covers the hero, anchored at the bottom). */
-.hero { position: relative; overflow: hidden; padding: var(--space-xl) 0 calc(var(--space-xl) * 2);
-  min-height: min(calc(17rem + 24vw), 56rem); }
+/* Page intros. Only the home hero (with the dawn scene) is tall; on every other page the
+   content follows the intro directly. */
+.hero { position: relative; overflow: hidden; padding: var(--space-xl) 0 calc(var(--space-xl) * 2); }
+/* The home hero (HERO_WITH_ART_CLASS). The minimum height grows with the width so the dawn
+   scene's sun and its brightest light stay below the hero's text and buttons (the scene covers
+   the hero, anchored at the bottom). The bottom padding (HERO_ART_BOTTOM_PADDING) is the pause
+   button's row: its offset, its 48 px and a gap above it, so the button never touches the hero's
+   own buttons at any width. */
+.${HERO_WITH_ART_CLASS} { min-height: min(calc(17rem + 24vw), 56rem); padding-bottom: ${HERO_ART_BOTTOM_PADDING}; }
 /* The home hero's background slot (HERO_ART_SLOT): the dawn scene, decorative, behind the content. */
 .hero-art { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
 .hero > .wrap { position: relative; z-index: 1; }
