@@ -1,10 +1,14 @@
 import { App, Stack } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import { dev } from '../config/dev';
 import { findCostViolations } from './guards';
 import { synthTemplates } from './helpers';
+
+const devGuard = { allowPointInTimeRecovery: dev.pointInTimeRecovery };
 
 describe('cost guard', () => {
   const templates = synthTemplates({
@@ -12,13 +16,18 @@ describe('cost guard', () => {
   });
 
   it.each(Object.entries(templates))(
-    '%s stack has no always-on resources or unbounded logs',
+    '%s stack has no always-on resources, unbounded logs or paid table options',
     (_, t) => {
-      expect(findCostViolations(t.toJSON())).toEqual([]);
+      expect(findCostViolations(t.toJSON(), devGuard)).toEqual([]);
     },
   );
 
-  it('flags always-on compute and unbounded logs (the guard is not vacuous)', () => {
+  it('fails a dev synth that turns on point-in-time recovery', () => {
+    const t = synthTemplates({ pointInTimeRecovery: true }).data;
+    expect(findCostViolations(t.toJSON(), devGuard).join('\n')).toMatch(/point-in-time recovery/);
+  });
+
+  it('flags always-on compute, unbounded logs and provisioned tables (the guard is not vacuous)', () => {
     const stack = new Stack(new App(), 'Bad');
     const vpc = new ec2.Vpc(stack, 'Vpc', { natGateways: 1, maxAzs: 1 });
     new ec2.Instance(stack, 'Box', {
@@ -39,12 +48,19 @@ describe('cost guard', () => {
       version: fn.currentVersion,
       provisionedConcurrentExecutions: 1,
     });
+    new dynamodb.Table(stack, 'Provisioned', {
+      partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PROVISIONED,
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+    });
 
-    const messages = findCostViolations(Template.fromStack(stack).toJSON()).join('\n');
+    const messages = findCostViolations(Template.fromStack(stack).toJSON(), devGuard).join('\n');
     expect(messages).toMatch(/AWS::EC2::Instance/);
     expect(messages).toMatch(/AWS::EC2::NatGateway/);
     expect(messages).toMatch(/log group without retention/);
     expect(messages).toMatch(/provisioned concurrency/);
     expect(messages).toMatch(/Lambda without an explicit log group/);
+    expect(messages).toMatch(/not on-demand/);
+    expect(messages).toMatch(/point-in-time recovery/);
   });
 });

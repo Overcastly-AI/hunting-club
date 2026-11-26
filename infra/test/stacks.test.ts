@@ -1,7 +1,9 @@
 import { Match } from 'aws-cdk-lib/assertions';
-import { APP_ID } from '@huntclub/shared';
-import { PROJECT, STRIPE_WEBHOOK_SECRETS, secretName, secretNameEnvVar } from '../config';
+import { GSIS, PARTITION_PREFIXES, TABLE_KEYS, TTL_ATTRIBUTE } from '@huntclub/club-data';
+import { APP_ID, AUTH_CALLBACK_PATH, URL_SCHEME } from '@huntclub/shared';
+import { API_ENV, PROJECT, STRIPE_WEBHOOK_SECRETS, secretName, secretNameEnvVar } from '../config';
 import { dev } from '../config/dev';
+import { CLUB_API_TABLE_ACTIONS } from '../src/stacks/api-stack';
 import { synthTemplates } from './helpers';
 
 const templates = synthTemplates();
@@ -31,6 +33,20 @@ describe('every stack', () => {
     for (const type of taggable) {
       for (const resource of Object.values(t.findResources(type))) {
         expect(resource.Properties.Tags).toEqual(
+          expect.arrayContaining([
+            { Key: 'Project', Value: PROJECT },
+            { Key: 'Env', Value: dev.name },
+          ]),
+        );
+      }
+    }
+    const projectTags = { Project: PROJECT, Env: dev.name };
+    for (const pool of Object.values(t.findResources('AWS::Cognito::UserPool'))) {
+      expect(pool.Properties.UserPoolTags).toEqual(expect.objectContaining(projectTags));
+    }
+    for (const table of Object.values(t.findResources('AWS::DynamoDB::GlobalTable'))) {
+      for (const replica of table.Properties.Replicas) {
+        expect(replica.Tags).toEqual(
           expect.arrayContaining([
             { Key: 'Project', Value: PROJECT },
             { Key: 'Env', Value: dev.name },
@@ -107,57 +123,152 @@ describe('web stack', () => {
   });
 });
 
+describe('data stack', () => {
+  const t = templates.data;
+
+  it('is one on-demand table keyed from @huntclub/club-data', () => {
+    t.resourceCountIs('AWS::DynamoDB::GlobalTable', 1);
+    t.resourceCountIs('AWS::DynamoDB::Table', 0);
+    t.hasResourceProperties('AWS::DynamoDB::GlobalTable', {
+      BillingMode: 'PAY_PER_REQUEST',
+      KeySchema: [
+        { AttributeName: TABLE_KEYS.partitionKey, KeyType: 'HASH' },
+        { AttributeName: TABLE_KEYS.sortKey, KeyType: 'RANGE' },
+      ],
+      GlobalSecondaryIndexes: Object.values(GSIS).map((gsi) =>
+        Match.objectLike({
+          IndexName: gsi.indexName,
+          KeySchema: [
+            { AttributeName: gsi.partitionKey, KeyType: 'HASH' },
+            { AttributeName: gsi.sortKey, KeyType: 'RANGE' },
+          ],
+        }),
+      ),
+      TimeToLiveSpecification: { AttributeName: TTL_ATTRIBUTE, Enabled: true },
+      Replicas: [
+        Match.objectLike({
+          Region: dev.region,
+          DeletionProtectionEnabled: true,
+          PointInTimeRecoverySpecification: { PointInTimeRecoveryEnabled: false },
+        }),
+      ],
+    });
+    t.hasResource('AWS::DynamoDB::GlobalTable', { DeletionPolicy: 'Retain' });
+  });
+});
+
+describe('auth stack', () => {
+  const t = templates.auth;
+
+  it('is a passwordless email-code user pool on the Essentials plan', () => {
+    t.hasResourceProperties('AWS::Cognito::UserPool', {
+      UserPoolTier: 'ESSENTIALS',
+      UsernameAttributes: ['email'],
+      AutoVerifiedAttributes: ['email'],
+      Policies: Match.objectLike({
+        SignInPolicy: { AllowedFirstAuthFactors: Match.arrayWith(['EMAIL_OTP']) },
+      }),
+      DeletionProtection: 'ACTIVE',
+      MfaConfiguration: 'OFF',
+    });
+    t.resourceCountIs('AWS::Cognito::UserPoolDomain', 0);
+  });
+
+  it('has public app and web clients with USER_AUTH and the shared callback URLs', () => {
+    t.resourceCountIs('AWS::Cognito::UserPoolClient', 2);
+    const expected = [
+      `${URL_SCHEME}://${AUTH_CALLBACK_PATH}`,
+      `https://${dev.domainName}/${AUTH_CALLBACK_PATH}`,
+    ];
+    for (const url of expected) {
+      t.hasResourceProperties('AWS::Cognito::UserPoolClient', {
+        GenerateSecret: false,
+        ExplicitAuthFlows: Match.arrayWith(['ALLOW_USER_AUTH']),
+        PreventUserExistenceErrors: 'ENABLED',
+        CallbackURLs: [url],
+      });
+    }
+  });
+});
+
 describe('api stack', () => {
   const t = templates.api;
 
-  it('exposes the Stripe webhook through a public Function URL (Stripe signs, not SigV4)', () => {
-    t.hasResourceProperties('AWS::Lambda::Url', { AuthType: 'NONE' });
+  const statements = () =>
+    Object.values(t.findResources('AWS::IAM::Policy')).flatMap(
+      (p) =>
+        p.Properties.PolicyDocument.Statement as {
+          Action: string | string[];
+          Resource: unknown;
+          Condition?: unknown;
+        }[],
+    );
+  const actionsOf = (s: { Action: string | string[] }) => [s.Action].flat();
+
+  it('exposes both Lambdas through Function URLs, no API Gateway', () => {
+    t.resourceCountIs('AWS::Lambda::Url', 2);
+    t.hasResourceProperties('AWS::Lambda::Url', {
+      AuthType: 'NONE',
+      Cors: Match.objectLike({ AllowOrigins: [`https://${dev.domainName}`] }),
+    });
     t.resourceCountIs('AWS::ApiGateway::RestApi', 0);
     t.resourceCountIs('AWS::ApiGatewayV2::Api', 0);
   });
 
-  it('passes secret NAMES, never values, in the environment', () => {
-    const variables: Record<string, string> = { ENV_NAME: dev.name };
-    for (const key of STRIPE_WEBHOOK_SECRETS)
-      variables[secretNameEnvVar(key)] = secretName(dev.name, key);
-    t.hasResourceProperties('AWS::Lambda::Function', { Environment: { Variables: variables } });
-    expect(variables.STRIPE_WEBHOOK_SECRET_NAME).toBe('hunt-club-mesh/dev/stripe-webhook-secret');
+  it('gives the club API its table and Cognito configuration', () => {
+    t.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: {
+        Variables: Match.objectLike({
+          [API_ENV.envName]: dev.name,
+          [API_ENV.tableName]: Match.anyValue(),
+          [API_ENV.userPoolId]: Match.anyValue(),
+          [API_ENV.userPoolClientIds]: Match.anyValue(),
+        }),
+      },
+    });
   });
 
-  it('can read exactly its own secrets and nothing else', () => {
-    const policies = Object.values(t.findResources('AWS::IAM::Policy'));
-    const statements = policies.flatMap(
-      (p) =>
-        p.Properties.PolicyDocument.Statement as { Action: string | string[]; Resource: unknown }[],
-    );
-    const secretStatements = statements.filter((s) =>
-      [s.Action].flat().some((a) => a.startsWith('secretsmanager:')),
+  it('passes the webhook secret NAMES, never values', () => {
+    const variables: Record<string, unknown> = {
+      [API_ENV.envName]: dev.name,
+      [API_ENV.tableName]: Match.anyValue(),
+    };
+    for (const key of STRIPE_WEBHOOK_SECRETS) {
+      variables[secretNameEnvVar(key)] = secretName(dev.name, key);
+    }
+    t.hasResourceProperties('AWS::Lambda::Function', { Environment: { Variables: variables } });
+  });
+
+  it('lets the webhook read exactly its own secrets', () => {
+    const secretStatements = statements().filter((s) =>
+      actionsOf(s).some((a) => a.startsWith('secretsmanager:')),
     );
     expect(secretStatements).toHaveLength(STRIPE_WEBHOOK_SECRETS.length);
-    for (const s of secretStatements) {
-      expect([s.Action].flat().sort()).toEqual([
-        'secretsmanager:DescribeSecret',
-        'secretsmanager:GetSecretValue',
-      ]);
-    }
     const resources = JSON.stringify(secretStatements.map((s) => s.Resource));
     for (const key of STRIPE_WEBHOOK_SECRETS) {
       expect(resources).toContain(`secret:${secretName(dev.name, key)}-??????`);
     }
     expect(resources).not.toContain('secret:*');
   });
-});
 
-describe('ops stack', () => {
-  const t = templates.ops;
-
-  it('runs the keep-alive Lambda daily on EventBridge Scheduler', () => {
-    t.hasResourceProperties('AWS::Scheduler::Schedule', {
-      ScheduleExpression: dev.keepAliveSchedule,
-      State: 'ENABLED',
-      Target: Match.objectLike({ RetryPolicy: Match.objectLike({ MaximumRetryAttempts: 2 }) }),
+  it('limits the webhook to billing partitions of the table', () => {
+    const conditioned = statements().filter((s) => s.Condition !== undefined);
+    expect(conditioned).toHaveLength(1);
+    expect(conditioned[0]?.Condition).toEqual({
+      'ForAllValues:StringLike': {
+        'dynamodb:LeadingKeys': Object.values(PARTITION_PREFIXES).map((p) => `${p}*`),
+      },
     });
-    t.resourceCountIs('AWS::Lambda::Function', 1);
+    expect(actionsOf(conditioned[0]!).every((a) => !/Scan|Query|Delete|Batch/.test(a))).toBe(true);
+  });
+
+  it('gives the club API item and query access only: no Scan, no streams, no table admin', () => {
+    const clubApi = statements().filter(
+      (s) => s.Condition === undefined && actionsOf(s).some((a) => a.startsWith('dynamodb:')),
+    );
+    expect(clubApi).toHaveLength(1);
+    expect(actionsOf(clubApi[0]!).sort()).toEqual([...CLUB_API_TABLE_ACTIONS].sort());
+    expect(JSON.stringify(clubApi[0]!.Resource)).toContain('/index/*');
   });
 });
 

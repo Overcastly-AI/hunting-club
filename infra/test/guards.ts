@@ -39,8 +39,20 @@ export interface CfnTemplate {
   readonly Resources?: Record<string, CfnResource>;
 }
 
+export interface CostGuardOptions {
+  /** DynamoDB point-in-time recovery is billed; only environments that opt in may use it. */
+  readonly allowPointInTimeRecovery: boolean;
+}
+
+interface PitrSpec {
+  readonly PointInTimeRecoveryEnabled?: unknown;
+}
+
+const pitrOn = (spec: unknown) =>
+  (spec as PitrSpec | undefined)?.PointInTimeRecoveryEnabled === true;
+
 /** Returns one message per violation; an empty list means the template is allowed. */
-export function findCostViolations(template: CfnTemplate): string[] {
+export function findCostViolations(template: CfnTemplate, options: CostGuardOptions): string[] {
   const violations: string[] = [];
   for (const [id, resource] of Object.entries(template.Resources ?? {})) {
     const props = resource.Properties ?? {};
@@ -55,6 +67,24 @@ export function findCostViolations(template: CfnTemplate): string[] {
     }
     if (resource.Type === 'AWS::Logs::LogGroup' && props.RetentionInDays === undefined) {
       violations.push(`${id}: log group without retention`);
+    }
+    if (
+      resource.Type === 'AWS::DynamoDB::Table' ||
+      resource.Type === 'AWS::DynamoDB::GlobalTable'
+    ) {
+      if (props.BillingMode !== 'PAY_PER_REQUEST') {
+        violations.push(`${id}: DynamoDB table is not on-demand (provisioned capacity)`);
+      }
+      const replicas = (props.Replicas as { PointInTimeRecoverySpecification?: unknown }[]) ?? [];
+      const pitr = [
+        props.PointInTimeRecoverySpecification,
+        ...replicas.map((r) => r.PointInTimeRecoverySpecification),
+      ];
+      if (!options.allowPointInTimeRecovery && pitr.some(pitrOn)) {
+        violations.push(
+          `${id}: DynamoDB point-in-time recovery is not allowed in this environment`,
+        );
+      }
     }
     if (resource.Type === 'AWS::Lambda::Function') {
       const logging = props.LoggingConfig as { LogGroup?: unknown } | undefined;

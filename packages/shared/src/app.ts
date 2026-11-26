@@ -13,3 +13,9 @@ export const URL_SCHEME = 'huntclub';
  * even before the app is installed (docs/research/stripe-and-auth.md §9).
  */
 export const APP_LINK_PATHS = ['/join'] as const;
+
+/**
+ * Path for sign-in redirects: `huntclub://auth/callback` in the app and
+ * `https://<web domain>/auth/callback` on the web page.
+ */
+export const AUTH_CALLBACK_PATH = 'auth/callback';

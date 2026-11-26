@@ -17,6 +17,5 @@ export const dev: EnvConfig = {
     appleTeamId: undefined,
     androidSha256CertFingerprints: [],
   },
-  // 09:17 UTC daily: off the hour, outside the busy 06–09 Pacific window.
-  keepAliveSchedule: 'cron(17 9 * * ? *)',
+  pointInTimeRecovery: false,
 };

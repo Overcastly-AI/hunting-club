@@ -9,8 +9,9 @@ export function synthTemplates(overrides: Partial<EnvConfig> = {}) {
   const { stacks } = buildApp({ ...dev, ...overrides }, new App());
   return {
     web: Template.fromStack(stacks.web),
+    data: Template.fromStack(stacks.data),
+    auth: Template.fromStack(stacks.auth),
     api: Template.fromStack(stacks.api),
-    ops: Template.fromStack(stacks.ops),
   };
 }
 
