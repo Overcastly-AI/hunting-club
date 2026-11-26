@@ -34,7 +34,7 @@ Select an environment with `-c env=<name>` (default `dev`).
 
 ## Deploying dev
 
-`.github/workflows/deploy-dev.yml` (**Actions → Deploy dev → Run workflow**, from `main` only) deploys `HuntClub-dev-Web` and `HuntClub-dev-Api`:
+`.github/workflows/deploy-dev.yml` deploys `HuntClub-dev-Web` and `HuntClub-dev-Api` automatically on every push to `main` that touches deployable code (`infra/`, `web/`, `packages/`, `scripts/`, the lockfile; `app/` and `docs/` changes don't deploy), then runs the smoke check. It can also be run by hand: **Actions → Deploy dev → Run workflow**, from `main` only. Deploys never overlap; merges during a deploy queue up:
 
 1. `npm ci`, then root `npm run synth` (builds `web/dist`, synthesizes `infra/cdk.out`).
 2. AWS credentials through GitHub OIDC (`aws-actions/configure-aws-credentials`, pinned to a commit). No AWS keys or secrets are stored in GitHub.
