@@ -9,6 +9,7 @@ import {
   textStyleCss,
   themeCss,
 } from '@huntclub/design';
+import { uiCss } from '../components/ui/styles';
 
 /** The whole stylesheet: font face, tokens, base elements and components. */
 export function globalCssFor(fontUrl: string): string {
@@ -118,5 +119,6 @@ th { color: var(--color-text-secondary); font-weight: 600; }
   table.stack td::before { content: attr(data-label); color: var(--color-text-secondary); font-weight: 600; }
 }
 .code { font-family: ui-monospace, monospace; word-break: break-all; }
+${uiCss()}
 `;
 }

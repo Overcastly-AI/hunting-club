@@ -45,6 +45,20 @@ export const INITIALS_MAX = 3;
 export const initialsSchema = z
   .string()
   .regex(new RegExp(`^[\\p{L}\\p{N}]{1,${INITIALS_MAX}}$`, 'u'));
+
+const LETTER_OR_DIGIT = /[\p{L}\p{N}]/u;
+
+/**
+ * First letter or digit of each word, upper case, at most INITIALS_MAX: "Jake Smith" → "JS".
+ * The app suggests these for a new profile; the web admin draws them in avatars.
+ */
+export function suggestInitials(name: string): string {
+  const firsts = name
+    .trim()
+    .split(/\s+/)
+    .map((word) => Array.from(word).find((ch) => LETTER_OR_DIGIT.test(ch)) ?? '');
+  return Array.from(firsts.join('')).slice(0, INITIALS_MAX).join('').toLocaleUpperCase();
+}
 /** A member's display name, e.g. "Jake Smith". */
 export const DISPLAY_NAME_MAX = 40;
 /** Meshtastic LoRa region code, e.g. 'US'. */

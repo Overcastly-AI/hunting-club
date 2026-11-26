@@ -1,4 +1,4 @@
-import { DISPLAY_NAME_MAX, INITIALS_MAX } from '@huntclub/shared';
+import { DISPLAY_NAME_MAX, INITIALS_MAX, suggestInitials } from '@huntclub/shared';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -8,7 +8,7 @@ import { Field } from '../components/Field';
 import type { MyProfile } from '../db/appState';
 import { spacing } from '../theme';
 import { onboardingCopy } from './copy';
-import { parseProfile, suggestInitials } from './profile';
+import { parseProfile } from './profile';
 
 type Props = {
   initial?: MyProfile | null;
