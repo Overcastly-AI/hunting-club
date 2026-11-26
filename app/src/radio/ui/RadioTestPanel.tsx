@@ -1,9 +1,10 @@
 import { MAX_TEXT_CHARS } from '@huntclub/mesh';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '../../components/Button';
+import { TextField } from '../../components/TextField';
 import { colors, radii, sizes, spacing, textStyles } from '../../theme';
 import { radioCopy } from '../copy';
 import type { RadioText } from '../RadioController';
@@ -45,13 +46,11 @@ export function RadioTestPanel() {
         ))}
       </View>
 
-      <TextInput
+      <TextField
         value={draft}
         onChangeText={setDraft}
         maxLength={MAX_TEXT_CHARS}
         placeholder={radioCopy.test.placeholder}
-        placeholderTextColor={colors.textSecondary}
-        accessibilityLabel={radioCopy.test.placeholder}
         editable={ready}
         multiline
         style={styles.input}
@@ -97,14 +96,6 @@ const styles = StyleSheet.create({
   mine: { alignSelf: 'flex-end' },
   sender: { ...textStyles.label, color: colors.textSecondary },
   body: { ...textStyles.bodyLarge, color: colors.text },
-  input: {
-    ...textStyles.bodyLarge,
-    color: colors.text,
-    minHeight: sizes.primaryButtonMinHeight,
-    padding: spacing.md,
-    borderRadius: radii.control,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceRaised,
-  },
+  /** Room for a two-line message; the rest comes from TextField. */
+  input: { minHeight: sizes.primaryButtonMinHeight, paddingVertical: spacing.md },
 });
