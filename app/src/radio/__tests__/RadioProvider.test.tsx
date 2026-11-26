@@ -1,7 +1,7 @@
 import { CheckInMode } from '@huntclub/mesh';
 import { FakeAir, FakeRadio, seededRandom } from '@huntclub/mesh/testing';
 import { act, render, screen, waitFor } from '@testing-library/react-native';
-import { useContext } from 'react';
+import { useContext, useEffect } from 'react';
 
 import {
   ChatRadioContext,
@@ -30,10 +30,13 @@ type Contexts = {
 };
 
 /** Captures what the screens would get from the provider. */
-function Probe({ into }: { into: Contexts }) {
-  into.checkIn = useContext(CheckInRadioContext);
-  into.safety = useContext(SafetyRadioContext);
-  into.chat = useContext(ChatRadioContext);
+function Probe({ onChange }: { onChange: (contexts: Contexts) => void }) {
+  const checkIn = useContext(CheckInRadioContext);
+  const safety = useContext(SafetyRadioContext);
+  const chat = useContext(ChatRadioContext);
+  useEffect(() => {
+    onChange({ checkIn, safety, chat });
+  }, [onChange, checkIn, safety, chat]);
   return null;
 }
 
@@ -51,7 +54,7 @@ async function renderPhone(radio: FakeRadio, seed: number, store = memoryStore(R
       mapStore={mapStore}
     >
       <RadioStatus />
-      <Probe into={contexts} />
+      <Probe onChange={(next) => Object.assign(contexts, next)} />
     </RadioProvider>,
   );
   return { background, contexts, mapStore, view };
