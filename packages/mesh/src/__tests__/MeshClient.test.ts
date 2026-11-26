@@ -1,6 +1,7 @@
 import { create, toBinary } from '@bufbuild/protobuf';
 import { Channel, Mesh, Portnums } from '../protobufs';
-import { MeshClient } from '../MeshClient';
+import { MeshClient, TEXT_SPACING_MARGIN_MS } from '../MeshClient';
+import { FIRMWARE_TEXT_RATE_LIMIT_MS } from '../firmware';
 import {
   FakeRadio,
   QUEUE_FULL_RES,
@@ -410,7 +411,11 @@ describe('two radios over the air', () => {
 
 describe('acks and the send queue', () => {
   it('matches acks and naks by request_id, including unknown ids', async () => {
-    const { radio, client } = await connected({ nodeNum: ALICE, ackMode: 'none' });
+    // Texts here are just packets: no text spacing (tested on its own below).
+    const { radio, client } = await connected(
+      { nodeNum: ALICE, ackMode: 'none', textRateLimitMs: 0 },
+      { textSpacingMs: 0 },
+    );
     const acks = collect(client, 'ack');
     const naks = collect(client, 'nak');
     const a = client.sendText('a');
@@ -481,7 +486,10 @@ describe('acks and the send queue', () => {
   });
 
   it('paces writes about 200 ms apart', async () => {
-    const { radio, client } = await connected({ nodeNum: ALICE });
+    const { radio, client } = await connected(
+      { nodeNum: ALICE, textRateLimitMs: 0 },
+      { textSpacingMs: 0 },
+    );
     const writeTimes: number[] = [];
     const orig = radio.write.bind(radio);
     radio.write = (b) => {
@@ -495,10 +503,59 @@ describe('acks and the send queue', () => {
       expect(writeTimes[i]! - writeTimes[i - 1]!).toBeGreaterThanOrEqual(200);
   });
 
+  describe("the firmware's text rate limit", () => {
+    it('a text sent too soon after another is dropped by the radio (what the client avoids)', async () => {
+      const { radio, client } = await connected({ nodeNum: ALICE }, { textSpacingMs: 0 });
+      const first = client.sendText('one');
+      const second = client.sendText('two');
+      await tick(1000);
+      await expect(first.result).resolves.toMatchObject({ status: 'acked' });
+      await expect(second.result).resolves.toEqual({
+        status: 'failed',
+        code: Mesh.Routing_Error.RATE_LIMIT_EXCEEDED,
+        reason: 'RATE_LIMIT_EXCEEDED',
+      });
+      expect(radio.rateLimited).toEqual([second.id]);
+    });
+
+    it('spaces texts so the radio keeps every one', async () => {
+      const { radio, client } = await connected({ nodeNum: ALICE });
+      const writeTimes: number[] = [];
+      const orig = radio.write.bind(radio);
+      radio.write = (b) => {
+        writeTimes.push(Date.now());
+        return orig(b);
+      };
+      const handles = ['Seeing deer', 'Coming to you', 'Done'].map((t) => client.sendText(t));
+      await tick(3 * (FIRMWARE_TEXT_RATE_LIMIT_MS + TEXT_SPACING_MARGIN_MS));
+      const results = await Promise.all(handles.map((h) => h.result));
+      expect(results.map((r) => r.status)).toEqual(['acked', 'acked', 'acked']);
+      expect(radio.rateLimited).toEqual([]);
+      for (let i = 1; i < writeTimes.length; i++) {
+        expect(writeTimes[i]! - writeTimes[i - 1]!).toBeGreaterThanOrEqual(
+          FIRMWARE_TEXT_RATE_LIMIT_MS + TEXT_SPACING_MARGIN_MS,
+        );
+      }
+    });
+
+    it('lets other packets go ahead of a text that is waiting', async () => {
+      const { radio, client } = await connected({ nodeNum: ALICE });
+      client.sendText('first');
+      client.sendText('second');
+      const app = client.sendAppMessage({ type: AppMessageType.HelpRequest, id: 7, sender: ALICE });
+      await tick(1000);
+      const ports = radio.sentPackets().map((p) => (p.payloadVariant.value as Mesh.Data).portnum);
+      expect(ports).toEqual([Portnums.PortNum.TEXT_MESSAGE_APP, HUNTCLUB_PORT]);
+      await expect(app.result).resolves.toMatchObject({ status: 'acked' });
+      await tick(FIRMWARE_TEXT_RATE_LIMIT_MS);
+      expect(radio.sentPackets()).toHaveLength(3);
+    });
+  });
+
   it('respects the radio TX queue reported by QueueStatus', async () => {
     const { radio, client } = await connected(
-      { nodeNum: ALICE, queueSize: 2, drainTxQueue: false, ackMode: 'none' },
-      { pacingMs: 0 },
+      { nodeNum: ALICE, queueSize: 2, drainTxQueue: false, ackMode: 'none', textRateLimitMs: 0 },
+      { pacingMs: 0, textSpacingMs: 0 },
     );
     const statuses = collect(client, 'queueStatus');
     const handles = Array.from({ length: 5 }, (_, i) =>

@@ -35,6 +35,7 @@ import {
   type ChannelSettings,
 } from '../codec/channelUrl';
 import type { LinkStatus, Transport, Unsubscribe } from '../transport';
+import { FIRMWARE_TEXT_RATE_LIMIT_MS } from '../firmware';
 import { encodeUtf8 } from '../runtime';
 
 type FromRadioInit = MessageInitShape<typeof Mesh.FromRadioSchema>;
@@ -76,6 +77,12 @@ export interface FakeRadioOptions {
   queueSize?: number;
   /** When false, packets sent by the phone are accepted but the TX queue never drains (to test back-pressure). */
   drainTxQueue?: boolean;
+  /**
+   * Drop a text from the phone that comes this soon after the last accepted
+   * one on the connection, like stock firmware. Default
+   * FIRMWARE_TEXT_RATE_LIMIT_MS; 0 turns it off.
+   */
+  textRateLimitMs?: number;
 }
 
 interface AirPacket {
@@ -104,6 +111,9 @@ export class FakeRadio implements Transport {
   queueStatusRes: number;
   readonly queueSize: number;
   drainTxQueue: boolean;
+  textRateLimitMs: number;
+  /** Texts from the phone this radio dropped for coming too soon (as firmware logs "Rate limit portnum 1"). */
+  readonly rateLimited: number[] = [];
 
   /** Every ToRadio the phone wrote, decoded, in order. */
   readonly writes: Mesh.ToRadio[] = [];
@@ -126,6 +136,8 @@ export class FakeRadio implements Transport {
   private outbox: Uint8Array[] = [];
   private flushScheduled = false;
   private nextPacketId = 0x1000;
+  /** When the last text from the phone was accepted, on this connection. */
+  private lastPhoneTextAt: number | undefined;
   private readonly answeredRequests = new Set<string>();
 
   constructor(opts: FakeRadioOptions) {
@@ -141,6 +153,7 @@ export class FakeRadio implements Transport {
     this.queueStatusRes = opts.queueStatusRes ?? 0;
     this.queueSize = opts.queueSize ?? RADIO_TX_QUEUE_SIZE;
     this.drainTxQueue = opts.drainTxQueue ?? true;
+    this.textRateLimitMs = opts.textRateLimitMs ?? FIRMWARE_TEXT_RATE_LIMIT_MS;
 
     const chans = opts.channels ?? [
       create(Channel.ChannelSettingsSchema, {
@@ -199,6 +212,7 @@ export class FakeRadio implements Transport {
     const v = msg.payloadVariant;
     switch (v.case) {
       case 'wantConfigId':
+        this.lastPhoneTextAt = undefined; // the firmware's limit is per connection
         this.sendConfigDump(v.value);
         break;
       case 'packet':
@@ -445,24 +459,17 @@ export class FakeRadio implements Transport {
 
   private handlePhonePacket(p: Mesh.MeshPacket): void {
     const id = p.id || this.nextPacketId++;
+    if (this.rateLimitsText(p)) {
+      // Stock firmware: QueueStatus res 0, then RATE_LIMIT_EXCEEDED, packet dropped.
+      this.rateLimited.push(id);
+      this.deliverQueueStatus(0, id);
+      this.sendRouting(id, Mesh.Routing_Error.RATE_LIMIT_EXCEEDED, this.nodeNum);
+      return;
+    }
     const queueFull = this.txInFlight >= this.queueSize;
     const res = queueFull ? QUEUE_FULL_RES : this.queueStatusRes;
     if (res === 0) this.txInFlight++;
-    if (this.sendQueueStatus) {
-      this.deliverRaw(
-        encodeFromRadio({
-          payloadVariant: {
-            case: 'queueStatus',
-            value: {
-              res,
-              free: Math.max(0, this.queueSize - this.txInFlight),
-              maxlen: this.queueSize,
-              meshPacketId: id,
-            },
-          },
-        }),
-      );
-    }
+    this.deliverQueueStatus(res, id);
     if (res !== 0) return;
     if (this.drainTxQueue) this.txInFlight--;
 
@@ -511,6 +518,36 @@ export class FakeRadio implements Transport {
     } else {
       this.sendRouting(id, Mesh.Routing_Error.MAX_RETRANSMIT, this.nodeNum);
     }
+  }
+
+  /** A text from the phone inside the firmware's rate-limit window (accepted ones restart it). */
+  private rateLimitsText(p: Mesh.MeshPacket): boolean {
+    if (p.payloadVariant.case !== 'decoded') return false;
+    if (p.payloadVariant.value.portnum !== Portnums.PortNum.TEXT_MESSAGE_APP) return false;
+    const now = Date.now();
+    const last = this.lastPhoneTextAt;
+    if (this.textRateLimitMs > 0 && last !== undefined && now - last < this.textRateLimitMs) {
+      return true;
+    }
+    this.lastPhoneTextAt = now;
+    return false;
+  }
+
+  private deliverQueueStatus(res: number, meshPacketId: number): void {
+    if (!this.sendQueueStatus) return;
+    this.deliverRaw(
+      encodeFromRadio({
+        payloadVariant: {
+          case: 'queueStatus',
+          value: {
+            res,
+            free: Math.max(0, this.queueSize - this.txInFlight),
+            maxlen: this.queueSize,
+            meshPacketId,
+          },
+        },
+      }),
+    );
   }
 
   private sendRouting(requestId: number, error: Mesh.Routing_Error, from: number): void {

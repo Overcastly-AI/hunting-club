@@ -42,8 +42,12 @@ import { decodeUtf8, defaultTimers, encodeUtf8, type TimerHandle, type Timers } 
 import type { LinkStatus, Transport, Unsubscribe } from './transport';
 import { buildProvisioningMessages, type ProvisioningPlan } from './provisioning';
 import { buildSetOwnerMessage, type Owner } from './owner';
+import { FIRMWARE_TEXT_RATE_LIMIT_MS } from './firmware';
 
 export type ClientState = 'disconnected' | 'connecting' | 'configuring' | 'ready';
+
+/** Added to the firmware's text rate limit, so link delays can't bring two texts too close. */
+export const TEXT_SPACING_MARGIN_MS = 250;
 
 export interface NodeRecord {
   num: number;
@@ -166,6 +170,12 @@ export interface MeshClientOptions {
   now?: () => number;
   /** Minimum gap between writes to the radio. Default 200 ms. */
   pacingMs?: number;
+  /**
+   * Minimum gap between text messages written to the radio. Default: the
+   * firmware's text rate limit plus TEXT_SPACING_MARGIN_MS. Other packets
+   * (app messages, admin) go ahead of a text that is waiting.
+   */
+  textSpacingMs?: number;
   /** Give up waiting for an ack after this long. Default 120 s. */
   ackTimeoutMs?: number;
   /** If no QueueStatus arrives for a write, assume accepted after this long. Default 5 s. */
@@ -195,6 +205,7 @@ export class MeshClient extends Emitter<MeshClientEvents> {
   private readonly timers: Timers;
   private readonly now: () => number;
   private readonly pacingMs: number;
+  private readonly textSpacingMs: number;
   private readonly ackTimeoutMs: number;
   private readonly queueStatusTimeoutMs: number;
   private readonly queueFullProbeMs: number;
@@ -228,6 +239,7 @@ export class MeshClient extends Emitter<MeshClientEvents> {
   private awaitingAck = new Map<number, Outgoing>();
   private radioFree = RADIO_TX_QUEUE_SIZE;
   private lastWriteAt = Number.NEGATIVE_INFINITY;
+  private lastTextWriteAt = Number.NEGATIVE_INFINITY;
   private writing = false;
   private pumpTimer: TimerHandle | undefined;
 
@@ -238,6 +250,7 @@ export class MeshClient extends Emitter<MeshClientEvents> {
     this.timers = opts.timers ?? defaultTimers;
     this.now = opts.now ?? (() => Date.now());
     this.pacingMs = opts.pacingMs ?? 200;
+    this.textSpacingMs = opts.textSpacingMs ?? FIRMWARE_TEXT_RATE_LIMIT_MS + TEXT_SPACING_MARGIN_MS;
     this.ackTimeoutMs = opts.ackTimeoutMs ?? 120_000;
     this.queueStatusTimeoutMs = opts.queueStatusTimeoutMs ?? 5_000;
     this.queueFullProbeMs = opts.queueFullProbeMs ?? 30_000;
@@ -768,7 +781,14 @@ export class MeshClient extends Emitter<MeshClientEvents> {
       }
       return;
     }
-    const wait = this.lastWriteAt + this.pacingMs - this.now();
+    // Firmware drops a text sent too soon after the last one: let other packets
+    // go first, and hold texts (in order) until the window has passed.
+    const textWait = this.lastTextWriteAt + this.textSpacingMs - this.now();
+    const index =
+      textWait > 0
+        ? this.queue.findIndex((i) => i.portnum !== Portnums.PortNum.TEXT_MESSAGE_APP)
+        : 0;
+    const wait = Math.max(this.lastWriteAt + this.pacingMs - this.now(), index < 0 ? textWait : 0);
     if (wait > 0) {
       this.pumpTimer = this.timers.setTimeout(() => {
         this.pumpTimer = undefined;
@@ -776,9 +796,11 @@ export class MeshClient extends Emitter<MeshClientEvents> {
       }, wait);
       return;
     }
-    const item = this.queue.shift()!;
+    const [item] = this.queue.splice(index, 1) as [Outgoing];
     this.writing = true;
     this.lastWriteAt = this.now();
+    const textBefore = this.lastTextWriteAt;
+    if (item.portnum === Portnums.PortNum.TEXT_MESSAGE_APP) this.lastTextWriteAt = this.lastWriteAt;
     this.awaitingQueueStatus.set(item.id, item);
     this.log('tx.write', { id: item.id, portnum: item.portnum });
     this.transport.write(item.bytes).then(
@@ -797,7 +819,9 @@ export class MeshClient extends Emitter<MeshClientEvents> {
       },
       () => {
         // Link dropped mid-write: put it back at the front for after reconnect.
+        // The radio never got it, so it doesn't count against the text limit.
         this.writing = false;
+        this.lastTextWriteAt = textBefore;
         this.awaitingQueueStatus.delete(item.id);
         this.queue.unshift(item);
         this.log('tx.writeFailed', { id: item.id });
