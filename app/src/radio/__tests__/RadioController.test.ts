@@ -7,7 +7,7 @@ import {
   RADIO_A,
   RADIO_B,
 } from '../../test-utils/radioFixtures';
-import { RadioController, textStatusFor, type RadioSnapshot } from '../RadioController';
+import { RadioController, type RadioSnapshot } from '../RadioController';
 
 /** One phone: a controller whose transport is the given FakeRadio. */
 function phone(radio: FakeRadio, store = memoryStore(), seed = 1) {
@@ -88,7 +88,7 @@ describe('RadioController with the mesh FakeRadio', () => {
     expect(controller.getSnapshot().link).toBe('none');
   });
 
-  it('texts between two phones over the air with delivery status', async () => {
+  it('exposes each session’s MeshClient, and two phones hear each other over the air', async () => {
     const a = new FakeRadio(RADIO_A);
     const b = new FakeRadio(RADIO_B);
     new FakeAir().attach(a, b);
@@ -99,20 +99,13 @@ describe('RadioController with the mesh FakeRadio', () => {
     await until(phoneA.controller, (x) => x.link === 'ready');
     await until(phoneB.controller, (x) => x.link === 'ready');
 
-    phoneA.controller.sendText('Seeing deer');
-
-    const received = await until(phoneB.controller, (x) => x.texts.length === 1);
-    expect(received.texts[0]).toEqual(
-      expect.objectContaining({
-        text: 'Seeing deer',
-        from: RADIO_A.nodeNum,
-        fromName: 'Jake radio',
-        mine: false,
-      }),
+    // Each phone's client sees the other's radio over the air.
+    const clientA = phoneA.controller.client!;
+    const heard = new Promise<string>((resolve) =>
+      phoneB.controller.client!.on('text', (e) => resolve(e.text)),
     );
-    const sent = await until(phoneA.controller, (x) => x.texts[0]?.status !== 'sending');
-    expect(sent.texts[0]).toEqual(expect.objectContaining({ text: 'Seeing deer', mine: true }));
-    expect(['heard', 'delivered']).toContain(sent.texts[0]?.status);
+    clientA.sendText('Seeing deer');
+    await expect(heard).resolves.toBe('Seeing deer');
 
     await phoneA.controller.dispose();
     await phoneB.controller.dispose();
@@ -184,16 +177,5 @@ describe('RadioController with the mesh FakeRadio', () => {
     repair();
     expect(controller.getSnapshot().repairNeeded).toBe(true);
     await controller.dispose();
-  });
-});
-
-describe('textStatusFor', () => {
-  it('words each delivery result', () => {
-    expect(textStatusFor({ status: 'acked', by: 1, implicit: false })).toBe('delivered');
-    expect(textStatusFor({ status: 'acked', by: 1, implicit: true })).toBe('heard');
-    expect(textStatusFor({ status: 'sent' })).toBe('sent');
-    expect(textStatusFor({ status: 'timeout' })).toBe('noReply');
-    expect(textStatusFor({ status: 'failed', code: 5, reason: 'x' })).toBe('failed');
-    expect(textStatusFor({ status: 'cancelled' })).toBe('failed');
   });
 });

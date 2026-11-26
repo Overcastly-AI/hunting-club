@@ -12,7 +12,7 @@ import {
   type Unsubscribe,
 } from '@huntclub/mesh';
 
-import type { MapDataSource } from './dataSource';
+import type { MapDataStore } from './dataSource';
 import { placeOf, type PlaceNames } from './place';
 import type { HunterOnMap, MapData, MeshStatus } from './types';
 
@@ -127,7 +127,7 @@ const READY: ClientState = 'ready';
  */
 export function connectMapData(
   radio: MapRadio,
-  store: MapDataSource & { set(data: MapData): void },
+  store: MapDataStore,
   names: MapNames = {},
   now: () => number = Date.now,
 ): Unsubscribe {
