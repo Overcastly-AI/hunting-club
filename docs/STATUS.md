@@ -27,13 +27,16 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 | Task | Session | Branch / PR | Status |
 |---|---|---|---|
-| M1: app project setup | session_01QS5dr4qFtLFfyf7oVjMNAj | PR #2 | Merged 2026-11-26 05:50 UTC |
-| M2 research: Meshtastic link + simulator | session_01QS5dr5ia6B5X5renWEXyAe | PR #1 | Merged 2026-11-26 05:42 UTC |
-| M2 part 1: packages/mesh client + FakeTransport | session_01QS5dr5jAZ6wC472f8hsUHW | PR #4 | In review: DRY pass + exports for BLE worker |
-| M2 part 2: BLE transport, permissions, Android foreground service, pairing screen | session_01QS5dr7YPxgw1iqGybujET3 | agent/m2-ble-transport | Started 2026-11-26 05:51 UTC (depends on mesh client) |
-| M4: offline map (MapLibre + USGS), Design D overlays and markers | session_01QS5dr3kB1sf3Bt86wVb3qW | agent/m4-offline-map | Started 2026-11-26 05:51 UTC |
-| CI Android native build + Archivo variable font + minSdk 26 | session_01QS5dr4qFtLFfyf7oVjMNAj (reused) | PR #3 | Approved; waiting on first Android CI build |
-| M8: Supabase schema, RLS, invite RPC, tests, packages/shared types | session_01QS5dr5ia6B5X5renWEXyAe (reused) | agent/m8-supabase-schema | Started 2026-11-26 05:55 UTC |
+| M1: app project setup | session_01QS5dr4qFtLFfyf7oVjMNAj | PR #2 | Merged |
+| M2 research | session_01QS5dr5ia6B5X5renWEXyAe | PR #1 | Merged |
+| M2 part 1: packages/mesh | session_01QS5dr5jAZ6wC472f8hsUHW | PR #4 | Merged 06:08 UTC |
+| CI Android build + Archivo variable font + minSdk 26 | session_01QS5dr4qFtLFfyf7oVjMNAj | PR #3 | Approved; waiting on first Android CI build |
+| M8: Supabase schema, RLS, invite RPC, packages/shared | session_01QS5dr5ia6B5X5renWEXyAe | PR #5 | Approved, CI green; resolving lockfile conflict |
+| M4: offline map | session_01QS5dr3kB1sf3Bt86wVb3qW | PR #6 | Approved; moving config to app.config.ts after #3 |
+| M2 part 2: BLE transport, pairing, Android service | session_01QS5dr7YPxgw1iqGybujET3 | PR #7 (draft) | Switching to @huntclub/mesh imports; then app.config.ts after #3 |
+| Weather: NWS wind/temperature, offline cache | session_01QS5dr3kB1sf3Bt86wVb3qW | agent/weather | Started 06:08 UTC |
+| Research: Stripe + Supabase Auth + webhook Lambda | session_01QS5dr5ia6B5X5renWEXyAe | agent/m2-research | Started 06:08 UTC (after #5 conflict) |
+| packages/core: check-in, overdue, help retries, receipts, party cap | session_01QS5dr5jAZ6wC472f8hsUHW | agent/core-domain | Started 06:09 UTC |
 
 ## Decisions log
 
@@ -47,6 +50,9 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 | 2026-11-26 | Android foreground service as a small in-repo Expo module | No library provides it; avoids a dependency |
 
 ## Backlog (coordinator)
+
+- After #4 and #5: HarvestSex single source = SQL enum → @huntclub/shared → mesh derives wire codes (assigned to the schema worker).
+- After #6: move sunrise/sunset and freshness thresholds from app/src/map into packages/core if core needs them (DRY).
 
 - After mesh client merges: app DB migrations (TS strings) should interpolate check-in modes, `MAX_TEXT_CHARS` and other constants from `@huntclub/mesh` instead of literals (DRY).
 - Tab icon set (dependency choice).
