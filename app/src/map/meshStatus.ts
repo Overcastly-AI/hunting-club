@@ -4,6 +4,10 @@ import type { MeshStatus } from './types';
 
 export type MeshTone = 'ok' | 'quiet' | 'none';
 
+/** Second line of the mesh-down banner: nothing on the map is live. */
+export const MESH_QUIET_DETAIL =
+  'Hunters on the map are where they were last heard, not where they are now.';
+
 /**
  * The mesh counts as quiet once no radio has been heard for as long as a
  * position takes to fade: nothing on the map can be trusted as live then.

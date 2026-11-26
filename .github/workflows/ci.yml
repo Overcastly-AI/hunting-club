@@ -37,6 +37,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: CDK synth (no AWS credentials needed)
+        run: npm run synth
+
   android:
     # Native Android debug build. iOS native builds run on EAS (see README).
     name: Android build

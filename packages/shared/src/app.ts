@@ -1,0 +1,15 @@
+// App identity shared by the Expo app config, the web admin page and infra
+// (universal-link files). The single source: never retype these elsewhere.
+
+/** iOS bundle identifier and Android package name. */
+export const APP_ID = 'com.overcastly.huntclub';
+
+/** Custom URL scheme (`huntclub://…`), used by the in-app scanner and as a fallback. */
+export const URL_SCHEME = 'huntclub';
+
+/**
+ * https paths the app claims as universal links (iOS) / app links (Android).
+ * Club invite QR codes use `https://<web domain>/join?…` so a camera scan works
+ * even before the app is installed (docs/research/stripe-and-auth.md §9).
+ */
+export const APP_LINK_PATHS = ['/join'] as const;

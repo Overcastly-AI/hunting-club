@@ -651,3 +651,50 @@ describe('logging', () => {
     expect(all).not.toContain(base64UrlEncode(TEST_PSK).slice(0, 20));
   });
 });
+
+describe('who is on the channel', () => {
+  it('emits heard for live packets from others (not our own, not duplicates)', async () => {
+    const {
+      clients: [alice, bob],
+    } = await connectedMesh([{ nodeNum: ALICE }, { nodeNum: BOB }], { air: { duplicates: 2 } });
+    const heardByBob = collect(bob, 'heard');
+    const heardByAlice = collect(alice, 'heard');
+    alice.sendText('hi', { wantAck: false });
+    await tick(500);
+    expect(heardByBob).toEqual([
+      expect.objectContaining({
+        from: ALICE,
+        channel: 0,
+        portnum: Portnums.PortNum.TEXT_MESSAGE_APP,
+      }),
+    ]);
+    expect(heardByAlice).toEqual([]);
+  });
+
+  it('sendNodeInfo with wantResponse: every node on the channel answers once', async () => {
+    const {
+      clients: [alice],
+    } = await connectedMesh(
+      [
+        { nodeNum: ALICE },
+        { nodeNum: BOB, longName: 'Bob' },
+        { nodeNum: CAROL, longName: 'Carol' },
+      ],
+      {
+        air: { duplicates: 1 },
+      },
+    );
+    const heard = collect(alice, 'heard');
+    const h = alice.sendNodeInfo({ wantResponse: true });
+    await tick(1000);
+    await expect(h.result).resolves.toEqual({ status: 'sent' });
+    const replies = heard.filter((e) => e.portnum === Portnums.PortNum.NODEINFO_APP);
+    expect(replies.map((e) => e.from).sort()).toEqual([BOB, CAROL].sort());
+    expect(alice.nodes.get(BOB)?.user?.longName).toBe('Bob');
+  });
+
+  it('sendNodeInfo needs our node info from the handshake', () => {
+    const client = new MeshClient({ transport: new FakeRadio({ nodeNum: ALICE }) });
+    expect(() => client.sendNodeInfo()).toThrow('handshake');
+  });
+});

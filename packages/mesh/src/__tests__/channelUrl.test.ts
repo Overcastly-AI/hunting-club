@@ -2,6 +2,8 @@ import { create } from '@bufbuild/protobuf';
 import { AppOnly, Config } from '../protobufs';
 import {
   ChannelUrlError,
+  JOIN_WEB_HOSTS,
+  JOIN_WEB_PATH,
   HUNT_POSITION_PRECISION,
   channelHash,
   decodeChannelSet,
@@ -175,6 +177,50 @@ describe('huntclub://join wrapper', () => {
     );
     expect(() =>
       encodeJoinUrl({ channelSet: cs, target: { kind: 'club', clubId: 'c', inviteToken: '' } }),
+    ).toThrow(ChannelUrlError);
+  });
+});
+
+describe('web join link (same builder and parser)', () => {
+  const cs = generatePartyChannelSet({ random: seededRandom(11) });
+  const target = { kind: 'party', partyId: 'p-77' } as const;
+
+  it('round-trips with the parameters in the fragment, never the query', () => {
+    const url = encodeJoinUrl({ channelSet: cs, target }, { form: 'web' });
+    expect(url.startsWith(`https://${JOIN_WEB_HOSTS[0]}${JOIN_WEB_PATH}#cs=`)).toBe(true);
+    expect(url).not.toContain('?');
+    expect(decodeJoinUrl(url)).toEqual({ channelSet: cs, target });
+  });
+
+  it('app and web links carry the same parameters', () => {
+    const app = encodeJoinUrl({ channelSet: cs, target });
+    const web = encodeJoinUrl({ channelSet: cs, target }, { form: 'web' });
+    expect(app.split('?')[1]).toBe(web.split('#')[1]);
+    expect(decodeJoinUrl(app)).toEqual(decodeJoinUrl(web));
+  });
+
+  it('accepts a web link with a query string and an app link with a fragment', () => {
+    const params = encodeJoinUrl({ channelSet: cs, target }).split('?')[1];
+    expect(decodeJoinUrl(`https://${JOIN_WEB_HOSTS[0]}/join?${params}`).target).toEqual(target);
+    expect(decodeJoinUrl(`huntclub://join#${params}`).target).toEqual(target);
+    expect(
+      decodeJoinUrl(`HTTPS://${JOIN_WEB_HOSTS[0]!.toUpperCase()}/join/#${params}`).target,
+    ).toEqual(target);
+  });
+
+  it('rejects other hosts, paths and plain http', () => {
+    const params = encodeJoinUrl({ channelSet: cs, target }).split('?')[1];
+    for (const bad of [
+      `https://evil.example/join#${params}`,
+      `https://${JOIN_WEB_HOSTS[0]}/other#${params}`,
+      `https://${JOIN_WEB_HOSTS[0]}.evil.example/join#${params}`,
+      `http://${JOIN_WEB_HOSTS[0]}/join#${params}`,
+      `https://${JOIN_WEB_HOSTS[0]}:8443/join#${params}`,
+    ]) {
+      expect(() => decodeJoinUrl(bad)).toThrow(ChannelUrlError);
+    }
+    expect(() =>
+      encodeJoinUrl({ channelSet: cs, target }, { form: 'web', host: 'evil.example' }),
     ).toThrow(ChannelUrlError);
   });
 });
