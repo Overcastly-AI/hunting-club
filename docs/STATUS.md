@@ -4,21 +4,39 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 ## Working agreements
 
-- AWS changes are requested by email to the owner with a subject starting with `Grok Bot`. Grok Bot configures AWS. Never send credentials by email.
+- AWS changes are requested by email to the owner with a subject starting with `Grok Bot`. Grok Bot configures AWS.
+- **Secrets (owner decision 2026-11-26):** project secrets live in AWS Secrets Manager (`hunt-club-mesh/<env>/<name>`). They may be sent by email between the coordinator and Grok Bot; the owner accepts that and will rotate them later. Never put secrets in the repo, PRs, commit messages, logs or worker briefs; Lambdas read them from Secrets Manager at runtime. Every secret that travels by email is listed under "Rotate later" below.
 - Commit messages never credit Claude or other AI tools (enforced by `.githooks/commit-msg`).
 - Stop and ask the owner before: spending money, open decisions in `docs/SPEC.md`, emails to anyone other than the owner, deleting anything.
+
+## AWS environment (dev)
+
+| Item | Value |
+|---|---|
+| AWS account | 054825383623 |
+| Region | us-east-1 (everything, incl. CloudFront certs) |
+| Dev domain | `huntclub-dev.jaycobjones.com` (parent `jaycobjones.com`, zone Z034387627ELT5Y50SBHP) |
+| Dev hosted zone | Z041480814OY68TGPM84F |
+| ACM certificate (ISSUED) | arn:aws:acm:us-east-1:054825383623:certificate/ece3d63e-c299-4106-b448-88b7bb3dcb48 (covers apex + `*.huntclub-dev.jaycobjones.com`) |
+| Budget | `hunt-club-mesh-monthly`, $5/month, alerts 50/80/100% |
+| Tags | Project=hunt-club-mesh, Env=dev |
+| Deploys | Grok Bot runs `cdk deploy` from the repo when a request says "deploy" (after synth + diff checks) |
+
+**Reading Grok Bot replies:** always open the full thread with `get_thread`. Search previews show stale message counts and miss replies.
 
 ## AWS requests (Grok Bot)
 
 | # | Sent | Request | Status | Result |
 |---|---|---|---|---|
-| 1 | 2026-11-26 | Dev subdomain `huntclub-dev.<domain>`: Route 53 hosted zone, delegation from parent, ACM wildcard cert in us-east-1 | Waiting for reply (Grok Bot checks email every 30 min) | |
+| 1 | 2026-11-26 | Dev subdomain: Route 53 hosted zone, delegation, ACM wildcard cert | **Done** 06:07 UTC (verified NS via public DNS) | See "AWS environment" below |
 
 ## How the project runs
 
 - The owner delegated full control to the coordinator (2026-11-26). Hard limits that still need the owner: spending money beyond free tiers and the dev DNS zone, deleting the owner's data, emails to anyone but the owner.
 - Coordinator session: `session_01QS5dr3XTYjo26Gf4MeA3GC`. Wakes hourly at :34 via scheduled task `trig_01SRzKhjqQDZWWfR6krcCifn`: checks Grok Bot email, workers and PRs; reviews and merges; starts the next tasks.
-- Workers: separate cloud sessions, at most 2–3 at a time, one task each, branch `agent/<task>`, PR into `main`. Playbook: `docs/AGENTS.md`.
+- Worker sessions can only push to the branch they were created with. Reuse a session for a new task only on that same branch (reset to main after its PR merges); otherwise start a new session.
+- **Never leave a worker idle (owner rule):** the moment a worker finishes or stops, give it the next task (reuse the idle session) or start a new one. Timed wake-ups are only a backup; worker messages are the main signal.
+- Workers: separate cloud sessions, up to ~5 at a time on non-overlapping files, one task each, branch `agent/<task>`, PR into `main`. Playbook: `docs/AGENTS.md`.
 - Daily status email to the owner around 13:00 UTC, subject starting "Hunt Club Mesh status" (never "Grok Bot", which is reserved for AWS requests).
 - Commits authored as `Overcastly-AI <282247350+Overcastly-AI@users.noreply.github.com>`.
 
@@ -26,11 +44,17 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 | Task | Session | Branch / PR | Status |
 |---|---|---|---|
-| M1: app project setup | session_01QS5dr4qFtLFfyf7oVjMNAj | PR #2 | Merged 2026-11-26 05:50 UTC |
-| M2 research: Meshtastic link + simulator | session_01QS5dr5ia6B5X5renWEXyAe | PR #1 | Merged 2026-11-26 05:42 UTC |
-| M2 part 1: packages/mesh client + FakeTransport | session_01QS5dr5jAZ6wC472f8hsUHW | agent/m2-mesh-client | Started 2026-11-26 05:42 UTC |
-| M2 part 2: BLE transport, permissions, Android foreground service, pairing screen | session_01QS5dr7YPxgw1iqGybujET3 | agent/m2-ble-transport | Started 2026-11-26 05:51 UTC (depends on mesh client) |
-| M4: offline map (MapLibre + USGS), Design D overlays and markers | session_01QS5dr3kB1sf3Bt86wVb3qW | agent/m4-offline-map | Started 2026-11-26 05:51 UTC |
+| M1: app project setup | session_01QS5dr4qFtLFfyf7oVjMNAj | PR #2 | Merged |
+| M2 research | session_01QS5dr5ia6B5X5renWEXyAe | PR #1 | Merged |
+| M2 part 1: packages/mesh | session_01QS5dr5jAZ6wC472f8hsUHW | PR #4 | Merged 06:08 UTC |
+| CI Android build + Archivo variable font + minSdk 26 | session_01QS5dr4qFtLFfyf7oVjMNAj | PR #3 | Approved; waiting on first Android CI build |
+| M8: Supabase schema, RLS, invite RPC, packages/shared | session_01QS5dr5ia6B5X5renWEXyAe | PR #5 | Approved, CI green; resolving lockfile conflict |
+| M4: offline map | session_01QS5dr3kB1sf3Bt86wVb3qW | PR #6 | Approved; moving config to app.config.ts after #3 |
+| M2 part 2: BLE transport, pairing, Android service | session_01QS5dr7YPxgw1iqGybujET3 | PR #7 (draft) | Switching to @huntclub/mesh imports; then app.config.ts after #3 |
+| Weather: NWS wind/temperature, offline cache | session_01QS5dr7o9U9xBRJaR86iMuW | agent/weather | Started 06:10 UTC (builds on #6) |
+| HarvestSex single source + Stripe/Auth research | session_01QS5dr5ia6B5X5renWEXyAe | PR #8 | Merged 06:16 UTC |
+| infra/: CDK stacks (web+CloudFront, webhook Lambda stub, ops schedules) | session_01QS5dr5ia6B5X5renWEXyAe | agent/m2-research | Started 06:15 UTC |
+| packages/core: check-in, overdue, help retries, receipts, party cap | session_01QS5dr5jAZ6wC472f8hsUHW | agent/m2-mesh-client (new PR) | Started 06:09 UTC |
 
 ## Decisions log
 
@@ -45,13 +69,26 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 ## Backlog (coordinator)
 
-- After mesh client merges: app DB migration should import check-in modes and other enums from `@huntclub/mesh` instead of SQL string literals (DRY).
-- CI: add Android native build job (prebuild + Gradle debug); iOS native builds via EAS.
-- Archivo variable font (width axis) or condensed static faces.
+- After #4 and #5: HarvestSex single source = SQL enum → @huntclub/shared → mesh derives wire codes (assigned to the schema worker).
+- After #6: move sunrise/sunset and freshness thresholds from app/src/map into packages/core if core needs them (DRY).
+
+- After mesh client merges: app DB migrations (TS strings) should interpolate check-in modes, `MAX_TEXT_CHARS` and other constants from `@huntclub/mesh` instead of literals (DRY).
 - Tab icon set (dependency choice).
 - `messages` table needs recipient/group column before chat (M7).
 
+## Rotate later (secrets that travelled by email)
+
+| Secret | Secrets Manager name | Sent | Rotated |
+|---|---|---|---|
+
+## Supabase
+
+- Org "Grok Bot" (dtbdseniylkmipccqskx), free plan. Project `desk` (jvanxotplnwddodwxxcx) belongs to the owner's trading desk: **never modify, pause or delete it.**
+- Creating `hunt-club-mesh-dev` (us-east-1) failed: the owner is at the 2-active-free-projects limit; the other project is in an org this connection can't see. Waiting for the owner to pause/delete that one. Until then the schema is tested against local Postgres in CI; not blocking before M8–M10.
+
 ## Owner to-dos (non-blocking)
+
+- Pause or delete the free Supabase project in the other organization (not `desk`), then tell the coordinator to create `hunt-club-mesh-dev`.
 
 - **Open or closed source (needed before the app ships):** Meshtastic protobufs are GPL-3.0 with no app exception. Closed-source app + bundled protobufs conflicts with the license; open-sourcing the app (GPL-3.0) resolves it and the cloud can stay proprietary.
 - Optional: allow running `meshtasticd --sim` in the agent environment (blocked by sandbox policy) so agents can test against a simulated radio.
