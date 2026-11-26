@@ -5,7 +5,7 @@ import { AccessibilityInfo, Animated, Easing, StyleSheet, View } from 'react-nat
 import { colors, opacity, sizes } from '../../theme';
 import { scentConeRing, scentLabelPosition } from '../geo';
 import { YOUR_SCENT, yourAccessibilityLabel } from '../labels';
-import type { LatLon } from '../types';
+import type { LatLon } from '../../domain/location';
 import { HaloText } from './HaloText';
 
 type Props = {

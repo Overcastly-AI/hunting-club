@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, opacity, radii, sizes, spacing, textStyles } from '../../theme';
-import type { LatLon } from '../types';
+import type { LatLon } from '../../domain/location';
 import { ConditionsPanel } from './ConditionsPanel';
 
 type Props = {

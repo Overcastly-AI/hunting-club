@@ -26,7 +26,7 @@ import { TopBar } from './components/TopBar';
 import { YouMarker } from './components/YouMarker';
 import { useMapData, useNow, type MapDataSource } from './dataSource';
 import type { Bounds } from './tiles';
-import type { LatLon } from './types';
+import type { LatLon } from '../domain/location';
 import { useMapPacks } from './useMapPacks';
 import { useYourLocation } from './useYourLocation';
 

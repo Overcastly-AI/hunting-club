@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { formatClockTime, localCalendarDay, sunTimes } from '../../conditions/sun';
 import { colors, radii, sizes, spacing, textStyles } from '../../theme';
-import type { LatLon } from '../types';
+import type { LatLon } from '../../domain/location';
 
 /** Shown for values not known yet (wind and temperature until the forecast milestone). */
 export const UNKNOWN_VALUE = '—';

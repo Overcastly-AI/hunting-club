@@ -1,4 +1,5 @@
 import type { CheckInMode } from '../domain/checkIn';
+import type { LatLon } from '../domain/location';
 import type { StandType } from '../domain/stands';
 
 /**
@@ -6,9 +7,6 @@ import type { StandType } from '../domain/stands';
  * radio. A later milestone fills them from `@huntclub/mesh` positions and
  * check-ins (see `MapDataSource`).
  */
-
-/** A WGS84 coordinate. */
-export type LatLon = { lat: number; lon: number };
 
 type Place<K extends CheckInMode, Fields> = { kind: K } & Fields;
 
