@@ -36,7 +36,19 @@ export const ClubProvisionSchema = ClubCreateRequestSchema.extend({
 });
 export type ClubProvision = z.input<typeof ClubProvisionSchema>;
 
-/** Service only: creates the club item and its first admin together. */
+/** A club's first radio key (version 1). Every club gets one when it is created. */
+function firstSecretItem(ctx: Ctx, clubId: string, now: string) {
+  const secret: ClubSecret = {
+    clubId,
+    channelKey: ctx.newChannelKey(),
+    keyVersion: 1,
+    createdAt: now,
+    updatedAt: now,
+  };
+  return { ...keys.secret(clubId), ...secret };
+}
+
+/** Service only: creates the club item, its first admin and its radio key together. */
 export async function createClub(ctx: Ctx, actor: Actor, input: ClubProvision): Promise<Club> {
   authorizeService(actor, 'createClub');
   const { club: fields, admin } = validate(ClubProvisionSchema, input);
@@ -69,6 +81,7 @@ export async function createClub(ctx: Ctx, actor: Actor, input: ClubProvision): 
       condition: NOT_EXISTS,
     },
     { put: memberItem(member), condition: NOT_EXISTS },
+    { put: firstSecretItem(ctx, club.id, now), condition: NOT_EXISTS },
   ]);
   return club;
 }
@@ -177,6 +190,23 @@ async function batchDelete(ctx: Ctx, all: Key[]) {
 
 export async function getClubSecret(ctx: Ctx, actor: Actor, clubId: string): Promise<ClubSecret> {
   await authorizeClub(ctx, actor, clubId, 'readClubSecret');
+  const secret = await getEntity(ctx, ClubSecretSchema, keys.secret(clubId));
+  return secret ?? backfillClubSecret(ctx, clubId);
+}
+
+/**
+ * Clubs created before createClub made the key get one on first read. The
+ * condition keeps a concurrent read (or a reset) from being overwritten.
+ */
+async function backfillClubSecret(ctx: Ctx, clubId: string): Promise<ClubSecret> {
+  try {
+    await transact(ctx, [
+      { put: firstSecretItem(ctx, clubId, ctx.nowIso()), condition: NOT_EXISTS },
+      { check: keys.club(clubId), condition: EXISTS },
+    ]);
+  } catch (e) {
+    if (!(e instanceof TransactionFailed)) throw e;
+  }
   const secret = await getEntity(ctx, ClubSecretSchema, keys.secret(clubId));
   if (!secret) throw notFound();
   return secret;
