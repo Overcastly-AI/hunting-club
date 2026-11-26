@@ -203,6 +203,18 @@ ALTER TABLE app_state ADD COLUMN display_name TEXT;
 ALTER TABLE app_state ADD COLUMN initials TEXT;
 `;
 
+/**
+ * The free party this phone is in (core PartyService's StoredParty, as JSON).
+ * One row at most. It holds the party's join link, which contains the channel
+ * key: never log it.
+ */
+const freeParty = `
+CREATE TABLE party (
+  id INTEGER PRIMARY KEY NOT NULL CHECK (id = 1),
+  data TEXT NOT NULL
+);
+`;
+
 export const migrations: readonly Migration[] = [
   { version: 1, name: 'initial local schema', sql: initialSchema },
   { version: 2, name: 'map pack downloads', sql: mapPackDownloads },
@@ -210,4 +222,5 @@ export const migrations: readonly Migration[] = [
   { version: 4, name: 'harvest places', sql: harvestPlaces },
   { version: 5, name: 'app state', sql: appState },
   { version: 6, name: 'my profile', sql: myProfile },
+  { version: 7, name: 'free party', sql: freeParty },
 ];

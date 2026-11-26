@@ -14,6 +14,7 @@ import { CheckInRadioContext } from '../checkin/CheckInRadio';
 import { HarvestRadioContext } from '../harvest/HarvestRadio';
 import { mapDataStore, type MapDataStore } from '../map/dataSource';
 import { connectMapData } from '../map/meshMapData';
+import { PartyRadioContext } from '../party/PartyRadio';
 import { SafetyRadioContext } from '../safety/SafetyRadio';
 import { RadioController, type RadioControllerDeps, type RadioSnapshot } from './RadioController';
 import {
@@ -119,7 +120,9 @@ export function RadioProvider({
           <ChatRadioContext.Provider value={services?.chatRadio ?? null}>
             <HarvestRadioContext.Provider value={services?.harvestRadio ?? null}>
               <BoardRadioContext.Provider value={services?.boardRadio ?? null}>
-                {children}
+                <PartyRadioContext.Provider value={services?.party ?? null}>
+                  {children}
+                </PartyRadioContext.Provider>
               </BoardRadioContext.Provider>
             </HarvestRadioContext.Provider>
           </ChatRadioContext.Provider>

@@ -3,6 +3,7 @@ import { useMemo, type ReactNode } from 'react';
 
 import { startRadioService, stopRadioService } from '../../modules/radio-service';
 import { clearPairedRadio, loadPairedRadio, savePairedRadio } from '../db/pairedRadio';
+import { sqlitePartyStore } from '../db/partyStore';
 import { BleTransport } from './BleTransport';
 import { radioCopy } from './copy';
 import { randomBytes } from './random';
@@ -32,12 +33,14 @@ export function AppRadioProvider({ children }: { children: ReactNode }) {
     }),
     [db],
   );
+  const services = useMemo(() => ({ partyStore: sqlitePartyStore(db) }), [db]);
   return (
     <RadioProvider
       store={store}
       createTransport={createBleTransport}
       background={androidForegroundService}
       clientOptions={clientOptions}
+      services={services}
     >
       {children}
     </RadioProvider>

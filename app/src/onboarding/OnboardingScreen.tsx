@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
 import type { MyProfile } from '../db/appState';
+import { PartyStep } from '../party/PartyStep';
 import { PairRadioStep } from '../radio/ui/PairRadioStep';
 import { spacing } from '../theme';
 import { onboardingCopy } from './copy';
@@ -13,7 +14,7 @@ import { NameStep } from './NameStep';
  * Onboarding steps in order (spec: Screens → 5. Onboarding). Later steps
  * (party or club, name, permissions, map download) are added here.
  */
-export const ONBOARDING_STEPS = ['welcome', 'pairRadio', 'name'] as const;
+export const ONBOARDING_STEPS = ['welcome', 'pairRadio', 'party', 'name'] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 
 type Props = {
@@ -31,6 +32,9 @@ export function OnboardingScreen({ onFinish, profile, onProfile }: Props) {
 
   if (step === 'name') {
     return <NameStep initial={profile} onNext={(p) => void onProfile(p).then(next)} />;
+  }
+  if (step === 'party') {
+    return <PartyStep onNext={next} />;
   }
   if (step === 'pairRadio') {
     // "Set up later" skips pairing; the Party tab offers it again.

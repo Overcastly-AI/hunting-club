@@ -14,6 +14,7 @@ const EXPECTED_TABLES = [
   'members',
   'messages',
   'paired_radio',
+  'party',
   'positions',
   'radios',
   'stands',
