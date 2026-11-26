@@ -1,0 +1,9 @@
+#!/bin/sh
+# Refuse commits whose author or committer is Claude / anthropic.com.
+for ident in "$(git var GIT_AUTHOR_IDENT)" "$(git var GIT_COMMITTER_IDENT)"; do
+  if printf '%s' "$ident" | grep -qiE 'claude|anthropic\.com'; then
+    echo "pre-commit: commits must not be authored as Claude ($ident)." >&2
+    echo "Set: git config user.name 'Overcastly-AI'; git config user.email '282247350+Overcastly-AI@users.noreply.github.com'" >&2
+    exit 1
+  fi
+done

@@ -27,4 +27,6 @@ Source of truth: docs/SPEC.md. Read it before starting any milestone.
 
 ## Git
 - Commit messages must not credit Claude or any AI tool (no Co-Authored-By, session links or "Generated with" lines).
-- Enforced by `.githooks/commit-msg`. Enable it once per clone: `git config core.hooksPath .githooks`
+- Commits are authored as `Overcastly-AI <282247350+Overcastly-AI@users.noreply.github.com>`, never as Claude.
+- Enforced by `.githooks/` (commit-msg strips attribution, pre-commit rejects a Claude author). Set up once per clone:
+  `git config core.hooksPath .githooks && git config user.name Overcastly-AI && git config user.email 282247350+Overcastly-AI@users.noreply.github.com`
