@@ -11,7 +11,7 @@ import { renderJoin, renderNotFound, renderPage } from '../render';
 import { FAQ, FAQ_PREVIEW } from '../faq';
 import { FEATURE_GROUPS } from '../features';
 import { HERO_ART_SLOT } from '../pages/Home';
-import { assets, FONT } from './fixtures';
+import { assets, CSS, FONT } from './fixtures';
 import {
   canonicalUrl,
   FOOTER_LINKS,
@@ -104,6 +104,11 @@ describe.each(pages)('page $route.path', ({ route, html }) => {
 });
 
 describe.each(allPages)('$name', ({ html }) => {
+  it('links the stylesheet file and has no inline styles (the CSP allows none)', () => {
+    expect(html).toContain(`<link rel="stylesheet" href="${CSS}"/>`);
+    expect(html).not.toMatch(/<style|\sstyle="/);
+  });
+
   it('preloads the font and has a skip link to the main content', () => {
     expect(html).toContain(`<link rel="preload" as="font" type="font/woff2" href="${FONT}"`);
     expect(html).toContain('<a class="skip-link" href="#main">');

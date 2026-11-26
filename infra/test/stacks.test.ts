@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { JOIN_PATH } from '@huntclub/shared/app';
 import { OG_IMAGE } from '@huntclub/site/routes';
+import { contentSecurityPolicy, PERMISSIONS_POLICY } from '../src/security-headers';
 import { App } from 'aws-cdk-lib';
 import { Match } from 'aws-cdk-lib/assertions';
 import { GSIS, PARTITION_PREFIXES, TABLE_KEYS, TTL_ATTRIBUTE } from '@huntclub/club-data';
@@ -227,24 +228,38 @@ describe('web stack', () => {
     });
   });
 
-  it('keeps the security headers, and tells search engines to stay out of dev', () => {
-    t.hasResourceProperties('AWS::CloudFront::ResponseHeadersPolicy', {
-      ResponseHeadersPolicyConfig: Match.objectLike({
-        SecurityHeadersConfig: Match.objectLike({
-          ContentTypeOptions: { Override: true },
-          FrameOptions: { FrameOption: 'SAMEORIGIN', Override: true },
-          ReferrerPolicy: { ReferrerPolicy: 'strict-origin-when-cross-origin', Override: true },
-          StrictTransportSecurity: Match.objectLike({ AccessControlMaxAgeSec: 31536000 }),
-        }),
-        CustomHeadersConfig: {
-          Items: [{ Header: NOINDEX_HEADER.header, Value: NOINDEX_HEADER.value, Override: true }],
+  it('sends the security headers, with the CSP from its one source, and keeps dev out of search', () => {
+    const permissions = {
+      Header: PERMISSIONS_POLICY.header,
+      Value: PERMISSIONS_POLICY.value,
+      Override: true,
+    };
+    const policies = Object.values(t.findResources('AWS::CloudFront::ResponseHeadersPolicy'));
+    expect(policies).toHaveLength(2);
+    for (const policy of policies) {
+      const config = policy.Properties.ResponseHeadersPolicyConfig;
+      expect(config.SecurityHeadersConfig).toMatchObject({
+        ContentSecurityPolicy: {
+          ContentSecurityPolicy: contentSecurityPolicy(dev),
+          Override: true,
         },
-      }),
-    });
+        ContentTypeOptions: { Override: true },
+        FrameOptions: { FrameOption: 'DENY', Override: true },
+        StrictTransportSecurity: { AccessControlMaxAgeSec: 31536000, Override: true },
+      });
+      expect(config.CustomHeadersConfig.Items).toEqual([
+        permissions,
+        { Header: NOINDEX_HEADER.header, Value: NOINDEX_HEADER.value, Override: true },
+      ]);
+    }
     const indexable = synthTemplates({ searchIndexing: true }).web;
-    indexable.hasResourceProperties('AWS::CloudFront::ResponseHeadersPolicy', {
-      ResponseHeadersPolicyConfig: Match.objectLike({ CustomHeadersConfig: Match.absent() }),
-    });
+    for (const policy of Object.values(
+      indexable.findResources('AWS::CloudFront::ResponseHeadersPolicy'),
+    )) {
+      expect(policy.Properties.ResponseHeadersPolicyConfig.CustomHeadersConfig.Items).toEqual([
+        permissions,
+      ]);
+    }
   });
 
   it('sends no referrer from /join, with the same security headers and rewrite', () => {

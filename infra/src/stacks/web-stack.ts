@@ -22,6 +22,11 @@ import {
   WELL_KNOWN_PREFIX,
   webPageRewriteSource,
 } from '../web-pages';
+import {
+  contentSecurityPolicy as webContentSecurityPolicy,
+  PERMISSIONS_POLICY,
+  REFERRER_POLICY,
+} from '../security-headers';
 import { wellKnownFiles } from '../well-known';
 
 export interface WebStackProps extends StackProps {
@@ -69,28 +74,32 @@ export class WebStack extends Stack {
       code: cloudfront.FunctionCode.fromInline(webPageRewriteSource()),
     });
 
-    // The managed SECURITY_HEADERS values, plus X-Robots-Tag where search engines must stay
-    // out. /join sends no referrer at all: its URL holds an invite (in the fragment, which
-    // browsers never send, but no page there should leak even its path).
+    // Security headers (security-headers.ts, one source with the smoke check): HSTS,
+    // nosniff, no framing, the Content-Security-Policy and Permissions-Policy, plus
+    // X-Robots-Tag where search engines must stay out. /join sends no referrer at all: its
+    // URL holds an invite (in the fragment, which browsers never send, but no page there
+    // should leak even its path).
+    const contentSecurityPolicy = webContentSecurityPolicy(config);
     const headersPolicy = (id: string, referrerPolicy: cloudfront.HeadersReferrerPolicy) =>
       new cloudfront.ResponseHeadersPolicy(this, id, {
         comment: `${config.domainName} security headers, referrer ${referrerPolicy}`,
         securityHeadersBehavior: {
+          contentSecurityPolicy: { contentSecurityPolicy, override: true },
           contentTypeOptions: { override: true },
-          frameOptions: { frameOption: cloudfront.HeadersFrameOption.SAMEORIGIN, override: true },
+          frameOptions: { frameOption: cloudfront.HeadersFrameOption.DENY, override: true },
           referrerPolicy: { referrerPolicy, override: true },
           strictTransportSecurity: { accessControlMaxAge: Duration.days(365), override: true },
           xssProtection: { protection: true, modeBlock: true, override: true },
         },
-        ...(config.searchIndexing
-          ? {}
-          : { customHeadersBehavior: { customHeaders: [{ ...NOINDEX_HEADER, override: true }] } }),
+        customHeadersBehavior: {
+          customHeaders: [
+            { ...PERMISSIONS_POLICY, override: true },
+            ...(config.searchIndexing ? [] : [{ ...NOINDEX_HEADER, override: true }]),
+          ],
+        },
       });
-    const headers = headersPolicy(
-      'Headers',
-      cloudfront.HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
-    );
-    const joinHeaders = headersPolicy('JoinHeaders', cloudfront.HeadersReferrerPolicy.NO_REFERRER);
+    const headers = headersPolicy('Headers', REFERRER_POLICY.site);
+    const joinHeaders = headersPolicy('JoinHeaders', REFERRER_POLICY.join);
 
     // LIST lets S3 answer a missing file with 404 instead of 403. Listing itself is
     // unreachable: `/` is the default root object and query strings are not forwarded.

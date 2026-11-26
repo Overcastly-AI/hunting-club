@@ -3,6 +3,7 @@
 // (og/*.png). Vite builds this file for Node
 // with the font emitted to dist/assets; `npm run build` then runs it.
 import fontUrl from '@huntclub/design/fonts/Archivo-Latin.woff2?url';
+import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,7 +27,11 @@ import { siteCss } from './styles';
 /** dist/, the parent of dist/.server where this file runs from. */
 const DIST = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-const assets = { fontUrl, css: siteCss(fontUrl) };
+// The stylesheet as a content-hashed file beside the font (cached for a year like it).
+const css = siteCss(fontUrl);
+const cssFile = `assets/site-${createHash('sha256').update(css).digest('hex').slice(0, 10)}.css`;
+writeFileSync(join(DIST, cssFile), css);
+const assets = { fontUrl, cssUrl: `/${cssFile}` };
 for (const route of ROUTES) {
   const file = join(DIST, outputFile(route.path));
   mkdirSync(dirname(file), { recursive: true });
