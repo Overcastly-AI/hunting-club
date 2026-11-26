@@ -13,7 +13,7 @@
  * Everything is delivered asynchronously on the microtask queue (no timers),
  * so tests can drive time with Jest fake timers.
  */
-import { create, type MessageInitShape } from '@bufbuild/protobuf';
+import { create, toBinary, type MessageInitShape } from '@bufbuild/protobuf';
 import { Admin, Channel, Config, Mesh, Portnums } from '../protobufs';
 import {
   BROADCAST_ADDR,
@@ -126,6 +126,7 @@ export class FakeRadio implements Transport {
   private outbox: Uint8Array[] = [];
   private flushScheduled = false;
   private nextPacketId = 0x1000;
+  private readonly answeredRequests = new Set<string>();
 
   constructor(opts: FakeRadioOptions) {
     this.nodeNum = opts.nodeNum >>> 0;
@@ -350,7 +351,31 @@ export class FakeRadio implements Transport {
         },
       }),
     );
+    this.answerNodeInfoRequest(p, idx);
     return true;
+  }
+
+  /** Like firmware's NodeInfo module: a node-info request with want_response gets our node info back. */
+  private answerNodeInfoRequest(p: AirPacket, channelIndex: number): void {
+    if (p.data.portnum !== Portnums.PortNum.NODEINFO_APP || !p.data.wantResponse || !this.air)
+      return;
+    const key = `${p.from}:${p.id}`;
+    if (this.answeredRequests.has(key)) return; // relay copies of the same request
+    this.answeredRequests.add(key);
+    const ch = this.channels[channelIndex]!.settings!;
+    this.air.transmit(this, {
+      from: this.nodeNum,
+      to: p.from,
+      id: this.nextPacketId++,
+      hopStart: DEFAULT_HOP_LIMIT,
+      wantAck: false,
+      channel: { name: ch.name, psk: ch.psk },
+      data: create(Mesh.DataSchema, {
+        portnum: Portnums.PortNum.NODEINFO_APP,
+        payload: toBinary(Mesh.UserSchema, this.user),
+        requestId: p.id,
+      }),
+    });
   }
 
   // ---- Internals ----

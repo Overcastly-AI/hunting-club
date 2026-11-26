@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 
 import type { MapData } from './types';
 
@@ -42,14 +42,4 @@ export const mapDataStore = createMapDataStore();
 
 export function useMapData(source: MapDataSource = mapDataStore): MapData {
   return useSyncExternalStore(source.subscribe, source.getSnapshot);
-}
-
-/** The current time, refreshed on an interval so ages ("2 min ago") and freshness rings stay true. */
-export function useNow(intervalMs = 10_000): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(timer);
-  }, [intervalMs]);
-  return now;
 }
