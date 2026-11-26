@@ -12,6 +12,7 @@ import { ogImageSvg, OG_FONT_FILE, renderPng } from './og';
 import { JOIN_SCRIPT_ENTRY } from '../vite.config';
 import { renderJoin, renderNotFound, renderPage } from './render';
 import {
+  HASH_FORWARD_SCRIPT,
   JOIN_PAGE,
   NOT_FOUND_PAGE,
   ogHeadline,
@@ -27,11 +28,20 @@ import { siteCss } from './styles';
 /** dist/, the parent of dist/.server where this file runs from. */
 const DIST = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-// The stylesheet as a content-hashed file beside the font (cached for a year like it).
-const css = siteCss(fontUrl);
-const cssFile = `assets/site-${createHash('sha256').update(css).digest('hex').slice(0, 10)}.css`;
-writeFileSync(join(DIST, cssFile), css);
-const assets = { fontUrl, cssUrl: `/${cssFile}` };
+/** Writes `content` to assets/<name>-<hash>.<ext> (cached for a year like the font); its URL. */
+function hashedAsset(name: string, ext: string, content: string): string {
+  const hash = createHash('sha256').update(content).digest('hex').slice(0, 10);
+  const file = `assets/${name}-${hash}.${ext}`;
+  writeFileSync(join(DIST, file), content);
+  return `/${file}`;
+}
+
+// The stylesheet and the home page's one script as files: no inline code under the CSP.
+const assets = {
+  fontUrl,
+  cssUrl: hashedAsset('site', 'css', siteCss(fontUrl)),
+  forwardScriptUrl: hashedAsset('forward', 'js', HASH_FORWARD_SCRIPT),
+};
 for (const route of ROUTES) {
   const file = join(DIST, outputFile(route.path));
   mkdirSync(dirname(file), { recursive: true });

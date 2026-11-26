@@ -3,14 +3,7 @@ import type { ReactNode } from 'react';
 import { PAGE_CONTENT } from './pages';
 import { Join } from './pages/Join';
 import { NotFound } from './pages/NotFound';
-import {
-  HASH_FORWARD_SCRIPT,
-  JOIN_PAGE,
-  NOT_FOUND_PAGE,
-  ogImagePath,
-  ROUTES,
-  type SitePath,
-} from './routes';
+import { JOIN_PAGE, NOT_FOUND_PAGE, ogImagePath, ROUTES, type SitePath } from './routes';
 import { STRUCTURED_DATA } from './structuredData';
 import { Document, type PageAssets, type PageMeta } from './Shell';
 
@@ -25,12 +18,11 @@ const html = (meta: PageMeta, assets: PageAssets, content: ReactNode) =>
 export function renderPage(path: SitePath, assets: PageAssets): string {
   const route = ROUTES.find((r) => r.path === path);
   if (!route) throw new Error(`No route ${path}`);
-  const script = path === '/' ? HASH_FORWARD_SCRIPT : undefined;
   const meta: PageMeta = {
     ...route,
     ogImage: ogImagePath(path),
     ...(STRUCTURED_DATA[path] ? { structuredData: STRUCTURED_DATA[path] } : {}),
-    ...(script ? { script } : {}),
+    ...(path === '/' ? { blockingScriptSrc: assets.forwardScriptUrl } : {}),
   };
   return html(meta, assets, PAGE_CONTENT[path]());
 }

@@ -1,19 +1,27 @@
+// @vitest-environment jsdom
+// (jsdom only for DOMParser: the pages are still rendered as static HTML strings.)
 import {
   colors,
   contrastRatio,
   lightColors,
   MIN_TEXT_CONTRAST,
   MIN_UI_CONTRAST,
+  sizes,
+  tokenVariables,
 } from '@huntclub/design';
 import { CLUB_PRICING, LEGAL_DOCS, LEGAL_DRAFT_NOTICE, SAFETY_NOTE } from '@huntclub/shared';
 import { ADMIN_PATH, SUPPORT_EMAIL } from '@huntclub/shared/app';
 import { renderJoin, renderNotFound, renderPage } from '../render';
+import { cspViolations } from '../csp';
 import { FAQ, FAQ_PREVIEW } from '../faq';
-import { FEATURE_GROUPS } from '../features';
+import { CONDITIONS, FEATURE_GROUPS } from '../features';
+import { BETA_POINTS } from '../pages/Download';
 import { HERO_ART_SLOT } from '../pages/Home';
-import { assets, CSS, FONT } from './fixtures';
+import { CLUB_CARD_ORDER } from '../pages/Pricing';
+import { assets, CSS, FONT, FORWARD_SCRIPT } from './fixtures';
 import {
   canonicalUrl,
+  CLUB_PRICE_LINE,
   FOOTER_LINKS,
   GET_THE_APP,
   HASH_FORWARD_SCRIPT,
@@ -31,7 +39,7 @@ import {
   START_A_CLUB,
 } from '../routes';
 import { MESHTASTIC_ATTRIBUTION } from '../Shell';
-import { siteCss } from '../styles';
+import { NARROWEST_PHONE, PHONE_HEADER_MAX_WIDTH, siteCss } from '../styles';
 
 const pages = ROUTES.map((r) => ({ route: r, html: renderPage(r.path, assets) }));
 const notFound = renderNotFound(assets);
@@ -86,13 +94,11 @@ describe.each(pages)('page $route.path', ({ route, html }) => {
     }
   });
 
-  it('ships no JavaScript except the old-bookmark forward on the home page (no analytics)', () => {
-    const scripts = (html.match(/<script>[\s\S]*?<\/script>/g) ?? []).length;
-    const data = (html.match(/<script type="application\/ld\+json">/g) ?? []).length;
-    expect(html.match(/<script>[\s\S]*?<\/script>/g) ?? []).toEqual(
-      route.path === '/' ? [`<script>${HASH_FORWARD_SCRIPT}</script>`] : [],
-    );
-    expect(count(html, /<script/gi)).toBe(scripts + data);
+  it('ships no JavaScript except the old-bookmark forward file on the home page (no analytics)', () => {
+    const data = count(html, /<script type="application\/ld\+json">/g);
+    const files = html.match(/<script src="[^"]*"><\/script>/g) ?? [];
+    expect(files).toEqual(route.path === '/' ? [`<script src="${FORWARD_SCRIPT}"></script>`] : []);
+    expect(count(html, /<script/gi)).toBe(files.length + data);
   });
 
   it('shares a large card at its own absolute URL', () => {
@@ -104,9 +110,23 @@ describe.each(pages)('page $route.path', ({ route, html }) => {
 });
 
 describe.each(allPages)('$name', ({ html }) => {
-  it('links the stylesheet file and has no inline styles (the CSP allows none)', () => {
+  it('links the stylesheet file and has no inline code the CSP would block', () => {
     expect(html).toContain(`<link rel="stylesheet" href="${CSS}"/>`);
-    expect(html).not.toMatch(/<style|\sstyle="/);
+    expect(cspViolations(html)).toEqual([]);
+  });
+
+  it('keeps every link and button at the 48 px tap target, except links inside a sentence', () => {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const sized = '.button, .tap, .brand, .skip-link, .nav-list a, .menu summary, .faq summary';
+    const small = [...doc.querySelectorAll('a, button, summary')].filter(
+      (el) => !el.matches(sized) && !el.closest('p'),
+    );
+    expect(small.map((el) => el.outerHTML)).toEqual([]);
+  });
+
+  it('says "last known wind", never a live wind claim', () => {
+    const text = textOf(html);
+    expect(count(text, /\bwind\b/gi)).toBe(count(text, /\blast known wind\b/gi));
   });
 
   it('preloads the font and has a skip link to the main content', () => {
@@ -138,12 +158,22 @@ describe.each(allPages)('$name', ({ html }) => {
 });
 
 describe('404 page', () => {
+  it('has the shared header and footer, with the site nav', () => {
+    const header = notFound.slice(notFound.indexOf('<header'), notFound.indexOf('</header>'));
+    for (const link of [...NAV_LINKS, SIGN_IN]) {
+      expect(header).toContain(`<a href="${link.href}">${link.label}</a>`);
+    }
+    expect(notFound).toContain('<a class="brand" href="/">');
+    const footer = notFound.slice(notFound.indexOf('<footer'));
+    for (const link of FOOTER_LINKS) expect(footer).toContain(`href="${link.href}"`);
+  });
+
   it('is noindex with no canonical URL, and offers a way home and to sign in', () => {
     expect(notFound).toContain('<meta name="robots" content="noindex"/>');
     expect(notFound).not.toContain('rel="canonical"');
     expect(notFound).toContain(`<title>${NOT_FOUND_PAGE.title}</title>`);
     expect(notFound).toContain('<a class="button primary" href="/">Go to the home page</a>');
-    expect(notFound).toContain(`href="${SIGN_IN.href}"`);
+    expect(notFound).toContain(`<a class="button" href="${ADMIN_PATH}">`);
     expect(count(notFound, /<script/gi)).toBe(0);
   });
 });
@@ -193,10 +223,96 @@ describe('links', () => {
       expect(count(header, new RegExp(`<a href="${link.href}">${link.label}</a>`, 'g'))).toBe(2);
     }
     expect(home).toContain('<details class="menu"><summary>Menu</summary>');
+    // On phones the main action moves into the menu.
+    const menu = header.slice(header.indexOf('<details'));
+    expect(menu).toContain(`<a href="${GET_THE_APP.href}">${GET_THE_APP.label}</a>`);
+  });
+});
+
+describe('phone first', () => {
+  const css = siteCss(FONT);
+  const phoneRules = css.slice(css.indexOf(`@media (max-width: ${PHONE_HEADER_MAX_WIDTH}px)`));
+
+  it('collapses the header to the logo and one Menu button', () => {
+    expect(phoneRules).toMatch(
+      /^[^}]*\.site-header \.desktop, \.site-header \.header-action \{ display: none; \}/,
+    );
+    expect(phoneRules).toMatch(/^[^}]*\}\s*\.menu \{ display: block; \}/);
+  });
+
+  it('gives every sized link and control the 48 px tap target', () => {
+    expect(sizes.minTapTarget).toBe(48);
+    for (const selector of [
+      '.button',
+      '.tap',
+      '.brand',
+      '.skip-link',
+      '.nav-list a',
+      '.menu summary',
+    ]) {
+      const escaped = selector.replace(/\./g, '\\.');
+      expect(css).toMatch(new RegExp(`(^|\\n)${escaped} \\{[^}]*min-height: var\\(--tap-min\\)`));
+    }
+    expect(css).toMatch(/\.faq summary \{[^}]*min-height: 56px/);
+  });
+
+  it('fits a 360 px phone: no grid column is wider than the screen less its gutters', () => {
+    const gutters = 2 * 16; // .wrap padding: --space-md each side
+    const columns = [...css.matchAll(/minmax\(([\d.]+)rem/g)].map((m) => Number(m[1]) * 16);
+    expect(columns.length).toBeGreaterThan(0);
+    for (const px of columns) expect(px).toBeLessThanOrEqual(NARROWEST_PHONE - gutters);
+    expect(tokenVariables()['--space-md']).toBe('16px');
   });
 });
 
 describe('light sections', () => {
+  const css = siteCss(FONT);
+  const vars = tokenVariables();
+  const bg = lightColors.bgLight;
+  /** Innermost rules (inside media queries too), as selector and declarations. */
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
+    selector: m[1]!.trim(),
+    body: m[2]!,
+  }));
+  const colorOf = (body: string, property: string) =>
+    new RegExp(`(?:^|[;{]|\\s)${property}:[^;]*var\\((--color-[a-z-]+)\\)`).exec(body)?.[1];
+
+  it('hold every color a light band sets to 4.5:1 (text) or 3:1 (borders, focus ring)', () => {
+    const light = rules.filter((r) => r.selector.includes('.band-light'));
+    expect(light.length).toBeGreaterThan(5);
+    for (const { selector, body } of light) {
+      // Text sits on the rule's own background when it sets one (the primary button).
+      const ground = colorOf(body, 'background');
+      const text = colorOf(body, 'color');
+      if (text) {
+        expect([selector, contrastRatio(vars[text]!, ground ? vars[ground]! : bg)]).toEqual([
+          selector,
+          expect.toSatisfy((r: number) => r >= MIN_TEXT_CONTRAST),
+        ]);
+      }
+      for (const edge of ['border-color', 'outline-color']) {
+        const color = colorOf(body, edge);
+        if (color) {
+          expect([selector, edge, contrastRatio(vars[color]!, bg)]).toEqual([
+            selector,
+            edge,
+            expect.toSatisfy((r: number) => r >= MIN_UI_CONTRAST),
+          ]);
+        }
+      }
+    }
+  });
+
+  it('draw the borders of parts used in light bands at 3:1 or better', () => {
+    // FAQ rows, the comparison table and screenshot frames sit on light bands.
+    for (const selector of ['.faq details', '.compare th, .compare td', '.shot-frame']) {
+      const rule = rules.find((r) => r.selector === selector);
+      const border = rule && colorOf(rule.body, 'border(?:-bottom)?');
+      expect(border).toBeDefined();
+      expect(contrastRatio(vars[border!]!, bg)).toBeGreaterThanOrEqual(MIN_UI_CONTRAST);
+    }
+  });
+
   it('pair text and links with the light background at 4.5:1 or better', () => {
     for (const fg of [lightColors.textOnLight, lightColors.mutedOnLight, lightColors.linkOnLight]) {
       expect(contrastRatio(fg, lightColors.bgLight)).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
@@ -240,14 +356,26 @@ describe('page content', () => {
 
   it('shows the club price, trial and terms from CLUB_PRICING on Pricing and Clubs', () => {
     const { intervals } = CLUB_PRICING;
-    const pricing = textOf(page(PAGE_PATHS.pricing));
-    expect(pricing).toContain(intervals.year.price);
-    expect(pricing).toContain(`(${intervals.year.badge})`);
-    expect(pricing).toContain(`or ${intervals.month.price}`);
-    expect(pricing).toContain(CLUB_PRICING.terms);
+    expect(CLUB_PRICE_LINE).toBe('$10/month or $100/year (save $20)');
+    const html = page(PAGE_PATHS.pricing);
+    const pricing = textOf(html);
+    expect(pricing).toContain(`${CLUB_PRICE_LINE} per club`);
     expect(pricing).toContain('$0');
+    // Two equal cards, monthly then yearly, each with its trial line and "per club" first.
+    const cards = [...html.matchAll(/<div class="card"><h2>Club, [\s\S]*?<\/div>/g)].map((m) =>
+      textOf(m[0]),
+    );
+    expect(cards).toHaveLength(2);
+    CLUB_CARD_ORDER.forEach((interval, i) => {
+      const card = cards[i]!;
+      expect(card).toContain(intervals[interval].price);
+      expect(card).toContain(intervals[interval].trial);
+      expect(card.slice(card.indexOf(intervals[interval].price))).toMatch(/^[^.]*\.?[^.]*Per club/);
+      expect(card).toContain(CLUB_PRICING.cta);
+    });
+    expect(cards[1]).toContain(`(${intervals.year.savings})`);
     const clubs = textOf(page(PAGE_PATHS.clubs));
-    expect(clubs).toContain(`${intervals.year.price} or ${intervals.month.price}`);
+    expect(clubs).toContain(`One price per club: ${CLUB_PRICE_LINE}`);
     expect(clubs).toContain(CLUB_PRICING.terms);
     for (const path of [PAGE_PATHS.pricing, PAGE_PATHS.clubs]) {
       expect(page(path)).toContain(
@@ -256,10 +384,20 @@ describe('page content', () => {
     }
   });
 
-  it('says the app is in testing on Download, with no store links', () => {
-    const download = textOf(page(PAGE_PATHS.download));
-    expect(download).toMatch(/not in the App Store or Google Play yet/);
+  it('says plainly on Download what beta means and what to do next, with no store links', () => {
+    const html = page(PAGE_PATHS.download);
+    const download = textOf(html);
+    expect(download).toMatch(/is in beta\. It is not in the App Store or Google Play yet/);
+    expect(download).toContain('What beta means');
+    for (const point of BETA_POINTS) expect(download).toContain(point);
+    expect(download).toContain('What to do now');
+    expect(html).toContain(`<a class="button primary" href="${PAGE_PATHS.contact}">`);
     expect(download).toMatch(/Meshtastic radio with GPS/);
+  });
+
+  it('words the conditions line one way everywhere: "last known wind"', () => {
+    expect(CONDITIONS).toMatch(/^Last known wind/);
+    expect(textOf(page(PAGE_PATHS.pricing))).toContain(CONDITIONS);
   });
 
   it('shows Privacy and Terms from the shared copy, marked as drafts', () => {

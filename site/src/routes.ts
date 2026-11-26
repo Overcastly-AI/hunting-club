@@ -25,8 +25,8 @@ export interface SiteRoute {
 }
 
 const { intervals, trialDays } = CLUB_PRICING;
-/** "$100/year or $10/month", from the one pricing source. */
-export const CLUB_PRICE_LINE = `${intervals.year.price} or ${intervals.month.price}`;
+/** "$10/month or $100/year (save $20)", from the one pricing source. */
+export const CLUB_PRICE_LINE = `${intervals.month.price} or ${intervals.year.price} (${intervals.year.savings})`;
 
 /** Paths of the pages, for links. Each is registered in ROUTES below. */
 export const PAGE_PATHS = {
@@ -220,8 +220,9 @@ export function sitemapXml(lastmod: string): string {
 export const SITEMAP_FILE = 'sitemap.xml';
 
 /**
- * The one script the site ships, inlined on the home page only: an old admin bookmark
- * (/#/roster, from when the admin lived at /) goes on to the admin (/app/#/roster).
+ * The home page's script: an old admin bookmark (/#/roster, from when the admin lived at
+ * /) goes on to the admin (/app/#/roster). The prerender writes it to a content-hashed
+ * file (never inline), so the CSP allows only this origin's scripts.
  */
 export const HASH_FORWARD_SCRIPT = `if(location.hash.indexOf('#/')===0)location.replace('${ADMIN_PATH}'+location.hash)`;
 

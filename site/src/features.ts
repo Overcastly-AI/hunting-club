@@ -17,13 +17,19 @@ export interface FeatureGroup {
   readonly shot: { readonly label: string; readonly aspect: '4:5' | '16:10' };
 }
 
+/**
+ * The conditions line. Wind comes from a forecast cached at the last sync (docs/SPEC.md
+ * "Sun and wind"), so the site only ever says "last known wind".
+ */
+export const CONDITIONS = 'Last known wind, sunrise and sunset, scent cone';
+
 export const FEATURE_GROUPS: readonly FeatureGroup[] = [
   {
     id: 'map',
     title: 'A live map that works offline',
     summary:
-      'Topo and aerial maps downloaded to your phone, with wind, a scent cone, sunrise and sunset.',
-    free: 'Free USGS topo and aerial maps, downloaded to your phone before you go. Your party on the map with no cell service. Wind, a scent cone, sunrise and sunset.',
+      'Topo and aerial maps downloaded to your phone, with the last known wind, a scent cone, sunrise and sunset.',
+    free: 'Free USGS topo and aerial maps, downloaded to your phone before you go. Your party on the map with no cell service. The last known wind, a scent cone, sunrise and sunset.',
     club: "The club's property line, stands and areas on everyone's map.",
     shot: { label: 'The live map with hunters in a party', aspect: '4:5' },
   },

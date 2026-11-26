@@ -115,7 +115,8 @@ export function Clubs() {
         <div className="wrap">
           <h2>One price for the whole club</h2>
           <p className="lead">
-            {CLUB_PRICE_LINE}, with a {CLUB_PRICING.trialDays}-day free trial. Members join free.
+            One price per club: {CLUB_PRICE_LINE}, with a {CLUB_PRICING.trialDays}-day free trial.
+            Members join free.
           </p>
           <div className="actions">
             <a className="button primary" href={START_A_CLUB.href}>
