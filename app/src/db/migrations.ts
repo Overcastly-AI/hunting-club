@@ -185,9 +185,22 @@ ALTER TABLE harvests ADD COLUMN area_mesh_id INTEGER;
 ALTER TABLE harvests ADD COLUMN shared_at INTEGER;
 `;
 
+/**
+ * One row of app-wide state on this phone. `onboarded_at` is set when the
+ * hunter finishes (or skips the rest of) onboarding, so it shows only once.
+ */
+const appState = `
+CREATE TABLE app_state (
+  id INTEGER PRIMARY KEY NOT NULL CHECK (id = 1),
+  onboarded_at INTEGER
+);
+INSERT INTO app_state (id) VALUES (1);
+`;
+
 export const migrations: readonly Migration[] = [
   { version: 1, name: 'initial local schema', sql: initialSchema },
   { version: 2, name: 'map pack downloads', sql: mapPackDownloads },
   { version: 3, name: 'paired radio', sql: pairedRadio },
   { version: 4, name: 'harvest places', sql: harvestPlaces },
+  { version: 5, name: 'app state', sql: appState },
 ];
