@@ -1,7 +1,9 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { colors, opacity, sizes, spacing, textStyles } from '../../theme';
-import { classifyFreshness, describeAge, positionAge, type Freshness } from '../freshness';
+import { classifyFreshness, positionAge, type Freshness } from '@huntclub/core';
+
+import { describeAge } from '../age';
 import { hunterAccessibilityLabel, placeLabel } from '../labels';
 import type { HunterOnMap } from '../types';
 import { HaloText } from './HaloText';

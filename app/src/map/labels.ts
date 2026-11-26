@@ -1,5 +1,7 @@
 import { STAND_TYPE_LABELS } from '../domain/stands';
-import { describeAge, positionAge, classifyFreshness } from './freshness';
+import { classifyFreshness, positionAge } from '@huntclub/core';
+
+import { describeAge } from './age';
 import type { HunterOnMap, HunterPlace, OpenStandOnMap } from './types';
 
 /** Shown under a hunter who is walking. */

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "main": "expo-router/entry",
   "dependencies": {
+    "@huntclub/core": "*",
     "@huntclub/mesh": "*",
     "@huntclub/shared": "*",
     "@maplibre/maplibre-react-native": "^11.5.1",
@@ -42,13 +43,5 @@
     "lint": "eslint .",
     "test": "jest"
   },
-  "private": true,
-  "jest": {
-    "preset": "jest-expo",
-    "testPathIgnorePatterns": [
-      "/node_modules/",
-      "/ios/",
-      "/android/"
-    ]
-  }
+  "private": true
 }

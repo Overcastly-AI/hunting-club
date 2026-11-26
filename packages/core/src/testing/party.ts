@@ -2,7 +2,7 @@
  * Test harness: a party of radios on one FakeAir, each phone running the
  * core services. Shared by every core test file.
  */
-import type { CalendarDay, SunApi } from '../overdue';
+import type { CalendarDay, SunApi } from '../sun';
 import { connectedMesh, NODES, seededRandom } from '@huntclub/mesh/testing';
 import type { FakeAirOptions, FakeRadio } from '@huntclub/mesh/testing';
 import {
@@ -21,7 +21,7 @@ export const HOME = { lat: 46.0, lon: -94.0 } as const;
 
 /**
  * Deterministic SunApi for tests: sunset every UTC day at `sunsetUtcHour`,
- * calendar days in UTC. Real sun math lives in the app (PR #6).
+ * sunrise ten hours earlier, calendar days in UTC. The real calculation is `SUN` in ../sun.ts.
  */
 export function fixedSun(
   sunsetUtcHour = 23,
@@ -38,6 +38,7 @@ export function fixedSun(
         ? { kind: polar }
         : {
             kind: 'normal',
+            sunrise: new Date(Date.UTC(day.year, day.month - 1, day.day, sunsetUtcHour - 10)),
             sunset: new Date(Date.UTC(day.year, day.month - 1, day.day, sunsetUtcHour)),
           },
   };
