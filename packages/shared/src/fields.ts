@@ -16,8 +16,11 @@ export const NOTES_MAX = 500;
 export const SPECIES_MAX = 40;
 
 export const idSchema = z.uuid();
-/** A Cognito user's `sub`. */
-export const userIdSchema = z.uuid();
+/**
+ * A Cognito user's `sub`: 8-4-4-4-12 hex. Not `z.uuid()`, which also requires the RFC 9562
+ * variant bits; Cognito subs don't always have them (e.g. `…-fdfc-…`).
+ */
+export const userIdSchema = z.guid();
 export const timestampSchema = z.iso.datetime();
 
 /** Text that must have 1..max characters after trimming (stored trimmed). */
