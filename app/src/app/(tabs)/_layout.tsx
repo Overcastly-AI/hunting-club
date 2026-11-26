@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router/js-tabs';
 import { StyleSheet, Text, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ChatConnector } from '../../chat/ChatConnector';
 import { TAB_BAR_PADDING, TAB_LABEL_MAX_LINES, tabBarHeight } from '../../navigation/tabBarLayout';
 import { SafetyLayer } from '../../safety/SafetyLayer';
 import { colors, maxFontScale, sizes, textStyles } from '../../theme';
@@ -51,6 +52,7 @@ export default function TabLayout() {
         />
       </Tabs>
       <SafetyLayer />
+      <ChatConnector />
     </>
   );
 }

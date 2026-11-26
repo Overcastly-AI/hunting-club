@@ -69,3 +69,10 @@ export interface EnvConfig {
     readonly androidSha256CertFingerprints: readonly string[];
   };
 }
+
+/** Cognito client IDs the club API accepts, in a fixed order (app, then web once configured). */
+export function userPoolClientIds(config: { readonly cognito: EnvConfig['cognito'] }): string[] {
+  return [config.cognito.appClientId, config.cognito.webClientId].filter((id): id is string =>
+    Boolean(id),
+  );
+}
