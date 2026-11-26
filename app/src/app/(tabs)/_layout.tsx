@@ -1,7 +1,11 @@
+import { Redirect } from 'expo-router';
 import { Tabs } from 'expo-router/js-tabs';
 import { StyleSheet, Text, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ChatConnector } from '../../chat/ChatConnector';
+import { ONBOARDING_ROUTE } from '../../onboarding/routes';
+import { useOnboarded } from '../../onboarding/useOnboarded';
 import { TAB_BAR_PADDING, TAB_LABEL_MAX_LINES, tabBarHeight } from '../../navigation/tabBarLayout';
 import { SafetyLayer } from '../../safety/SafetyLayer';
 import { colors, maxFontScale, sizes, textStyles } from '../../theme';
@@ -9,6 +13,11 @@ import { colors, maxFontScale, sizes, textStyles } from '../../theme';
 export default function TabLayout() {
   const { fontScale } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const onboarded = useOnboarded();
+
+  if (onboarded === undefined) return null;
+  // First launch: onboarding once, then straight to the tabs.
+  if (!onboarded) return <Redirect href={ONBOARDING_ROUTE} />;
 
   return (
     <>
@@ -51,6 +60,7 @@ export default function TabLayout() {
         />
       </Tabs>
       <SafetyLayer />
+      <ChatConnector />
     </>
   );
 }

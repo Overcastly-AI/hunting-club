@@ -1,7 +1,6 @@
 import {
   Camera,
   Map,
-  Marker,
   type CameraRef,
   type MapRef,
   type ViewStateChangeEvent,
@@ -12,20 +11,19 @@ import { StyleSheet, View, type NativeSyntheticEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useCheckInState } from '../checkin/CheckInRadio';
+import { HarvestSheet } from '../harvest/HarvestSheet';
 import { CheckOutSheet } from '../checkin/CheckOutSheet';
 import { AskForHandSheet } from '../safety/components/AskForHandSheet';
-import { HelpMarker } from '../safety/components/HelpMarker';
 import { useIncomingAlerts } from '../safety/hooks';
 import { colors, spacing } from '../theme';
 import { BASEMAPS, DEFAULT_BASEMAP, basemapStyle, type BasemapId } from './basemaps';
 import { DownloadAreaSheet } from './components/DownloadAreaSheet';
 import { HaloText } from './components/HaloText';
-import { HunterMarker } from './components/HunterMarker';
 import { LayersSheet } from './components/LayersSheet';
 import { MapBottomSheet } from './components/MapBottomSheet';
 import { MapControls } from './components/MapControls';
+import { MAP_CHROME_OFF, MapLayers } from './components/MapLayers';
 import { MeshStatusLine } from './components/MeshStatusLine';
-import { OpenStandMarker } from './components/OpenStandMarker';
 import { ScaleBar } from './components/ScaleBar';
 import { TopBar } from './components/TopBar';
 import { YouMarker } from './components/YouMarker';
@@ -45,7 +43,7 @@ const CENTER_ON_ME_ZOOM = 15.5;
 const CONDITIONS_MIN_ZOOM = 8;
 
 type MapView = { center: LatLon; zoom: number };
-type Panel = 'layers' | 'download' | 'checkOut' | 'askForHand' | null;
+type Panel = 'layers' | 'download' | 'checkOut' | 'askForHand' | 'harvest' | null;
 
 type Props = {
   /** Hunters, open stands and mesh status; defaults to the app store the radio will feed. */
@@ -97,36 +95,11 @@ export function MapScreen({ dataSource }: Props) {
         ref={mapRef}
         style={styles.map}
         mapStyle={mapStyle}
-        attribution={false}
-        logo={false}
-        compass={false}
-        scaleBar={false}
+        {...MAP_CHROME_OFF}
         onRegionDidChange={onRegionChange}
       >
         <Camera ref={cameraRef} initialViewState={INITIAL_VIEW} />
-        {data.openStands.map((stand) => (
-          <Marker
-            key={stand.id}
-            id={`stand-${stand.id}`}
-            lngLat={[stand.position.lon, stand.position.lat]}
-            anchor="top"
-          >
-            <OpenStandMarker stand={stand} />
-          </Marker>
-        ))}
-        {data.hunters.map((hunter) => (
-          <Marker
-            key={hunter.id}
-            id={`hunter-${hunter.id}`}
-            lngLat={[hunter.position.lon, hunter.position.lat]}
-            anchor="top"
-          >
-            <HunterMarker hunter={hunter} now={now} />
-          </Marker>
-        ))}
-        {alerts.map((alert) => (
-          <HelpMarker key={alert.key} alert={alert} now={now} />
-        ))}
+        <MapLayers data={data} alerts={alerts} now={now} />
         {/* Wind arrives with the forecast milestone; until then no scent cone. */}
         {you ? <YouMarker position={you} /> : null}
       </Map>
@@ -168,7 +141,7 @@ export function MapScreen({ dataSource }: Props) {
             onAskForHand={() => setPanel('askForHand')}
             onCheckOut={() => setPanel('checkOut')}
             onChangeMode={() => router.navigate('/check-in')}
-            onLogHarvest={() => undefined /* Milestone 7 */}
+            onLogHarvest={() => setPanel('harvest')}
           />
         ) : (
           <MapBottomSheet state="notCheckedIn" onCheckIn={() => router.navigate('/check-in')} />
@@ -187,6 +160,7 @@ export function MapScreen({ dataSource }: Props) {
       />
       <CheckOutSheet radio={radio} visible={panel === 'checkOut'} onClose={() => setPanel(null)} />
       <AskForHandSheet visible={panel === 'askForHand'} onClose={() => setPanel(null)} />
+      <HarvestSheet visible={panel === 'harvest'} onClose={() => setPanel(null)} />
       <DownloadAreaSheet
         visible={panel === 'download'}
         bounds={downloadBounds}

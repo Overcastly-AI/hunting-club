@@ -9,6 +9,7 @@ import {
   type SecretKey,
   secretParameterName,
   secretParameterEnvVar,
+  userPoolClientIds,
 } from '../config';
 import { dev } from '../config/dev';
 import { CLUB_API_TABLE_ACTIONS } from '../src/stacks/api-stack';
@@ -167,7 +168,7 @@ describe('api stack', () => {
           [API_ENV.envName]: dev.name,
           [API_ENV.tableName]: dev.clubTableName,
           [API_ENV.userPoolId]: dev.cognito.userPoolId,
-          [API_ENV.userPoolClientIds]: dev.cognito.appClientId,
+          [API_ENV.userPoolClientIds]: userPoolClientIds(dev).join(','),
           [API_ENV.webOrigin]: `https://${dev.domainName}`,
           [API_ENV.stripePrices]: JSON.stringify(dev.stripe.prices),
           [secretParameterEnvVar('stripeApiKey')]: secretParameterName(dev.name, 'stripeApiKey'),

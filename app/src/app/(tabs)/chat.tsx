@@ -1,10 +1,5 @@
-import { PlaceholderScreen } from '../../components/PlaceholderScreen';
+import { ChatScreen } from '../../chat/ChatScreen';
 
-export default function ChatScreen() {
-  return (
-    <PlaceholderScreen
-      title="Chat"
-      description="Text your party over the radio, with no cell service."
-    />
-  );
+export default function ChatTab() {
+  return <ChatScreen />;
 }

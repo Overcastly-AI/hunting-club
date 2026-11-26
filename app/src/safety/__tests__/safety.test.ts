@@ -14,10 +14,11 @@ import {
   type MeshClient,
   type MeshClientEvents,
 } from '@huntclub/mesh';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { relative } from 'node:path';
 
 import { MINUTES, NOW } from '../../test-utils/mapFixtures';
+import { SRC, sourceFiles } from '../../test-utils/sourceFiles';
 import type { MapNode } from '../../map/meshMapData';
 import { ALERT_PIN_TTL_MS, createAlertStore, nextUnseen } from '../alerts';
 import { connectSafetyAlerts, type SafetyRadio } from '../SafetyRadio';
@@ -114,16 +115,8 @@ describe('safety wording', () => {
 });
 
 describe('nothing looks like a 911 call', () => {
-  const SRC = join(__dirname, '../..');
-  const files = (dir: string): string[] =>
-    readdirSync(dir).flatMap((name) => {
-      const path = join(dir, name);
-      if (statSync(path).isDirectory()) return name === '__tests__' ? [] : files(path);
-      return /\.tsx?$/.test(name) ? [path] : [];
-    });
-
   it('mentions 911, SOS or emergency only in the settings note', () => {
-    const offenders = files(SRC).flatMap((file) =>
+    const offenders = sourceFiles(SRC, /\.tsx?$/).flatMap((file) =>
       readFileSync(file, 'utf8')
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .split('\n')

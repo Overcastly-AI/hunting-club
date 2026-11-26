@@ -27,6 +27,7 @@ import {
   planIdSchema,
   polygonSchema,
   regionSchema,
+  SPECIES_MAX,
   stripeEventIdSchema,
   timestampSchema,
   trimmedText,
@@ -255,7 +256,7 @@ export type StandUpdate = z.input<typeof StandUpdateSchema>;
 // Harvests (only the ones a member shared with the club are stored) --------------------
 
 const harvestEditable = {
-  species: trimmedText(40),
+  species: trimmedText(SPECIES_MAX),
   sex: HarvestSexSchema,
   lat: latitudeSchema.optional(),
   lon: longitudeSchema.optional(),
