@@ -42,6 +42,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 - Worker sessions can only push to the branch they were created with. Reuse a session for a new task only on that same branch (reset to main after its PR merges); otherwise start a new session.
 - **Never leave a worker idle (owner rule):** the moment a worker finishes or stops, give it the next task (reuse the idle session) or start a new one. Timed wake-ups are only a backup; worker messages are the main signal.
 - Workers: separate cloud sessions, up to ~5 at a time on non-overlapping files, one task each, branch `agent/<task>`, PR into `main`. Playbook: `docs/AGENTS.md`.
+- **Email is checked every 30 minutes** (owner rule): hourly check-in at :34 (`trig_01SRzKhjqQDZWWfR6krcCifn`) plus an email check at :04 (`trig_01RboB5HqcNxpdXgKpAZU6YK`), both opening every thread in full.
 - Daily status email to the owner around 13:00 UTC, subject starting "Hunt Club Mesh status" (never "Grok Bot", which is reserved for AWS requests).
 - Commits authored as `Overcastly-AI <282247350+Overcastly-AI@users.noreply.github.com>`.
 

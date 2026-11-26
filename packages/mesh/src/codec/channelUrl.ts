@@ -96,8 +96,33 @@ export interface JoinLink {
   target: JoinTarget;
 }
 
-/** `huntclub://join?cs=<base64url>&party=<id>` or `...&club=<id>&invite=<token>`. */
-export function encodeJoinUrl(link: JoinLink): string {
+/**
+ * Hosts that serve the web join page (and, later, the iOS/Android universal
+ * link) at JOIN_WEB_PATH. First entry is the default for new links.
+ * TODO(backlog): the production host is not decided yet. Add it here (as
+ * the first entry) once chosen; until then QR codes default to the app
+ * form, and the web form only works on the dev domain.
+ */
+export const JOIN_WEB_HOSTS: readonly string[] = ['huntclub-dev.jaycobjones.com'];
+export const JOIN_WEB_PATH = '/join';
+
+/**
+ * - `app`: `huntclub://join?cs=…&party=…` (opens the app directly).
+ * - `web`: `https://<host>/join#cs=…&party=…` (works in any camera app; the
+ *   web page hands over to the app or the store). The parameters go in the
+ *   URL fragment, which browsers never send to the server, so the channel
+ *   key stays out of server and CDN logs.
+ */
+export type JoinLinkForm = 'app' | 'web';
+
+/**
+ * Builds the join link a QR code carries. The single builder for the app
+ * and the web admin. The link contains the channel key: never log it.
+ */
+export function encodeJoinUrl(
+  link: JoinLink,
+  opts: { form?: JoinLinkForm; host?: string } = {},
+): string {
   const params: [string, string][] = [['cs', base64UrlEncode(encodeChannelSet(link.channelSet))]];
   if (link.target.kind === 'party') {
     if (!link.target.partyId) throw new ChannelUrlError('Party id is required');
@@ -107,15 +132,30 @@ export function encodeJoinUrl(link: JoinLink): string {
       throw new ChannelUrlError('Club id and invite are required');
     params.push(['club', link.target.clubId], ['invite', link.target.inviteToken]);
   }
-  return `${JOIN_URL_PREFIX}?${params.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&')}`;
+  const encoded = params.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+  if ((opts.form ?? 'app') === 'app') return `${JOIN_URL_PREFIX}?${encoded}`;
+  const host = (opts.host ?? JOIN_WEB_HOSTS[0]!).toLowerCase();
+  if (!JOIN_WEB_HOSTS.includes(host)) throw new ChannelUrlError('Unknown join link host');
+  return `https://${host}${JOIN_WEB_PATH}#${encoded}`;
 }
 
+/**
+ * Parses a join link in either form (app scheme or https web link), with
+ * the parameters in the query or the fragment. The single parser for the
+ * app, the web page and tests.
+ */
 export function decodeJoinUrl(url: string): JoinLink {
   const trimmed = url.trim();
-  const q = trimmed.indexOf('?');
-  const base = (q < 0 ? trimmed : trimmed.slice(0, q)).replace(/\/+$/, '').toLowerCase();
-  if (base !== JOIN_URL_PREFIX || q < 0) throw new ChannelUrlError('Not a Hunt Club join link');
-  const params = parseQuery(trimmed.slice(q + 1).split('#')[0]!);
+  const hashAt = trimmed.indexOf('#');
+  const beforeHash = hashAt < 0 ? trimmed : trimmed.slice(0, hashAt);
+  const fragment = hashAt < 0 ? '' : trimmed.slice(hashAt + 1);
+  const q = beforeHash.indexOf('?');
+  const base = (q < 0 ? beforeHash : beforeHash.slice(0, q)).replace(/\/+$/, '');
+  const query = q < 0 ? '' : beforeHash.slice(q + 1);
+  if (!isJoinBase(base)) throw new ChannelUrlError('Not a Hunt Club join link');
+
+  const params = parseQuery(query);
+  for (const [k, v] of parseQuery(fragment)) params.set(k, v);
   const cs = params.get('cs');
   if (!cs) throw new ChannelUrlError('Join link has no channel data');
   const channelSet = decodeChannelSetParam(cs);
@@ -126,6 +166,13 @@ export function decodeJoinUrl(url: string): JoinLink {
   if (club && invite)
     return { channelSet, target: { kind: 'club', clubId: club, inviteToken: invite } };
   throw new ChannelUrlError('Join link has no party or club');
+}
+
+function isJoinBase(base: string): boolean {
+  const lower = base.toLowerCase();
+  if (lower === JOIN_URL_PREFIX) return true;
+  const m = /^https:\/\/([^/:?#]+)(\/.*)?$/.exec(lower);
+  return !!m && JOIN_WEB_HOSTS.includes(m[1]!) && (m[2] ?? '') === JOIN_WEB_PATH;
 }
 
 /** Tiny query parser (React Native's URL/URLSearchParams support is incomplete). */
