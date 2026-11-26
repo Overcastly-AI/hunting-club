@@ -22,10 +22,7 @@ export const WEB_DOMAINS = {
   dev: 'huntclub-dev.jaycobjones.com',
 } as const;
 
-/**
- * Privacy and Terms pages, linked from the web sign-in footer. Placeholders: the pages
- * themselves do not exist yet, so these paths show Page not found until they do.
- */
+/** Privacy and Terms pages (copy in ./legal), linked from the web sign-in footer. */
 export const LEGAL_PATHS = { privacy: '/privacy', terms: '/terms' } as const;
 
 /** Path of the join page that club and party invite links open. */
@@ -45,8 +42,12 @@ export const CHECKOUT_RETURN_PATHS = {
 } as const;
 
 /**
- * Real (non-hash) paths the web page answers on its own domain: the join fallback and
- * the Checkout return pages. CloudFront serves index.html for exactly these; the
- * admin pages use hash routes and need no rewrite.
+ * Real (non-hash) paths the web page answers on its own domain, with no sign-in: the join
+ * fallback, the Checkout return pages and Privacy and Terms. CloudFront serves index.html
+ * for every page path; the admin pages use hash routes.
  */
-export const WEB_PAGE_PATHS = [JOIN_PATH, ...Object.values(CHECKOUT_RETURN_PATHS)] as const;
+export const WEB_PAGE_PATHS = [
+  JOIN_PATH,
+  ...Object.values(CHECKOUT_RETURN_PATHS),
+  ...Object.values(LEGAL_PATHS),
+] as const;

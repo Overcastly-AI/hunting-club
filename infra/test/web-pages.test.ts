@@ -1,4 +1,9 @@
-import { CHECKOUT_RETURN_PATHS, JOIN_PATH, WEB_PAGE_PATHS } from '@huntclub/shared/app';
+import {
+  CHECKOUT_RETURN_PATHS,
+  JOIN_PATH,
+  LEGAL_PATHS,
+  WEB_PAGE_PATHS,
+} from '@huntclub/shared/app';
 import { MAP_PACKS_PREFIX } from '@huntclub/shared/maps';
 import { robotsTxt, WEB_PAGE_OBJECT, webPageRewriteSource } from '../src/web-pages';
 
@@ -11,11 +16,13 @@ function rewrite(uri: string): string {
 }
 
 describe('web page rewrite (CloudFront Function)', () => {
-  it('serves index.html for the join and Checkout return paths', () => {
+  it('serves index.html for the join, Checkout return, Privacy and Terms paths', () => {
     expect(WEB_PAGE_PATHS).toEqual([
       JOIN_PATH,
       CHECKOUT_RETURN_PATHS.success,
       CHECKOUT_RETURN_PATHS.cancel,
+      LEGAL_PATHS.privacy,
+      LEGAL_PATHS.terms,
     ]);
     for (const path of WEB_PAGE_PATHS) {
       expect(rewrite(path)).toBe(WEB_PAGE_OBJECT);
