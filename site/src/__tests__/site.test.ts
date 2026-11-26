@@ -6,16 +6,21 @@ import {
   MIN_UI_CONTRAST,
 } from '@huntclub/design';
 import { SAFETY_NOTE } from '@huntclub/shared';
-import { renderPage } from '../render';
+import { renderNotFound, renderPage } from '../render';
 import {
   canonicalUrl,
   FOOTER_LINKS,
   GET_THE_APP,
+  HASH_FORWARD_SCRIPT,
   NAV_LINKS,
+  NOINDEX_PATHS,
+  NOT_FOUND_PAGE,
   outputFile,
+  REDIRECTS,
   ROUTES,
   SIGN_IN,
   SITE_ORIGIN,
+  sitemapXml,
 } from '../routes';
 import { MESHTASTIC_ATTRIBUTION } from '../Shell';
 import { siteCss } from '../styles';
@@ -23,6 +28,12 @@ import { siteCss } from '../styles';
 const FONT = '/assets/Archivo-Latin-test.woff2';
 const assets = { fontUrl: FONT, css: siteCss(FONT) };
 const pages = ROUTES.map((r) => ({ route: r, html: renderPage(r.path, assets) }));
+const notFound = renderNotFound(assets);
+/** Every HTML file the site builds: the registered pages and 404.html. */
+const allPages = [
+  ...pages.map((p) => ({ name: p.route.path, html: p.html })),
+  { name: '404.html', html: notFound },
+];
 const count = (html: string, pattern: RegExp) => (html.match(pattern) ?? []).length;
 /** Visible text only (no tags or inline CSS). */
 const textOf = (html: string) =>
@@ -63,21 +74,26 @@ describe.each(pages)('page $route.path', ({ route, html }) => {
     }
   });
 
-  it('ships no JavaScript (no scripts, no analytics)', () => {
-    expect(count(html, /<script/gi)).toBe(0);
+  it('ships no JavaScript except the old-bookmark forward on the home page (no analytics)', () => {
+    const scripts = html.match(/<script>[\s\S]*?<\/script>/g) ?? [];
+    expect(scripts).toEqual(route.path === '/' ? [`<script>${HASH_FORWARD_SCRIPT}</script>`] : []);
+    expect(count(html, /<script/gi)).toBe(scripts.length);
   });
+});
 
+describe.each(allPages)('$name', ({ html }) => {
   it('preloads the font and has a skip link to the main content', () => {
     expect(html).toContain(`<link rel="preload" as="font" type="font/woff2" href="${FONT}"`);
     expect(html).toContain('<a class="skip-link" href="#main">');
     expect(html).toContain('<main id="main">');
+    expect(count(html, /<h1[\s>]/g)).toBe(1);
   });
 
   it('says 911 only in the footer safety note, and credits Meshtastic', () => {
     const footer = html.slice(html.indexOf('<footer'));
     expect(count(textOf(html), /911/g)).toBe(1);
     expect(footer).toContain(SAFETY_NOTE);
-    expect(footer).toContain(MESHTASTIC_ATTRIBUTION.replace('®', '®'));
+    expect(footer).toContain(MESHTASTIC_ATTRIBUTION);
   });
 
   it('makes no claims the product cannot back', () => {
@@ -85,6 +101,46 @@ describe.each(pages)('page $route.path', ({ route, html }) => {
     expect(text).not.toMatch(/shooting hours|night mode|SOS|★|stars?\b|rating|review/i);
     // No range numbers (distances): they depend on terrain and radio.
     expect(text).not.toMatch(/\d+(\.\d+)?\s?(mi|mile|miles|km|kilometers?)\b/i);
+  });
+});
+
+describe('404 page', () => {
+  it('is noindex with no canonical URL, and offers a way home and to sign in', () => {
+    expect(notFound).toContain('<meta name="robots" content="noindex"/>');
+    expect(notFound).not.toContain('rel="canonical"');
+    expect(notFound).toContain(`<title>${NOT_FOUND_PAGE.title}</title>`);
+    expect(notFound).toContain('<a class="button primary" href="/">Go to the home page</a>');
+    expect(notFound).toContain(`href="${SIGN_IN.href}"`);
+    expect(count(notFound, /<script/gi)).toBe(0);
+  });
+});
+
+describe('hosting data', () => {
+  it('lists every registered page in sitemap.xml, and nothing that is noindex', () => {
+    const xml = sitemapXml('2026-11-26');
+    for (const route of ROUTES) {
+      expect(xml).toContain(`<loc>${canonicalUrl(route.path)}</loc><lastmod>2026-11-26</lastmod>`);
+    }
+    for (const path of NOINDEX_PATHS) expect(xml).not.toContain(`${SITE_ORIGIN}${path}<`);
+  });
+
+  it('redirects only to registered pages or the admin, and never from one', () => {
+    const paths = new Set<string>(ROUTES.map((r) => r.path));
+    for (const [from, to] of Object.entries(REDIRECTS)) {
+      expect(paths.has(from)).toBe(false);
+      expect(paths.has(to) || to === SIGN_IN.href).toBe(true);
+    }
+  });
+
+  it('forwards only #/ admin bookmarks to the admin', () => {
+    const forward = (hash: string) => {
+      let to: string | undefined;
+      new Function('location', HASH_FORWARD_SCRIPT)({ hash, replace: (u: string) => (to = u) });
+      return to;
+    };
+    expect(forward('#/roster')).toBe(`${SIGN_IN.href}#/roster`);
+    expect(forward('#features')).toBeUndefined();
+    expect(forward('')).toBeUndefined();
   });
 });
 

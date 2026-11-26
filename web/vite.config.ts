@@ -1,8 +1,11 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
+import { ADMIN_PATH } from '@huntclub/shared/app';
 import { siteHead } from './site-head';
 
 export default defineConfig({
+  // Served under /app/ (the public site is at the root): asset URLs are /app/assets/….
+  base: ADMIN_PATH,
   plugins: [react(), siteHead()],
   build: { outDir: 'dist', emptyOutDir: true },
   test: {

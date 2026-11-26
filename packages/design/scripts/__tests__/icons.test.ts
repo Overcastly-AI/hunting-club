@@ -1,5 +1,5 @@
 // The committed app icons and web favicon.ico must be exactly what the mark renders to.
-// If this fails, run `npm run icons -w @huntclub/design` and commit app/assets and web/public.
+// If this fails, run `npm run icons -w @huntclub/design` and commit app/assets and site/public.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { APP_ICONS, FAVICON_ICO } from '../../src/logo';
@@ -20,7 +20,7 @@ describe.each(APP_ICONS)('$file', (icon) => {
 
 describe(FAVICON_ICO.file, () => {
   const committed = readFileSync(
-    join(__dirname, '..', '..', '..', '..', 'web', 'public', FAVICON_ICO.file),
+    join(__dirname, '..', '..', '..', '..', 'site', 'public', FAVICON_ICO.file),
   );
 
   it('is in sync with the logo mark', () => {

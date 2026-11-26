@@ -1,5 +1,6 @@
 import { APP_NAME } from '@huntclub/shared';
-import { ADMIN_PATH, GET_THE_APP, HOME_SECTIONS } from '../routes';
+import { ADMIN_PATH } from '@huntclub/shared/app';
+import { GET_THE_APP, HOME_SECTIONS } from '../routes';
 
 const FEATURES = [
   {

@@ -22,6 +22,12 @@ export const WEB_DOMAINS = {
   dev: 'huntclub-dev.jaycobjones.com',
 } as const;
 
+/**
+ * Where the club admin (the web app) is served: its Vite base and the public site's
+ * "Sign in" link. Its pages are hash routes under it, e.g. /app/#/roster.
+ */
+export const ADMIN_PATH = '/app/';
+
 /** Privacy and Terms pages (copy in ./legal), linked from the web sign-in footer. */
 export const LEGAL_PATHS = { privacy: '/privacy', terms: '/terms' } as const;
 

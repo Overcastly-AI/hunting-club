@@ -6,6 +6,7 @@ import {
   JOIN_WEB_PATH,
 } from '@huntclub/mesh';
 import {
+  ADMIN_PATH,
   APP_DESCRIPTION,
   APP_NAME,
   CHECKOUT_RETURN_PATHS,
@@ -511,15 +512,15 @@ describe('pages on their own paths (no sign-in)', () => {
     const { unmount } = render(<Root {...services} location={at(CHECKOUT_RETURN_PATHS.success)} />);
     expect(await screen.findByRole('heading', { name: 'Payment received' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to club admin' }).getAttribute('href')).toBe(
-      '/#/billing',
+      `${ADMIN_PATH}#/billing`,
     );
     unmount();
     render(<Root {...services} location={at(CHECKOUT_RETURN_PATHS.cancel)} />);
     expect(await screen.findByText(/Nothing was charged/)).toBeTruthy();
   });
 
-  it('shows the club admin at / and /index.html', async () => {
-    for (const path of ['/', '/index.html']) {
+  it('shows the club admin at /app/, /app and /app/index.html', async () => {
+    for (const path of [ADMIN_PATH, '/app', '/app/index.html']) {
       const { unmount } = render(<Root {...services} location={at(path)} />);
       expect(await screen.findByText(/not available yet/)).toBeTruthy();
       unmount();
@@ -545,7 +546,9 @@ describe('pages on their own paths (no sign-in)', () => {
   it('shows Page not found on any other path, with a way back to sign in', async () => {
     render(<Root {...services} location={at('/nope/deeper')} />);
     expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Back to sign in' }).getAttribute('href')).toBe('/');
+    expect(screen.getByRole('link', { name: 'Back to sign in' }).getAttribute('href')).toBe(
+      ADMIN_PATH,
+    );
     expect(document.title).toBe(pageTitle('Page not found'));
   });
 });

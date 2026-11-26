@@ -1,7 +1,7 @@
 /**
  * Renders the app's icon and splash PNGs (APP_ICONS) and the web page's favicon.ico
  * (FAVICON_ICO) from the logo mark with resvg. Node only (dev tool):
- * `npm run icons -w @huntclub/design` rewrites app/assets and web/public.
+ * `npm run icons -w @huntclub/design` rewrites app/assets and site/public.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -13,8 +13,8 @@ export type AppIcon = (typeof APP_ICONS)[number];
 /** app/assets, from this package's directory (npm runs scripts there). */
 export const APP_ASSETS_DIR = join(process.cwd(), '..', '..', 'app', 'assets');
 
-/** web/public: Vite copies it to the site root unchanged. */
-export const WEB_PUBLIC_DIR = join(process.cwd(), '..', '..', 'web', 'public');
+/** site/public: the public site serves it from the root unchanged. */
+export const SITE_PUBLIC_DIR = join(process.cwd(), '..', '..', 'site', 'public');
 
 function renderPng(mark: LogoMarkOptions, size: number): Buffer {
   return Buffer.from(
@@ -61,7 +61,7 @@ if (require.main === module) {
     writeFileSync(join(APP_ASSETS_DIR, icon.file), renderAppIcon(icon));
     console.log(`${icon.file} ${icon.size}x${icon.size}`);
   }
-  mkdirSync(WEB_PUBLIC_DIR, { recursive: true });
-  writeFileSync(join(WEB_PUBLIC_DIR, FAVICON_ICO.file), renderFaviconIco());
-  console.log(`web/public/${FAVICON_ICO.file} ${FAVICON_ICO.sizes.join(', ')}`);
+  mkdirSync(SITE_PUBLIC_DIR, { recursive: true });
+  writeFileSync(join(SITE_PUBLIC_DIR, FAVICON_ICO.file), renderFaviconIco());
+  console.log(`site/public/${FAVICON_ICO.file} ${FAVICON_ICO.sizes.join(', ')}`);
 }

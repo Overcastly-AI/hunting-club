@@ -1,3 +1,4 @@
+import { ADMIN_PATH } from '@huntclub/shared/app';
 import { LEGAL_DRAFT_NOTICE, type LegalDoc } from '@huntclub/shared';
 import { useDocumentTitle } from '../title';
 
@@ -20,7 +21,7 @@ export function Legal(props: { doc: LegalDoc }) {
           ))}
         </section>
       ))}
-      <a className="button" href="/">
+      <a className="button" href={ADMIN_PATH}>
         Back to sign in
       </a>
     </article>

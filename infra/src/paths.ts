@@ -18,3 +18,6 @@ export const lambdaEntry = (name: string) => join(infraRoot(), 'lambda', name, '
 
 /** The built web admin page. `cdk synth` needs it: `npm run build -w @huntclub/web`. */
 export const webDistPath = () => join(infraRoot(), '..', 'web', 'dist');
+
+/** The built public site. `cdk synth` needs it: `npm run build -w @huntclub/site`. */
+export const siteDistPath = () => join(infraRoot(), '..', 'site', 'dist');
