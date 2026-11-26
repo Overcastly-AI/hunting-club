@@ -1,6 +1,6 @@
 # Infra (AWS CDK)
 
-Code only. Agents never deploy. The owner's operator runs `cdk deploy` after reviewing `synth` and `diff`.
+Code only. Agents never deploy. Dev is deployed by the owner from GitHub Actions (below); nothing here holds AWS credentials.
 
 | Path                            | What                                                                                                                                                                                                           |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -31,3 +31,19 @@ Select an environment with `-c env=<name>` (default `dev`).
 - Bootstrap the account once: `cdk bootstrap aws://054825383623/us-east-1`.
 - Create the secrets as SSM Parameter Store SecureString parameters (standard tier, default `aws/ssm` key; values never in the repo): `/hunt-club-mesh/dev/stripe-webhook-secret`, `/hunt-club-mesh/dev/stripe-api-key`. Not before Milestone 9; the stubs work without them.
 - Universal links: add the Apple Team ID and the Android signing SHA-256 fingerprints to `config/dev.ts`. Until then no `.well-known` files are published.
+
+## Deploying dev
+
+`.github/workflows/deploy-dev.yml` (**Actions → Deploy dev → Run workflow**, from `main` only) deploys `HuntClub-dev-Web` and `HuntClub-dev-Api`:
+
+1. `npm ci`, then root `npm run synth` (builds `web/dist`, synthesizes `infra/cdk.out`).
+2. AWS credentials through GitHub OIDC (`aws-actions/configure-aws-credentials`, pinned to a commit). No AWS keys or secrets are stored in GitHub.
+3. `cdk deploy HuntClub-dev-Web HuntClub-dev-Api --app cdk.out --require-approval never` (exactly the synthesized assembly).
+4. Stack outputs (`ClubApiUrl`, `StripeWebhookUrl`) printed to the run's job summary.
+
+One-time setup by the owner (GitHub repo settings):
+
+- **Environment** `dev` (Settings → Environments → New environment). Optionally add required reviewers and limit deployment branches to `main`.
+- **Variable** `AWS_DEPLOY_ROLE_ARN` = the ARN of the IAM role `hunt-club-mesh-github-deploy-dev` (Settings → Secrets and variables → Actions → Variables; a repository or `dev` environment variable). It is not a secret.
+
+The role (created outside this repo by the owner's operator) trusts the GitHub OIDC provider for `repo:Overcastly-AI/hunting-club:environment:dev` only, and may only assume the CDK bootstrap roles (`cdk-hnb659fds-*`). After a first deploy, copy `ClubApiUrl` from the summary into `CLOUD_ENVIRONMENTS.dev.clubApiUrl` in `@huntclub/shared/cloud`.
