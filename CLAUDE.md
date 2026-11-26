@@ -17,8 +17,8 @@ Source of truth: docs/SPEC.md. Read it before starting any milestone.
 - Stands are optional: every feature must work for hunters at a spot or on the move.
 - Everything over the mesh is free forever; never paywall mesh or safety features.
 - Free users have no account and never call our backend.
-- Cloud: Supabase free plan + AWS pay-per-use only (Lambda, S3, CloudFront, EventBridge). No always-on compute.
-- Clubs are rows with club_id + RLS in one shared database, never per-club infrastructure.
+- Cloud: AWS pay-per-use only (Lambda Function URLs, S3, CloudFront, DynamoDB on-demand, Cognito, EventBridge). No always-on compute. Secrets in SSM Parameter Store SecureString (free), never Secrets Manager.
+- Clubs are items in ONE shared DynamoDB table (owned by Grok Bot's stack `HuntClubMeshDataDev`; the CDK only references it), never per-club infrastructure. Permissions are enforced in the club API (`packages/club-data` authz).
 - Never log channel keys or message bodies.
 
 ## DRY (owner rule, no shortcuts)
@@ -41,7 +41,7 @@ Source of truth: docs/SPEC.md. Read it before starting any milestone.
 
 ## Database (coordinator)
 - Owner rule: the coordinator makes database decisions and proceeds without asking the owner.
-- Supabase project `desk` is the owner's trading desk and must stay: never modify, pause or delete its existing objects or settings. Hunt club data lives only in its own schema(s).
+- The club database is DynamoDB + Cognito (not Supabase). Supabase project `desk` is the owner's trading desk: never touch it.
 
 ## Email (coordinator)
 - Always read full messages: after any Gmail search, open every relevant thread with `get_thread` and read every message. Search results are previews (oldest messages only, stale message counts) and miss replies. Never conclude "no reply" from a search result alone.
