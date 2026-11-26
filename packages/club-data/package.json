@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "tsc --noEmit -p tsconfig.json",
     "test": "jest",
-    "test:db": "jest -c jest.db.config.cjs"
+    "test:db": "jest -c jest.db.config.cjs",
+    "seed:dev": "node ../../scripts/run-ts.mjs src/seed/cli.ts"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1178.0",
@@ -26,6 +27,7 @@
     "@types/node": "^22.20.7",
     "jest": "~30.5.2",
     "ts-jest": "^29.4.15",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "esbuild": "0.28.2"
   }
 }

@@ -99,8 +99,25 @@ export function createCognitoAuth(options: CognitoAuthOptions) {
   };
 
   return {
-    /** Emails a one-time code. Unknown emails are signed up (Cognito sends the code). */
+    /**
+     * Emails a one-time code. Tries SignUp first: the pools hide whether a user exists
+     * (PreventUserExistenceErrors), so InitiateAuth answers an unknown email with a normal
+     * looking challenge and sends nothing, but SignUp still says UsernameExistsException.
+     * - New email: SignUp emails the confirmation code.
+     * - Existing confirmed user: InitiateAuth USER_AUTH with EMAIL_OTP.
+     * - Existing user who never confirmed: the confirmation code is sent again.
+     */
     async requestCode(email: string): Promise<CodeChallenge> {
+      try {
+        await call('SignUp', {
+          Username: email,
+          UserAttributes: [{ Name: 'email', Value: email }],
+        });
+        return { kind: 'signUp', email };
+      } catch (error) {
+        if (!(error instanceof CognitoAuthError) || error.awsType !== 'UsernameExistsException')
+          throw error;
+      }
       try {
         const out = await call<InitiateResponse>('InitiateAuth', {
           AuthFlow: 'USER_AUTH',
@@ -111,12 +128,9 @@ export function createCognitoAuth(options: CognitoAuthOptions) {
         }
         return { kind: 'signIn', email, session: out.Session };
       } catch (error) {
-        if (!(error instanceof CognitoAuthError) || error.awsType !== 'UserNotFoundException')
+        if (!(error instanceof CognitoAuthError) || error.awsType !== 'UserNotConfirmedException')
           throw error;
-        await call('SignUp', {
-          Username: email,
-          UserAttributes: [{ Name: 'email', Value: email }],
-        });
+        await call('ResendConfirmationCode', { Username: email });
         return { kind: 'signUp', email };
       }
     },

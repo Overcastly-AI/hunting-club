@@ -19,6 +19,7 @@ const target = (c: { headers: Record<string, string> }) => c.headers['x-amz-targ
 
 it('signs in an existing user with an emailed code (USER_AUTH, EMAIL_OTP)', async () => {
   const { auth: a, calls } = auth([
+    { status: 400, body: { __type: 'UsernameExistsException' } },
     { status: 200, body: { ChallengeName: 'EMAIL_OTP', Session: 's1' } },
     { status: 200, body: { AuthenticationResult: result } },
   ]);
@@ -29,8 +30,8 @@ it('signs in an existing user with an emailed code (USER_AUTH, EMAIL_OTP)', asyn
     refreshToken: 'refresh',
     expiresAt: NOW + 3_600_000,
   });
-  expect(calls.map(target)).toEqual(['InitiateAuth', 'RespondToAuthChallenge']);
-  expect(calls[0]).toMatchObject({
+  expect(calls.map(target)).toEqual(['SignUp', 'InitiateAuth', 'RespondToAuthChallenge']);
+  expect(calls[1]).toMatchObject({
     url: 'https://cognito-idp.us-east-1.amazonaws.com/',
     body: {
       ClientId: 'app',
@@ -38,7 +39,7 @@ it('signs in an existing user with an emailed code (USER_AUTH, EMAIL_OTP)', asyn
       AuthParameters: { USERNAME: 'max@example.com', PREFERRED_CHALLENGE: 'EMAIL_OTP' },
     },
   });
-  expect(calls[1]!.body).toMatchObject({
+  expect(calls[2]!.body).toMatchObject({
     ChallengeName: 'EMAIL_OTP',
     Session: 's1',
     ChallengeResponses: { EMAIL_OTP_CODE: '123456' },
@@ -46,8 +47,8 @@ it('signs in an existing user with an emailed code (USER_AUTH, EMAIL_OTP)', asyn
 });
 
 it('signs up a new email, then signs in with the confirmation session', async () => {
+  // The pools hide unknown users (PreventUserExistenceErrors), so SignUp goes first.
   const { auth: a, calls } = auth([
-    { status: 400, body: { __type: 'UserNotFoundException' } },
     { status: 200, body: { UserSub: 'u1' } },
     { status: 200, body: { Session: 'confirmed' } },
     { status: 200, body: { AuthenticationResult: result } },
@@ -55,8 +56,25 @@ it('signs up a new email, then signs in with the confirmation session', async ()
   const challenge = await a.requestCode('new@example.com');
   expect(challenge).toEqual({ kind: 'signUp', email: 'new@example.com' });
   await a.confirmCode(challenge, '654321');
-  expect(calls.map(target)).toEqual(['InitiateAuth', 'SignUp', 'ConfirmSignUp', 'InitiateAuth']);
-  expect(calls[3]!.body).toMatchObject({ Session: 'confirmed', AuthFlow: 'USER_AUTH' });
+  expect(calls.map(target)).toEqual(['SignUp', 'ConfirmSignUp', 'InitiateAuth']);
+  expect(calls[0]!.body).toMatchObject({
+    Username: 'new@example.com',
+    UserAttributes: [{ Name: 'email', Value: 'new@example.com' }],
+  });
+  expect(calls[2]!.body).toMatchObject({ Session: 'confirmed', AuthFlow: 'USER_AUTH' });
+});
+
+it('resends the confirmation code to a user who signed up but never confirmed', async () => {
+  const { auth: a, calls } = auth([
+    { status: 400, body: { __type: 'UsernameExistsException' } },
+    { status: 400, body: { __type: 'UserNotConfirmedException' } },
+    { status: 200, body: {} },
+  ]);
+  expect(await a.requestCode('half@example.com')).toEqual({
+    kind: 'signUp',
+    email: 'half@example.com',
+  });
+  expect(calls.map(target)).toEqual(['SignUp', 'InitiateAuth', 'ResendConfirmationCode']);
 });
 
 it('maps Cognito errors to what the screen says', async () => {
