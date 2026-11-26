@@ -5,8 +5,8 @@ import { GetCommand } from '@aws-sdk/lib-dynamodb';
 import { MEMBER_ROLES, STAND_TYPES } from '@huntclub/shared';
 import * as api from '../index';
 import { ANONYMOUS, SERVICE, can } from '../index';
-import { ATTR, keys, ttlFor } from '../items';
-import { GSIS, TABLE_KEYS, TTL_ATTRIBUTE } from '../keys';
+import { ATTR, epochSeconds, keys } from '../items';
+import { GSIS, TABLE_KEYS, TTL_ATTRIBUTE } from '../table';
 import { World, expectCode, keyOf } from '../testing/world';
 
 let w: World;
@@ -33,14 +33,14 @@ describe('structure', () => {
     }
   });
 
-  it('the table has exactly the keys and indexes from keys.ts (was: tables_are)', async () => {
+  it('the table has exactly the keys and indexes from table.ts (was: tables_are)', async () => {
     const { Table } = await w.raw.send(new DescribeTableCommand({ TableName: w.tableName }));
     expect(Table?.KeySchema?.map((k) => k.AttributeName)).toEqual([
-      TABLE_KEYS.partitionKey.name,
-      TABLE_KEYS.sortKey.name,
+      TABLE_KEYS.partitionKey,
+      TABLE_KEYS.sortKey,
     ]);
     expect(Table?.GlobalSecondaryIndexes?.map((g) => g.IndexName)).toEqual(
-      GSIS.map((g) => g.indexName),
+      Object.values(GSIS).map((g) => g.indexName),
     );
   });
 
@@ -230,7 +230,11 @@ describe('validation', () => {
         new GetCommand({ TableName: w.tableName, Key: keys.inClub(oak(), 'member', w.user(user)) }),
       );
     const gus = (await get('gus')).Item!;
-    expect(gus[TTL_ATTRIBUTE]).toBe(ttlFor(String(gus.expiresAt)));
+    const [gusMember] = (await w.data.listMembers(SERVICE, oak())).filter(
+      (m) => m.displayName === 'gus',
+    );
+    expect(gus[TTL_ATTRIBUTE]).toBe(epochSeconds(gusMember!.expiresAt!));
+    expect(typeof gus[TTL_ATTRIBUTE]).toBe('number');
     expect((await get('max')).Item![TTL_ATTRIBUTE]).toBeUndefined();
   });
 });
@@ -243,5 +247,6 @@ describe('cascade', () => {
     await expectCode(w.data.listMembers(w.as('pat'), pine()), 'forbidden');
     expect(await w.data.listMembers(SERVICE, pine())).toEqual([]);
     expect(await w.data.listStands(SERVICE, pine())).toEqual([]);
+    await expectCode(w.data.getSubscription(SERVICE, pine()), 'not_found');
   });
 });

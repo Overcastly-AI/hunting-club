@@ -1,30 +1,34 @@
-import type { CreateTableCommandInput } from '@aws-sdk/client-dynamodb';
-import { BILLING_MODE, GSIS, TABLE_KEYS } from './keys';
+// The club table's key schema: the single source for infra (IAM, Lambda env) and the
+// club API. The live table `hunt-club-mesh-dev` is owned by the CloudFormation stack
+// HuntClubMeshDataDev (built outside this repo); key names are immutable there, so these
+// strings must match it exactly. The club data layer builds its item types on these.
+
+/** Primary key attributes (both strings). */
+export const TABLE_KEYS = {
+  partitionKey: 'PK',
+  sortKey: 'SK',
+} as const;
+
+/** Global secondary indexes (projection ALL, string keys). */
+export const GSIS = {
+  /** Generic inverted / lookup index (e.g. a user's memberships across clubs). */
+  gsi1: { indexName: 'GSI1', partitionKey: 'GSI1PK', sortKey: 'GSI1SK' },
+} as const;
+
+/** Epoch-seconds attribute DynamoDB TTL uses to delete expired items (invites, guest passes). */
+export const TTL_ATTRIBUTE = 'expiresAt';
 
 /**
- * CreateTable input derived from the table definition in keys.ts (the same data the
- * CDK stack uses). Used for DynamoDB Local in tests and local development.
+ * Partition-key prefixes that IAM policies match on. Billing items live in their own
+ * partitions so the Stripe webhook can be limited to them with `dynamodb:LeadingKeys`.
  */
-export function createTableInput(tableName: string): CreateTableCommandInput {
-  const keyAttributes = [TABLE_KEYS, ...GSIS].flatMap((k) => [k.partitionKey, k.sortKey]);
-  return {
-    TableName: tableName,
-    BillingMode: BILLING_MODE,
-    AttributeDefinitions: keyAttributes.map((a) => ({
-      AttributeName: a.name,
-      AttributeType: a.type,
-    })),
-    KeySchema: [
-      { AttributeName: TABLE_KEYS.partitionKey.name, KeyType: 'HASH' },
-      { AttributeName: TABLE_KEYS.sortKey.name, KeyType: 'RANGE' },
-    ],
-    GlobalSecondaryIndexes: GSIS.map((g) => ({
-      IndexName: g.indexName,
-      KeySchema: [
-        { AttributeName: g.partitionKey.name, KeyType: 'HASH' },
-        { AttributeName: g.sortKey.name, KeyType: 'RANGE' },
-      ],
-      Projection: { ProjectionType: g.projection },
-    })),
-  };
-}
+export const PARTITION_PREFIXES = {
+  subscription: 'SUBSCRIPTION#',
+  stripeEvent: 'STRIPE_EVENT#',
+} as const;
+
+/** Every key attribute above is a string ('S' in DynamoDB and CDK's AttributeType). */
+export const KEY_ATTRIBUTE_TYPE = 'S';
+
+/** Every GSI projects all attributes. */
+export const GSI_PROJECTION = 'ALL';

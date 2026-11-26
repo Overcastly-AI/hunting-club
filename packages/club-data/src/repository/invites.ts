@@ -27,17 +27,16 @@ import {
   type TxItem,
 } from '../db';
 import { ClubDataError } from '../errors';
-import { ATTR, gsi1Keys, keys, ttlFor } from '../items';
+import { ATTR, GSI1, gsi1Keys, keys, notExpired, withExpiry } from '../items';
 import { authorizeClub, fromItem, getEntity, getMember, notFound, validate } from './common';
-import { MEMBER_SLOT_FREE, memberItem } from './members';
+import { memberItem, memberSlotFree } from './members';
 import { seatChange } from './seats';
 
 function inviteItem(invite: Invite): Item {
   return {
     ...keys.invite(invite.token),
     ...gsi1Keys.clubInvite(invite.clubId, invite.id),
-    ...invite,
-    [ATTR.TTL]: ttlFor(invite.expiresAt),
+    ...withExpiry(invite),
   };
 }
 
@@ -75,7 +74,7 @@ export async function createInvite(
 
 const clubInviteItems = (ctx: Ctx, clubId: string, inviteId?: string) =>
   queryAll(ctx, {
-    IndexName: 'GSI1',
+    IndexName: GSI1,
     KeyConditionExpression: inviteId ? '#pk = :pk AND #sk = :sk' : '#pk = :pk',
     ExpressionAttributeNames: { '#pk': ATTR.GPK, ...(inviteId ? { '#sk': ATTR.GSK } : {}) },
     ExpressionAttributeValues: {
@@ -167,14 +166,14 @@ export async function redeemInvite(
     to: member.role,
     ...(plan.memberLimit !== undefined ? { seatLimit: plan.memberLimit } : {}),
   });
+  const unexpired = notExpired(ctx.now());
   const tx: TxItem[] = [
     {
       update: keys.invite(token),
       set: 'SET uses = uses + :one, updatedAt = :now',
-      condition:
-        'attribute_exists(#pk) AND expiresAt > :now AND (attribute_not_exists(maxUses) OR uses < maxUses)',
-      names: { '#pk': ATTR.PK },
-      values: { ':one': 1, ':now': now },
+      condition: `attribute_exists(#pk) AND ${unexpired.condition} AND (attribute_not_exists(maxUses) OR uses < maxUses)`,
+      names: { ...unexpired.names, '#pk': ATTR.PK },
+      values: { ...unexpired.values, ':one': 1, ':now': now },
     },
     {
       check: keys.subscription(clubId),
@@ -182,7 +181,7 @@ export async function redeemInvite(
       names: { '#status': 'status' },
       values: { ...statuses, ':planId': subscription.planId },
     },
-    { put: memberItem(member), condition: MEMBER_SLOT_FREE, values: { ':now': now } },
+    { put: memberItem(member), ...memberSlotFree(ctx.now()) },
     ...(seats ? [seats] : []),
   ];
   try {

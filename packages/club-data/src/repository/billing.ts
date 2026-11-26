@@ -15,16 +15,16 @@ import {
 } from '@huntclub/shared';
 import type { z } from 'zod';
 import type { Actor } from '../actor';
-import { type Ctx, EXISTS, NOT_EXISTS, put, queryAll, transact, TransactionFailed } from '../db';
+import { type Ctx, NOT_EXISTS, put, queryAll, transact, TransactionFailed } from '../db';
 import { ClubDataError } from '../errors';
-import { ATTR, gsi1Keys, keys } from '../items';
+import { ATTR, GSI1, gsi1Keys, keys } from '../items';
 import { PLACEHOLDER_PLANS } from '../plans';
 import { authorizeClub, authorizeService, fromItem, getEntity, notFound, validate } from './common';
 
 /** Active plans for everyone; the service also sees retired ones. */
 export async function listPlans(ctx: Ctx, actor: Actor): Promise<Plan[]> {
   const items = await queryAll(ctx, {
-    IndexName: 'GSI1',
+    IndexName: GSI1,
     KeyConditionExpression: '#pk = :pk',
     ExpressionAttributeNames: { '#pk': ATTR.GPK },
     ExpressionAttributeValues: { ':pk': gsi1Keys.plansPartition() },
@@ -84,6 +84,12 @@ export type ApplyStripeEventResult = 'applied' | 'duplicate';
  * id changes nothing and returns 'duplicate'. The webhook re-fetches the
  * subscription from Stripe for every event, so applying the latest state is correct
  * whatever order events arrive in.
+ *
+ * Every item it touches is in a billing partition (PARTITION_PREFIXES), because the
+ * webhook's IAM policy allows nothing else. So it cannot check that the club or plan
+ * exists: the club id comes from metadata our provisioning Lambda put on the Stripe
+ * subscription, and a subscription on an unknown plan admits no one (redeemInvite
+ * treats it as club_inactive).
  */
 export async function applyStripeEvent(
   ctx: Ctx,
@@ -114,14 +120,10 @@ export async function applyStripeEvent(
         condition: `${NOT_EXISTS} OR clubId = :clubId`,
         values: { ':clubId': sub.clubId },
       },
-      { check: keys.club(sub.clubId), condition: EXISTS },
-      { check: keys.plan(sub.planId), condition: EXISTS },
     ]);
   } catch (e) {
     if (!(e instanceof TransactionFailed)) throw e;
     if (e.failed.has(0)) return 'duplicate';
-    if (e.failed.has(3)) throw notFound();
-    if (e.failed.has(4)) throw new ClubDataError('invalid', 'unknown plan');
     throw new ClubDataError('conflict', 'Stripe subscription belongs to another club');
   }
   return 'applied';

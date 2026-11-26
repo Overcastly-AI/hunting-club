@@ -129,17 +129,9 @@ describe('Stripe events', () => {
     expect(await w.data.getStripeEvent(SERVICE, 'evt_fake')).toBeUndefined();
   });
 
-  // New with DynamoDB: the event record and the subscription commit together.
-  it('a failed apply records nothing, so Stripe can retry the event', async () => {
-    await expectCode(
-      w.data.applyStripeEvent(SERVICE, syncOak('evt_badplan', { planId: 'no_such_plan' })),
-      'invalid',
-    );
-    expect(await w.data.getStripeEvent(SERVICE, 'evt_badplan')).toBeUndefined();
-    expect((await w.data.getSubscription(SERVICE, oak())).planId).toBe('club_standard');
-  });
-
-  it('a Stripe subscription belongs to exactly one club', async () => {
+  // New with DynamoDB: the event record and the subscription commit together, and a
+  // failed apply records nothing, so Stripe's retry gets another chance.
+  it('a Stripe subscription belongs to exactly one club; a failed apply records nothing', async () => {
     await expectCode(
       w.data.applyStripeEvent(SERVICE, syncOak('evt_steal', { clubId: w.club('Pine Hollow') })),
       'conflict',

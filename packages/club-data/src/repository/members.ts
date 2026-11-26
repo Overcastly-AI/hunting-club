@@ -22,7 +22,7 @@ import {
   update,
 } from '../db';
 import { ClubDataError } from '../errors';
-import { ATTR, CLUB_COLLECTIONS, gsi1Keys, keys, ttlFor } from '../items';
+import { ATTR, CLUB_COLLECTIONS, gsi1Keys, keys, notExpired, withExpiry } from '../items';
 import { accessTo, authorizeClub, fromItem, getMember, notFound, validate } from './common';
 import { seatChange } from './seats';
 
@@ -31,13 +31,15 @@ export function memberItem(member: Member): Item {
   return {
     ...keys.inClub(member.clubId, 'member', member.userId),
     ...gsi1Keys.memberOfUser(member.userId, member.clubId),
-    ...member,
-    ...(member.expiresAt ? { [ATTR.TTL]: ttlFor(member.expiresAt) } : {}),
+    ...withExpiry(member),
   };
 }
 
 /** A membership slot is free when there is no item or only an expired guest pass. */
-export const MEMBER_SLOT_FREE = `${NOT_EXISTS} OR expiresAt <= :now`;
+export function memberSlotFree(now: Date) {
+  const active = notExpired(now);
+  return { ...active, condition: `${NOT_EXISTS} OR NOT ${active.condition}` };
+}
 
 /** Seat-counter failures in a roster transaction become these errors. */
 function rosterError(seatFailed: boolean, removingAdmin: boolean): ClubDataError {
@@ -73,7 +75,7 @@ export async function addMember(
   const seats = seatChange(clubId, { to: member.role });
   try {
     await transact(ctx, [
-      { put: memberItem(member), condition: MEMBER_SLOT_FREE, values: { ':now': now } },
+      { put: memberItem(member), ...memberSlotFree(ctx.now()) },
       ...(seats ? [seats] : [{ check: keys.club(clubId), condition: EXISTS } satisfies TxItem]),
     ]);
   } catch (e) {

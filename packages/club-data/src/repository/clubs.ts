@@ -26,7 +26,7 @@ import {
   TransactionFailed,
   update,
 } from '../db';
-import { ATTR, gsi1Keys, keys, type Key } from '../items';
+import { ATTR, GSI1, gsi1Keys, keys, type Key } from '../items';
 import { authorizeClub, authorizeService, fromItem, getEntity, notFound, validate } from './common';
 import { memberItem } from './members';
 import { SEAT_ATTRS, initialSeats } from './seats';
@@ -89,7 +89,7 @@ export async function listMyClubs(
 ): Promise<{ club: Club; membership: Member }[]> {
   const userId = requireUser(actor);
   const items = await queryAll(ctx, {
-    IndexName: 'GSI1',
+    IndexName: GSI1,
     KeyConditionExpression: '#pk = :pk',
     ExpressionAttributeNames: { '#pk': ATTR.GPK },
     ExpressionAttributeValues: { ':pk': gsi1Keys.userPartition(userId) },
@@ -137,18 +137,22 @@ export async function deleteClub(ctx: Ctx, actor: Actor, clubId: string): Promis
   });
   if (!owned.some((i) => i[ATTR.SK] === keys.club(clubId)[ATTR.SK])) throw notFound();
   const invites = await queryAll(ctx, {
-    IndexName: 'GSI1',
+    IndexName: GSI1,
     KeyConditionExpression: '#pk = :pk',
     ExpressionAttributeNames: { '#pk': ATTR.GPK },
     ExpressionAttributeValues: { ':pk': gsi1Keys.clubInvitesPartition(clubId) },
   });
-  const subscription = owned.find((i) => i[ATTR.SK] === keys.subscription(clubId)[ATTR.SK]);
-  const guards = subscription
-    ? [keys.stripeSubscription(String(subscription.stripeSubscriptionId))]
+  // Billing items live outside the club partition.
+  const subscription = await get(ctx, keys.subscription(clubId));
+  const billing = subscription
+    ? [
+        keys.subscription(clubId),
+        keys.stripeSubscription(String(subscription.stripeSubscriptionId)),
+      ]
     : [];
   const all: Key[] = [...owned, ...invites]
     .map((i): Key => ({ [ATTR.PK]: String(i[ATTR.PK]), [ATTR.SK]: String(i[ATTR.SK]) }))
-    .concat(guards);
+    .concat(billing);
   await batchDelete(ctx, all);
 }
 

@@ -7,14 +7,14 @@ writes it, and the authorization rules. Free users never reach any of this.
 Replaces the Postgres schema and RLS policies from PR #5 (`supabase/`, removed). Every rule those
 enforced is enforced here and tested on DynamoDB Local (mapping below).
 
-| File                   | What                                                                                                                                                                         |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/keys.ts`          | Table definition as data: `TABLE_KEYS`, `GSIS`, `TTL_ATTRIBUTE`, `BILLING_MODE`. The CDK stack imports it (`@huntclub/club-data/keys`); tests create the same table from it. |
-| `src/items.ts`         | How each entity is keyed (the layout below).                                                                                                                                 |
-| `src/authz.ts`         | Who may do what: one policy table, used by every operation.                                                                                                                  |
-| `src/repository/`      | Operations per entity. Every write has a condition expression; multi-item rules use one `TransactWriteItems`.                                                                |
-| `src/plans.ts`         | **Placeholder** plans (member limit 50) until the owner decides limits (SPEC open decision).                                                                                 |
-| `src/testing/world.ts` | Test fixtures (two seeded clubs, users by name, a controllable clock).                                                                                                       |
+| File                   | What                                                                                                                                                                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/table.ts`         | Key names of the live table `hunt-club-mesh-dev` (`TABLE_KEYS`, `GSIS`, `TTL_ATTRIBUTE`, `PARTITION_PREFIXES`): the single source infra and this package import. `src/localTable.ts` derives the DynamoDB Local table from it. |
+| `src/items.ts`         | How each entity is keyed (the layout below).                                                                                                                                                                                   |
+| `src/authz.ts`         | Who may do what: one policy table, used by every operation.                                                                                                                                                                    |
+| `src/repository/`      | Operations per entity. Every write has a condition expression; multi-item rules use one `TransactWriteItems`.                                                                                                                  |
+| `src/plans.ts`         | **Placeholder** plans (member limit 50) until the owner decides limits (SPEC open decision).                                                                                                                                   |
+| `src/testing/world.ts` | Test fixtures (two seeded clubs, users by name, a controllable clock).                                                                                                                                                         |
 
 Entity shapes, enums and validation rules come from `@huntclub/shared` (zod schemas), the single
 source for the app, web admin and Lambdas.
@@ -50,24 +50,28 @@ inside trusted Lambdas (webhook, provisioning, map packs), or `ANONYMOUS`. Failu
 
 ## Item layout
 
-`PK`/`SK` are the table keys; `GSI1PK`/`GSI1SK` the one (overloaded) global secondary index;
-`ttl` (epoch seconds) is the TTL attribute. `<club>` is the club id.
+`PK`/`SK` are the table keys; `GSI1PK`/`GSI1SK` the one (overloaded) global secondary index
+`GSI1`; `expiresAt` is the TTL attribute. Entities carry `expiresAt` as an ISO timestamp; items
+store it only as epoch seconds in that attribute. `<club>` is the club id. Billing items
+(subscription, Stripe events, the Stripe-subscription guard) live in their own `SUBSCRIPTION#` /
+`STRIPE_EVENT#` partitions, the only ones the webhook's IAM policy (`dynamodb:LeadingKeys`)
+allows, so the webhook's transaction checks neither the club nor the plan.
 
-| Entity                                   | PK                  | SK                             | GSI1PK                | GSI1SK        | TTL               |
-| ---------------------------------------- | ------------------- | ------------------------------ | --------------------- | ------------- | ----------------- |
-| Club (+ seat counters `seats`, `admins`) | `CLUB#<club>`       | `CLUB`                         |                       |               |                   |
-| Club secret                              | `CLUB#<club>`       | `SECRET`                       |                       |               |                   |
-| Subscription                             | `CLUB#<club>`       | `SUBSCRIPTION`                 |                       |               |                   |
-| Member                                   | `CLUB#<club>`       | `MEMBER#<user>`                | `USER#<user>`         | `CLUB#<club>` | guest pass expiry |
-| Area                                     | `CLUB#<club>`       | `AREA#<id>`                    |                       |               |                   |
-| Stand                                    | `CLUB#<club>`       | `STAND#<id>`                   |                       |               |                   |
-| Mesh id counter                          | `CLUB#<club>`       | `MESHID#AREA` / `MESHID#STAND` |                       |               |                   |
-| Harvest (shared)                         | `CLUB#<club>`       | `HARVEST#<id>`                 |                       |               |                   |
-| Map pack                                 | `CLUB#<club>`       | `MAPPACK#<id>`                 |                       |               |                   |
-| Invite                                   | `INVITE#<token>`    | `INVITE`                       | `CLUB#<club>#INVITES` | `INVITE#<id>` | invite expiry     |
-| Plan                                     | `PLAN#<plan>`       | `PLAN`                         | `PLANS`               | `PLAN#<plan>` |                   |
-| Stripe event                             | `STRIPEEVENT#<evt>` | `STRIPEEVENT`                  |                       |               |                   |
-| Stripe subscription guard                | `STRIPESUB#<sub>`   | `STRIPESUB`                    |                       |               |                   |
+| Entity                                   | PK                     | SK                             | GSI1PK                | GSI1SK        | TTL               |
+| ---------------------------------------- | ---------------------- | ------------------------------ | --------------------- | ------------- | ----------------- |
+| Club (+ seat counters `seats`, `admins`) | `CLUB#<club>`          | `CLUB`                         |                       |               |                   |
+| Club secret                              | `CLUB#<club>`          | `SECRET`                       |                       |               |                   |
+| Subscription                             | `SUBSCRIPTION#<club>`  | `SUBSCRIPTION`                 |                       |               |                   |
+| Member                                   | `CLUB#<club>`          | `MEMBER#<user>`                | `USER#<user>`         | `CLUB#<club>` | guest pass expiry |
+| Area                                     | `CLUB#<club>`          | `AREA#<id>`                    |                       |               |                   |
+| Stand                                    | `CLUB#<club>`          | `STAND#<id>`                   |                       |               |                   |
+| Mesh id counter                          | `CLUB#<club>`          | `MESHID#AREA` / `MESHID#STAND` |                       |               |                   |
+| Harvest (shared)                         | `CLUB#<club>`          | `HARVEST#<id>`                 |                       |               |                   |
+| Map pack                                 | `CLUB#<club>`          | `MAPPACK#<id>`                 |                       |               |                   |
+| Invite                                   | `INVITE#<token>`       | `INVITE`                       | `CLUB#<club>#INVITES` | `INVITE#<id>` | invite expiry     |
+| Plan                                     | `PLAN#<plan>`          | `PLAN`                         | `PLANS`               | `PLAN#<plan>` |                   |
+| Stripe event                             | `STRIPE_EVENT#<evt>`   | `STRIPE_EVENT`                 |                       |               |                   |
+| Stripe subscription guard                | `SUBSCRIPTION#<sub_…>` | `STRIPE_SUBSCRIPTION`          |                       |               |                   |
 
 TTL deletion is lazy (it can lag by days), so expiry is always checked in code; TTL only cleans up.
 
@@ -90,9 +94,9 @@ TTL deletion is lazy (it can lag by days), so expiry is always checked in code; 
 | 13  | Revoke an invite                                | admin                     | Query GSI1 `CLUB#<club>#INVITES` / `INVITE#<id>`, DeleteItem `INVITE#<token>`                                                                                                                                          |
 | 14  | Redeem an invite                                | signed-in user            | GetItem invite by token; TransactWriteItems: invite `uses + 1` (unexpired, uses left), subscription ConditionCheck (entitled status, same plan), member put (no active membership), club `seats + 1` (`seats < limit`) |
 | 15  | Active plans                                    | anyone                    | Query GSI1 `PLANS`                                                                                                                                                                                                     |
-| 16  | Subscription of a club                          | admin                     | GetItem `SUBSCRIPTION`                                                                                                                                                                                                 |
-| 17  | Apply a Stripe event                            | service                   | TransactWriteItems: put `STRIPEEVENT#<evt>` (not exists → else `duplicate`), upsert subscription, `STRIPESUB#<sub>` guard (same club), club and plan ConditionChecks                                                   |
-| 18  | Delete a club                                   | service                   | Query `CLUB#<club>` + GSI1 `CLUB#<club>#INVITES`, BatchWriteItem deletes                                                                                                                                               |
+| 16  | Subscription of a club                          | admin                     | GetItem `SUBSCRIPTION#<club>` / `SUBSCRIPTION`                                                                                                                                                                         |
+| 17  | Apply a Stripe event                            | service (webhook)         | TransactWriteItems, billing partitions only: put `STRIPE_EVENT#<evt>` (not exists, else `duplicate`), upsert `SUBSCRIPTION#<club>`, guard `SUBSCRIPTION#<sub_…>` (same club)                                           |
+| 18  | Delete a club                                   | service                   | Query `CLUB#<club>` + GSI1 `CLUB#<club>#INVITES` + its billing items, BatchWriteItem deletes                                                                                                                           |
 
 ## Tests
 

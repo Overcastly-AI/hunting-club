@@ -10,7 +10,7 @@ import type { ClubApiError, InviteCreate, MemberRole, SubscriptionStatus } from 
 import { type Actor, SERVICE, userActor } from '../actor';
 import { createClubData, type ClubData } from '../index';
 import { DOCUMENT_CLIENT_OPTIONS } from '../db';
-import { createTableInput } from '../table';
+import { createTableInput } from '../localTable';
 
 export const DYNAMODB_ENDPOINT = process.env.DYNAMODB_ENDPOINT ?? 'http://localhost:8000';
 

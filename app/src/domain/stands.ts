@@ -1,11 +1,6 @@
-/**
- * Stand types from docs/SPEC.md. These strings match the `stands.type` CHECK
- * constraint in the local database.
- */
-export const STAND_TYPES = ['tree_stand', 'ladder', 'ground_blind'] as const;
-export type StandType = (typeof STAND_TYPES)[number];
+import type { StandType } from '@huntclub/shared';
 
-/** Words shown and read aloud for each stand type. */
+/** Words shown and read aloud for each stand type (types come from the SQL enum via @huntclub/shared). */
 export const STAND_TYPE_LABELS: Record<StandType, string> = {
   tree_stand: 'Tree stand',
   ladder: 'Ladder stand',

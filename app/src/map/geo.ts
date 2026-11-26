@@ -1,4 +1,4 @@
-import type { LatLon } from '../domain/location';
+import type { LatLon } from '@huntclub/mesh';
 
 const EARTH_RADIUS_M = 6_371_008.8;
 const EARTH_CIRCUMFERENCE_M = 40_075_016.686;
@@ -79,4 +79,14 @@ export function scentConeRing(origin: LatLon, windFromDeg: number): [number, num
 /** Where to place the "Your scent" label: two-thirds of the way along the cone. */
 export function scentLabelPosition(origin: LatLon, windFromDeg: number): LatLon {
   return destination(origin, downwindBearing(windFromDeg), (SCENT_CONE.lengthMeters * 2) / 3);
+}
+
+/** Great-circle distance in metres. */
+export function distanceMeters(a: LatLon, b: LatLon): number {
+  const phi1 = a.lat * DEG;
+  const phi2 = b.lat * DEG;
+  const dPhi = (b.lat - a.lat) * DEG;
+  const dLambda = (b.lon - a.lon) * DEG;
+  const h = Math.sin(dPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) ** 2;
+  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
 }

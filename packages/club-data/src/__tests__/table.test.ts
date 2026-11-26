@@ -1,38 +1,42 @@
-import { createTableInput } from '../table';
-import { BILLING_MODE, GSI1, GSIS, TABLE_KEYS, TTL_ATTRIBUTE } from '../keys';
+import { createTableInput } from '../localTable';
+import { GSIS, PARTITION_PREFIXES, TABLE_KEYS, TTL_ATTRIBUTE } from '../table';
+import { keys } from '../items';
 
 describe('table definition', () => {
-  it('derives CreateTable input from keys.ts (the definition the CDK stack imports)', () => {
+  it('derives the local CreateTable input from table.ts (the definition infra references)', () => {
     const input = createTableInput('t');
-    expect(input.BillingMode).toBe(BILLING_MODE);
     expect(input.KeySchema).toEqual([
-      { AttributeName: TABLE_KEYS.partitionKey.name, KeyType: 'HASH' },
-      { AttributeName: TABLE_KEYS.sortKey.name, KeyType: 'RANGE' },
+      { AttributeName: TABLE_KEYS.partitionKey, KeyType: 'HASH' },
+      { AttributeName: TABLE_KEYS.sortKey, KeyType: 'RANGE' },
     ]);
     expect(input.GlobalSecondaryIndexes?.map((g) => g.IndexName)).toEqual(
-      GSIS.map((g) => g.indexName),
+      Object.values(GSIS).map((g) => g.indexName),
     );
     expect(input.AttributeDefinitions?.map((a) => a.AttributeName)).toEqual([
       'PK',
       'SK',
-      GSI1.partitionKey.name,
-      GSI1.sortKey.name,
+      'GSI1PK',
+      'GSI1SK',
     ]);
   });
 
-  it('pins the stored layout (renaming a key or index means migrating data)', () => {
-    expect(TABLE_KEYS).toEqual({
-      partitionKey: { name: 'PK', type: 'S' },
-      sortKey: { name: 'SK', type: 'S' },
+  it('matches the live table hunt-club-mesh-dev (names are immutable there)', () => {
+    expect(TABLE_KEYS).toEqual({ partitionKey: 'PK', sortKey: 'SK' });
+    expect(GSIS).toEqual({
+      gsi1: { indexName: 'GSI1', partitionKey: 'GSI1PK', sortKey: 'GSI1SK' },
     });
-    expect(GSIS).toEqual([
-      {
-        indexName: 'GSI1',
-        partitionKey: { name: 'GSI1PK', type: 'S' },
-        sortKey: { name: 'GSI1SK', type: 'S' },
-        projection: 'ALL',
-      },
-    ]);
-    expect(TTL_ATTRIBUTE).toBe('ttl');
+    expect(TTL_ATTRIBUTE).toBe('expiresAt');
+  });
+
+  it('puts every item the Stripe webhook writes in a billing partition (its IAM LeadingKeys)', () => {
+    const prefixes = Object.values(PARTITION_PREFIXES);
+    const webhookKeys = [
+      keys.subscription('00000000-0000-4000-8000-000000000001'),
+      keys.stripeEvent('evt_1'),
+      keys.stripeSubscription('sub_1'),
+    ];
+    for (const key of webhookKeys) {
+      expect(prefixes.some((p) => key.PK!.startsWith(p))).toBe(true);
+    }
   });
 });

@@ -1,11 +1,11 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 
 import type { MapData } from './types';
 
 /**
  * Where the map gets hunters, open stands and mesh status. The map only reads
- * this; a later milestone feeds it from the radio (`@huntclub/mesh` positions
- * and check-ins).
+ * this; `connectMapData` (meshMapData.ts) feeds it from the radio's
+ * MeshClient and CheckInBoard.
  */
 export interface MapDataSource {
   getSnapshot(): MapData;
@@ -37,19 +37,9 @@ export function createMapDataStore(initial: MapData = EMPTY_MAP_DATA): MapDataSo
   };
 }
 
-/** The app's map data. Empty until the radio milestone feeds it. */
+/** The app's map data. Empty until the radio is connected to it with `connectMapData`. */
 export const mapDataStore = createMapDataStore();
 
 export function useMapData(source: MapDataSource = mapDataStore): MapData {
   return useSyncExternalStore(source.subscribe, source.getSnapshot);
-}
-
-/** The current time, refreshed on an interval so ages ("2 min ago") and freshness rings stay true. */
-export function useNow(intervalMs = 10_000): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(timer);
-  }, [intervalMs]);
-  return now;
 }

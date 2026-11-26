@@ -1,18 +1,13 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '../../components/Button';
+import { HELP_AUDIENCE_TEXT, type Audience } from '../../domain/audience';
 import { colors, opacity, radii, sizes, spacing, textStyles } from '../../theme';
-import { describeAge, positionAge } from '../freshness';
+import { positionAge } from '@huntclub/core';
+
+import { describeAge } from '../age';
 import { placeLabel } from '../labels';
 import type { HunterPlace } from '../types';
-
-export type HelpAudience = 'party' | 'club';
-
-/** Who Ask for a Hand reaches. Never worded or styled like an emergency call. */
-export const HELP_AUDIENCE_TEXT: Record<HelpAudience, string> = {
-  party: 'Pings your party',
-  club: 'Pings club members',
-};
 
 export type MapBottomSheetProps =
   | {
@@ -20,7 +15,7 @@ export type MapBottomSheetProps =
       place: HunterPlace;
       checkedInAt: number;
       now: number;
-      audience: HelpAudience;
+      audience: Audience;
       onAskForHand: () => void;
       onCheckOut: () => void;
       onChangeMode: () => void;

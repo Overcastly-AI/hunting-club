@@ -5,7 +5,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 ## Working agreements
 
 - AWS changes are requested by email to the owner with a subject starting with `Grok Bot`. Grok Bot configures AWS.
-- **Secrets (owner decision 2026-11-26):** project secrets live in AWS Secrets Manager (`hunt-club-mesh/<env>/<name>`). They may be sent by email between the coordinator and Grok Bot; the owner accepts that and will rotate them later. Never put secrets in the repo, PRs, commit messages, logs or worker briefs; Lambdas read them from Secrets Manager at runtime. Every secret that travels by email is listed under "Rotate later" below.
+- **Secrets (owner decision 2026-11-26):** project secrets live in AWS SSM Parameter Store as SecureString, standard tier, free (`/hunt-club-mesh/<env>/<name>`). Not Secrets Manager: it costs $0.40 per secret per month. They may be sent by email between the coordinator and Grok Bot; the owner accepts that and will rotate them later. Never put secrets in the repo, PRs, commit messages, logs or worker briefs; Lambdas read them from Parameter Store at runtime. Every secret that travels by email is listed under "Rotate later" below.
 - Commit messages never credit Claude or other AI tools (enforced by `.githooks/commit-msg`).
 - Stop and ask the owner before: spending money, open decisions in `docs/SPEC.md`, emails to anyone other than the owner, deleting anything.
 
@@ -21,6 +21,10 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 | Budget | `hunt-club-mesh-monthly`, $5/month, alerts 50/80/100% |
 | Tags | Project=hunt-club-mesh, Env=dev |
 | Deploys | Grok Bot runs `cdk deploy` from the repo when a request says "deploy" (after synth + diff checks) |
+| Data layer owner | CloudFormation stack `HuntClubMeshDataDev`, built by Grok Bot at the owner's direction (06:32 UTC), Retain policies. **The CDK references these, never defines them.** |
+| DynamoDB table | `hunt-club-mesh-dev` (arn:aws:dynamodb:us-east-1:054825383623:table/hunt-club-mesh-dev), PK/SK (S), GSI1 = GSI1PK/GSI1SK (ALL), on-demand, PITR off, deletion protection on, TTL `expiresAt` (Request #2) |
+| Cognito user pool | `us-east-1_0W2YbjVht` (Essentials, email username, first factors PASSWORD + EMAIL_OTP; the app uses EMAIL_OTP only), default email sender (~50/day; SES later per owner) |
+| Cognito app client | `5dn1jcrnef1v6cfv6da0i7qtne` (public, ALLOW_USER_AUTH + refresh); web client via Request #2 |
 
 **Reading Grok Bot replies:** always open the full thread with `get_thread`. Search previews show stale message counts and miss replies.
 
@@ -28,6 +32,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 | # | Sent | Request | Status | Result |
 |---|---|---|---|---|
+| 2 | 2026-11-26 | Enable TTL `expiresAt` on the table; add web app client to the user pool | Sent 06:36 UTC | |
 | 1 | 2026-11-26 | Dev subdomain: Route 53 hosted zone, delegation, ACM wildcard cert | **Done** 06:07 UTC (verified NS via public DNS) | See "AWS environment" below |
 
 ## How the project runs
@@ -37,6 +42,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 - Worker sessions can only push to the branch they were created with. Reuse a session for a new task only on that same branch (reset to main after its PR merges); otherwise start a new session.
 - **Never leave a worker idle (owner rule):** the moment a worker finishes or stops, give it the next task (reuse the idle session) or start a new one. Timed wake-ups are only a backup; worker messages are the main signal.
 - Workers: separate cloud sessions, up to ~5 at a time on non-overlapping files, one task each, branch `agent/<task>`, PR into `main`. Playbook: `docs/AGENTS.md`.
+- **Email is checked every 30 minutes** (owner rule): hourly check-in at :34 (`trig_01SRzKhjqQDZWWfR6krcCifn`) plus an email check at :04 (`trig_01RboB5HqcNxpdXgKpAZU6YK`), both opening every thread in full.
 - Daily status email to the owner around 13:00 UTC, subject starting "Hunt Club Mesh status" (never "Grok Bot", which is reserved for AWS requests).
 - Commits authored as `Overcastly-AI <282247350+Overcastly-AI@users.noreply.github.com>`.
 
@@ -78,7 +84,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 ## Rotate later (secrets that travelled by email)
 
-| Secret | Secrets Manager name | Sent | Rotated |
+| Secret | Parameter name | Sent | Rotated |
 |---|---|---|---|
 
 ## Database

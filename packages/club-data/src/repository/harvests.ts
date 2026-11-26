@@ -25,11 +25,19 @@ import {
   type TxItem,
 } from '../db';
 import { ClubDataError } from '../errors';
-import { ATTR, CLUB_COLLECTIONS, keys } from '../items';
+import { ATTR, CLUB_COLLECTIONS, keys, notExpired } from '../items';
 import { accessTo, fromItem, getEntity, notFound, validate } from './common';
 
-const ACTIVE_MEMBER =
-  'attribute_exists(#pk) AND (attribute_not_exists(expiresAt) OR expiresAt > :now)';
+/** ConditionCheck: this member item exists and its guest pass (if any) is unexpired. */
+function activeMemberCheck(ctx: Ctx, clubId: string, userId: string): TxItem {
+  const active = notExpired(ctx.now());
+  return {
+    check: keys.inClub(clubId, 'member', userId),
+    condition: `attribute_exists(#pk) AND ${active.condition}`,
+    names: { ...active.names, '#pk': ATTR.PK },
+    values: active.values,
+  };
+}
 
 /** Stand and area references must exist in the same club. */
 function placeChecks(clubId: string, h: { standId?: string; areaId?: string }): TxItem[] {
@@ -71,12 +79,7 @@ export async function createHarvest(
   try {
     await transact(ctx, [
       { put: { ...keys.inClub(clubId, 'harvest', harvest.id), ...harvest }, condition: NOT_EXISTS },
-      {
-        check: keys.inClub(clubId, 'member', userId),
-        condition: ACTIVE_MEMBER,
-        names: { '#pk': ATTR.PK },
-        values: { ':now': now },
-      },
+      activeMemberCheck(ctx, clubId, userId),
       ...placeChecks(clubId, fields),
     ]);
   } catch (e) {
@@ -133,12 +136,7 @@ export async function updateHarvest(
         names: { ...set.names, '#pk': ATTR.PK },
         values: { ...set.values, ':owner': harvest.userId },
       },
-      {
-        check: keys.inClub(clubId, 'member', harvest.userId),
-        condition: ACTIVE_MEMBER,
-        names: { '#pk': ATTR.PK },
-        values: { ':now': now },
-      },
+      activeMemberCheck(ctx, clubId, harvest.userId),
       ...placeChecks(clubId, fields),
     ]);
   } catch (e) {

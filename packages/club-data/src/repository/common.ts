@@ -4,7 +4,7 @@ import type { Actor } from '../actor';
 import { type Access, authorize, type ResourcelessPolicy } from '../authz';
 import { type Ctx, get, type Item } from '../db';
 import { ClubDataError } from '../errors';
-import { keys } from '../items';
+import { keys, readExpiry } from '../items';
 
 /** Validates client or service input; failures become `invalid`. */
 export function validate<S extends z.ZodType>(schema: S, input: unknown): z.output<S> {
@@ -18,7 +18,7 @@ export function validate<S extends z.ZodType>(schema: S, input: unknown): z.outp
  * objects strip unknown keys) and catches corrupt items early.
  */
 export const fromItem = <S extends z.ZodType>(schema: S, item: Item): z.output<S> =>
-  schema.parse(item);
+  schema.parse(readExpiry(item));
 
 export async function getEntity<S extends z.ZodType>(
   ctx: Ctx,
