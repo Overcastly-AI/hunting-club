@@ -1,4 +1,4 @@
-import { MAX_TEXT_CHARS, nodeId } from '@huntclub/mesh';
+import { MAX_TEXT_CHARS } from '@huntclub/mesh';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
@@ -68,7 +68,7 @@ export function RadioTestPanel() {
 }
 
 function TextBubble({ text }: { text: RadioText }) {
-  const sender = text.mine ? radioCopy.test.you : (text.fromName ?? nodeId(text.from));
+  const sender = text.mine ? radioCopy.test.you : text.fromName;
   const time = new Date(text.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   return (
     <View style={[styles.bubble, text.mine && styles.mine]}>

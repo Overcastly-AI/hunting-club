@@ -12,6 +12,7 @@ import {
 } from '@huntclub/mesh';
 
 import type { PairedRadio } from '../db/pairedRadio';
+import { nodeDisplayName } from '../map/meshMapData';
 import type { FoundRadio } from './scan';
 
 /** Where the app remembers its paired radio (SQLite in the app, in-memory in tests). */
@@ -65,7 +66,8 @@ export type RadioText = {
   key: string;
   text: string;
   from: number;
-  fromName?: string;
+  /** Sender's radio name as the map shows it (long name, short name or short id). */
+  fromName: string;
   mine: boolean;
   /** Milliseconds since the epoch. */
   at: number;
@@ -200,6 +202,7 @@ export class RadioController extends Emitter<{ change: RadioSnapshot }> {
       key,
       text,
       from: client.myNodeNum,
+      fromName: nodeDisplayName(client.nodes.get(client.myNodeNum), client.myNodeNum),
       mine: true,
       at: this.now(),
       status: 'sending',
@@ -291,7 +294,6 @@ export class RadioController extends Emitter<{ change: RadioSnapshot }> {
     this.session = session;
     this.set({ repairNeeded: false, radio: null, channels: [] });
 
-    const nameOf = (num: number) => client.nodes.get(num)?.user?.longName;
     session.subscriptions.push(
       transport.onStatus((status) => {
         session.transportStatus = status;
@@ -319,7 +321,7 @@ export class RadioController extends Emitter<{ change: RadioSnapshot }> {
           key: `rx:${e.from}:${e.packetId}`,
           text: e.text,
           from: e.from,
-          fromName: nameOf(e.from),
+          fromName: nodeDisplayName(client.nodes.get(e.from), e.from),
           mine: false,
           at: e.rxTime ? e.rxTime * 1000 : this.now(),
         });

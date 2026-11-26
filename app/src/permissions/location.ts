@@ -1,5 +1,6 @@
 import { LocationManager, type GeolocationPosition } from '@maplibre/maplibre-react-native';
-import type { LatLon } from '../domain/location';
+import type { LatLon } from '@huntclub/mesh';
+
 import { askPermission, offerSettings, type PermissionCopy } from './askPermission';
 
 /**

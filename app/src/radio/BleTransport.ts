@@ -1,3 +1,4 @@
+import { helpRetryDelay } from '@huntclub/core';
 import {
   defaultTimers,
   Emitter,
@@ -44,6 +45,8 @@ export type BleTransportOptions = {
 
 const DEFAULT_INITIAL_BACKOFF_MS = 1_000;
 const DEFAULT_MAX_BACKOFF_MS = 30_000;
+/** Reconnect delays double each attempt (core's capped exponential backoff). */
+const BACKOFF_FACTOR = 2;
 const DEFAULT_GATT133_THRESHOLD = 3;
 
 /**
@@ -219,10 +222,12 @@ export class BleTransport extends Emitter<BleTransportEvents> implements Transpo
   private scheduleReconnect(): void {
     if (!this.wanted || this.reconnectTimer !== undefined) return;
     this.reconnectAttempt += 1;
-    const delayMs = Math.min(
-      this.maxBackoffMs,
-      this.initialBackoffMs * 2 ** (this.reconnectAttempt - 1),
-    );
+    const delayMs = helpRetryDelay(this.reconnectAttempt, {
+      initialMs: this.initialBackoffMs,
+      factor: BACKOFF_FACTOR,
+      maxMs: this.maxBackoffMs,
+      jitter: 0,
+    });
     this.emit('reconnecting', { attempt: this.reconnectAttempt, delayMs });
     this.reconnectTimer = this.timers.setTimeout(() => {
       this.reconnectTimer = undefined;

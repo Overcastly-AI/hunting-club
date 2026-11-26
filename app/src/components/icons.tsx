@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
-import type { StandType } from '../domain/stands';
+import type { StandType } from '@huntclub/shared';
 import { colors, sizes } from '../theme';
 
 /**
