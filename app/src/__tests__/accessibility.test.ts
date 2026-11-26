@@ -1,0 +1,63 @@
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
+
+import { fontSize, sizes } from '../theme';
+
+const SRC = join(__dirname, '..');
+
+function tsxFiles(dir: string): string[] {
+  return readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) return name === '__tests__' ? [] : tsxFiles(path);
+    return name.endsWith('.tsx') ? [path] : [];
+  });
+}
+
+/** The props of a JSX opening tag starting at `start`: up to the first `>` outside braces that isn't `=>`. */
+function openingTag(source: string, start: number): string {
+  let depth = 0;
+  for (let i = start; i < source.length; i++) {
+    const ch = source[i];
+    if (ch === '{') depth++;
+    else if (ch === '}') depth--;
+    else if (ch === '>' && depth === 0 && source[i - 1] !== '=') return source.slice(start, i);
+  }
+  throw new Error('Unterminated JSX tag');
+}
+
+/** Opening tags of every <Pressable> in the app source. */
+function pressableTags(): { file: string; tag: string }[] {
+  return tsxFiles(SRC).flatMap((file) => {
+    const source = readFileSync(file, 'utf8');
+    return [...source.matchAll(/<Pressable\b/g)].map((m) => ({
+      file: relative(SRC, file),
+      tag: openingTag(source, m.index),
+    }));
+  });
+}
+
+describe('accessibility rules from docs/SPEC.md', () => {
+  it('finds the pressables it checks', () => {
+    expect(pressableTags().length).toBeGreaterThan(5);
+  });
+
+  it('gives every pressable a role and a spoken label (or hides it from screen readers)', () => {
+    const missing = pressableTags()
+      .filter(({ tag }) => !/importantForAccessibility="no"/.test(tag))
+      .filter(({ tag }) => !/accessibilityRole=/.test(tag) || !/accessibilityLabel=/.test(tag))
+      .map(({ file }) => file);
+    expect(missing).toEqual([]);
+  });
+
+  it('keeps tap targets at 48 px or more', () => {
+    for (const size of [sizes.control, sizes.primaryButtonMinHeight]) {
+      expect(size).toBeGreaterThanOrEqual(sizes.minTapTarget);
+    }
+    expect(sizes.minTapTarget).toBe(48);
+  });
+
+  it('keeps map text at 13 px and body text at 16 px or more', () => {
+    expect(fontSize.mapLabelMin).toBeGreaterThanOrEqual(13);
+    expect(fontSize.body).toBeGreaterThanOrEqual(16);
+  });
+});

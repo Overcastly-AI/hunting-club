@@ -26,9 +26,10 @@ export function HunterMarker({ hunter, now }: Props) {
     <View
       accessible
       accessibilityLabel={hunterAccessibilityLabel(hunter, now)}
-      style={[styles.container, freshness === 'faded' && styles.faded]}
+      style={styles.container}
     >
-      <View style={[styles.circle, RING[freshness]]}>
+      {/* Only the circle fades: labels keep full contrast, and the age says how old it is. */}
+      <View style={[styles.circle, RING[freshness], freshness === 'faded' && styles.faded]}>
         <Text style={styles.initials} numberOfLines={1}>
           {hunter.initials}
         </Text>

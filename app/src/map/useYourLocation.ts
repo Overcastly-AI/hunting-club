@@ -1,7 +1,7 @@
 import { LocationManager, type GeolocationPosition } from '@maplibre/maplibre-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { LatLon } from '../domain/location';
+import type { LatLon } from '@huntclub/mesh';
 import { ensureLocationPermission, toLatLon } from '../permissions/location';
 
 /** Your position on this phone, for "center on me". Asks for permission on first use. */
