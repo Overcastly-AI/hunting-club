@@ -9,8 +9,8 @@ npm test -w @huntclub/web         # vitest + Testing Library (jsdom)
 ```
 
 - **Design tokens** come from `@huntclub/design`, the same source as the app. `src/theme/css.ts` turns them into CSS variables and text classes. The Archivo font is bundled from the app's single copy (`app/assets/fonts/Archivo-Variable.ttf`).
-- **Environment IDs** (region, Cognito pool and web client) are read at build time from `infra/config/<env>.ts` (see `vite.config.ts`), so they are defined once.
-- **Sign-in:** email plus a 6-digit code, using Cognito `USER_AUTH` / `EMAIL_OTP` (`src/auth/cognito.ts`). Until the web client ID is in the infra config, the page runs a demo sign-in (`src/auth/demo.ts`, code `123456`) and says so.
-- **Data:** every page reads a `ClubApi` (`src/api/types.ts`). For now that's the in-memory `mockClubApi`; the real club API comes later.
+- **Environment IDs** (region, Cognito pool, web client, club API URL) come from `CLOUD_ENVIRONMENTS` in `@huntclub/shared/cloud`, the same source the app and infra use (`src/cloud.ts`).
+- **Sign-in:** email plus a 6-digit code through the shared `createCognitoAuth` and `ClubSession` (`@huntclub/shared`), with the same words as the app (`signInCopy`). Tokens stay in memory only.
+- **Data:** every page reads a `ClubApi` (`src/api/types.ts`), implemented by `src/api/admin.ts` over the shared typed client (`createClubApiClient`, `API_PATHS`). Until the club API URL is in `CLOUD_ENVIRONMENTS`, the page says the club service is not available yet. Tests run the same adapter against an in-memory `ClubApiClient` (`src/__tests__/fakeClubApi.ts`).
 - **Invites:** the link comes from `encodeJoinUrl` in `@huntclub/mesh`, and the QR from `qrMatrix` in `@huntclub/shared/qr`, drawn as SVG.
 - **Routing:** hash routes (`#/roster`), so CloudFront needs no rewrite rules.

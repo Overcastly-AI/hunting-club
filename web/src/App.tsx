@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import type { ClubApi } from './api/types';
-import type { AuthClient, SignedIn } from './auth/types';
+import type { WebClubServices } from './cloud';
 import { Billing } from './pages/Billing';
 import { MyClub } from './pages/MyClub';
 import { Roster } from './pages/Roster';
@@ -30,8 +30,12 @@ function currentPath(): PagePath {
   return PAGES.find((p) => p.path === hash)?.path ?? PAGES[0].path;
 }
 
-export function App(props: { auth: AuthClient; api: ClubApi }) {
-  const [user, setUser] = useState<SignedIn | null>(null);
+/** Shown when part of the club cloud is not set up yet. */
+const NOT_READY = 'The club service is not available yet. Check back soon.';
+
+export function App(props: WebClubServices) {
+  const { session, api } = props;
+  const [email, setEmail] = useState<string | null>(null);
   const [path, setPath] = useState<PagePath>(currentPath);
 
   useEffect(() => {
@@ -40,13 +44,26 @@ export function App(props: { auth: AuthClient; api: ClubApi }) {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  if (!user) {
+  if (!session || (email && !api)) {
     return (
       <main className="layout">
-        <SignIn auth={props.auth} onSignedIn={setUser} />
+        <p className="banner">{NOT_READY}</p>
       </main>
     );
   }
+
+  if (!email || !api) {
+    return (
+      <main className="layout">
+        <SignIn session={session} onSignedIn={setEmail} />
+      </main>
+    );
+  }
+
+  const signOut = () => {
+    setEmail(null);
+    void session.signOut();
+  };
 
   const page = PAGES.find((p) => p.path === path) ?? PAGES[0];
   return (
@@ -57,12 +74,12 @@ export function App(props: { auth: AuthClient; api: ClubApi }) {
             {p.label}
           </a>
         ))}
-        <button className="button" type="button" onClick={() => setUser(null)}>
+        <button className="button" type="button" onClick={signOut}>
           Sign out
         </button>
       </nav>
-      <main>{page.render(props.api)}</main>
-      <p className="muted">Signed in as {user.email}</p>
+      <main>{page.render(api)}</main>
+      <p className="muted">Signed in as {email}</p>
     </div>
   );
 }

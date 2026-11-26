@@ -12,8 +12,8 @@ import type {
 
 /**
  * What the admin pages need from the club API. Every entity is the shared wire type from
- * @huntclub/shared (never a local copy); the real client (shared, from #29) and the mock
- * both implement this.
+ * @huntclub/shared (never a local copy). api/admin.ts implements it over the shared
+ * typed client (createClubApiClient).
  */
 export interface ClubApi {
   getClub(): Promise<Club | null>;

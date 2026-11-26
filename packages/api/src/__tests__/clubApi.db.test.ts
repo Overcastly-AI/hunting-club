@@ -254,6 +254,16 @@ describe('billing', () => {
     expect((await call('GET', `/clubs/${oak()}/subscription`, { as: 'max' })).status).toBe(403);
   });
 
+  it('any member reads the entitlement; outsiders cannot', async () => {
+    const res = await call('GET', `/clubs/${oak()}/entitlement`, { as: 'gus' });
+    expect(res.body).toMatchObject({
+      clubId: oak(),
+      status: 'active',
+      featuresUntil: expect.any(String),
+    });
+    expect((await call('GET', `/clubs/${oak()}/entitlement`, { as: 'nora' })).status).toBe(403);
+  });
+
   it("starts Stripe Checkout for an admin's club with the club and plan in metadata", async () => {
     const res = await call('POST', `/clubs/${oak()}/checkout`, {
       as: 'ada',

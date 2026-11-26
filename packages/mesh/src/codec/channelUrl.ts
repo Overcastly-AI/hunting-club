@@ -31,6 +31,8 @@ export const VALID_PSK_LENGTHS: readonly number[] = [0, 1, 16, 32];
 /** We always generate AES-256 keys (same length as club keys). */
 export const PARTY_PSK_BYTES = CHANNEL_KEY_BYTES;
 export const PARTY_CHANNEL_NAME = 'Party';
+/** The club channel's name (shown only in Advanced settings / other Meshtastic apps). */
+export const CLUB_CHANNEL_NAME = 'Club';
 /** Name firmware uses for an unnamed channel on the LongFast preset (channel hash, frequency slot). */
 export const DEFAULT_CHANNEL_NAME = 'LongFast';
 /** Our hunt channel shares full-precision positions. */
@@ -207,13 +209,26 @@ export interface PartyChannelOptions {
  * hop limit 3 and full-precision positions on this channel.
  */
 export function generatePartyChannelSet(opts: PartyChannelOptions): ChannelSet {
+  const psk = opts.random(PARTY_PSK_BYTES);
+  if (psk.length !== PARTY_PSK_BYTES)
+    throw new Error('Random source returned the wrong number of bytes');
+  return channelSetWithKey(psk, opts);
+}
+
+/**
+ * The hunt channel settings (as generatePartyChannelSet) around an existing 256-bit key,
+ * e.g. the club key from the club secret.
+ */
+export function channelSetWithKey(
+  psk: Uint8Array,
+  opts: Omit<PartyChannelOptions, 'random'> = {},
+): ChannelSet {
   const name = opts.name ?? PARTY_CHANNEL_NAME;
   if (encodeUtf8(name).length > MAX_CHANNEL_NAME_BYTES) {
     throw new ChannelUrlError(`Channel name must be at most ${MAX_CHANNEL_NAME_BYTES} bytes`);
   }
-  const psk = opts.random(PARTY_PSK_BYTES);
   if (psk.length !== PARTY_PSK_BYTES)
-    throw new Error('Random source returned the wrong number of bytes');
+    throw new ChannelUrlError(`Channel key must be ${PARTY_PSK_BYTES} bytes`);
   return create(AppOnly.ChannelSetSchema, {
     settings: [
       {

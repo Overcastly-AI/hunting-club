@@ -1,6 +1,11 @@
-import { defaultRandom, generatePartyChannelSet, type ChannelSet } from '@huntclub/mesh';
+import { defaultRandom } from '@huntclub/mesh';
 import {
-  ClubCreateSchema,
+  type AuthTokens,
+  ClubApiRequestError,
+  type ClubApiClient,
+  ClubCreateRequestSchema,
+  type CognitoAuth,
+  CognitoAuthError,
   INVITE_TOKEN_BYTES,
   InviteCreateSchema,
   type Area,
@@ -9,10 +14,9 @@ import {
   type Stand,
   type Subscription,
 } from '@huntclub/shared';
-import type { ClubApi } from './types';
 
-/** Sample club for the skeleton pages until the real client is wired in. */
-export interface MockData {
+/** A sample club the fake club API serves (valid shared wire types: see adminApi.test). */
+export interface FakeClubData {
   club: Club | null;
   members: Member[];
   stands: Stand[];
@@ -37,7 +41,7 @@ const square = {
   ],
 };
 
-export function sampleData(): MockData {
+export function sampleData(): FakeClubData {
   const member = (n: number, displayName: string, initials: string, role: Member['role']) => ({
     clubId: CLUB,
     userId: `3c8e1f2a-4b5d-4e6f-8a9b-0c1d2e3f4a${String(n).padStart(2, '0')}`,
@@ -111,55 +115,90 @@ export function sampleData(): MockData {
 
 const hex = (bytes: Uint8Array) =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+const base64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
-/** An in-memory ClubApi over sample (or test-supplied) data; inputs go through the shared schemas. */
-export function mockClubApi(data: MockData = sampleData()): ClubApi {
-  let channelSet: ChannelSet | undefined;
+/**
+ * The shared ClubApiClient over in-memory data: the pages run the real adapter
+ * (api/admin.ts) against it. Inputs go through the shared schemas, as the server's do.
+ */
+export function fakeClubClient(data: FakeClubData = sampleData()): ClubApiClient {
+  const channelKey = base64(defaultRandom(32));
+  const admin = () => data.members.find((m) => m.role === 'admin')!;
+  const clubOrThrow = () => {
+    if (!data.club) throw new ClubApiRequestError('not_found', 404);
+    return data.club;
+  };
   return {
-    async getClub() {
-      return data.club;
-    },
+    listPlans: async () => [],
+    listMyClubs: async () => (data.club ? [{ club: data.club, membership: admin() }] : []),
     async createClub(request) {
+      const { club, admin: profile } = ClubCreateRequestSchema.parse(request);
       const now = new Date().toISOString();
-      data.club = {
-        id: crypto.randomUUID(),
-        ...ClubCreateSchema.parse(request.club),
-        createdAt: now,
-        updatedAt: now,
-      };
+      data.club = { id: crypto.randomUUID(), ...club, createdAt: now, updatedAt: now };
+      data.members = [
+        {
+          clubId: data.club.id,
+          userId: crypto.randomUUID(),
+          role: 'admin',
+          ...profile,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ];
       data.subscription = null;
       return data.club;
     },
-    async listMembers() {
-      return data.members;
-    },
-    async createInvite(request) {
-      if (!data.club) throw new Error('No club');
-      const now = new Date();
-      const grant = InviteCreateSchema.parse(request);
+    getClub: async () => clubOrThrow(),
+    listMembers: async () => data.members,
+    async createInvite(clubId, request) {
+      const now = new Date().toISOString();
       return {
         id: crypto.randomUUID(),
-        clubId: data.club.id,
+        clubId,
         token: hex(defaultRandom(INVITE_TOKEN_BYTES)),
         uses: 0,
-        ...grant,
-        createdAt: now.toISOString(),
-        updatedAt: now.toISOString(),
+        ...InviteCreateSchema.parse(request),
+        createdAt: now,
+        updatedAt: now,
       };
     },
-    async getClubChannelSet() {
-      // The real club key comes from the club secret; the mock makes one per session.
-      channelSet ??= generatePartyChannelSet({ random: defaultRandom, name: 'Club' });
-      return channelSet;
-    },
-    async listStands() {
-      return data.stands;
-    },
-    async listAreas() {
-      return data.areas;
-    },
+    listStands: async () => data.stands,
+    listAreas: async () => data.areas,
+    getEntitlement: async (clubId) => ({ clubId, status: 'active' }),
     async getSubscription() {
+      if (!data.subscription) throw new ClubApiRequestError('not_found', 404);
       return data.subscription;
     },
+    getClubSecret: async (clubId) => ({
+      clubId,
+      channelKey,
+      keyVersion: 1,
+      createdAt: clubOrThrow().createdAt,
+      updatedAt: clubOrThrow().updatedAt,
+    }),
+    redeemInvite: async () => {
+      throw new ClubApiRequestError('forbidden', 403);
+    },
+  };
+}
+
+/** The code the fake sign-in accepts. */
+export const TEST_CODE = '246810';
+
+/** Cognito stand-in: emails "send" instantly and only TEST_CODE signs in. */
+export function fakeCognitoAuth(): CognitoAuth {
+  const tokens: AuthTokens = {
+    accessToken: 'a',
+    refreshToken: 'r',
+    expiresAt: Date.now() + 3_600_000,
+  };
+  return {
+    requestCode: async (email) => ({ kind: 'signIn', email, session: 's' }),
+    async confirmCode(_challenge, code) {
+      if (code !== TEST_CODE) throw new CognitoAuthError('wrong_code');
+      return tokens;
+    },
+    refresh: async () => tokens,
+    revoke: async () => undefined,
   };
 }

@@ -13,6 +13,8 @@ import {
   userActor,
 } from '@huntclub/club-data';
 import {
+  API_PATHS,
+  type ApiPath,
   CheckoutRequestSchema,
   ClubCreateRequestSchema,
   type ClubSecret,
@@ -67,7 +69,7 @@ const secretJson = (s: ClubSecret): ClubSecretResponse => ({
 
 /** CRUD routes for one club collection with the same shape (stands, areas, harvests). */
 function collectionRoutes<Create, Update>(
-  segment: string,
+  paths: { collection: ApiPath; item: ApiPath },
   ops: {
     list: (actor: Actor, clubId: string) => Promise<unknown>;
     create: (actor: Actor, clubId: string, input: Create) => Promise<unknown>;
@@ -75,23 +77,22 @@ function collectionRoutes<Create, Update>(
     remove: (actor: Actor, clubId: string, id: string) => Promise<void>;
   },
 ): Route<Ctx>[] {
-  const base = `/clubs/:clubId/${segment}`;
   return [
-    { method: 'GET', path: base, handle: (c, p) => ops.list(c.actor, p.clubId!) },
+    { method: 'GET', path: paths.collection, handle: (c, p) => ops.list(c.actor, p.clubId!) },
     {
       method: 'POST',
-      path: base,
+      path: paths.collection,
       status: 201,
       handle: (c, p) => ops.create(c.actor, p.clubId!, input(c.body)),
     },
     {
       method: 'PATCH',
-      path: `${base}/:id`,
+      path: paths.item,
       handle: (c, p) => ops.update(c.actor, p.clubId!, p.id!, input(c.body)),
     },
     {
       method: 'DELETE',
-      path: `${base}/:id`,
+      path: paths.item,
       status: 204,
       handle: (c, p) => ops.remove(c.actor, p.clubId!, p.id!),
     },
@@ -100,13 +101,18 @@ function collectionRoutes<Create, Update>(
 
 function routes(data: ClubData): Route<Ctx>[] {
   return [
-    { method: 'GET', path: '/plans', access: 'public', handle: () => data.listPlans(ANONYMOUS) },
+    {
+      method: 'GET',
+      path: API_PATHS.plans,
+      access: 'public',
+      handle: () => data.listPlans(ANONYMOUS),
+    },
 
     // Clubs
-    { method: 'GET', path: '/me/clubs', handle: (c) => data.listMyClubs(c.actor) },
+    { method: 'GET', path: API_PATHS.myClubs, handle: (c) => data.listMyClubs(c.actor) },
     {
       method: 'POST',
-      path: '/clubs',
+      path: API_PATHS.clubs,
       status: 201,
       // Provisioning: the caller becomes the first admin. Features stay locked until
       // the Stripe webhook records an entitled subscription.
@@ -116,38 +122,38 @@ function routes(data: ClubData): Route<Ctx>[] {
         return data.createClub(SERVICE, { club: req.club, admin: { ...req.admin, userId } });
       },
     },
-    { method: 'GET', path: '/clubs/:clubId', handle: (c, p) => data.getClub(c.actor, p.clubId!) },
+    { method: 'GET', path: API_PATHS.club, handle: (c, p) => data.getClub(c.actor, p.clubId!) },
     {
       method: 'PATCH',
-      path: '/clubs/:clubId',
+      path: API_PATHS.club,
       handle: (c, p) => data.updateClub(c.actor, p.clubId!, input(c.body)),
     },
 
     // Roster
     {
       method: 'GET',
-      path: '/clubs/:clubId/members',
+      path: API_PATHS.members,
       handle: (c, p) => data.listMembers(c.actor, p.clubId!),
     },
     {
       method: 'POST',
-      path: '/clubs/:clubId/members',
+      path: API_PATHS.members,
       status: 201,
       handle: (c, p) => data.addMember(c.actor, p.clubId!, input(c.body)),
     },
     {
       method: 'PATCH',
-      path: '/clubs/:clubId/members/:userId',
+      path: API_PATHS.member,
       handle: (c, p) => data.updateMemberProfile(c.actor, p.clubId!, p.userId!, input(c.body)),
     },
     {
       method: 'PUT',
-      path: '/clubs/:clubId/members/:userId/access',
+      path: API_PATHS.memberAccess,
       handle: (c, p) => data.setMemberAccess(c.actor, p.clubId!, p.userId!, input(c.body)),
     },
     {
       method: 'DELETE',
-      path: '/clubs/:clubId/members/:userId',
+      path: API_PATHS.member,
       status: 204,
       handle: (c, p) => data.removeMember(c.actor, p.clubId!, p.userId!),
     },
@@ -155,24 +161,24 @@ function routes(data: ClubData): Route<Ctx>[] {
     // Invites
     {
       method: 'GET',
-      path: '/clubs/:clubId/invites',
+      path: API_PATHS.invites,
       handle: (c, p) => data.listInvites(c.actor, p.clubId!),
     },
     {
       method: 'POST',
-      path: '/clubs/:clubId/invites',
+      path: API_PATHS.invites,
       status: 201,
       handle: (c, p) => data.createInvite(c.actor, p.clubId!, input(c.body)),
     },
     {
       method: 'DELETE',
-      path: '/clubs/:clubId/invites/:inviteId',
+      path: API_PATHS.invite,
       status: 204,
       handle: (c, p) => data.deleteInvite(c.actor, p.clubId!, p.inviteId!),
     },
     {
       method: 'POST',
-      path: '/invites/redeem',
+      path: API_PATHS.redeemInvite,
       handle: (c) => {
         const { token, ...profile } = parse(RedeemInviteRequestSchema, c.body);
         return data.redeemInvite(c.actor, token, profile);
@@ -180,39 +186,48 @@ function routes(data: ClubData): Route<Ctx>[] {
     },
 
     // Places and harvests (mesh ids are assigned by club-data)
-    ...collectionRoutes('stands', {
-      list: data.listStands,
-      create: data.createStand,
-      update: data.updateStand,
-      remove: data.deleteStand,
-    }),
-    ...collectionRoutes('areas', {
-      list: data.listAreas,
-      create: data.createArea,
-      update: data.updateArea,
-      remove: data.deleteArea,
-    }),
-    ...collectionRoutes('harvests', {
-      list: data.listHarvests,
-      create: data.createHarvest,
-      update: data.updateHarvest,
-      remove: data.deleteHarvest,
-    }),
+    ...collectionRoutes(
+      { collection: API_PATHS.stands, item: API_PATHS.stand },
+      {
+        list: data.listStands,
+        create: data.createStand,
+        update: data.updateStand,
+        remove: data.deleteStand,
+      },
+    ),
+    ...collectionRoutes(
+      { collection: API_PATHS.areas, item: API_PATHS.area },
+      {
+        list: data.listAreas,
+        create: data.createArea,
+        update: data.updateArea,
+        remove: data.deleteArea,
+      },
+    ),
+    ...collectionRoutes(
+      { collection: API_PATHS.harvests, item: API_PATHS.harvest },
+      {
+        list: data.listHarvests,
+        create: data.createHarvest,
+        update: data.updateHarvest,
+        remove: data.deleteHarvest,
+      },
+    ),
     {
       method: 'GET',
-      path: '/clubs/:clubId/map-packs',
+      path: API_PATHS.mapPacks,
       handle: (c, p) => data.listMapPacks(c.actor, p.clubId!),
     },
 
     // Radio key (admins only; base64 in JSON)
     {
       method: 'GET',
-      path: '/clubs/:clubId/secret',
+      path: API_PATHS.secret,
       handle: async (c, p) => secretJson(await data.getClubSecret(c.actor, p.clubId!)),
     },
     {
       method: 'PUT',
-      path: '/clubs/:clubId/secret',
+      path: API_PATHS.secret,
       handle: async (c, p) => {
         const { channelKey } = parse(ClubSecretPutRequestSchema, c.body);
         const key = Uint8Array.from(Buffer.from(channelKey, 'base64'));
@@ -223,12 +238,17 @@ function routes(data: ClubData): Route<Ctx>[] {
     // Billing
     {
       method: 'GET',
-      path: '/clubs/:clubId/subscription',
+      path: API_PATHS.entitlement,
+      handle: (c, p) => data.getEntitlement(c.actor, p.clubId!),
+    },
+    {
+      method: 'GET',
+      path: API_PATHS.subscription,
       handle: (c, p) => data.getSubscription(c.actor, p.clubId!),
     },
     {
       method: 'POST',
-      path: '/clubs/:clubId/checkout',
+      path: API_PATHS.checkout,
       handle: async (c, p) => {
         const club = await data.getBillableClub(c.actor, p.clubId!);
         const { planId } = parse(CheckoutRequestSchema, c.body);

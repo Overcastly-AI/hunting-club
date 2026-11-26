@@ -59,6 +59,7 @@ const OPERATIONS = {
   putPlan: billing.putPlan,
   getSubscription: billing.getSubscription,
   getBillableClub: billing.getBillableClub,
+  getEntitlement: billing.getEntitlement,
   applyStripeEvent: billing.applyStripeEvent,
   getStripeEvent: billing.getStripeEvent,
 

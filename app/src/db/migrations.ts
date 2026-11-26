@@ -1,4 +1,5 @@
 import { CHECK_IN_MODE_KEYS } from '@huntclub/mesh';
+import { MEMBER_ROLES } from '@huntclub/shared';
 
 import type { Migration } from './types';
 
@@ -215,6 +216,26 @@ CREATE TABLE party (
 );
 `;
 
+/**
+ * Club layer (Milestone 9): this phone's membership and cached entitlement on the
+ * club's group row, an invite waiting to be redeemed when online, and the server's
+ * mesh ids for stands and areas (what check-ins send over the radio).
+ */
+const clubMembership = `
+ALTER TABLE groups ADD COLUMN my_user_id TEXT;
+ALTER TABLE groups ADD COLUMN my_role TEXT CHECK (my_role IN (${sqlList(MEMBER_ROLES)}));
+ALTER TABLE groups ADD COLUMN subscription_status TEXT;
+ALTER TABLE groups ADD COLUMN features_until INTEGER;
+ALTER TABLE groups ADD COLUMN pending_invite TEXT;
+ALTER TABLE groups ADD COLUMN pending_display_name TEXT;
+ALTER TABLE groups ADD COLUMN pending_initials TEXT;
+ALTER TABLE groups ADD COLUMN synced_at INTEGER;
+ALTER TABLE stands ADD COLUMN mesh_id INTEGER;
+ALTER TABLE areas ADD COLUMN mesh_id INTEGER;
+CREATE UNIQUE INDEX stands_club_mesh_id ON stands (club_id, mesh_id);
+CREATE UNIQUE INDEX areas_club_mesh_id ON areas (club_id, mesh_id);
+`;
+
 export const migrations: readonly Migration[] = [
   { version: 1, name: 'initial local schema', sql: initialSchema },
   { version: 2, name: 'map pack downloads', sql: mapPackDownloads },
@@ -223,4 +244,5 @@ export const migrations: readonly Migration[] = [
   { version: 5, name: 'app state', sql: appState },
   { version: 6, name: 'my profile', sql: myProfile },
   { version: 7, name: 'free party', sql: freeParty },
+  { version: 8, name: 'club membership and mesh ids', sql: clubMembership },
 ];

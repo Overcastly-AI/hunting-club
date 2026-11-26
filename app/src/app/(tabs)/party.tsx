@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { ClubSection } from '../../club/ClubSection';
 import { Button } from '../../components/Button';
 import { Screen } from '../../components/Screen';
 import { HarvestList } from '../../harvest/HarvestList';
@@ -14,6 +15,7 @@ import { colors, spacing, textStyles } from '../../theme';
 export default function PartyScreen() {
   return (
     <Screen title="Party" description="Start a party or scan a Party QR code to hunt together.">
+      <ClubSection />
       <PartyQr />
       <HarvestList />
       <SafetyNote />

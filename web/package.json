@@ -12,7 +12,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@aws-sdk/client-cognito-identity-provider": "3.1178.0",
     "@huntclub/design": "*",
     "@huntclub/mesh": "*",
     "@huntclub/shared": "*",
