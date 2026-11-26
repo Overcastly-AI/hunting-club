@@ -17,7 +17,7 @@ import {
 import { dev } from '../config/dev';
 import { CLUB_API_TABLE_ACTIONS, MAP_PACK_BUILDER_TABLE_ACTIONS } from '../src/stacks/api-stack';
 import { buildApp } from '../src/app';
-import { webPageRewriteSource } from '../src/web-pages';
+import { ROBOTS_FILE, robotsTxt, webPageRewriteSource } from '../src/web-pages';
 import { CDK_CONTEXT, synthTemplates } from './helpers';
 
 const templates = synthTemplates();
@@ -112,7 +112,21 @@ describe('web stack', () => {
     });
   });
 
-  it('rewrites only the web page paths, with a pay-per-request CloudFront Function', () => {
+  it('lets CloudFront list the bucket, so a missing file is a 404, not a 403', () => {
+    t.hasResourceProperties('AWS::S3::BucketPolicy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Effect: 'Allow',
+            Principal: { Service: 'cloudfront.amazonaws.com' },
+            Action: Match.arrayWith(['s3:ListBucket']),
+          }),
+        ]),
+      },
+    });
+  });
+
+  it('serves index.html for page paths with a pay-per-request CloudFront Function', () => {
     t.resourceCountIs('AWS::CloudFront::Function', 1);
     t.hasResourceProperties('AWS::CloudFront::Function', {
       FunctionCode: webPageRewriteSource(),
@@ -143,7 +157,7 @@ describe('web stack', () => {
 
   it('deploys the web page: hashed assets cached for a year, pages never cached', () => {
     const [assets, pages] = deployments();
-    expect(deployments()).toHaveLength(2);
+    expect(deployments()).toHaveLength(3);
     expect(assets).toMatchObject({
       Prune: false,
       Include: ['assets/*'],
@@ -153,9 +167,18 @@ describe('web stack', () => {
     expect(pages).toMatchObject({
       Prune: true,
       // Map packs are written by the builder Lambda; a web deploy must never prune them.
-      Exclude: ['assets/*', '.well-known/*', `${MAP_PACKS_PREFIX}*`],
+      Exclude: ['assets/*', '.well-known/*', ROBOTS_FILE, `${MAP_PACKS_PREFIX}*`],
       SystemMetadata: { 'cache-control': 'no-cache' },
       DistributionPaths: ['/*'],
+    });
+  });
+
+  it('publishes robots.txt that keeps dev out of search engines', () => {
+    expect(robotsTxt(dev)).toBe('User-agent: *\nDisallow: /\n');
+    t.hasResourceProperties('Custom::CDKBucketDeployment', {
+      SystemMetadata: Match.objectLike({ 'content-type': 'text/plain; charset=utf-8' }),
+      Prune: false,
+      DistributionPaths: [`/${ROBOTS_FILE}`],
     });
   });
 
@@ -175,7 +198,7 @@ describe('web stack', () => {
     const withLinks = synthTemplates({
       appLinks: { appleTeamId: 'ABCDE12345', androidSha256CertFingerprints: ['AA:BB'] },
     }).web;
-    expect(deployments(withLinks)).toHaveLength(3);
+    expect(deployments(withLinks)).toHaveLength(4);
     withLinks.hasResourceProperties('Custom::CDKBucketDeployment', {
       SystemMetadata: Match.objectLike({ 'content-type': 'application/json' }),
       Prune: false,

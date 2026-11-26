@@ -46,7 +46,10 @@ Select an environment with `-c env=<name>` (default `dev`).
 
 `npm run smoke -- dev` (or **Actions → Smoke dev**) makes read-only requests to the deployed environment and exits non-zero if any check fails. URLs come from `CLOUD_ENVIRONMENTS` and the env config. It checks:
 
-- The site serves `index.html`, and every `WEB_PAGE_PATHS` deep link gets the same page, while unknown paths are not rewritten.
+- The site serves `index.html` with a title, meta description, the `colors.surface` theme color and a favicon that loads.
+- Every `WEB_PAGE_PATHS` path, and a path no page uses, gets the same page (the SPA fallback; the app shows Page not found).
+- Missing files (`/assets/…`, `/favicon.ico`) are a real 404, not 403.
+- `/robots.txt` matches `robotsTxt` (dev: `Disallow: /`).
 - Each `/.well-known` file matches what `wellKnownFiles` publishes, or is absent when it isn't published yet.
 - The club API answers `401 not_authenticated` without a token.
 - CORS preflight is allowed from the web origin and refused from any other origin.

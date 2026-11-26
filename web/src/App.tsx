@@ -7,6 +7,7 @@ import { MapPacks } from './pages/MapPacks';
 import { MyClub } from './pages/MyClub';
 import { SignIn } from './pages/SignIn';
 import { StandsAndAreas } from './pages/StandsAndAreas';
+import { ADMIN_TITLE, useDocumentTitle } from './title';
 
 // The roster pulls in the mesh join-link codec and QR encoder: load it on first visit.
 const Roster = lazy(() => import('./pages/Roster').then((m) => ({ default: m.Roster })));
@@ -36,6 +37,8 @@ function currentPath(): PagePath {
   return PAGES.find((p) => p.path === hash)?.path ?? PAGES[0].path;
 }
 
+const SIGN_IN_TITLE = 'Sign in';
+
 /** Shown when part of the club cloud is not set up yet. */
 const NOT_READY = 'The club service is not available yet. Check back soon.';
 
@@ -49,6 +52,13 @@ export function App(props: WebClubServices) {
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
+
+  const notReady = !session || (email && !api);
+  const signedIn = Boolean(email && api);
+  const page = PAGES.find((p) => p.path === path) ?? PAGES[0];
+  useDocumentTitle(
+    ...(notReady ? [] : signedIn ? [page.label, ADMIN_TITLE] : [SIGN_IN_TITLE, ADMIN_TITLE]),
+  );
 
   if (!session || (email && !api)) {
     return (
@@ -71,7 +81,6 @@ export function App(props: WebClubServices) {
     void session.signOut();
   };
 
-  const page = PAGES.find((p) => p.path === path) ?? PAGES[0];
   return (
     <div className="layout">
       <nav className="nav" aria-label="Club admin">

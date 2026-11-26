@@ -52,6 +52,8 @@ export interface EnvConfig {
   readonly region: string;
   /** Web admin page and universal-link domain (served by CloudFront). */
   readonly domainName: string;
+  /** Whether search engines may index the web page (robots.txt). Only production should. */
+  readonly searchIndexing: boolean;
   /** Route 53 hosted zone that holds `domainName`. */
   readonly hostedZoneId: string;
   /** ACM certificate in us-east-1 covering `domainName` (CloudFront requires us-east-1). */

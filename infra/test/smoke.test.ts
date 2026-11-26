@@ -1,9 +1,19 @@
+import { colors } from '@huntclub/design';
 import { API_PATHS, WEB_PAGE_PATHS } from '@huntclub/shared';
 import { dev } from '../config/dev';
-import { cloudFor, formatSmoke, runSmoke, type SmokeFetch } from '../src/smoke';
+import { cloudFor, formatSmoke, runSmoke, UNKNOWN_PAGE_PATH, type SmokeFetch } from '../src/smoke';
+import { robotsTxt } from '../src/web-pages';
 
 const SITE = `https://${dev.domainName}`;
-const INDEX = '<!doctype html><div id="root"></div>';
+/** The head the Vite build writes (web/site-head.ts), then the app root. */
+const INDEX = [
+  '<!doctype html><head><title>Hunt Club Mesh</title>',
+  '<meta name="description" content="Off-grid hunting.">',
+  `<meta name="theme-color" content="${colors.surface}">`,
+  '<link rel="icon" type="image/svg+xml" href="/favicon.svg">',
+  '</head><div id="root"></div>',
+].join('');
+const PAGE_PATHS = ['/', ...WEB_PAGE_PATHS, UNKNOWN_PAGE_PATH];
 
 /** A healthy deployment as the checks expect it; `override` breaks one URL. */
 function fakeDev(override: Record<string, number> = {}): {
@@ -20,10 +30,15 @@ function fakeDev(override: Record<string, number> = {}): {
       headers: { get: (n: string) => headers[n.toLowerCase()] ?? null },
       text: async () => body,
     });
-    if (url === `${SITE}/` || WEB_PAGE_PATHS.some((p) => url === `${SITE}${p}`)) {
+    if (PAGE_PATHS.some((p) => url === `${SITE}${p}`)) {
       return reply(200, INDEX, { 'content-type': 'text/html' });
     }
-    if (url.startsWith(SITE)) return reply(403);
+    if (url === `${SITE}/favicon.svg`)
+      return reply(200, '<svg/>', { 'content-type': 'image/svg+xml' });
+    if (url === `${SITE}/robots.txt`) {
+      return reply(200, robotsTxt(dev), { 'content-type': 'text/plain; charset=utf-8' });
+    }
+    if (url.startsWith(SITE)) return reply(404);
     if (url === `${cloud.clubApiUrl}${API_PATHS.myClubs}`) {
       if (method === 'OPTIONS') {
         const origin = init.headers?.origin;
@@ -65,9 +80,24 @@ describe('dev smoke check', () => {
     expect(formatSmoke('dev', results)).toMatch(/1 of \d+ checks failed$/);
   });
 
-  it('fails when a deep link is not rewritten to the page', async () => {
-    const { fetch } = fakeDev({ [`${SITE}${WEB_PAGE_PATHS[0]}`]: 403 });
+  it('fails when a page path is not rewritten to the page', async () => {
+    const { fetch } = fakeDev({ [`${SITE}${UNKNOWN_PAGE_PATH}`]: 403 });
     const failed = (await runSmoke(dev, fetch)).filter((r) => !r.ok);
-    expect(failed.map((r) => r.name)).toEqual([`deep link ${WEB_PAGE_PATHS[0]} serves the page`]);
+    expect(failed.map((r) => r.name)).toEqual([`page path ${UNKNOWN_PAGE_PATH} serves the page`]);
+  });
+
+  it('fails a missing file answered with 403 instead of 404 (the old first-load favicon 403)', async () => {
+    const { fetch } = fakeDev({ [`${SITE}/favicon.ico`]: 403 });
+    const failed = (await runSmoke(dev, fetch)).filter((r) => !r.ok);
+    expect(failed.map((r) => r.detail)).toEqual(['GET /favicon.ico → 403']);
+  });
+
+  it('fails when robots.txt or the favicon is missing', async () => {
+    const { fetch } = fakeDev({ [`${SITE}/robots.txt`]: 404, [`${SITE}/favicon.svg`]: 404 });
+    const failed = (await runSmoke(dev, fetch)).filter((r) => !r.ok);
+    expect(failed.map((r) => r.name).sort()).toEqual([
+      '/robots.txt matches infra',
+      'favicon is served',
+    ]);
   });
 });

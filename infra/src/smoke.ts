@@ -2,9 +2,11 @@
 // files, the club API's auth and CORS, and the Stripe webhook's signature check.
 // Every URL comes from the single sources (CLOUD_ENVIRONMENTS, the env config); nothing
 // here writes, signs anyone up or sends email.
+import { colors } from '@huntclub/design';
 import { API_PATHS, CLOUD_ENVIRONMENTS, WEB_PAGE_PATHS } from '@huntclub/shared';
 import type { CloudEnvironment } from '@huntclub/shared/cloud';
 import type { EnvConfig } from '../config';
+import { ROBOTS_FILE, robotsTxt } from './web-pages';
 import { wellKnownFiles } from './well-known';
 
 /** The part of fetch the checks use (Node's global fetch fits). */
@@ -29,8 +31,17 @@ const WELL_KNOWN_KEYS = ['.well-known/apple-app-site-association', '.well-known/
 /** An origin the club API must not allow (reserved TLD: never a real site). */
 const FOREIGN_ORIGIN = 'https://smoke.invalid';
 
-/** S3 behind CloudFront answers a missing key with 403 (no ListBucket) or 404. */
-const isMissing = (status: number) => status === 403 || status === 404;
+/** A page path no page uses: the SPA fallback must still serve the page (Page not found). */
+export const UNKNOWN_PAGE_PATH = '/smoke-unknown-page';
+
+/** Files that do not exist: CloudFront may list the bucket, so each must be a real 404. */
+export const MISSING_FILES = ['/assets/smoke-missing.js', '/favicon.ico'];
+
+const isMissing = (status: number) => status === 404;
+
+/** The content of `<meta name="…" content="…">` in the page, as Vite writes it. */
+const metaContent = (html: string, name: string) =>
+  new RegExp(`<meta name="${name}" content="([^"]*)"`).exec(html)?.[1];
 
 export function cloudFor(config: EnvConfig): CloudEnvironment {
   const cloud = (CLOUD_ENVIRONMENTS as Record<string, CloudEnvironment>)[config.name];
@@ -67,8 +78,25 @@ export async function runSmoke(config: EnvConfig, fetch: SmokeFetch): Promise<Sm
     expect(index.includes('id="root"'), 'no app root element');
     return 'GET / → 200 text/html';
   });
-  for (const path of WEB_PAGE_PATHS) {
-    await check(`deep link ${path} serves the page`, async () => {
+  let icon = '';
+  await check('page head has a title, description, theme color and icon', async () => {
+    expect(/<title>[^<]+<\/title>/.test(index), 'no title');
+    expect(Boolean(metaContent(index, 'description')), 'no meta description');
+    const theme = metaContent(index, 'theme-color');
+    expect(theme === colors.surface, `theme-color is ${theme ?? 'missing'}`);
+    icon = /<link rel="icon"[^>]* href="([^"]+)"/.exec(index)?.[1] ?? '';
+    expect(icon.startsWith('/'), 'no icon link');
+    return `theme-color ${theme}, icon ${icon}`;
+  });
+  await check('favicon is served', async () => {
+    expect(icon !== '', 'no icon link in the page');
+    const res = await fetch(`${site}${icon}`);
+    expect(res.status === 200, `GET ${icon} → ${res.status}`);
+    expect(/^image\//.test(res.headers.get('content-type') ?? ''), 'not an image');
+    return `GET ${icon} → 200 ${res.headers.get('content-type')}`;
+  });
+  for (const path of [...WEB_PAGE_PATHS, UNKNOWN_PAGE_PATH]) {
+    await check(`page path ${path} serves the page`, async () => {
       const res = await fetch(`${site}${path}`);
       const body = await res.text();
       expect(res.status === 200, `GET ${path} → ${res.status}`);
@@ -76,10 +104,19 @@ export async function runSmoke(config: EnvConfig, fetch: SmokeFetch): Promise<Sm
       return `GET ${path} → 200, same page`;
     });
   }
-  await check('unknown paths are not rewritten', async () => {
-    const res = await fetch(`${site}/assets/smoke-missing.js`);
-    expect(isMissing(res.status), `GET /assets/smoke-missing.js → ${res.status}`);
-    return `GET /assets/smoke-missing.js → ${res.status}`;
+  for (const path of MISSING_FILES) {
+    await check(`missing file ${path} is a 404`, async () => {
+      const res = await fetch(`${site}${path}`);
+      expect(isMissing(res.status), `GET ${path} → ${res.status}`);
+      return `GET ${path} → 404`;
+    });
+  }
+  await check(`/${ROBOTS_FILE} matches infra`, async () => {
+    const res = await fetch(`${site}/${ROBOTS_FILE}`);
+    expect(res.status === 200, `GET → ${res.status}`);
+    expect(/^text\/plain/.test(res.headers.get('content-type') ?? ''), 'not text/plain');
+    expect((await res.text()) === robotsTxt(config), 'content differs from infra');
+    return config.searchIndexing ? 'GET → 200, allows crawling' : 'GET → 200, Disallow: /';
   });
 
   // Universal-link files: exactly what infra publishes -----------------------------------

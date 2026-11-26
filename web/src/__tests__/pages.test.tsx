@@ -6,6 +6,7 @@ import {
   JOIN_WEB_PATH,
 } from '@huntclub/mesh';
 import {
+  APP_NAME,
   CHECKOUT_RETURN_PATHS,
   ClubApiRequestError,
   JOIN_PATH,
@@ -18,6 +19,7 @@ import { App } from '../App';
 import * as download from '../download';
 import * as navigate from '../navigate';
 import { Root } from '../Root';
+import { pageTitle } from '../title';
 import type { WebClubServices } from '../cloud';
 import { fakeClubClient, fakeCognitoAuth, sampleData, TEST_CODE } from './fakeClubApi';
 
@@ -54,7 +56,9 @@ function renderApp(
 describe('sign in', () => {
   it('signs in with an email and the emailed code', async () => {
     renderApp();
+    expect(document.title).toBe(`Sign in · Club admin · ${APP_NAME}`);
     await signIn();
+    expect(document.title).toBe(`My club · Club admin · ${APP_NAME}`);
     expect(screen.getByText('Signed in as dale@example.com')).toBeTruthy();
   });
 
@@ -324,6 +328,7 @@ describe('pages on their own paths (no sign-in)', () => {
     );
     render(<Root {...services} location={at(JOIN_PATH, web.slice(web.indexOf('#')))} />);
     expect(await screen.findByRole('heading', { name: 'Club invite' })).toBeTruthy();
+    expect(document.title).toBe(`Club invite · ${APP_NAME}`);
     const open = screen.getByRole('link', { name: 'Open in the app' }).getAttribute('href')!;
     expect(open.startsWith('huntclub://')).toBe(true);
     expect(decodeJoinUrl(open)).toEqual(decodeJoinUrl(web));
@@ -347,8 +352,18 @@ describe('pages on their own paths (no sign-in)', () => {
     expect(await screen.findByText(/Nothing was charged/)).toBeTruthy();
   });
 
-  it('shows the club admin on any other path', async () => {
-    render(<Root {...services} location={at('/')} />);
-    expect(await screen.findByText(/not available yet/)).toBeTruthy();
+  it('shows the club admin at / and /index.html', async () => {
+    for (const path of ['/', '/index.html']) {
+      const { unmount } = render(<Root {...services} location={at(path)} />);
+      expect(await screen.findByText(/not available yet/)).toBeTruthy();
+      unmount();
+    }
+  });
+
+  it('shows Page not found on any other path, with a way back to sign in', async () => {
+    render(<Root {...services} location={at('/nope/deeper')} />);
+    expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Back to sign in' }).getAttribute('href')).toBe('/');
+    expect(document.title).toBe(pageTitle('Page not found'));
   });
 });

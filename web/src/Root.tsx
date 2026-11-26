@@ -6,13 +6,15 @@ import type { WebClubServices } from './cloud';
 // and the admin doesn't pull in the mesh codec until an invite is made.
 const App = lazy(() => import('./App').then((m) => ({ default: m.App })));
 const Join = lazy(() => import('./pages/Join').then((m) => ({ default: m.Join })));
+const NotFound = lazy(() => import('./pages/NotFound').then((m) => ({ default: m.NotFound })));
 const CheckoutReturn = lazy(() =>
   import('./pages/CheckoutReturn').then((m) => ({ default: m.CheckoutReturn })),
 );
 
 /**
- * The page's real paths (WEB_PAGE_PATHS, served as index.html by CloudFront) need no
- * sign-in. Everything else is the club admin, with hash routes.
+ * The page's real paths (WEB_PAGE_PATHS) need no sign-in; `/` is the club admin, with
+ * hash routes. CloudFront serves index.html for every page path, so any other path lands
+ * here too and gets Page not found.
  */
 export function Root(props: WebClubServices & { location: Pick<Location, 'pathname' | 'href'> }) {
   const { location, ...services } = props;
@@ -35,12 +37,21 @@ export function Root(props: WebClubServices & { location: Pick<Location, 'pathna
         <CheckoutReturn outcome="cancel" />
       </Page>
     );
+  if (path !== '/' && path !== ADMIN_INDEX)
+    return (
+      <Page>
+        <NotFound />
+      </Page>
+    );
   return (
     <Suspense fallback={<Loading />}>
       <App {...services} />
     </Suspense>
   );
 }
+
+/** The admin's own file name, which also opens the admin. */
+const ADMIN_INDEX = '/index.html';
 
 function Loading() {
   return <p className="muted">Loading…</p>;

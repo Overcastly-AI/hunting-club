@@ -1,6 +1,13 @@
 // App identity shared by the Expo app config, the web admin page and infra
 // (universal-link files). The single source: never retype these elsewhere.
 
+/** The product name, as people see it (app name, page titles, sign-in). */
+export const APP_NAME = 'Hunt Club Mesh';
+
+/** One line about the product, for the web page's meta description and sign-in. */
+export const APP_DESCRIPTION =
+  'Off-grid hunting with your party and club over Meshtastic radios. Club admins manage members, stands and map packs here.';
+
 /** iOS bundle identifier and Android package name. */
 export const APP_ID = 'com.overcastly.huntclub';
 
