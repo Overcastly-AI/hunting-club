@@ -15,6 +15,9 @@ on:
     paths:
       - 'packages/mesh/**'
       - '.github/workflows/mesh-sim.yml'
+  schedule:
+    # Nightly, off the top of the hour: catches firmware changes in the PPA.
+    - cron: '23 7 * * *'
   workflow_dispatch:
 
 permissions:
@@ -68,6 +71,15 @@ jobs:
         run: |
           mkdir -p "$SIM_DIR"
           npm run test:integration -w @huntclub/mesh 2>&1 | tee "$SIM_DIR/jest.log"
+
+      - name: Simulator logs (on failure)
+        if: failure()
+        run: |
+          for f in "$SIM_DIR"/node*.log; do
+            echo "::group::$f (last 150 lines)"
+            tail -n 150 "$f" || true
+            echo '::endgroup::'
+          done
 
       - name: Summary
         if: always()

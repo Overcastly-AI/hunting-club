@@ -209,22 +209,69 @@ suite('meshtasticd --sim', () => {
       report('CheckIn + Receipt ok');
     });
 
-    maybe('de-duplication: one event per message even with relays', async () => {
-      const texts: string[] = [];
-      const apps: number[] = [];
-      const offs = [
-        b().on('text', (t) => texts.push(t.text)),
-        b().on('appMessage', ({ message }) => apps.push(message.id)),
-      ];
-      a().sendText('only once');
-      a().sendAppMessage({ type: AppMessageType.CheckOut, id: 0x0fed0001, sender: a().myNodeNum });
-      // Same app message id again under a new packet: must not count twice.
-      a().sendAppMessage({ type: AppMessageType.CheckOut, id: 0x0fed0001, sender: a().myNodeNum });
-      await sleep(SIM_IS_FAKE ? 2_000 : 30_000);
-      offs.forEach((off) => off());
-      expect(texts.filter((t) => t === 'only once')).toHaveLength(1);
-      expect(apps.filter((id) => id === 0x0fed0001)).toHaveLength(1);
-      report('de-duplication ok');
-    });
+    maybe(
+      'de-duplication: one event per message, and a retried app message is a repeat',
+      async () => {
+        const settle = SIM_IS_FAKE ? 1_000 : 20_000;
+        const texts: string[] = [];
+        const apps: number[] = [];
+        const repeats: number[] = [];
+        const heard: string[] = [];
+        const offs = [
+          b().on('text', (t) => texts.push(t.text)),
+          b().on('appMessage', ({ message }) => apps.push(message.id)),
+          b().on('appMessageRepeat', ({ message }) => repeats.push(message.id)),
+          b().on('heard', (h) => heard.push(`${h.portnum}:${h.packetId.toString(16)}`)),
+        ];
+        try {
+          // A text: wait for it, then make sure no second copy follows.
+          const arrived = nextEvent<{ text: string }>(
+            (cb) => b().on('text', cb),
+            (t) => t.text === 'only once',
+            90_000,
+            'dedup text at B',
+          );
+          const textSend = a().sendText('only once');
+          await arrived;
+          await sleep(settle);
+          report(
+            `dedup text: send result ${JSON.stringify(await textSend.result)}, copies seen ${texts.length}`,
+          );
+          expect(texts.filter((t) => t === 'only once')).toHaveLength(1);
+
+          // The same app message id twice under two packets (a sender retry).
+          const id = 0x0fed0001;
+          const first = nextEvent<{ message: AppMessage }>(
+            (cb) => b().on('appMessage', cb),
+            (e) => e.message.id === id,
+            90_000,
+            'dedup app message at B',
+          );
+          a().sendAppMessage(
+            { type: AppMessageType.CheckOut, id, sender: a().myNodeNum },
+            { wantAck: false },
+          );
+          await first;
+          const again = nextEvent<{ message: AppMessage }>(
+            (cb) => b().on('appMessageRepeat', cb),
+            (e) => e.message.id === id,
+            90_000,
+            'retried app message at B',
+          );
+          a().sendAppMessage(
+            { type: AppMessageType.CheckOut, id, sender: a().myNodeNum },
+            { wantAck: false },
+          );
+          await again;
+          await sleep(settle);
+          expect(apps.filter((x) => x === id)).toHaveLength(1);
+          expect(repeats.filter((x) => x === id)).toHaveLength(1);
+          report('de-duplication ok (text once; app message once plus one repeat)');
+        } finally {
+          offs.forEach((off) => off());
+          report(`dedup: B heard ${heard.length} packets: ${heard.join(' ')}`);
+        }
+      },
+    );
   });
 });
