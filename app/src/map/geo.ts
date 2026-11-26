@@ -1,5 +1,7 @@
 import type { LatLon } from '@huntclub/mesh';
 
+import type { Bounds } from './tiles';
+
 const EARTH_RADIUS_M = 6_371_008.8;
 const EARTH_CIRCUMFERENCE_M = 40_075_016.686;
 const DEG = Math.PI / 180;
@@ -89,4 +91,62 @@ export function distanceMeters(a: LatLon, b: LatLon): number {
   const dLambda = (b.lon - a.lon) * DEG;
   const h = Math.sin(dPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) ** 2;
   return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/** Initial compass bearing from `a` to `b`, 0–360 degrees. */
+export function bearingDeg(a: LatLon, b: LatLon): number {
+  const phi1 = a.lat * DEG;
+  const phi2 = b.lat * DEG;
+  const dLambda = (b.lon - a.lon) * DEG;
+  const y = Math.sin(dLambda) * Math.cos(phi2);
+  const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLambda);
+  return (((Math.atan2(y, x) / DEG) % 360) + 360) % 360;
+}
+
+const COMPASS_WORDS = [
+  'north',
+  'northeast',
+  'east',
+  'southeast',
+  'south',
+  'southwest',
+  'west',
+  'northwest',
+] as const;
+
+/** Eight-point compass word for a bearing, e.g. 40° → "northeast". */
+export function compassWord(bearing: number): (typeof COMPASS_WORDS)[number] {
+  return COMPASS_WORDS[Math.round((((bearing % 360) + 360) % 360) / 45) % 8]!;
+}
+
+/** "0.4 mi northeast" or "300 ft south": how far and which way someone is from you. */
+export function distanceAndDirection(from: LatLon, to: LatLon): string {
+  const meters = distanceMeters(from, to);
+  const feet = meters / FOOT_M;
+  const distance =
+    feet < 1000
+      ? `${Math.max(10, Math.round(feet / 10) * 10)} ft`
+      : `${(meters / MILE_M).toFixed(1)} mi`;
+  return `${distance} ${compassWord(bearingDeg(from, to))}`;
+}
+
+/** Smallest box the map frames around a single point (about 1 km across). */
+export const MIN_BOUNDS_SPAN_DEG = 0.01;
+
+/**
+ * [west, south, east, north] around the points, at least MIN_BOUNDS_SPAN_DEG
+ * wide and tall so one hunter doesn't zoom the map to the street. Undefined
+ * for no points.
+ */
+export function boundsAround(points: readonly LatLon[]): Bounds | undefined {
+  if (points.length === 0) return undefined;
+  const lons = points.map((p) => p.lon);
+  const lats = points.map((p) => p.lat);
+  const pad = (min: number, max: number) => {
+    const extra = Math.max(0, MIN_BOUNDS_SPAN_DEG - (max - min)) / 2;
+    return [min - extra, max + extra] as const;
+  };
+  const [west, east] = pad(Math.min(...lons), Math.max(...lons));
+  const [south, north] = pad(Math.min(...lats), Math.max(...lats));
+  return [west, south, east, north];
 }

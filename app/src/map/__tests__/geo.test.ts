@@ -1,8 +1,13 @@
 import {
+  bearingDeg,
+  boundsAround,
+  compassWord,
   destination,
+  distanceAndDirection,
   distanceMeters,
   downwindBearing,
   metersPerPoint,
+  MIN_BOUNDS_SPAN_DEG,
   scaleBar,
   scentConeRing,
   SCENT_CONE,
@@ -50,5 +55,43 @@ describe('distanceMeters', () => {
     const a = { lat: 40.79, lon: -77.86 };
     expect(distanceMeters(a, a)).toBe(0);
     expect(distanceMeters(a, destination(a, 90, 1234))).toBeCloseTo(1234, 3);
+  });
+});
+
+describe('bearing and direction', () => {
+  const a = { lat: 40.79, lon: -77.86 };
+
+  it('names compass directions', () => {
+    expect(compassWord(0)).toBe('north');
+    expect(compassWord(44)).toBe('northeast');
+    expect(compassWord(181)).toBe('south');
+    expect(compassWord(350)).toBe('north');
+  });
+
+  it('measures bearing and says how far and which way', () => {
+    expect(bearingDeg(a, destination(a, 135, 500))).toBeCloseTo(135, 1);
+    expect(distanceAndDirection(a, destination(a, 90, 50))).toBe('160 ft east');
+    expect(distanceAndDirection(a, destination(a, 270, 3000))).toBe('1.9 mi west');
+  });
+});
+
+describe('boundsAround', () => {
+  it('is undefined with nothing to frame', () => {
+    expect(boundsAround([])).toBeUndefined();
+  });
+
+  it('frames all points', () => {
+    expect(
+      boundsAround([
+        { lat: 40, lon: -78 },
+        { lat: 41, lon: -77 },
+      ]),
+    ).toEqual([-78, 40, -77, 41]);
+  });
+
+  it('keeps a single point at least the minimum span wide and tall', () => {
+    const [west, south, east, north] = boundsAround([{ lat: 40, lon: -78 }])!;
+    expect(east - west).toBeCloseTo(MIN_BOUNDS_SPAN_DEG);
+    expect(north - south).toBeCloseTo(MIN_BOUNDS_SPAN_DEG);
   });
 });

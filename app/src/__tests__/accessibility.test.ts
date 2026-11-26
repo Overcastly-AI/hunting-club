@@ -1,17 +1,10 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 import { fontSize, sizes } from '../theme';
+import { SRC, sourceFiles } from '../test-utils/sourceFiles';
 
-const SRC = join(__dirname, '..');
-
-function tsxFiles(dir: string): string[] {
-  return readdirSync(dir).flatMap((name) => {
-    const path = join(dir, name);
-    if (statSync(path).isDirectory()) return name === '__tests__' ? [] : tsxFiles(path);
-    return name.endsWith('.tsx') ? [path] : [];
-  });
-}
+const tsxFiles = (dir: string) => sourceFiles(dir, /\.tsx$/);
 
 /** The props of a JSX opening tag starting at `start`: up to the first `>` outside braces that isn't `=>`. */
 function openingTag(source: string, start: number): string {
@@ -59,5 +52,26 @@ describe('accessibility rules from docs/SPEC.md', () => {
   it('keeps map text at 13 px and body text at 16 px or more', () => {
     expect(fontSize.mapLabelMin).toBeGreaterThanOrEqual(13);
     expect(fontSize.body).toBeGreaterThanOrEqual(16);
+  });
+
+  it('never truncates sunrise/sunset times or tab labels', () => {
+    const files = ['map/components/ConditionsPanel.tsx', 'app/(tabs)/_layout.tsx'];
+    for (const file of files) {
+      const source = readFileSync(join(SRC, file), 'utf8');
+      expect({ file, singleLine: /numberOfLines=\{1\}/.test(source) }).toEqual({
+        file,
+        singleLine: false,
+      });
+      expect({ file, shrinks: /adjustsFontSizeToFit/.test(source) }).toEqual({
+        file,
+        shrinks: false,
+      });
+    }
+  });
+
+  it('sets clubhouse board text at 24 px or more, readable from across a room', () => {
+    for (const size of [fontSize.boardDetail, fontSize.boardName, fontSize.boardTitle]) {
+      expect(size).toBeGreaterThanOrEqual(24);
+    }
   });
 });

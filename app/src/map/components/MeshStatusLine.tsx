@@ -1,32 +1,35 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, opacity, radii, sizes, spacing, textStyles } from '../../theme';
-import { describeMeshStatus, type MeshTone } from '../meshStatus';
+import { MESH_QUIET_DETAIL, MESH_TONE_COLOR, describeMeshStatus } from '../meshStatus';
 import type { MeshStatus } from '../types';
 
 type Props = { status: MeshStatus; now: number; onPress: () => void };
 
-const DOT_COLOR: Record<MeshTone, string> = {
-  ok: colors.fresh,
-  quiet: colors.help,
-  none: colors.textSecondary,
-};
-
 /** "Mesh: 3 radios · heard 12s ago". Tapping it opens radio details. */
 export function MeshStatusLine({ status, now, onPress }: Props) {
   const { text, tone } = describeMeshStatus(status, now);
+  const quiet = tone === 'quiet' && status.lastHeardAt !== null;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={text}
+      accessibilityLabel={quiet ? `${text}. ${MESH_QUIET_DETAIL}` : text}
       accessibilityHint="Opens radio details"
+      accessibilityLiveRegion={quiet ? 'polite' : 'none'}
       onPress={onPress}
-      style={({ pressed }) => [styles.line, pressed && { opacity: opacity.pressed }]}
+      style={({ pressed }) => [
+        styles.line,
+        quiet && styles.banner,
+        pressed && { opacity: opacity.pressed },
+      ]}
     >
-      <View style={[styles.dot, { backgroundColor: DOT_COLOR[tone] }]} />
-      <Text style={styles.text} numberOfLines={1}>
-        {text}
-      </Text>
+      <View style={[styles.dot, { backgroundColor: MESH_TONE_COLOR[tone] }]} />
+      <View style={styles.texts}>
+        <Text style={styles.text} numberOfLines={1}>
+          {text}
+        </Text>
+        {quiet ? <Text style={styles.detail}>{MESH_QUIET_DETAIL}</Text> : null}
+      </View>
     </Pressable>
   );
 }
@@ -44,6 +47,15 @@ const styles = StyleSheet.create({
     borderRadius: radii.control,
     paddingHorizontal: spacing.md,
   },
+  /** Mesh down: full width with a gold outline so nobody mistakes old positions for live ones. */
+  banner: {
+    alignSelf: 'stretch',
+    borderWidth: sizes.hairline,
+    borderColor: colors.help,
+    paddingVertical: spacing.sm,
+  },
+  texts: { flexShrink: 1 },
   dot: { width: DOT, height: DOT, borderRadius: DOT / 2 },
+  detail: { ...textStyles.body, color: colors.textSecondary },
   text: { ...textStyles.body, color: colors.text },
 });

@@ -26,6 +26,23 @@ export function sunLine(place: LatLon | null, now: number): { sunrise: string; s
   return { sunrise: formatClockTime(times.sunrise), sunset: formatClockTime(times.sunset) };
 }
 
+/** Joins words with no-break spaces so a line never breaks inside one phrase ("7:03 AM"). */
+const keepTogether = (text: string) => text.replace(/ /g, '\u00A0');
+
+/**
+ * "Sunrise 7:03 AM" and "Sunset 4:26 PM" as two unbreakable phrases. The panel
+ * may wrap between them at large text sizes, but never truncates or splits a time.
+ */
+export function sunPhrases(sun: { sunrise: string; sunset: string }): [string, string] {
+  return [keepTogether(`Sunrise ${sun.sunrise}`), keepTogether(`Sunset ${sun.sunset}`)];
+}
+
+/** "Sunrise 7:03 AM · Sunset 4:26 PM": wraps only after the dot, never inside a time. */
+export function sunSentence(sun: { sunrise: string; sunset: string }): string {
+  const [sunrisePhrase, sunsetPhrase] = sunPhrases(sun);
+  return `${sunrisePhrase}\u00A0· ${sunsetPhrase}`;
+}
+
 export function ConditionsPanel({ place, now, weather = UNKNOWN_WEATHER }: Props) {
   const { sunrise, sunset } = sunLine(place, now);
   const spoken = [
@@ -36,9 +53,7 @@ export function ConditionsPanel({ place, now, weather = UNKNOWN_WEATHER }: Props
   ];
   return (
     <View accessible accessibilityLabel={spoken.filter(Boolean).join(' ')} style={styles.panel}>
-      <Text style={styles.primary} numberOfLines={1} adjustsFontSizeToFit>
-        Sunrise {sunrise} · Sunset {sunset}
-      </Text>
+      <Text style={styles.primary}>{sunSentence({ sunrise, sunset })}</Text>
       <View style={styles.row}>
         <View style={styles.windGroup}>
           <Text style={styles.secondary}>
@@ -50,11 +65,7 @@ export function ConditionsPanel({ place, now, weather = UNKNOWN_WEATHER }: Props
         </View>
         <Text style={styles.secondary}>{weather.temperature}</Text>
       </View>
-      {weather.updated ? (
-        <Text style={styles.secondary} numberOfLines={1}>
-          {weather.updated}
-        </Text>
-      ) : null}
+      {weather.updated ? <Text style={styles.secondary}>{weather.updated}</Text> : null}
     </View>
   );
 }
@@ -71,7 +82,7 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   windGroup: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  primary: { ...textStyles.label, color: colors.text },
+  primary: { ...textStyles.labelNarrow, color: colors.text },
   secondary: { ...textStyles.body, color: colors.textSecondary },
   wind: { color: colors.wind },
 });
