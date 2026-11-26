@@ -10,11 +10,10 @@ import { answerAlerts } from '../../test-utils/alerts';
 import { PERMISSION_BUTTONS } from '../askPermission';
 import { ensureNotificationPermission, NOTIFICATIONS_PERMISSION_COPY } from '../notifications';
 
-jest.mock('expo-notifications', () => ({
-  IosAuthorizationStatus: { NOT_DETERMINED: 0, DENIED: 1, AUTHORIZED: 2, PROVISIONAL: 3 },
-  getPermissionsAsync: jest.fn(),
-  requestPermissionsAsync: jest.fn(),
-}));
+jest.mock(
+  'expo-notifications',
+  () => jest.requireActual('../../test-utils/fakeNotifications').fakeNotificationsModule,
+);
 
 const status = (granted: boolean) => ({ granted }) as NotificationPermissionsStatus;
 const get = jest.mocked(getPermissionsAsync);

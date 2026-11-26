@@ -4,6 +4,7 @@ import {
   type ClientState,
   type LinkStatus,
   type MeshClientOptions,
+  type Owner,
   type Transport,
   type Unsubscribe,
   Emitter,
@@ -153,6 +154,18 @@ export class RadioController extends Emitter<{ change: RadioSnapshot; client: Me
   reconnect = async (): Promise<void> => {
     const { pairedRadio } = this.snapshot;
     if (pairedRadio) await this.start(pairedRadio, { retryFirstConnect: true, remember: false });
+  };
+
+  /**
+   * Writes the hunter's name and initials to the linked radio (Meshtastic
+   * owner). Returns false when the radio isn't ready to take it.
+   */
+  setOwner = (owner: Owner): boolean => {
+    const client = this.session?.client;
+    if (!client || client.state !== 'ready' || !this.snapshot.radio) return false;
+    client.setOwner(owner);
+    this.set({ radio: { ...this.snapshot.radio, ...owner } });
+    return true;
   };
 
   /** Disconnects and forgets the remembered radio. */
