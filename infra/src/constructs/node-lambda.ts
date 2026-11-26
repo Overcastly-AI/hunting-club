@@ -8,6 +8,22 @@ import { lambdaEntry } from '../paths';
 /** Log retention for every log group in the project (owner rule: 14 days). */
 export const LOG_RETENTION = logs.RetentionDays.TWO_WEEKS;
 
+/**
+ * esbuild settings shared by every Lambda bundle (and by the bundle test).
+ * - ESM output has no `require`, so CommonJS dependencies that call `require("fs")`
+ *   (for example qrcode's Node build) crash at init with "Dynamic require of fs is not
+ *   supported". The banner gives the bundle a real `require`.
+ * - Prefer packages' ESM builds (`module`) so fewer CommonJS shims are bundled at all.
+ * - The Node runtime ships the AWS SDK v3; never bundle it.
+ */
+export const LAMBDA_BUNDLING = {
+  target: 'node24',
+  mainFields: ['module', 'main'],
+  banner:
+    'import { createRequire as __lambdaCreateRequire } from "node:module"; const require = __lambdaCreateRequire(import.meta.url);',
+  externalModules: ['@aws-sdk/*'],
+} as const;
+
 export interface NodeLambdaProps {
   /** Folder name under infra/lambda/ containing index.ts. */
   readonly entry: string;
@@ -42,11 +58,12 @@ export class NodeLambda extends Construct {
       environment: props.environment ?? {},
       bundling: {
         format: OutputFormat.ESM,
-        target: 'node24',
+        target: LAMBDA_BUNDLING.target,
+        mainFields: [...LAMBDA_BUNDLING.mainFields],
+        banner: LAMBDA_BUNDLING.banner,
         minify: true,
         sourceMap: true,
-        // The Node runtime ships the AWS SDK v3; never bundle it.
-        externalModules: ['@aws-sdk/*'],
+        externalModules: [...LAMBDA_BUNDLING.externalModules],
       },
     });
   }
