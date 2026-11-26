@@ -56,9 +56,12 @@ export interface CognitoAuthOptions {
   now?: () => number;
 }
 
+/** The Cognito user pools API for a region: the sign-in client calls it, the web CSP allows it. */
+export const cognitoEndpoint = (region: string) => `https://cognito-idp.${region}.amazonaws.com/`;
+
 export function createCognitoAuth(options: CognitoAuthOptions) {
   const now = options.now ?? Date.now;
-  const endpoint = `https://cognito-idp.${options.region}.amazonaws.com/`;
+  const endpoint = cognitoEndpoint(options.region);
 
   async function call<T>(action: string, body: Record<string, unknown>): Promise<T> {
     let res;

@@ -10,6 +10,11 @@ import {
   UNKNOWN_PAGE_PATH,
   type SmokeFetch,
 } from '../src/smoke';
+import {
+  contentSecurityPolicy,
+  PERMISSIONS_POLICY,
+  REFERRER_POLICY,
+} from '../src/security-headers';
 import { NOINDEX_HEADER, robotsTxt } from '../src/web-pages';
 
 const SITE = `https://${dev.domainName}`;
@@ -29,6 +34,15 @@ const ADMIN = '<!doctype html><head><title>Club admin</title></head><div id="roo
 const NOT_FOUND = `<!doctype html><head><title>${NOT_FOUND_PAGE.title}</title></head>`;
 const ADMIN_PATHS = [ADMIN_PATH, ...WEB_PAGE_PATHS];
 const HTML = { 'content-type': 'text/html' };
+/** The security headers a healthy deployment sends (security-headers.ts). */
+const SECURITY = {
+  'content-security-policy': contentSecurityPolicy(dev),
+  [PERMISSIONS_POLICY.header.toLowerCase()]: PERMISSIONS_POLICY.value,
+  'x-frame-options': 'DENY',
+  'x-content-type-options': 'nosniff',
+  'strict-transport-security': 'max-age=31536000',
+};
+const PAGE = { ...HTML, ...SECURITY, 'referrer-policy': REFERRER_POLICY.site };
 const JOIN_SCRIPT = '/assets/join-abc.js';
 
 /** A healthy deployment as the checks expect it; `override` breaks one URL. */
@@ -47,17 +61,17 @@ function fakeDev(override: Record<string, number> = {}): {
       text: async () => body,
     });
     if (url === `${SITE}/`) {
-      return reply(200, HOME, { ...HTML, 'x-robots-tag': NOINDEX_HEADER.value });
+      return reply(200, HOME, { ...PAGE, 'x-robots-tag': NOINDEX_HEADER.value });
     }
     if (url === `${SITE}${JOIN_PAGE.path}`) {
       const page = `<title>${JOIN_PAGE.title}</title><meta name="robots" content="noindex"/><script type="module" src="${JOIN_SCRIPT}"></script>`;
-      return reply(200, page, { ...HTML, 'referrer-policy': 'no-referrer' });
+      return reply(200, page, { ...PAGE, 'referrer-policy': REFERRER_POLICY.join });
     }
     if (url === `${SITE}${JOIN_SCRIPT}`)
       return reply(200, '', { 'content-type': 'text/javascript' });
     const route = ROUTES.find((r) => r.path !== '/' && url === `${SITE}${r.path}`);
     if (route) return reply(200, `<title>${route.title}</title><h1>Page</h1>`, HTML);
-    if (ADMIN_PATHS.some((p) => url === `${SITE}${p}`)) return reply(200, ADMIN, HTML);
+    if (ADMIN_PATHS.some((p) => url === `${SITE}${p}`)) return reply(200, ADMIN, PAGE);
     const redirect = Object.entries(SMOKE_REDIRECTS).find(([from]) => url === `${SITE}${from}`);
     if (redirect) return reply(301, '', { location: redirect[1] });
     if (url === `${SITE}${BUILD_VERSION_URL}`) {
@@ -172,13 +186,38 @@ describe('dev smoke check', () => {
       return url === `${SITE}${JOIN_PAGE.path}` ? { ...res, headers: { get: () => null } } : res;
     };
     const failed = (await runSmoke(dev, leaky)).filter((r) => !r.ok);
-    expect(failed.map((r) => r.detail)).toEqual(['referrer-policy is missing']);
+    expect(failed.map((r) => r.detail)).toEqual([
+      'referrer-policy is missing',
+      expect.stringMatching(/^wrong or missing: .*referrer-policy/),
+    ]);
   });
 
   it('fails a missing share card', async () => {
     const { fetch } = fakeDev({ [`${SITE}/og/home.png`]: 404 });
     const failed = (await runSmoke(dev, fetch)).filter((r) => !r.ok);
     expect(failed.map((r) => r.detail)).toEqual([`GET ${SITE}/og/home.png → 404`]);
+  });
+
+  it('fails a page without the CSP or with the wrong referrer policy', async () => {
+    const { fetch } = fakeDev();
+    const weak: SmokeFetch = async (url, init) => {
+      const res = await fetch(url, init);
+      if (url !== `${SITE}${ADMIN_PATH}`) return res;
+      const get = (n: string) =>
+        n === 'content-security-policy'
+          ? null
+          : n === 'referrer-policy'
+            ? 'unsafe-url'
+            : res.headers.get(n);
+      return { ...res, headers: { get } };
+    };
+    const failed = (await runSmoke(dev, weak)).filter((r) => !r.ok);
+    expect(failed.map((r) => [r.name, r.detail])).toEqual([
+      [
+        `${ADMIN_PATH} sends the security headers`,
+        'wrong or missing: content-security-policy, referrer-policy',
+      ],
+    ]);
   });
 
   it('fails when the sitemap is missing', async () => {

@@ -18,8 +18,8 @@ export const MESHTASTIC_ATTRIBUTION = `Meshtastic® is a registered trademark of
 export interface PageAssets {
   /** The fingerprinted Archivo WOFF2 (preloaded and used by the stylesheet). */
   readonly fontUrl: string;
-  /** The inlined stylesheet. */
-  readonly css: string;
+  /** The site stylesheet's URL (a content-hashed file in assets/, so the CSP needs no inline styles). */
+  readonly cssUrl: string;
 }
 
 /** What a page's head says about it (from the route registry). */
@@ -79,7 +79,7 @@ export function Document(props: { meta: PageMeta; assets: PageAssets; children: 
         <link rel="icon" href={`/${FAVICON_ICO.file}`} sizes="48x48" />
         <link rel="icon" type="image/svg+xml" href={`/${FAVICON_SVG}`} />
         <link rel="preload" as="font" type="font/woff2" href={assets.fontUrl} crossOrigin="" />
-        <style dangerouslySetInnerHTML={{ __html: assets.css }} />
+        <link rel="stylesheet" href={assets.cssUrl} />
         {meta.script ? <script dangerouslySetInnerHTML={{ __html: meta.script }} /> : null}
         {meta.scriptSrc ? <script type="module" src={meta.scriptSrc} /> : null}
         {(meta.structuredData ?? []).map((data, i) => (

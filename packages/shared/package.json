@@ -13,7 +13,8 @@
     "./cloud": "./src/cloud.ts",
     "./maps": "./src/maps.ts",
     "./pricing": "./src/pricing.ts",
-    "./testing": "./src/testing.ts"
+    "./testing": "./src/testing.ts",
+    "./schema-runtime": "./src/schemaRuntime.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

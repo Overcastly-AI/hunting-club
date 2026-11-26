@@ -4,14 +4,7 @@
 // Every URL comes from the single sources (CLOUD_ENVIRONMENTS, the env config); nothing
 // here writes, signs anyone up or sends email.
 import { colors, FAVICON_ICO } from '@huntclub/design';
-import {
-  ADMIN_PATH,
-  API_PATHS,
-  BUILD_VERSION_URL,
-  CLOUD_ENVIRONMENTS,
-  WEB_PAGE_PATHS,
-} from '@huntclub/shared';
-import type { CloudEnvironment } from '@huntclub/shared/cloud';
+import { ADMIN_PATH, API_PATHS, BUILD_VERSION_URL, WEB_PAGE_PATHS } from '@huntclub/shared';
 import {
   canonicalUrl,
   JOIN_PAGE,
@@ -21,6 +14,8 @@ import {
   SITEMAP_FILE,
 } from '@huntclub/site/routes';
 import type { EnvConfig } from '../config';
+import { cloudFor } from './cloud';
+import { contentSecurityPolicy, PERMISSIONS_POLICY, REFERRER_POLICY } from './security-headers';
 import { NOINDEX_HEADER, ROBOTS_FILE, robotsTxt } from './web-pages';
 import { wellKnownFiles } from './well-known';
 
@@ -65,11 +60,7 @@ const isMissing = (status: number) => status === 404;
 const metaContent = (html: string, name: string) =>
   new RegExp(`<meta name="${name}" content="([^"]*)"`).exec(html)?.[1];
 
-export function cloudFor(config: EnvConfig): CloudEnvironment {
-  const cloud = (CLOUD_ENVIRONMENTS as Record<string, CloudEnvironment>)[config.name];
-  if (!cloud) throw new Error(`No CLOUD_ENVIRONMENTS entry for "${config.name}"`);
-  return cloud;
-}
+export { cloudFor };
 
 export async function runSmoke(config: EnvConfig, fetch: SmokeFetch): Promise<SmokeResult[]> {
   const cloud = cloudFor(config);
@@ -176,6 +167,30 @@ export async function runSmoke(config: EnvConfig, fetch: SmokeFetch): Promise<Sm
     expect(js.status === 200, `GET ${script} → ${js.status}`);
     return `GET → 200, noindex, no-referrer, ${script} → 200`;
   });
+
+  // Security headers (security-headers.ts): the same CSP everywhere; /join sends no referrer.
+  const expected = {
+    'content-security-policy': contentSecurityPolicy(config),
+    [PERMISSIONS_POLICY.header.toLowerCase()]: PERMISSIONS_POLICY.value,
+    'x-frame-options': 'DENY',
+    'x-content-type-options': 'nosniff',
+  };
+  for (const [path, referrer] of [
+    ['/', REFERRER_POLICY.site],
+    [ADMIN_PATH, REFERRER_POLICY.site],
+    [JOIN_PAGE.path, REFERRER_POLICY.join],
+  ] as const) {
+    await check(`${path} sends the security headers`, async () => {
+      const res = await fetch(`${site}${path}`);
+      const wrong = Object.entries({ ...expected, 'referrer-policy': referrer })
+        .filter(([name, value]) => res.headers.get(name) !== value)
+        .map(([name]) => name);
+      const hsts = res.headers.get('strict-transport-security') ?? '';
+      if (!/max-age=\d+/.test(hsts)) wrong.push('strict-transport-security');
+      expect(wrong.length === 0, `wrong or missing: ${wrong.join(', ')}`);
+      return `CSP, Permissions-Policy, frame DENY, nosniff, HSTS, referrer ${referrer}`;
+    });
+  }
 
   // Club admin (ADMIN_PATH) and the real paths it still answers --------------------------
   let admin = '';
