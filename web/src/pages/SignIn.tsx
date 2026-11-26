@@ -4,8 +4,9 @@ import {
   APP_NAME,
   type ClubSession,
   type CodeChallenge,
+  codeDigits,
   CognitoAuthError,
-  EMAIL_CODE_LENGTH,
+  emailCodeRules,
   isPlausibleEmail,
   LEGAL_PATHS,
   signInCopy as copy,
@@ -23,19 +24,26 @@ type Busy = null | 'send' | 'resend' | 'confirm';
  * Email, then the code from that email (the shared sign-in client). No passwords. Submit
  * stays enabled; input is checked on submit and problems show under the field.
  */
-export function SignIn(props: { session: ClubSession; onSignedIn: (email: string) => void }) {
+export function SignIn(props: {
+  session: ClubSession;
+  onSignedIn: (email: string) => void;
+  /** Shown once on arrival, e.g. "Your session expired. Sign in again." */
+  notice?: string;
+}) {
   const { session, onSignedIn } = props;
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [challenge, setChallenge] = useState<CodeChallenge | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(props.notice ?? null);
   const [busy, setBusy] = useState<Busy>(null);
 
   async function run(kind: Exclude<Busy, null>, step: () => Promise<void>) {
     if (busy) return;
     setBusy(kind);
+    // One message at a time: a new attempt clears the last one.
+    setFieldError(null);
     setError(null);
     setNotice(null);
     try {
@@ -50,6 +58,8 @@ export function SignIn(props: { session: ClubSession; onSignedIn: (email: string
   const sendCode = (e: FormEvent) => {
     e.preventDefault();
     if (!isPlausibleEmail(email)) {
+      setError(null);
+      setNotice(null);
       setFieldError(copy.errors.invalid_email);
       return;
     }
@@ -69,8 +79,10 @@ export function SignIn(props: { session: ClubSession; onSignedIn: (email: string
   const confirm = (e: FormEvent) => {
     e.preventDefault();
     if (!challenge) return;
-    if (code.length !== EMAIL_CODE_LENGTH) {
-      setFieldError(copy.codeIncomplete);
+    if (code.length !== emailCodeRules(challenge.kind).length) {
+      setError(null);
+      setNotice(null);
+      setFieldError(copy.codeIncomplete(challenge.kind));
       return;
     }
     setFieldError(null);
@@ -124,14 +136,14 @@ export function SignIn(props: { session: ClubSession; onSignedIn: (email: string
             <p>{copy.codeSent(challenge.email)}</p>
             <Field
               label={copy.code}
-              hint={copy.codeHelp}
+              hint={copy.codeHelp(challenge.kind)}
               inputMode="numeric"
               autoComplete="one-time-code"
-              maxLength={EMAIL_CODE_LENGTH}
               required
               error={fieldError}
               value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              // Digits only, nothing cut off: a long paste is checked on submit, not truncated.
+              onChange={(e) => setCode(codeDigits(e.target.value))}
             />
             <button className="button primary wide" type="submit" aria-busy={busy === 'confirm'}>
               {busy === 'confirm' ? copy.signingIn : copy.confirm}

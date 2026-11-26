@@ -1,3 +1,4 @@
+import { NoClubError } from '../api/types';
 import { decodeChannelSet, encodeChannelSet } from '@huntclub/mesh';
 import {
   AreaSchema,
@@ -44,7 +45,7 @@ describe('admin API over the shared client', () => {
   it('has no club (and no club calls) when the person runs none', async () => {
     const api = adminApi(fakeClubClient({ ...sampleData(), club: null }));
     expect(await api.getClub()).toBeNull();
-    await expect(api.listMembers()).rejects.toThrow(/do not run a club/);
+    await expect(api.listMembers()).rejects.toBeInstanceOf(NoClubError);
   });
 
   it('creates a club, then works with it', async () => {

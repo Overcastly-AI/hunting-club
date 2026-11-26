@@ -1,11 +1,14 @@
 import { ClubApiRequestError } from '@huntclub/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { NoClubError } from '../api/types';
 
 export type AsyncState<T> =
   | { status: 'loading' }
   /** `stale`: the last good value, shown because a reload failed (e.g. offline). */
   | { status: 'ready'; value: T; stale?: boolean }
-  | { status: 'error'; message: string };
+  | { status: 'error'; message: string }
+  /** The person runs no club yet: not an error, the page asks them to create one. */
+  | { status: 'noClub' };
 
 /** The state plus `reload()`, which runs `load()` again (Try again, Check again, after a save). */
 export type AsyncResult<T> = AsyncState<T> & { reload: () => void };
@@ -44,7 +47,9 @@ export function useAsync<T>(
       },
       (error: unknown) => {
         if (!live) return;
-        if (last.current && options.keepLastOn?.(error)) {
+        if (error instanceof NoClubError) {
+          setState({ status: 'noClub' });
+        } else if (last.current && options.keepLastOn?.(error)) {
           setState({ status: 'ready', value: last.current.value, stale: true });
         } else {
           setState({ status: 'error', message: LOAD_ERROR });

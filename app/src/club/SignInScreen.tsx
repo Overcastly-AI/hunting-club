@@ -1,4 +1,4 @@
-import { CognitoAuthError, EMAIL_CODE_LENGTH, type CodeChallenge } from '@huntclub/shared';
+import { codeDigits, CognitoAuthError, emailCodeRules, type CodeChallenge } from '@huntclub/shared';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
@@ -11,7 +11,11 @@ import { clubCopy } from './copy';
 
 const copy = clubCopy.signIn;
 
-/** Email → 6-digit code → signed in. Then any clubs on the phone sync. */
+/**
+ * Email → the code from the email → signed in. Then any clubs on the phone sync. The
+ * code's length depends on the challenge (emailCodeRules): a new account's code and a
+ * sign-in code differ.
+ */
 export function SignInScreen({ onDone }: { onDone: () => void }) {
   const { session, reload, sync } = useClub();
   const [email, setEmail] = useState('');
@@ -33,13 +37,19 @@ export function SignInScreen({ onDone }: { onDone: () => void }) {
   };
 
   const sendCode = () => attempt(async () => setChallenge(await session.requestCode(email)));
-  const confirm = () =>
-    attempt(async () => {
+  const confirm = () => {
+    // Checked on submit: a short or over-long paste says how many digits, never truncates.
+    if (code.length !== emailCodeRules(challenge!.kind).length) {
+      setError(copy.codeIncomplete(challenge!.kind));
+      return;
+    }
+    return attempt(async () => {
       await session.confirmCode(challenge!, code);
       await reload();
       onDone();
       await sync().catch(() => undefined);
     });
+  };
 
   return (
     <Screen title={copy.title} description={copy.intro}>
@@ -67,16 +77,16 @@ export function SignInScreen({ onDone }: { onDone: () => void }) {
           <TextField
             placeholder={copy.code}
             value={code}
-            onChangeText={setCode}
+            onChangeText={(text) => setCode(codeDigits(text))}
             keyboardType="number-pad"
             autoComplete="one-time-code"
             textContentType="oneTimeCode"
-            maxLength={8}
           />
+          <Text style={styles.body}>{copy.codeHelp(challenge.kind)}</Text>
           <Button
             variant="primary"
-            label={copy.confirm}
-            disabled={busy || code.trim().length < EMAIL_CODE_LENGTH}
+            label={busy ? copy.signingIn : copy.confirm}
+            disabled={busy || code.length === 0}
             onPress={() => void confirm()}
           />
           <Button label={copy.useOtherEmail} onPress={() => setChallenge(null)} />

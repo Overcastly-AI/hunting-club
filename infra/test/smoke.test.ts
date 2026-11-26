@@ -10,6 +10,7 @@ const INDEX = [
   '<!doctype html><head><title>Hunt Club Mesh</title>',
   '<meta name="description" content="Off-grid hunting.">',
   `<meta name="theme-color" content="${colors.surface}">`,
+  '<link rel="icon" href="/favicon.ico" sizes="48x48">',
   '<link rel="icon" type="image/svg+xml" href="/favicon.svg">',
   '</head><div id="root"></div>',
 ].join('');
@@ -35,6 +36,7 @@ function fakeDev(override: Record<string, number> = {}): {
     }
     if (url === `${SITE}/favicon.svg`)
       return reply(200, '<svg/>', { 'content-type': 'image/svg+xml' });
+    if (url === `${SITE}/favicon.ico`) return reply(200, 'ico', { 'content-type': 'image/x-icon' });
     if (url === `${SITE}/robots.txt`) {
       return reply(200, robotsTxt(dev), { 'content-type': 'text/plain; charset=utf-8' });
     }
@@ -86,10 +88,16 @@ describe('dev smoke check', () => {
     expect(failed.map((r) => r.name)).toEqual([`page path ${UNKNOWN_PAGE_PATH} serves the page`]);
   });
 
-  it('fails a missing file answered with 403 instead of 404 (the old first-load favicon 403)', async () => {
-    const { fetch } = fakeDev({ [`${SITE}/favicon.ico`]: 403 });
+  it('fails a missing file answered with 403 instead of 404', async () => {
+    const { fetch } = fakeDev({ [`${SITE}/assets/smoke-missing.js`]: 403 });
     const failed = (await runSmoke(dev, fetch)).filter((r) => !r.ok);
-    expect(failed.map((r) => r.detail)).toEqual(['GET /favicon.ico → 403']);
+    expect(failed.map((r) => r.detail)).toEqual(['GET /assets/smoke-missing.js → 403']);
+  });
+
+  it('fails when /favicon.ico is a raw 404 instead of the icon', async () => {
+    const { fetch } = fakeDev({ [`${SITE}/favicon.ico`]: 404 });
+    const failed = (await runSmoke(dev, fetch)).filter((r) => !r.ok);
+    expect(failed.map((r) => r.name)).toEqual(['/favicon.ico is served']);
   });
 
   it('fails when robots.txt or the favicon is missing', async () => {

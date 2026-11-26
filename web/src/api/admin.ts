@@ -1,5 +1,5 @@
 import { ClubApiRequestError, type ClubApiClient } from '@huntclub/shared';
-import type { ClubApi } from './types';
+import { NoClubError, type ClubApi } from './types';
 
 /**
  * The admin pages' view of the shared club API client: "my club" is the first club the
@@ -17,7 +17,7 @@ export function adminApi(client: ClubApiClient): ClubApi {
     ));
   const requireClub = async () => {
     const id = await myClubId();
-    if (!id) throw new Error('You do not run a club yet.');
+    if (!id) throw new NoClubError();
     return id;
   };
 

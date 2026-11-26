@@ -2,7 +2,8 @@
  * The signed-in club account (app and web admin). Free users never sign in and never
  * call the backend; this only runs when someone joins a club, taps Sign in, or opens
  * the web admin. Each platform supplies where tokens live: the app's keystore
- * (expo-secure-store), the web admin's memory. Never SQLite, browser storage or logs.
+ * (expo-secure-store); the web admin's memory, plus its refresh token in browser storage
+ * (SECURE_KEYS.webClubRefreshToken). Never SQLite or logs.
  */
 import type { AuthTokens, CodeChallenge, CognitoAuth } from './cognito';
 
@@ -12,7 +13,7 @@ export interface TokenStore {
   clear(): Promise<void>;
 }
 
-/** Tokens held in memory only (the web admin: signing in again after a reload). */
+/** Tokens held in memory only (tests, and any client that must not persist them). */
 export function memoryTokenStore(initial: AuthTokens | null = null): TokenStore {
   let value = initial;
   return {

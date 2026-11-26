@@ -4,6 +4,7 @@ import type { WebClubServices } from './cloud';
 import { Loading } from './components/Loading';
 import { SignIn } from './pages/SignIn';
 import { ADMIN_TITLE, useDocumentTitle } from './title';
+import { signedInEmail } from './tokenStore';
 
 // Each admin page loads on first visit (the roster also pulls in the mesh codec and QR encoder).
 const MyClub = lazy(() => import('./pages/MyClub').then((m) => ({ default: m.MyClub })));
@@ -45,9 +46,24 @@ const SIGN_IN_TITLE = 'Sign in';
 /** Shown when part of the club cloud is not set up yet. */
 const NOT_READY = 'The club service is not available yet. Check back soon.';
 
+/** Shown on the sign-in screen when a kept session could not be refreshed. */
+export const SESSION_EXPIRED = 'Your session expired. Sign in again.';
+
+/**
+ * - restoring: a refresh token was kept (browser storage); refreshing it first.
+ * - signedOut: show sign-in (with `expired` when the kept session could not be refreshed).
+ * - signedIn: `email` is undefined when the token does not say who it is.
+ */
+type Auth =
+  | { kind: 'restoring' }
+  | { kind: 'signedOut'; expired: boolean }
+  | { kind: 'signedIn'; email: string | undefined };
+
 export function App(props: WebClubServices) {
   const { session, api } = props;
-  const [email, setEmail] = useState<string | null>(null);
+  const [auth, setAuth] = useState<Auth>({ kind: 'restoring' });
+  // The route asked for (deep link or reload). Sign-in never changes it, so the admin
+  // lands on that page once signed in.
   const [path, setPath] = useState<PagePath>(currentPath);
 
   useEffect(() => {
@@ -56,14 +72,34 @@ export function App(props: WebClubServices) {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  const notReady = !session || (email && !api);
-  const signedIn = Boolean(email && api);
+  useEffect(() => {
+    if (!session) return;
+    let live = true;
+    void (async () => {
+      let next: Auth = { kind: 'signedOut', expired: false };
+      if (await session.isSignedIn()) {
+        next = (await session.refresh())
+          ? { kind: 'signedIn', email: signedInEmail(await session.accessToken()) }
+          : { kind: 'signedOut', expired: true };
+      }
+      if (live) setAuth(next);
+    })();
+    return () => {
+      live = false;
+    };
+  }, [session]);
+
+  const notReady = !session || (auth.kind === 'signedIn' && !api);
   const page = PAGES.find((p) => p.path === path) ?? PAGES[0];
   useDocumentTitle(
-    ...(notReady ? [] : signedIn ? [page.label, ADMIN_TITLE] : [SIGN_IN_TITLE, ADMIN_TITLE]),
+    ...(notReady || auth.kind === 'restoring'
+      ? []
+      : auth.kind === 'signedIn'
+        ? [page.label, ADMIN_TITLE]
+        : [SIGN_IN_TITLE]),
   );
 
-  if (!session || (email && !api)) {
+  if (notReady) {
     return (
       <main className="layout">
         <p className="banner">{NOT_READY}</p>
@@ -71,16 +107,29 @@ export function App(props: WebClubServices) {
     );
   }
 
-  if (!email || !api) {
+  if (auth.kind === 'restoring') {
     return (
       <main className="layout">
-        <SignIn session={session} onSignedIn={setEmail} />
+        <Loading />
       </main>
     );
   }
 
+  if (auth.kind === 'signedOut' || !api) {
+    return (
+      <main className="layout">
+        <SignIn
+          session={session}
+          notice={auth.kind === 'signedOut' && auth.expired ? SESSION_EXPIRED : undefined}
+          onSignedIn={(email) => setAuth({ kind: 'signedIn', email })}
+        />
+      </main>
+    );
+  }
+
+  // Revokes the refresh token and clears it from this browser.
   const signOut = () => {
-    setEmail(null);
+    setAuth({ kind: 'signedOut', expired: false });
     void session.signOut();
   };
 
@@ -105,7 +154,7 @@ export function App(props: WebClubServices) {
           {page.render(api)}
         </Suspense>
       </main>
-      <p className="muted">Signed in as {email}</p>
+      {auth.email ? <p className="muted">Signed in as {auth.email}</p> : null}
     </div>
   );
 }

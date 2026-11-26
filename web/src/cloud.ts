@@ -9,10 +9,10 @@ import {
   createCognitoAuth,
   type CloudEnvironment,
   type FetchLike,
-  memoryTokenStore,
 } from '@huntclub/shared';
 import { adminApi } from './api/admin';
 import type { ClubApi } from './api/types';
+import { browserTokenStore } from './tokenStore';
 
 /** The web admin talks to dev until a production environment exists. */
 const ENVIRONMENT: CloudEnvironment = CLOUD_ENVIRONMENTS.dev;
@@ -33,8 +33,8 @@ export function createWebClubServices(env: CloudEnvironment = ENVIRONMENT): WebC
     clientId: env.webClientId,
     fetch: webFetch,
   });
-  // Tokens stay in memory: a reload means signing in again, and nothing sits in browser storage.
-  const session = new ClubSession(auth, memoryTokenStore());
+  // Access token in memory; the refresh token also in browser storage (see tokenStore.ts).
+  const session = new ClubSession(auth, browserTokenStore());
   const api = env.clubApiUrl
     ? adminApi(
         createClubApiClient({

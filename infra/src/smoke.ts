@@ -2,7 +2,7 @@
 // files, the club API's auth and CORS, and the Stripe webhook's signature check.
 // Every URL comes from the single sources (CLOUD_ENVIRONMENTS, the env config); nothing
 // here writes, signs anyone up or sends email.
-import { colors } from '@huntclub/design';
+import { colors, FAVICON_ICO } from '@huntclub/design';
 import { API_PATHS, CLOUD_ENVIRONMENTS, WEB_PAGE_PATHS } from '@huntclub/shared';
 import type { CloudEnvironment } from '@huntclub/shared/cloud';
 import type { EnvConfig } from '../config';
@@ -35,7 +35,7 @@ const FOREIGN_ORIGIN = 'https://smoke.invalid';
 export const UNKNOWN_PAGE_PATH = '/smoke-unknown-page';
 
 /** Files that do not exist: CloudFront may list the bucket, so each must be a real 404. */
-export const MISSING_FILES = ['/assets/smoke-missing.js', '/favicon.ico'];
+export const MISSING_FILES = ['/assets/smoke-missing.js'];
 
 const isMissing = (status: number) => status === 404;
 
@@ -84,7 +84,7 @@ export async function runSmoke(config: EnvConfig, fetch: SmokeFetch): Promise<Sm
     expect(Boolean(metaContent(index, 'description')), 'no meta description');
     const theme = metaContent(index, 'theme-color');
     expect(theme === colors.surface, `theme-color is ${theme ?? 'missing'}`);
-    icon = /<link rel="icon"[^>]* href="([^"]+)"/.exec(index)?.[1] ?? '';
+    icon = /<link rel="icon" type="image\/svg\+xml" href="([^"]+)"/.exec(index)?.[1] ?? '';
     expect(icon.startsWith('/'), 'no icon link');
     return `theme-color ${theme}, icon ${icon}`;
   });
@@ -94,6 +94,12 @@ export async function runSmoke(config: EnvConfig, fetch: SmokeFetch): Promise<Sm
     expect(res.status === 200, `GET ${icon} → ${res.status}`);
     expect(/^image\//.test(res.headers.get('content-type') ?? ''), 'not an image');
     return `GET ${icon} → 200 ${res.headers.get('content-type')}`;
+  });
+  await check(`/${FAVICON_ICO.file} is served`, async () => {
+    const res = await fetch(`${site}/${FAVICON_ICO.file}`);
+    expect(res.status === 200, `GET → ${res.status}`);
+    expect(/^image\//.test(res.headers.get('content-type') ?? ''), 'not an image');
+    return `GET → 200 ${res.headers.get('content-type')}`;
   });
   for (const path of [...WEB_PAGE_PATHS, UNKNOWN_PAGE_PATH]) {
     await check(`page path ${path} serves the page`, async () => {

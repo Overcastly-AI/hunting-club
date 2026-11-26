@@ -4,8 +4,10 @@ import {
   ClubApiRequestError,
   type ClubApiClient,
   ClubCreateRequestSchema,
+  type CodeChallenge,
   type CognitoAuth,
   CognitoAuthError,
+  emailCodeRules,
   INVITE_TOKEN_BYTES,
   BASEMAPS,
   MapPackRequestSchema,
@@ -285,20 +287,22 @@ export function fakeClubClient(data: FakeClubData = sampleData()): ClubApiClient
   };
 }
 
-/** The code the fake sign-in accepts. */
-export const TEST_CODE = '246810';
+/** The code the fake sign-in accepts for a challenge kind (its length follows emailCodeRules). */
+export const testCode = (kind: CodeChallenge['kind'] = 'signIn') =>
+  '2468135790'.slice(0, emailCodeRules(kind).length);
 
-/** Cognito stand-in: emails "send" instantly and only TEST_CODE signs in. */
-export function fakeCognitoAuth(): CognitoAuth {
+/** Cognito stand-in: emails "send" instantly and only testCode(kind) signs in. */
+export function fakeCognitoAuth(kind: CodeChallenge['kind'] = 'signIn'): CognitoAuth {
   const tokens: AuthTokens = {
     accessToken: 'a',
     refreshToken: 'r',
     expiresAt: Date.now() + 3_600_000,
   };
   return {
-    requestCode: async (email) => ({ kind: 'signIn', email, session: 's' }),
-    async confirmCode(_challenge, code) {
-      if (code !== TEST_CODE) throw new CognitoAuthError('wrong_code');
+    requestCode: async (email) =>
+      kind === 'signIn' ? { kind, email, session: 's' } : { kind, email },
+    async confirmCode(challenge, code) {
+      if (code !== testCode(challenge.kind)) throw new CognitoAuthError('wrong_code');
       return tokens;
     },
     refresh: async () => tokens,
