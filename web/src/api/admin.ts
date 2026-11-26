@@ -49,8 +49,8 @@ export function adminApi(client: ClubApiClient): ClubApi {
     listMapPacks: async () => client.listMapPacks(await requireClub()),
     requestMapPack: async (basemap) => client.requestMapPack(await requireClub(), { basemap }),
     listPlans: async () => (await client.listPlans()).filter((plan) => plan.active),
-    startCheckout: async (planId) =>
-      (await client.startCheckout(await requireClub(), { planId })).url,
+    startCheckout: async (planId, interval) =>
+      (await client.startCheckout(await requireClub(), { planId, interval })).url,
     async getSubscription() {
       try {
         return await client.getSubscription(await requireClub());

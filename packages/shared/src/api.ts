@@ -11,6 +11,7 @@ import {
   MemberSchema,
   type Subscription,
   ZOOM_RANGE_ORDERED,
+  billingIntervalSchema,
   boundsSchema,
   zoomRangeOrdered,
 } from './club';
@@ -24,6 +25,7 @@ import {
 } from './fields';
 import type { ClubApiError } from './enums';
 import { BASEMAP_IDS, DOWNLOAD_LIMITS, type BasemapId } from './maps';
+import { CLUB_PRICING } from './pricing';
 
 /** POST /clubs: a new club with the caller as its first admin. */
 export const ClubCreateRequestSchema = z.strictObject({
@@ -57,8 +59,19 @@ export const ClubSecretResponseSchema = ClubSecretSchema.extend({
 export type ClubSecretResponse = z.infer<typeof ClubSecretResponseSchema>;
 
 /** POST /clubs/:clubId/checkout: which plan the admin is buying. */
-export const CheckoutRequestSchema = z.strictObject({ planId: planIdSchema });
+export const CheckoutRequestSchema = z.strictObject({
+  planId: planIdSchema,
+  /** Yearly unless chosen otherwise (CLUB_PRICING.defaultInterval). */
+  interval: billingIntervalSchema.default(CLUB_PRICING.defaultInterval),
+});
 export type CheckoutRequest = z.input<typeof CheckoutRequestSchema>;
+
+/** Stripe Price id per plan and billing interval (the club API's STRIPE_PRICES config). */
+export const StripePricesSchema = z.record(
+  planIdSchema,
+  z.partialRecord(billingIntervalSchema, z.string().min(1)),
+);
+export type StripePrices = z.infer<typeof StripePricesSchema>;
 export const CheckoutResponseSchema = z.object({
   /** Stripe-hosted Checkout page to redirect to. */
   url: z.url({ protocol: /^https$/ }),

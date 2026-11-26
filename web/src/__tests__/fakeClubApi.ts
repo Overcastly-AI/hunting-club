@@ -3,6 +3,7 @@ import {
   type AuthTokens,
   ClubApiRequestError,
   type ClubApiClient,
+  CheckoutRequestSchema,
   ClubCreateRequestSchema,
   type CodeChallenge,
   type CognitoAuth,
@@ -34,6 +35,8 @@ export interface FakeClubData {
   plans: Plan[];
   harvests: Harvest[];
   mapPacks: MapPack[];
+  /** False until the owner sets up Stripe prices: Checkout answers 503 not_configured. */
+  paymentsConfigured?: boolean;
 }
 
 const CLUB = '0b9c4b6e-6a43-4c55-9a1e-2f6a8f0c1a01';
@@ -271,9 +274,15 @@ export function fakeClubClient(data: FakeClubData = sampleData()): ClubApiClient
       if (!data.subscription) throw new ClubApiRequestError('not_found', 404);
       return data.subscription;
     },
-    startCheckout: async (clubId, { planId }) => ({
-      url: `https://checkout.stripe.com/c/pay/cs_test_${planId}_${clubOrThrow().id === clubId}`,
-    }),
+    async startCheckout(clubId, request) {
+      const { planId, interval } = CheckoutRequestSchema.parse(request);
+      if (data.paymentsConfigured === false) {
+        throw new ClubApiRequestError('not_configured', 503);
+      }
+      return {
+        url: `https://checkout.stripe.com/c/pay/cs_test_${planId}_${interval}_${clubOrThrow().id === clubId}`,
+      };
+    },
     getClubSecret: async (clubId) => ({
       clubId,
       channelKey,

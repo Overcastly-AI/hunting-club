@@ -11,7 +11,8 @@
     "./app": "./src/app.ts",
     "./qr": "./src/qr.ts",
     "./cloud": "./src/cloud.ts",
-    "./maps": "./src/maps.ts"
+    "./maps": "./src/maps.ts",
+    "./pricing": "./src/pricing.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

@@ -6,7 +6,12 @@
  */
 import type Stripe from 'stripe';
 import type { ThinEvent } from './stripeWebhook';
-import { SubscriptionStatusSchema, type StripeEventApply } from '@huntclub/shared';
+import {
+  CLUB_PRICING,
+  SubscriptionStatusSchema,
+  type StripeEventApply,
+  type StripePrices,
+} from '@huntclub/shared';
 
 /** Metadata keys we put on Checkout Sessions and Subscriptions (read back by the webhook). */
 export const STRIPE_METADATA = { clubId: 'club_id', planId: 'plan_id' } as const;
@@ -87,13 +92,16 @@ export function subscriptionState(
 }
 
 export interface CheckoutConfig {
-  /** Stripe Price id per plan id (test mode in dev). */
-  prices: Readonly<Record<string, string>>;
+  /** Stripe Price id per plan and billing interval (test mode in dev). */
+  prices: StripePrices;
   successUrl: string;
   cancelUrl: string;
 }
 
-/** Hosted Checkout for a club's subscription; the club id rides along as metadata. */
+/**
+ * Hosted Checkout for a club's subscription, starting with the free trial
+ * (CLUB_PRICING.trialDays) on either interval; the club id rides along as metadata.
+ */
 export async function createCheckout(
   api: StripeApi,
   input: { clubId: string; planId: string; priceId: string; config: CheckoutConfig },
@@ -107,7 +115,7 @@ export async function createCheckout(
     line_items: [{ price: input.priceId, quantity: 1 }],
     client_reference_id: input.clubId,
     metadata,
-    subscription_data: { metadata },
+    subscription_data: { metadata, trial_period_days: CLUB_PRICING.trialDays },
     success_url: input.config.successUrl,
     cancel_url: input.config.cancelUrl,
   });
