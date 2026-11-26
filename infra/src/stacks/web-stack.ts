@@ -8,6 +8,7 @@ import * as targets from 'aws-cdk-lib/aws-route53-targets';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import type { Construct } from 'constructs';
+import { MAP_PACKS_PREFIX } from '@huntclub/shared/maps';
 import type { EnvConfig } from '../../config';
 import { LOG_RETENTION } from '../constructs/node-lambda';
 import { webPageRewriteSource } from '../web-pages';
@@ -22,6 +23,8 @@ export interface WebStackProps extends StackProps {
 /** Vite puts fingerprinted files here; they never change, so they cache for a year. */
 const HASHED_ASSETS = 'assets/*';
 const WELL_KNOWN = '.well-known/*';
+/** Club map packs, written by the map-pack builder Lambda (never pruned by web deploys). */
+const MAP_PACKS = `${MAP_PACKS_PREFIX}*`;
 
 /**
  * The web admin page (web/dist) and universal-link files: a private S3 bucket behind
@@ -102,8 +105,8 @@ export class WebStack extends Stack {
     new s3deploy.BucketDeployment(this, 'SitePages', {
       destinationBucket: this.bucket,
       sources: [site],
-      // Excluded keys are never pruned: hashed assets and the universal-link files stay.
-      exclude: [HASHED_ASSETS, WELL_KNOWN],
+      // Excluded keys are never pruned: hashed assets, universal-link files and map packs stay.
+      exclude: [HASHED_ASSETS, WELL_KNOWN, MAP_PACKS],
       cacheControl: [s3deploy.CacheControl.noCache()],
       prune: true,
       distribution: this.distribution,

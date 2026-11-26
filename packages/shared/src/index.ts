@@ -1,6 +1,7 @@
 export * from './app';
 export * from './enums';
 export * from './fields';
+export * from './harvestReport';
 export * from './club';
 export * from './api';
 export * from './apiPaths';
@@ -11,3 +12,4 @@ export * from './http';
 export * from './qr';
 export * from './session';
 export * from './signInCopy';
+export * from './maps';

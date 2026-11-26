@@ -74,6 +74,8 @@ export const POLICIES = {
   writePlaces: activeAdmin,
 
   readMapPacks: activeMember,
+  /** Ask the map-pack Lambda to build a pack of the club's property. */
+  requestMapPack: activeAdmin,
   writeMapPacks: never,
 
   readSubscription: activeAdmin,

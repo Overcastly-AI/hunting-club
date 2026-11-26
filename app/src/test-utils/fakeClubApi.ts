@@ -79,6 +79,7 @@ export function fakeClubApi(options: { featuresUntil?: string; offline?: boolean
     listMembers: offline(() => [member]),
     listStands: offline(() => [stand(1, 'Creek Stand'), stand(2, 'Ridge Ladder')]),
     listAreas: offline(() => []),
+    listHarvests: offline(() => []),
     createInvite: offline(() => {
       throw new ClubApiRequestError('forbidden', 403);
     }),
@@ -94,6 +95,10 @@ export function fakeClubApi(options: { featuresUntil?: string; offline?: boolean
       throw new ClubApiRequestError('forbidden', 403);
     }),
     getClubSecret: offline(() => {
+      throw new ClubApiRequestError('forbidden', 403);
+    }),
+    listMapPacks: offline(() => []),
+    requestMapPack: offline(() => {
       throw new ClubApiRequestError('forbidden', 403);
     }),
     redeemInvite: jest.fn(async (req: { token: string; displayName: string; initials: string }) => {

@@ -8,6 +8,7 @@ import {
   secretParameterEnvVar,
 } from '../config';
 import { handler as clubApi } from '../lambda/club-api';
+import { handler as mapPackBuilder, userAgent } from '../lambda/map-pack-builder';
 import { handler as stripeWebhook } from '../lambda/stripe-webhook';
 
 const saved = { ...process.env };
@@ -23,6 +24,8 @@ function wireEnv() {
   process.env[API_ENV.userPoolClientIds] = 'app,web';
   process.env[API_ENV.webOrigin] = 'https://web.test';
   process.env[API_ENV.stripePrices] = '{}';
+  process.env[API_ENV.mapPackBuilder] = 'builder';
+  process.env[API_ENV.mapPackBucket] = 'bucket';
   for (const key of [...CLUB_API_SECRETS, ...STRIPE_WEBHOOK_SECRETS]) {
     process.env[secretParameterEnvVar(key)] = secretParameterName('dev', key);
   }
@@ -68,5 +71,24 @@ describe('stripe-webhook entry', () => {
     expect(JSON.parse(res.body).error.message).toBe(
       `missing ${API_ENV.tableName}, ${secretParameterEnvVar('stripeWebhookSecret')}`,
     );
+  });
+});
+
+describe('map-pack-builder entry', () => {
+  it('fails loudly and names what is missing when misconfigured', async () => {
+    wireEnv();
+    delete process.env[API_ENV.mapPackBucket];
+    await expect(mapPackBuilder({})).rejects.toThrow(`missing ${API_ENV.mapPackBucket}`);
+  });
+
+  it('rejects a malformed build before fetching anything', async () => {
+    wireEnv();
+    const fetchSpy = jest.spyOn(globalThis, 'fetch');
+    await expect(mapPackBuilder({ clubId: 'x' })).rejects.toThrow();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('identifies itself to USGS by product and site only', () => {
+    expect(userAgent('https://web.test')).toBe('HuntClubMesh-MapPacks/1.0 (+https://web.test)');
   });
 });

@@ -11,15 +11,15 @@ import type { LocalClub } from './store';
 export type ClubEntitlement = {
   clubId: string;
   clubName: string;
-  /** Paid-through date plus grace (ms). Club features freeze after this. */
-  expiresAt: number;
+  /** Paid-through date plus grace (epoch ms). Club features freeze after this. */
+  featuresUntil: number;
 };
 
 /** The cached entitlement of a synced club, or null (never synced, or not paid). */
 export function entitlementOf(club: LocalClub): ClubEntitlement | null {
   return club.featuresUntil === null
     ? null
-    : { clubId: club.id, clubName: club.name, expiresAt: club.featuresUntil };
+    : { clubId: club.id, clubName: club.name, featuresUntil: club.featuresUntil };
 }
 
 /** Null for free users and before a club has synced. Filled by ClubProvider. */
@@ -27,12 +27,4 @@ export const ClubEntitlementContext = createContext<ClubEntitlement | null>(null
 
 export function useClubEntitlement(): ClubEntitlement | null {
   return useContext(ClubEntitlementContext);
-}
-
-/**
- * Whether club-only features (the clubhouse board, stand edits, invites) are
- * open. Safety features never call this: they work without payment.
- */
-export function clubFeaturesOpen(entitlement: ClubEntitlement | null, now: number): boolean {
-  return entitlement !== null && now < entitlement.expiresAt;
 }

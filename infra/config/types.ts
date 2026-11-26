@@ -33,6 +33,10 @@ export const API_ENV = {
   webOrigin: 'WEB_ORIGIN',
   /** JSON object: plan id → Stripe Price id. */
   stripePrices: 'STRIPE_PRICES',
+  /** Name of the map-pack builder Lambda (the club API starts it). */
+  mapPackBuilder: 'MAP_PACK_BUILDER_FUNCTION',
+  /** Bucket the map-pack builder writes packs/ into (the web stack's bucket). */
+  mapPackBucket: 'MAP_PACK_BUCKET',
 } as const;
 
 /** SSM parameter name for a secret: `/hunt-club-mesh/<env>/<name>` (owner decision 2026-11-26). */

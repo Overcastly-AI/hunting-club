@@ -1,6 +1,7 @@
 import { createClubApiClient, ClubApiRequestError } from '../apiClient';
 import { apiPath, API_PATHS } from '../apiPaths';
-import { entitlementFor, ENTITLEMENT_GRACE_DAYS } from '../api';
+import { entitlementFor, ENTITLEMENT_GRACE_DAYS, hasClubFeatures } from '../api';
+import { DOWNLOAD_LIMITS } from '../maps';
 import { scriptedFetch } from './fakeFetch';
 
 const CLUB = '00000000-0000-4000-8000-000000000001';
@@ -162,5 +163,46 @@ describe('entitlementFor', () => {
       entitlementFor(CLUB, { status: 'canceled', paidThrough: ISO }).featuresUntil,
     ).toBeUndefined();
     expect(entitlementFor(CLUB, undefined)).toEqual({ clubId: CLUB });
+  });
+});
+
+describe('hasClubFeatures', () => {
+  it('is closed without an entitlement or a featuresUntil date', () => {
+    expect(hasClubFeatures(null, 0)).toBe(false);
+    expect(hasClubFeatures({}, 0)).toBe(false);
+    expect(hasClubFeatures(entitlementFor(CLUB, undefined), 0)).toBe(false);
+  });
+
+  it('is open until featuresUntil (ISO from the API or epoch ms on a phone), then freezes', () => {
+    const until = Date.parse(ISO);
+    for (const featuresUntil of [ISO, until]) {
+      expect(hasClubFeatures({ featuresUntil }, until - 1)).toBe(true);
+      expect(hasClubFeatures({ featuresUntil }, new Date(until))).toBe(false);
+    }
+  });
+});
+
+describe('map packs', () => {
+  it('requests a pack with the defaults filled in and parses the 202 answer', async () => {
+    const answer = { packId: '00000000-0000-4000-8000-000000000003', tiles: 120, bytes: 4_000_000 };
+    const { api, calls } = client([{ status: 202, body: answer }]);
+    expect(await api.requestMapPack(CLUB, { basemap: 'topo' })).toEqual(answer);
+    expect(calls[0]).toMatchObject({
+      url: `https://api.test/clubs/${CLUB}/map-packs`,
+      method: 'POST',
+    });
+    expect(calls[0]!.body).toEqual({
+      basemap: 'topo',
+      minZoom: DOWNLOAD_LIMITS.minZoom,
+      maxZoom: DOWNLOAD_LIMITS.maxZoom,
+    });
+  });
+
+  it('refuses a bad request before calling the server', async () => {
+    const { api, calls } = client([]);
+    await expect(
+      api.requestMapPack(CLUB, { basemap: 'topo', minZoom: 15, maxZoom: 9 }),
+    ).rejects.toThrow('minZoom must not exceed maxZoom');
+    expect(calls).toHaveLength(0);
   });
 });

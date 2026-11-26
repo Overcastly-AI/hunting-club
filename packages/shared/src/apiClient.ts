@@ -12,16 +12,21 @@ import {
   ClubCreateRequestSchema,
   ClubSecretResponseSchema,
   EntitlementSchema,
+  type MapPackRequest,
+  MapPackRequestResponseSchema,
+  MapPackRequestSchema,
   MyClubSchema,
   type RedeemInviteRequest,
   RedeemInviteRequestSchema,
 } from './api';
 import {
   AreaSchema,
+  HarvestSchema,
   ClubSchema,
   type InviteCreate,
   InviteCreateSchema,
   InviteSchema,
+  MapPackSchema,
   MemberSchema,
   PlanSchema,
   StandSchema,
@@ -122,6 +127,9 @@ export function createClubApiClient(options: ClubApiClientOptions) {
     listStands: (clubId: string) =>
       call('GET', API_PATHS.stands, club(clubId), z.array(StandSchema)),
     listAreas: (clubId: string) => call('GET', API_PATHS.areas, club(clubId), z.array(AreaSchema)),
+    /** The club's harvests the caller may see (their own, plus everyone's shared ones). */
+    listHarvests: (clubId: string) =>
+      call('GET', API_PATHS.harvests, club(clubId), z.array(HarvestSchema)),
     getEntitlement: (clubId: string) =>
       call('GET', API_PATHS.entitlement, club(clubId), EntitlementSchema),
     getSubscription: (clubId: string) =>
@@ -137,6 +145,17 @@ export function createClubApiClient(options: ClubApiClientOptions) {
       ),
     getClubSecret: (clubId: string) =>
       call('GET', API_PATHS.secret, club(clubId), ClubSecretResponseSchema),
+    listMapPacks: (clubId: string) =>
+      call('GET', API_PATHS.mapPacks, club(clubId), z.array(MapPackSchema)),
+    /** Admin: starts building the club's pack for one basemap; it is listed once built. */
+    requestMapPack: async (clubId: string, request: MapPackRequest) =>
+      call(
+        'POST',
+        API_PATHS.mapPacks,
+        club(clubId),
+        MapPackRequestResponseSchema,
+        MapPackRequestSchema.parse(request),
+      ),
     redeemInvite: async (request: RedeemInviteRequest) =>
       call(
         'POST',
