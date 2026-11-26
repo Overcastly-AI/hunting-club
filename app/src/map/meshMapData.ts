@@ -48,7 +48,7 @@ const SECOND_MS = 1000;
 /** Short Meshtastic-style id for a node with no name, e.g. "!a1b2". */
 const nodeTag = (num: number) => `!${(num >>> 0).toString(16).slice(-4)}`;
 
-function nodePosition(node: MapNode): (LatLon & { heardAt: number }) | undefined {
+export function nodePosition(node: MapNode): (LatLon & { heardAt: number }) | undefined {
   const p = node.position;
   if (p?.latitudeI === undefined || p.longitudeI === undefined) return undefined;
   if (p.latitudeI === 0 && p.longitudeI === 0) return undefined; // no GPS fix
@@ -58,7 +58,7 @@ function nodePosition(node: MapNode): (LatLon & { heardAt: number }) | undefined
   return { lat: p.latitudeI / 1e7, lon: p.longitudeI / 1e7, heardAt: seconds * SECOND_MS };
 }
 
-function identity(node: MapNode | undefined, num: number, names: MapNames) {
+export function memberIdentity(node: MapNode | undefined, num: number, names: MapNames) {
   const known = names.member?.(num);
   if (known) return known;
   const longName = node?.user?.longName?.trim();
@@ -80,7 +80,7 @@ function hunterFrom(
   if (!at) return undefined;
   return {
     id: String(checkIn.node),
-    ...identity(node, checkIn.node, names),
+    ...memberIdentity(node, checkIn.node, names),
     position: { lat: at.lat, lon: at.lon },
     heardAt: at.heardAt,
     place: placeOf(checkIn, names),

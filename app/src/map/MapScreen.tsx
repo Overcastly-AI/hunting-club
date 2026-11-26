@@ -13,6 +13,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useCheckInState } from '../checkin/CheckInRadio';
 import { CheckOutSheet } from '../checkin/CheckOutSheet';
+import { AskForHandSheet } from '../safety/components/AskForHandSheet';
+import { HelpMarker } from '../safety/components/HelpMarker';
+import { useIncomingAlerts } from '../safety/hooks';
 import { colors, spacing } from '../theme';
 import { BASEMAPS, DEFAULT_BASEMAP, basemapStyle, type BasemapId } from './basemaps';
 import { DownloadAreaSheet } from './components/DownloadAreaSheet';
@@ -42,7 +45,7 @@ const CENTER_ON_ME_ZOOM = 15.5;
 const CONDITIONS_MIN_ZOOM = 8;
 
 type MapView = { center: LatLon; zoom: number };
-type Panel = 'layers' | 'download' | 'checkOut' | null;
+type Panel = 'layers' | 'download' | 'checkOut' | 'askForHand' | null;
 
 type Props = {
   /** Hunters, open stands and mesh status; defaults to the app store the radio will feed. */
@@ -52,6 +55,7 @@ type Props = {
 export function MapScreen({ dataSource }: Props) {
   const data = useMapData(dataSource);
   const { radio, current } = useCheckInState();
+  const alerts = useIncomingAlerts();
   const now = useNow();
   const mapRef = useRef<MapRef>(null);
   const cameraRef = useRef<CameraRef>(null);
@@ -120,6 +124,9 @@ export function MapScreen({ dataSource }: Props) {
             <HunterMarker hunter={hunter} now={now} />
           </Marker>
         ))}
+        {alerts.map((alert) => (
+          <HelpMarker key={alert.key} alert={alert} now={now} />
+        ))}
         {/* Wind arrives with the forecast milestone; until then no scent cone. */}
         {you ? <YouMarker position={you} /> : null}
       </Map>
@@ -158,7 +165,7 @@ export function MapScreen({ dataSource }: Props) {
             checkedInAt={current.checkedInAt}
             now={now}
             audience={radio.audience}
-            onAskForHand={() => undefined /* Milestone 6 */}
+            onAskForHand={() => setPanel('askForHand')}
             onCheckOut={() => setPanel('checkOut')}
             onChangeMode={() => router.navigate('/check-in')}
             onLogHarvest={() => undefined /* Milestone 7 */}
@@ -179,6 +186,7 @@ export function MapScreen({ dataSource }: Props) {
         onClose={() => setPanel(null)}
       />
       <CheckOutSheet radio={radio} visible={panel === 'checkOut'} onClose={() => setPanel(null)} />
+      <AskForHandSheet visible={panel === 'askForHand'} onClose={() => setPanel(null)} />
       <DownloadAreaSheet
         visible={panel === 'download'}
         bounds={downloadBounds}
