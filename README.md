@@ -59,4 +59,13 @@ npm test            # Jest (jest-expo)
 npm run format      # Prettier write
 ```
 
-CI (`.github/workflows/ci.yml`) runs install, typecheck, lint and test on pull requests and pushes to `main`.
+CI (`.github/workflows/ci.yml`) runs on pull requests and pushes to `main`:
+
+- **Typecheck, lint, test** across all workspaces.
+- **Android build:** `expo prebuild --platform android` and a Gradle `assembleDebug`, with the Gradle cache kept between runs.
+
+iOS native builds are not in CI: they need macOS, so they run on [EAS Build](https://docs.expo.dev/build/introduction/) with the profiles in `app/eas.json` (`npx eas-cli@latest build --profile development --platform ios`).
+
+## Fonts
+
+The app bundles the Archivo variable font (`app/assets/fonts/`, SIL Open Font License; license file alongside). Weight and width come from the theme (`app/src/theme/typography.ts`).
