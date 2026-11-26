@@ -18,3 +18,7 @@ Source of truth: docs/SPEC.md. Read it before starting any milestone.
 - Work one milestone at a time; list what you will build and the test, then build.
 - Write unit tests for protobuf encode/decode and message de-duplication.
 - Ask before adding a dependency not listed in docs/SPEC.md.
+
+## Git
+- Commit messages must not credit Claude or any AI tool (no Co-Authored-By, session links or "Generated with" lines).
+- Enforced by `.githooks/commit-msg`. Enable it once per clone: `git config core.hooksPath .githooks`

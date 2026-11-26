@@ -1,0 +1,17 @@
+#!/bin/sh
+# Strip AI/Claude attribution from commit messages.
+# Removes Co-Authored-By trailers naming Claude or anthropic.com, Claude-Session
+# trailers, and "Generated with Claude Code" lines, then trims trailing blank lines.
+msg_file="$1"
+tmp="$msg_file.tmp.$$"
+
+grep -viE '^[[:space:]]*(co-authored-by:.*(claude|anthropic\.com)|claude-session:|.*generated (with|by) \[?claude( code)?)' "$msg_file" > "$tmp"
+
+# Trim trailing blank lines.
+awk '{ lines[NR] = $0 } END { n = NR; while (n > 0 && lines[n] ~ /^[[:space:]]*$/) n--; for (i = 1; i <= n; i++) print lines[i] }' "$tmp" > "$msg_file"
+rm -f "$tmp"
+
+if ! grep -qv '^[[:space:]]*\(#.*\)\{0,1\}$' "$msg_file"; then
+  echo "commit-msg: message is empty after removing attribution lines" >&2
+  exit 1
+fi
