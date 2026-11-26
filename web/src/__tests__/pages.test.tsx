@@ -81,9 +81,10 @@ describe('sign in', () => {
   it('signs in with an email and the emailed code', async () => {
     renderApp();
     await screen.findByLabelText(signInCopy.email);
-    expect(document.title).toBe(`Sign in · ${APP_NAME}`);
+    await vi.waitFor(() => expect(document.title).toBe(`Sign in · ${APP_NAME}`));
     await signIn();
-    expect(document.title).toBe(`My club · Club admin · ${APP_NAME}`);
+    // The title is set in an effect after the signed-in render commits.
+    await vi.waitFor(() => expect(document.title).toBe(`My club · Club admin · ${APP_NAME}`));
     expect(screen.getByText('Signed in as dale@example.com')).toBeTruthy();
   });
 
