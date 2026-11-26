@@ -11,6 +11,7 @@ import {
   type NodeRecord,
   type Unsubscribe,
 } from '@huntclub/mesh';
+import { INITIALS_MAX } from '@huntclub/shared';
 
 import type { MapDataStore } from './dataSource';
 import { placeOf, type PlaceNames } from './place';
@@ -68,7 +69,7 @@ export function memberIdentity(node: MapNode | undefined, num: number, names: Ma
   if (known) return known;
   const shortName = node?.user?.shortName?.trim();
   const displayName = nodeDisplayName(node, num);
-  return { displayName, initials: (shortName || displayName).slice(0, 3) };
+  return { displayName, initials: (shortName || displayName).slice(0, INITIALS_MAX) };
 }
 
 function hunterFrom(
