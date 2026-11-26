@@ -89,11 +89,15 @@ it('maps Cognito errors to what the screen says', async () => {
 
 it('refreshes keeping the same refresh token', async () => {
   const { auth: a, calls } = auth([
-    { status: 200, body: { AuthenticationResult: { AccessToken: 'new', ExpiresIn: 60 } } },
+    {
+      status: 200,
+      body: { AuthenticationResult: { AccessToken: 'new', IdToken: 'id', ExpiresIn: 60 } },
+    },
   ]);
   expect(await a.refresh('refresh')).toEqual({
     accessToken: 'new',
     refreshToken: 'refresh',
+    idToken: 'id',
     expiresAt: NOW + 60_000,
   });
   expect(calls[0]!.body).toMatchObject({
