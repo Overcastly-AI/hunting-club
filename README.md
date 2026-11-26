@@ -63,6 +63,7 @@ CI (`.github/workflows/ci.yml`) runs on pull requests and pushes to `main`:
 
 - **Typecheck, lint, test** across all workspaces.
 - **Android build:** `expo prebuild --platform android` and a Gradle `assembleDebug`, with the Gradle cache kept between runs.
+- **Club data (DynamoDB Local):** `packages/club-data` repository and permission tests against `amazon/dynamodb-local` (see [`packages/club-data/README.md`](packages/club-data/README.md)).
 
 iOS native builds are not in CI: they need macOS, so they run on [EAS Build](https://docs.expo.dev/build/introduction/) with the profiles in `app/eas.json` (`npx eas-cli@latest build --profile development --platform ios`).
 

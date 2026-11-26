@@ -28,7 +28,7 @@ Commits must never credit Claude or any AI tool: no `Co-Authored-By`, session li
 | `app/` | Expo (React Native, TypeScript) phone and tablet app |
 | `packages/` | Shared TypeScript packages (for example mesh protocol encode/decode) |
 | `infra/` | AWS CDK (TypeScript). Code only: agents never deploy |
-| `supabase/` | SQL migrations and RLS policies |
+| `packages/club-data/` | Club cloud data: DynamoDB single-table design, repository, authorization (tests on DynamoDB Local) |
 | `web/` | Web admin and checkout page (static) |
 | `docs/` | Spec, status, decisions, research |
 

@@ -18,6 +18,7 @@
  * No message body, key or note is ever logged by this package.
  */
 import { BinaryReader, BinaryWriter, WireType } from '@bufbuild/protobuf/wire';
+import { UINT32_MAX } from '@huntclub/shared';
 import { encodeUtf8 } from '../runtime';
 import { CheckInMode, HARVEST_SEX_CODES, type HarvestSex, enumValues } from '../domain';
 
@@ -222,7 +223,7 @@ function schemaFor(type: number): AppMessageSchema {
 }
 
 const isUint32 = (v: unknown): v is number =>
-  typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 0xffffffff;
+  typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= UINT32_MAX;
 
 function invalid(name: string, why: string): never {
   throw new AppCodecError('invalid-field', `${name} ${why}`);

@@ -1,0 +1,75 @@
+// Domain enums: the single source of truth for every value list the app, web admin,
+// Lambdas and club-data store or send. Hand-written; nothing generates these.
+// Values are stored in DynamoDB and sent over the API, so never rename one.
+import { z } from 'zod';
+
+export const MEMBER_ROLES = ['admin', 'member', 'guest'] as const;
+export const MemberRoleSchema = z.enum(MEMBER_ROLES);
+export type MemberRole = z.infer<typeof MemberRoleSchema>;
+
+/** Roles an invite may grant (never admin: admins are promoted by another admin). */
+export const InviteRoleSchema = MemberRoleSchema.exclude(['admin']);
+export type InviteRole = z.infer<typeof InviteRoleSchema>;
+export const INVITE_ROLES = InviteRoleSchema.options;
+
+export const STAND_TYPES = ['tree_stand', 'ladder', 'ground_blind'] as const;
+export const StandTypeSchema = z.enum(STAND_TYPES);
+export type StandType = z.infer<typeof StandTypeSchema>;
+
+/** Harvest sex keys. Their wire codes live in @huntclub/mesh (HARVEST_SEX_CODES). */
+export const HARVEST_SEXES = ['male', 'female', 'unknown'] as const;
+export const HarvestSexSchema = z.enum(HARVEST_SEXES);
+export type HarvestSex = z.infer<typeof HarvestSexSchema>;
+
+/** Mirrors Stripe's subscription.status values; written only by the webhook Lambda. */
+export const SUBSCRIPTION_STATUSES = [
+  'incomplete',
+  'incomplete_expired',
+  'trialing',
+  'active',
+  'past_due',
+  'unpaid',
+  'canceled',
+  'paused',
+] as const;
+export const SubscriptionStatusSchema = z.enum(SUBSCRIPTION_STATUSES);
+export type SubscriptionStatus = z.infer<typeof SubscriptionStatusSchema>;
+
+/**
+ * The one definition of which subscription statuses keep club features unlocked.
+ * past_due is the grace period before cancellation (SPEC "When a subscription lapses").
+ */
+export const ENTITLED_SUBSCRIPTION_STATUSES = [
+  'trialing',
+  'active',
+  'past_due',
+] as const satisfies readonly SubscriptionStatus[];
+
+export function isEntitledStatus(status: SubscriptionStatus): boolean {
+  return (ENTITLED_SUBSCRIPTION_STATUSES as readonly SubscriptionStatus[]).includes(status);
+}
+
+/** Reasons an invite redemption is refused. */
+export const REDEEM_INVITE_ERRORS = [
+  'not_authenticated',
+  'invite_not_found',
+  'invite_expired',
+  'invite_used_up',
+  'club_inactive',
+  'club_full',
+] as const;
+export type RedeemInviteError = (typeof REDEEM_INVITE_ERRORS)[number];
+
+/**
+ * Every error code the club API returns (the `code` of a club-data error). Clients
+ * switch on these to show a message; HTTP status mapping lives with the Lambda API.
+ */
+export const CLUB_API_ERRORS = [
+  ...REDEEM_INVITE_ERRORS,
+  'forbidden',
+  'not_found',
+  'conflict',
+  'invalid',
+  'last_admin',
+] as const;
+export type ClubApiError = (typeof CLUB_API_ERRORS)[number];

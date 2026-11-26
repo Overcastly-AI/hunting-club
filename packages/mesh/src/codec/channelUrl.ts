@@ -9,6 +9,7 @@
  * Channel keys are secrets: never log a ChannelSet, URL or PSK.
  */
 import { create, fromBinary, toBinary } from '@bufbuild/protobuf';
+import { CHANNEL_KEY_BYTES } from '@huntclub/shared';
 import { AppOnly, Channel, Config } from '../protobufs';
 import type { RandomSource } from '../random';
 import { base64UrlDecode, base64UrlEncode } from './base64url';
@@ -27,8 +28,8 @@ export const MAX_CHANNEL_NAME_BYTES = 11;
 export const MAX_CHANNELS = 8;
 /** PSK lengths firmware accepts: none, 1-byte shorthand, AES-128, AES-256. */
 export const VALID_PSK_LENGTHS: readonly number[] = [0, 1, 16, 32];
-/** We always generate AES-256 keys. */
-export const PARTY_PSK_BYTES = 32;
+/** We always generate AES-256 keys (same length as club keys). */
+export const PARTY_PSK_BYTES = CHANNEL_KEY_BYTES;
 export const PARTY_CHANNEL_NAME = 'Party';
 /** Name firmware uses for an unnamed channel on the LongFast preset (channel hash, frequency slot). */
 export const DEFAULT_CHANNEL_NAME = 'LongFast';
