@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '../../components/Button';
-import { colors, radii, sizes, spacing, textStyles } from '../../theme';
+import { colors, spacing, textStyles } from '../../theme';
 import { BASEMAP_IDS, BASEMAPS, type BasemapId } from '../basemaps';
 import type { DownloadRequest } from '../offline';
 import {
@@ -15,6 +15,7 @@ import {
 } from '../tiles';
 import { Choice } from '../../components/Choice';
 import { Sheet } from '../../components/Sheet';
+import { TextField } from '../../components/TextField';
 
 type LayerChoice = BasemapId | 'both';
 
@@ -117,13 +118,10 @@ export function DownloadAreaSheet({ visible, bounds, onStart, onClose }: Props) 
         {formatBytes(DOWNLOAD_LIMITS.maxBytes)} per layer.
       </Text>
 
-      <TextInput
-        accessibilityLabel="Name this area"
+      <TextField
         placeholder="Name this area (optional)"
-        placeholderTextColor={colors.textSecondary}
         value={name}
         onChangeText={setName}
-        style={styles.input}
         maxLength={40}
       />
 
@@ -142,14 +140,4 @@ const styles = StyleSheet.create({
   group: { gap: spacing.sm },
   heading: { ...textStyles.label, color: colors.text },
   body: { ...textStyles.body, color: colors.textSecondary },
-  input: {
-    ...textStyles.body,
-    color: colors.text,
-    minHeight: sizes.minTapTarget,
-    borderRadius: radii.primaryButton,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceRaised,
-    paddingHorizontal: spacing.md,
-  },
 });

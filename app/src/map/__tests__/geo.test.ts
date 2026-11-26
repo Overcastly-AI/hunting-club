@@ -1,5 +1,6 @@
 import {
   destination,
+  distanceMeters,
   downwindBearing,
   metersPerPoint,
   scaleBar,
@@ -41,5 +42,13 @@ describe('scent cone', () => {
     const north = destination(origin, 0, 1000);
     expect(north.lon).toBeCloseTo(origin.lon, 6);
     expect((north.lat - origin.lat) * 111_195).toBeCloseTo(1000, -1);
+  });
+});
+
+describe('distanceMeters', () => {
+  it('measures great-circle distance', () => {
+    const a = { lat: 40.79, lon: -77.86 };
+    expect(distanceMeters(a, a)).toBe(0);
+    expect(distanceMeters(a, destination(a, 90, 1234))).toBeCloseTo(1234, 3);
   });
 });
