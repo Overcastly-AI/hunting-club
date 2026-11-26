@@ -10,6 +10,8 @@ export function siteHeadTags() {
   return [
     { tag: 'title', children: APP_NAME },
     { tag: 'meta', attrs: { name: 'description', content: APP_DESCRIPTION } },
+    // Dark-first with a light theme (themeCss, data-theme set by theme-bootstrap.ts).
+    { tag: 'meta', attrs: { name: 'color-scheme', content: 'dark light' } },
     { tag: 'meta', attrs: { name: 'theme-color', content: colors.surface } },
     // The admin, /join and the Checkout pages are never search results.
     { tag: 'meta', attrs: { name: 'robots', content: 'noindex' } },

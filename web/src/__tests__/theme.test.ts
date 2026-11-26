@@ -11,7 +11,13 @@ import {
   logoMarkSvg,
   sizes,
   textScale,
+  THEME_ATTRIBUTE,
+  THEME_STORAGE_KEY,
+  themeBootstrapJs,
+  themeCss,
 } from '@huntclub/design';
+import type { Plugin } from 'vite';
+import { themeBootstrap, themeBootstrapFileName } from '../../theme-bootstrap';
 import { globalCss, textStyleCss, tokenVariables } from '../theme/css';
 
 describe('web theme from @huntclub/design', () => {
@@ -37,7 +43,7 @@ describe('web theme from @huntclub/design', () => {
 
   it('sets body text at 16 px or more in Archivo with the shared axes', () => {
     expect(textStyleCss(textScale.body)).toBe(
-      `font-family: 'Archivo', sans-serif; font-weight: 500; font-stretch: 100%; font-size: ${fontSize.body / 16}rem; line-height: ${22 / 16}rem`,
+      `font-family: 'Archivo', sans-serif; font-weight: 500; font-stretch: 100%; font-size: ${fontSize.body / 16}rem; line-height: ${24 / 16}rem`,
     );
     // rem, so text follows the reader's browser text size; 1rem is 16 px by default.
     expect(fontSize.body / 16).toBeGreaterThanOrEqual(1);
@@ -92,6 +98,7 @@ describe('page head and favicon', () => {
     expect(attrs).toContainEqual({ title: APP_NAME });
     expect(attrs).toContainEqual({ name: 'description', content: APP_DESCRIPTION });
     expect(attrs).toContainEqual({ name: 'theme-color', content: colors.surface });
+    expect(attrs).toContainEqual({ name: 'color-scheme', content: 'dark light' });
     expect(attrs).toContainEqual(expect.objectContaining({ rel: 'icon', href: `/${FAVICON_SVG}` }));
   });
 
@@ -99,5 +106,36 @@ describe('page head and favicon', () => {
     const used = logoMarkSvg().match(/#[0-9A-Fa-f]{6}/g) ?? [];
     expect(used.length).toBeGreaterThan(0);
     for (const color of used) expect(Object.values(colors)).toContain(color);
+  });
+});
+
+describe('dark and light themes', () => {
+  it('ships the generated theme CSS in the stylesheet', () => {
+    expect(globalCss()).toContain(themeCss());
+  });
+
+  /** One of the plugin's hooks as the plain function it is here. */
+  const hook = (plugin: Plugin, name: keyof Plugin) =>
+    plugin[name] as unknown as (...args: unknown[]) => unknown;
+
+  it('loads the theme bootstrap from its own fingerprinted file, not an inline script', () => {
+    const plugin = themeBootstrap();
+    hook(plugin, 'configResolved')({ base: '/app/', command: 'build' });
+    const emitted: unknown[] = [];
+    hook(plugin, 'generateBundle').call({ emitFile: (f: unknown) => emitted.push(f) });
+    const file = themeBootstrapFileName();
+    expect(file).toMatch(/^assets\/theme-[0-9a-f]{10}\.js$/);
+    expect(emitted).toEqual([{ type: 'asset', fileName: file, source: themeBootstrapJs() }]);
+    expect(hook(plugin, 'transformIndexHtml')()).toEqual([
+      { tag: 'script', attrs: { src: `/app/${file}` }, injectTo: 'head' },
+    ]);
+  });
+
+  it('sets data-theme from the stored choice before the app runs', () => {
+    localStorage.setItem(THEME_STORAGE_KEY, 'light');
+    new Function(themeBootstrapJs())();
+    expect(document.documentElement.getAttribute(THEME_ATTRIBUTE)).toBe('light');
+    localStorage.removeItem(THEME_STORAGE_KEY);
+    document.documentElement.removeAttribute(THEME_ATTRIBUTE);
   });
 });

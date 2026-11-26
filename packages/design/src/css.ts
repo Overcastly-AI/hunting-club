@@ -1,11 +1,13 @@
 // CSS for the web surfaces (club admin and public site), generated from the tokens so no
 // page retypes a value. Plain strings: no DOM code here.
 import { colors, lightColors } from './colors';
-import { radii, sizes, spacing } from './sizes';
+import { breakpoints, motion, radii, sizes, spacing } from './sizes';
+import { THEME_ATTRIBUTE, THEME_STORAGE_KEY, themes, type Theme } from './theme';
 import {
   fontAxisLimits,
   fontFamily,
   fontWidth,
+  monoFontFamily,
   textScale,
   type TextScaleEntry,
   type TextStyleName,
@@ -15,7 +17,11 @@ import {
 const ROOT_FONT_PX = 16;
 export const rem = (px: number) => `${px / ROOT_FONT_PX}rem`;
 
-const kebab = (name: string) => name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+/** `surfaceRaised` → `surface-raised`, `surface0` → `surface-0`, `title1` → `title-1`. */
+const kebab = (name: string) => name.replace(/[A-Z]|\d+/g, (c) => `-${c.toLowerCase()}`);
+
+/** Below this width the compact type sizes apply (phones). */
+const COMPACT_MEDIA = `(max-width: ${breakpoints.tablet - 1}px)`;
 
 /** CSS custom properties for every design token, e.g. `--color-surface-raised`. */
 export function tokenVariables(): Record<string, string> {
@@ -27,35 +33,102 @@ export function tokenVariables(): Record<string, string> {
   for (const [name, value] of Object.entries(radii)) vars[`--radius-${kebab(name)}`] = `${value}px`;
   vars['--tap-min'] = `${sizes.minTapTarget}px`;
   vars['--button-min-height'] = `${sizes.primaryButtonMinHeight}px`;
+  vars['--motion-fast'] = `${motion.fast}ms`;
+  vars['--motion-base'] = `${motion.base}ms`;
+  vars['--motion-easing'] = motion.easing;
   return vars;
 }
 
-/** `:root { … }` declaring every token variable. */
-export function rootVariablesCss(): string {
-  const vars = Object.entries(tokenVariables())
+const declarations = (vars: Record<string, string>) =>
+  Object.entries(vars)
     .map(([k, v]) => `${k}: ${v};`)
     .join(' ');
-  return `:root { ${vars} color-scheme: dark; }`;
+
+/** `:root { … }` declaring every token variable; motion is instant under reduced motion. */
+export function rootVariablesCss(): string {
+  return [
+    `:root { ${declarations(tokenVariables())} color-scheme: dark; }`,
+    `@media (prefers-reduced-motion: reduce) { :root { --motion-fast: 0ms; --motion-base: 0ms; } }`,
+  ].join('\n');
+}
+
+/**
+ * CSS custom properties for one theme: `--theme-surface-1`, `--theme-text`,
+ * `--theme-shadow-card`, `--theme-scrim`, … and `--theme-color-scheme` (`dark` or `light`),
+ * which a page applies with `color-scheme: var(--theme-color-scheme)` when it adopts the theme.
+ */
+export function themeVariables(theme: Theme): Record<string, string> {
+  const vars: Record<string, string> = {};
+  for (const [name, value] of Object.entries({ ...theme.colors, ...theme.effects })) {
+    vars[`--theme-${kebab(name)}`] = value;
+  }
+  vars['--theme-color-scheme'] = theme.colorScheme;
+  return vars;
+}
+
+/**
+ * The themes as CSS: dark on :root (and any `[data-theme="dark"]` subtree), light where
+ * `[data-theme="light"]` is set, and light for "system" when the device prefers it (no
+ * data-theme attribute). The attribute is set before first paint by themeBootstrapJs().
+ */
+export function themeCss(): string {
+  const attr = (name: string) => `[${THEME_ATTRIBUTE}="${name}"]`;
+  const dark = declarations(themeVariables(themes.dark));
+  const light = declarations(themeVariables(themes.light));
+  return [
+    `:root, ${attr('dark')} { ${dark} }`,
+    `@media (prefers-color-scheme: light) { :root:not(${attr('dark')}) { ${light} } }`,
+    `${attr('light')} { ${light} }`,
+  ].join('\n');
+}
+
+/**
+ * The theme bootstrap: a tiny classic script, loaded from its own file in <head> before the
+ * stylesheet (no inline script: the CSP is strict). It reads the reader's choice from
+ * localStorage and sets data-theme on <html> before first paint. "system", no choice, an
+ * unknown value or blocked storage leave the attribute off, so the device setting applies.
+ */
+export function themeBootstrapJs(): string {
+  const forced = JSON.stringify(Object.keys(themes));
+  return (
+    `(function(){try{var t=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});` +
+    `if(${forced}.indexOf(t)>=0)document.documentElement.setAttribute(${JSON.stringify(THEME_ATTRIBUTE)},t)}` +
+    `catch(e){}})();\n`
+  );
 }
 
 /** CSS declarations for one named text style of the shared type scale. */
 export function textStyleCss(entry: TextScaleEntry): string {
   const width = entry.width ?? fontWidth.normal;
   return [
-    `font-family: '${fontFamily}', sans-serif`,
+    entry.family === 'mono'
+      ? `font-family: ${monoFontFamily}`
+      : `font-family: '${fontFamily}', sans-serif`,
     `font-weight: ${entry.weight}`,
-    `font-stretch: ${width}%`,
+    entry.family === 'mono' ? '' : `font-stretch: ${width}%`,
     `font-size: ${rem(entry.size)}`,
     entry.lineHeight === undefined ? '' : `line-height: ${rem(entry.lineHeight)}`,
+    entry.tabularNums ? 'font-variant-numeric: tabular-nums' : '',
   ]
     .filter(Boolean)
     .join('; ');
 }
 
-/** Utility classes `.text-body`, `.text-sheet-title`, … one per text style. */
+/** The compact (phone) override of a text style, or '' when it has none. */
+function compactCss(selector: string, entry: TextScaleEntry): string {
+  if (!entry.compact) return '';
+  const { size, lineHeight } = entry.compact;
+  return `@media ${COMPACT_MEDIA} { ${selector} { font-size: ${rem(size)}; line-height: ${rem(lineHeight)}; } }`;
+}
+
+/** Utility classes `.text-body`, `.text-title-1`, … one per text style, with phone sizes. */
 export function textClasses(): string {
   return (Object.entries(textScale) as [TextStyleName, TextScaleEntry][])
-    .map(([name, entry]) => `.text-${kebab(name)} { ${textStyleCss(entry)}; }`)
+    .flatMap(([name, entry]) => {
+      const selector = `.text-${kebab(name)}`;
+      return [`${selector} { ${textStyleCss(entry)}; }`, compactCss(selector, entry)];
+    })
+    .filter(Boolean)
     .join('\n');
 }
 
