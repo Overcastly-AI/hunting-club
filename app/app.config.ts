@@ -2,9 +2,8 @@ import type { ExpoConfig } from 'expo/config';
 
 // Expo's config loader needs the explicit .ts extension.
 import { colors } from './src/theme/colors.ts';
-
-/** App identifiers (docs/AGENTS.md). */
-const APP_ID = 'com.overcastly.huntclub';
+// App identifiers, shared with infra (universal-link files): one source of truth.
+import { APP_ID, URL_SCHEME } from '@huntclub/shared/app';
 
 /**
  * Android 8.0 (API 26): the lowest version that applies font variation axes
@@ -15,7 +14,7 @@ const ANDROID_MIN_SDK = 26;
 const config: ExpoConfig = {
   name: 'Hunt Club Mesh',
   slug: 'hunt-club-mesh',
-  scheme: 'huntclub',
+  scheme: URL_SCHEME,
   version: '0.1.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
