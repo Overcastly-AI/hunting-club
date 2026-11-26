@@ -3,7 +3,8 @@
  * Components must use these tokens; never hard-code colors.
  *
  * Orange (`accent`) is reserved for three things: you, the main action and
- * the selected tab.
+ * the selected tab. On the web it is also the dawn scene's sun and its light
+ * (dawnScene.ts, the home hero and sign-in background): the owner kept it.
  */
 export const colors = {
   /** Floating panels, bottom sheet, tab bar. */
@@ -21,7 +22,7 @@ export const colors = {
   text: '#FFFFFF',
   /** Labels, inactive tabs. */
   textSecondary: '#B8BDC2',
-  /** You marker, primary button (Check Out), active tab only. */
+  /** You marker, primary button (Check Out), active tab only; on the web, also the dawn scene's sun. */
   accent: '#FF7A1F',
   /** Ask for a Hand outline and icon; stale position ring. */
   help: '#F5C04E',

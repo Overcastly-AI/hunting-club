@@ -78,7 +78,14 @@ a.button { display: inline-flex; align-items: center; text-decoration: none; }
 .field input:focus { outline: none; border-color: var(--color-accent);
   box-shadow: inset 0 0 0 1px var(--color-accent); }
 .field input[aria-invalid='true'] { border-color: var(--color-alert); }
-.auth { display: grid; justify-items: center; gap: var(--space-md); padding-top: var(--space-lg); }
+/* The dawn scene (lazy, with its own stylesheet) fills .auth behind the card; the card stays
+   opaque, the footer sits low on the dark ground (below the sun and its light) and the pause
+   button (48 px) has the bottom row, on the scene's foreground band. */
+.auth { position: relative; overflow: hidden; display: grid; justify-items: center;
+  grid-template-rows: auto 1fr; gap: var(--space-md); min-height: calc(100vh - 2 * var(--space-lg));
+  padding: var(--space-lg) var(--space-md) calc(var(--tap-min) + 2 * var(--space-md));
+  border-radius: var(--radius-control); }
+.auth-card, .auth-footer { position: relative; }
 .auth-card { width: 100%; max-width: 440px; background: var(--color-surface-raised);
   border-radius: var(--radius-control); padding: var(--space-lg); }
 .auth-card .field input { background: var(--color-surface); }
@@ -87,7 +94,7 @@ a.button { display: inline-flex; align-items: center; text-decoration: none; }
 .auth-brand p { margin: 0; }
 .auth-app-name { ${textStyleCss(textScale.bodyLarge)}; font-weight: 700; }
 .auth-secondary { margin-top: var(--space-md); }
-.auth-footer { display: flex; gap: var(--space-lg); }
+.auth-footer { display: flex; gap: var(--space-lg); align-self: end; }
 .auth-footer a { color: var(--color-text-secondary); display: inline-flex; align-items: center;
   min-height: var(--tap-min); }
 .button + .panel { margin-top: var(--space-md); }

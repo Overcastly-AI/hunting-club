@@ -13,7 +13,8 @@ import {
   ClubApiRequestError,
   WEB_DOMAINS,
 } from '@huntclub/shared';
-import { ClubSession, memoryTokenStore, signInCopy } from '@huntclub/shared';
+import { ClubSession, dawnPauseCopy, memoryTokenStore, signInCopy } from '@huntclub/shared';
+import { DAWN_CLASS, DAWN_PAUSED_CLASS, DAWN_PAUSED_KEY } from '@huntclub/design/dawnControl';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { adminApi } from '../api/admin';
 import { App, PAGES } from '../App';
@@ -80,6 +81,24 @@ describe('sign in', () => {
     // The title is set in an effect after the signed-in render commits.
     await vi.waitFor(() => expect(document.title).toBe(`My club · Club admin · ${APP_NAME}`));
     expect(screen.getByText('Signed in as dale@example.com')).toBeTruthy();
+  });
+
+  it('shows the dawn scene behind the card, with a pause button that remembers the choice', async () => {
+    sessionStorage.clear();
+    renderApp();
+    const pause = await screen.findByRole('button', { name: dawnPauseCopy.pause });
+    const scene = document.querySelector(`.auth .${DAWN_CLASS}`)!;
+    expect(scene.getAttribute('aria-hidden')).toBe('true');
+    expect(pause.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(pause);
+    expect(scene.classList.contains(DAWN_PAUSED_CLASS)).toBe(true);
+    expect(pause.textContent).toBe(dawnPauseCopy.play);
+    expect(pause.getAttribute('aria-pressed')).toBe('true');
+    expect(sessionStorage.getItem(DAWN_PAUSED_KEY)).toBe('1');
+    sessionStorage.clear();
+    await signIn();
+    // Signed-in pages never show it.
+    expect(document.querySelector(`.${DAWN_CLASS}`)).toBeNull();
   });
 
   it('explains a wrong code and stays on the code step', async () => {

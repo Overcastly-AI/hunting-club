@@ -10,12 +10,15 @@
     ".": "./src/index.ts",
     "./colors": "./src/colors.ts",
     "./fonts/*": "./fonts/*",
-    "./png": "./scripts/png.ts"
+    "./png": "./scripts/png.ts",
+    "./dawnScene": "./src/dawnScene.ts",
+    "./dawnControl": "./src/dawnControl.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.scripts.json",
     "test": "jest",
-    "icons": "node ../../scripts/run-ts.mjs scripts/icons.ts"
+    "icons": "node ../../scripts/run-ts.mjs scripts/icons.ts",
+    "dawn:preview": "node ../../scripts/run-ts.mjs scripts/dawnPreview.ts"
   },
   "devDependencies": {
     "@resvg/resvg-js": "2.6.2",
