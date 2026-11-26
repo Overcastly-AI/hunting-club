@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router/js-tabs';
 
+import { ChatConnector } from '../../chat/ChatConnector';
 import { SafetyLayer } from '../../safety/SafetyLayer';
 import { colors, sizes, textStyles } from '../../theme';
 
@@ -35,6 +36,7 @@ export default function TabLayout() {
         />
       </Tabs>
       <SafetyLayer />
+      <ChatConnector />
     </>
   );
 }
