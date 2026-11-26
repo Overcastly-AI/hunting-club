@@ -68,7 +68,7 @@ async function send(event: ReturnType<typeof delivery>) {
   const res = await webhook(event);
   return { status: res.statusCode, body: JSON.parse(res.body) as Record<string, unknown> };
 }
-const oakStatus = async () => (await w.data.getSubscription(SERVICE, oak())).status;
+const oakStatus = async () => (await w.data.getSubscription(SERVICE, oak()))?.status;
 
 beforeAll(async () => {
   w = await World.seedTwoClubs();

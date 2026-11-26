@@ -128,6 +128,22 @@ describe('clubs and roster', () => {
     expect(members).toEqual([expect.objectContaining({ userId: w.user('cal'), role: 'admin' })]);
   });
 
+  it('a club made on the web can make an invite and read its radio key at once (UAT)', async () => {
+    const created = await call('POST', '/clubs', {
+      as: 'cal',
+      body: { club: { name: 'Web Club' }, admin: { displayName: 'Cal', initials: 'CA' } },
+    });
+    const id = created.body.id;
+    const secret = await call('GET', `/clubs/${id}/secret`, { as: 'cal' });
+    expect(secret.status).toBe(200);
+    expect(secret.body.keyVersion).toBe(1);
+    const invite = await call('POST', `/clubs/${id}/invites`, {
+      as: 'cal',
+      body: { role: 'member', expiresAt: w.clock.inDays(7) },
+    });
+    expect(invite.status).toBe(201);
+  });
+
   it('rejects a create body that names someone else as admin', async () => {
     const res = await call('POST', '/clubs', {
       as: 'cal',
@@ -234,7 +250,7 @@ describe('club secret', () => {
     const res = await call('GET', `/clubs/${oak()}/secret`, { as: 'ada' });
     expect(res.body).toMatchObject({
       channelKey: Buffer.from(keyOf('ab')).toString('base64'),
-      keyVersion: 1,
+      keyVersion: 2, // the seed resets the key the club was created with
     });
     expect((await call('GET', `/clubs/${oak()}/secret`, { as: 'max' })).status).toBe(403);
   });
@@ -242,7 +258,7 @@ describe('club secret', () => {
   it('admins rotate it; a wrong-length key is rejected', async () => {
     const channelKey = Buffer.from(keyOf('ef')).toString('base64');
     const res = await call('PUT', `/clubs/${oak()}/secret`, { as: 'ada', body: { channelKey } });
-    expect(res.body).toMatchObject({ channelKey, keyVersion: 2 });
+    expect(res.body).toMatchObject({ channelKey, keyVersion: 3 });
     const short = Buffer.alloc(16).toString('base64');
     expect(
       (await call('PUT', `/clubs/${oak()}/secret`, { as: 'ada', body: { channelKey: short } }))
@@ -254,9 +270,19 @@ describe('club secret', () => {
 describe('billing', () => {
   it('admins read the subscription status', async () => {
     expect((await call('GET', `/clubs/${oak()}/subscription`, { as: 'ada' })).body).toMatchObject({
-      status: 'active',
+      subscription: { status: 'active' },
     });
     expect((await call('GET', `/clubs/${oak()}/subscription`, { as: 'max' })).status).toBe(403);
+  });
+
+  it('a club with no subscription yet answers 200 { subscription: null }', async () => {
+    const created = await call('POST', '/clubs', {
+      as: 'nora',
+      body: { club: { name: 'Fresh Club' }, admin: { displayName: 'Nora', initials: 'NO' } },
+    });
+    const res = await call('GET', `/clubs/${created.body.id}/subscription`, { as: 'nora' });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ subscription: null });
   });
 
   it('any member reads the entitlement; outsiders cannot', async () => {

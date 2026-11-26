@@ -586,6 +586,20 @@ describe('errors, empty states and navigation', () => {
     expect(screen.getByRole('button', { name: 'Make an invite' })).toBeTruthy();
   });
 
+  it('makes no invite when the radio key cannot be read (no orphan invites)', async () => {
+    const client = fakeClubClient(sampleData());
+    vi.spyOn(client, 'getClubSecret').mockRejectedValue(new ClubApiRequestError('not_found', 404));
+    const createInvite = vi.spyOn(client, 'createInvite');
+    renderApp(undefined, servicesFor(client));
+    await signIn();
+    go('#/roster');
+    fireEvent.click(await screen.findByRole('button', { name: 'Make an invite' }));
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Could not make the invite. Try again.',
+    );
+    expect(createInvite).not.toHaveBeenCalled();
+  });
+
   describe('copying the invite link', () => {
     async function invite() {
       renderApp();

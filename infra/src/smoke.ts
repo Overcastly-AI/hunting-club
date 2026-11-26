@@ -4,7 +4,13 @@
 // Every URL comes from the single sources (CLOUD_ENVIRONMENTS, the env config); nothing
 // here writes, signs anyone up or sends email.
 import { colors, FAVICON_ICO } from '@huntclub/design';
-import { ADMIN_PATH, API_PATHS, CLOUD_ENVIRONMENTS, WEB_PAGE_PATHS } from '@huntclub/shared';
+import {
+  ADMIN_PATH,
+  API_PATHS,
+  BUILD_VERSION_URL,
+  CLOUD_ENVIRONMENTS,
+  WEB_PAGE_PATHS,
+} from '@huntclub/shared';
 import type { CloudEnvironment } from '@huntclub/shared/cloud';
 import { canonicalUrl, NOT_FOUND_PAGE, REDIRECTS, SITEMAP_FILE } from '@huntclub/site/routes';
 import type { EnvConfig } from '../config';
@@ -131,6 +137,15 @@ export async function runSmoke(config: EnvConfig, fetch: SmokeFetch): Promise<Sm
     expect(res.status === 200, `GET ${ADMIN_PATH} → ${res.status}`);
     expect(admin.includes('id="root"'), 'no app root element');
     return `GET ${ADMIN_PATH} → 200, app root`;
+  });
+  await check(`${BUILD_VERSION_URL} is served uncached`, async () => {
+    const res = await fetch(`${site}${BUILD_VERSION_URL}`);
+    const cache = res.headers.get('cache-control') ?? '';
+    const body = JSON.parse(await res.text()) as { buildId?: unknown };
+    expect(res.status === 200, `GET → ${res.status}`);
+    expect(typeof body.buildId === 'string', 'no buildId');
+    expect(/no-cache|no-store/.test(cache), `cache-control is ${cache || 'missing'}`);
+    return `GET → 200, cache-control ${cache}`;
   });
   for (const path of WEB_PAGE_PATHS) {
     await check(`page path ${path} serves the admin`, async () => {

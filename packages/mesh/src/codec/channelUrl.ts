@@ -14,6 +14,9 @@ import { AppOnly, Channel, Config } from '../protobufs';
 import type { RandomSource } from '../random';
 import { base64UrlDecode, base64UrlEncode } from './base64url';
 import { encodeUtf8 } from '../runtime';
+import { ChannelUrlError } from './channelUrlError';
+import { JOIN_PARAMS, type JoinKind, joinKindOf } from './joinKind';
+import { parseQuery } from './query';
 import { DEFAULT_HOP_LIMIT } from './radio';
 
 export type ChannelSet = AppOnly.ChannelSet;
@@ -46,12 +49,7 @@ export function decodeChannelSet(bytes: Uint8Array): ChannelSet {
   return fromBinary(AppOnly.ChannelSetSchema, bytes);
 }
 
-export class ChannelUrlError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'ChannelUrlError';
-  }
-}
+export { ChannelUrlError };
 
 function decodeChannelSetParam(b64: string): ChannelSet {
   let cs: ChannelSet;
@@ -92,7 +90,8 @@ export function decodeChannelSetUrl(url: string): { channelSet: ChannelSet; add:
 
 /** What a Hunt Club join QR code carries besides the channels. */
 export type JoinTarget =
-  { kind: 'party'; partyId: string } | { kind: 'club'; clubId: string; inviteToken: string };
+  | { kind: Extract<JoinKind, 'party'>; partyId: string }
+  | { kind: Extract<JoinKind, 'club'>; clubId: string; inviteToken: string };
 
 export interface JoinLink {
   channelSet: ChannelSet;
@@ -127,14 +126,19 @@ export function encodeJoinUrl(
   link: JoinLink,
   opts: { form?: JoinLinkForm; host?: string } = {},
 ): string {
-  const params: [string, string][] = [['cs', base64UrlEncode(encodeChannelSet(link.channelSet))]];
+  const params: [string, string][] = [
+    [JOIN_PARAMS.channelSet, base64UrlEncode(encodeChannelSet(link.channelSet))],
+  ];
   if (link.target.kind === 'party') {
     if (!link.target.partyId) throw new ChannelUrlError('Party id is required');
-    params.push(['party', link.target.partyId]);
+    params.push([JOIN_PARAMS.party, link.target.partyId]);
   } else {
     if (!link.target.clubId || !link.target.inviteToken)
       throw new ChannelUrlError('Club id and invite are required');
-    params.push(['club', link.target.clubId], ['invite', link.target.inviteToken]);
+    params.push(
+      [JOIN_PARAMS.club, link.target.clubId],
+      [JOIN_PARAMS.invite, link.target.inviteToken],
+    );
   }
   const encoded = params.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
   if ((opts.form ?? 'app') === 'app') return `${JOIN_URL_PREFIX}?${encoded}`;
@@ -160,15 +164,20 @@ export function decodeJoinUrl(url: string): JoinLink {
 
   const params = parseQuery(query);
   for (const [k, v] of parseQuery(fragment)) params.set(k, v);
-  const cs = params.get('cs');
+  const cs = params.get(JOIN_PARAMS.channelSet);
   if (!cs) throw new ChannelUrlError('Join link has no channel data');
   const channelSet = decodeChannelSetParam(cs);
-  const party = params.get('party');
-  const club = params.get('club');
-  const invite = params.get('invite');
-  if (party) return { channelSet, target: { kind: 'party', partyId: party } };
-  if (club && invite)
-    return { channelSet, target: { kind: 'club', clubId: club, inviteToken: invite } };
+  const kind = joinKindOf(params);
+  if (kind === 'party')
+    return { channelSet, target: { kind, partyId: params.get(JOIN_PARAMS.party)! } };
+  if (kind === 'club') {
+    const target = {
+      kind,
+      clubId: params.get(JOIN_PARAMS.club)!,
+      inviteToken: params.get(JOIN_PARAMS.invite)!,
+    };
+    return { channelSet, target };
+  }
   throw new ChannelUrlError('Join link has no party or club');
 }
 
@@ -177,23 +186,6 @@ function isJoinBase(base: string): boolean {
   if (lower === JOIN_URL_PREFIX) return true;
   const m = /^https:\/\/([^/:?#]+)(\/.*)?$/.exec(lower);
   return !!m && JOIN_WEB_HOSTS.includes(m[1]!) && (m[2] ?? '') === JOIN_WEB_PATH;
-}
-
-/** Tiny query parser (React Native's URL/URLSearchParams support is incomplete). */
-function parseQuery(query: string): Map<string, string> {
-  const out = new Map<string, string>();
-  for (const part of query.split('&')) {
-    if (!part) continue;
-    const eq = part.indexOf('=');
-    const k = eq < 0 ? part : part.slice(0, eq);
-    const v = eq < 0 ? '' : part.slice(eq + 1);
-    try {
-      out.set(decodeURIComponent(k), decodeURIComponent(v.replace(/\+/g, ' ')));
-    } catch {
-      throw new ChannelUrlError('Link is not correctly encoded');
-    }
-  }
-  return out;
 }
 
 export interface PartyChannelOptions {

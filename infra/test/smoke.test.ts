@@ -1,5 +1,5 @@
 import { colors } from '@huntclub/design';
-import { ADMIN_PATH, API_PATHS, WEB_PAGE_PATHS } from '@huntclub/shared';
+import { ADMIN_PATH, API_PATHS, BUILD_VERSION_URL, WEB_PAGE_PATHS } from '@huntclub/shared';
 import { NOT_FOUND_PAGE, sitemapXml, SITEMAP_FILE } from '@huntclub/site/routes';
 import { dev } from '../config/dev';
 import {
@@ -49,6 +49,9 @@ function fakeDev(override: Record<string, number> = {}): {
     if (ADMIN_PATHS.some((p) => url === `${SITE}${p}`)) return reply(200, ADMIN, HTML);
     const redirect = Object.entries(SMOKE_REDIRECTS).find(([from]) => url === `${SITE}${from}`);
     if (redirect) return reply(301, '', { location: redirect[1] });
+    if (url === `${SITE}${BUILD_VERSION_URL}`) {
+      return reply(200, '{"buildId":"b1"}', { 'cache-control': 'no-cache' });
+    }
     if (url === `${SITE}/${SITEMAP_FILE}`) {
       return reply(200, sitemapXml('2026-11-26'), { 'content-type': 'application/xml' });
     }
@@ -132,6 +135,12 @@ describe('dev smoke check', () => {
     for (const from of Object.keys(SMOKE_REDIRECTS)) {
       expect(results.some((r) => r.name.startsWith(`${from} redirects`))).toBe(true);
     }
+  });
+
+  it('fails when the admin version file is missing', async () => {
+    const { fetch } = fakeDev({ [`${SITE}${BUILD_VERSION_URL}`]: 404 });
+    const failed = (await runSmoke(dev, fetch)).filter((r) => !r.ok);
+    expect(failed.map((r) => r.name)).toEqual([`${BUILD_VERSION_URL} is served uncached`]);
   });
 
   it('fails when the sitemap is missing', async () => {

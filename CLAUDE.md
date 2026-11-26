@@ -39,6 +39,10 @@ Source of truth: docs/SPEC.md. Read it before starting any milestone.
 - Enforced by `.githooks/` (commit-msg strips attribution, pre-commit rejects a Claude author). Set up once per clone:
   `git config core.hooksPath .githooks && git config user.name Overcastly-AI && git config user.email 282247350+Overcastly-AI@users.noreply.github.com`
 
+## Coordinator role (owner rule, 2026-11-26)
+- The coordinator does not write code. Every code change, including one-line fixes, goes to a worker session or an Agent; the coordinator writes briefs, reviews, merges, handles email and updates docs/STATUS.md. This preserves the coordinator's context.
+- Keep worker briefs short and point to files (docs/SPEC.md, docs/SITE_BRIEF.md) rather than pasting them.
+
 ## Database (coordinator)
 - Owner rule: the coordinator makes database decisions and proceeds without asking the owner.
 - The club database is DynamoDB + Cognito (not Supabase). Supabase project `desk` is the owner's trading desk: never touch it.

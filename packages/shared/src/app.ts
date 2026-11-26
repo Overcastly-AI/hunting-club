@@ -28,6 +28,13 @@ export const WEB_DOMAINS = {
  */
 export const ADMIN_PATH = '/app/';
 
+/**
+ * The admin build's id file (web/build-version.ts writes it), served no-cache next to
+ * its index.html so an open tab can tell a newer build is live.
+ */
+export const BUILD_VERSION_FILE = 'version.json';
+export const BUILD_VERSION_URL = `${ADMIN_PATH}${BUILD_VERSION_FILE}`;
+
 /** Privacy and Terms pages (copy in ./legal), linked from the web sign-in footer. */
 export const LEGAL_PATHS = { privacy: '/privacy', terms: '/terms' } as const;
 

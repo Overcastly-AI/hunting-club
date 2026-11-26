@@ -1,5 +1,7 @@
 // Port of supabase/tests/database/10_clubs_and_secrets.test.sql.
+import { DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { ANONYMOUS, SERVICE } from '../index';
+import { keys } from '../items';
 import { World, expectCode, keyOf, profile } from '../testing/world';
 
 let w: World;
@@ -66,6 +68,31 @@ describe('clubs', () => {
 });
 
 describe('club secret (radio key)', () => {
+  it('every new club has its radio key from creation (version 1)', async () => {
+    const id = await w.createClub('Cedar Flats', 'ada');
+    const secret = await w.data.getClubSecret(w.as('ada'), id);
+    expect(secret).toMatchObject({ clubId: id, keyVersion: 1 });
+    expect(secret.channelKey).toHaveLength(32);
+    const other = await w.data.getClubSecret(SERVICE, await w.createClub('Birch Bend', 'ada'));
+    expect(other.channelKey).not.toEqual(secret.channelKey);
+  });
+
+  it('a club created before keys were made at creation gets one on first read, once', async () => {
+    const id = await w.createClub('Old Mill', 'ada');
+    await w.raw.send(new DeleteCommand({ TableName: w.tableName, Key: keys.secret(id) }));
+    const [a, b] = await Promise.all([
+      w.data.getClubSecret(w.as('ada'), id),
+      w.data.getClubSecret(SERVICE, id),
+    ]);
+    expect(a).toEqual(b);
+    expect(a).toMatchObject({ clubId: id, keyVersion: 1 });
+    expect(await w.data.getClubSecret(w.as('ada'), id)).toEqual(a);
+  });
+
+  it('no key is made for a club that does not exist', async () => {
+    await expectCode(w.data.getClubSecret(SERVICE, 'no-such-club'), 'not_found');
+  });
+
   it("an admin reads their own club's key and no other", async () => {
     const secret = await w.data.getClubSecret(w.as('ada'), oak());
     expect(secret.channelKey).toHaveLength(32);

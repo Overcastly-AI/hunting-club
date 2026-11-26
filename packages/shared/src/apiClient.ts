@@ -18,6 +18,7 @@ import {
   MyClubSchema,
   type RedeemInviteRequest,
   RedeemInviteRequestSchema,
+  SubscriptionResponseSchema,
 } from './api';
 import {
   AreaSchema,
@@ -30,7 +31,6 @@ import {
   MemberSchema,
   PlanSchema,
   StandSchema,
-  SubscriptionSchema,
 } from './club';
 import { CLUB_API_ERRORS, type ClubApiError } from './enums';
 import { type FetchLike, readJson } from './http';
@@ -133,7 +133,7 @@ export function createClubApiClient(options: ClubApiClientOptions) {
     getEntitlement: (clubId: string) =>
       call('GET', API_PATHS.entitlement, club(clubId), EntitlementSchema),
     getSubscription: (clubId: string) =>
-      call('GET', API_PATHS.subscription, club(clubId), SubscriptionSchema),
+      call('GET', API_PATHS.subscription, club(clubId), SubscriptionResponseSchema),
     /** Stripe Checkout for the club's subscription; redirect the browser to `url`. */
     startCheckout: async (clubId: string, request: CheckoutRequest) =>
       call(

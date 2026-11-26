@@ -56,7 +56,7 @@ describe('admin API over the shared client', () => {
     });
     expect(ClubSchema.parse(club)).toMatchObject({ name: 'Pine Hollow', region: 'US' });
     expect((await api.getClub())?.name).toBe('Pine Hollow');
-    expect(await api.getSubscription()).toBeNull(); // not_found means none yet
+    expect(await api.getSubscription()).toBeNull(); // { subscription: null } until Checkout
   });
 
   it('makes invites for its club, valid against the shared schema', async () => {

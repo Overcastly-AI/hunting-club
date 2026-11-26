@@ -299,7 +299,7 @@ function routes(data: ClubData): Route<Ctx>[] {
     {
       method: 'GET',
       path: API_PATHS.subscription,
-      handle: (c, p) => data.getSubscription(c.actor, p.clubId!),
+      handle: async (c, p) => ({ subscription: await data.getSubscription(c.actor, p.clubId!) }),
     },
     {
       method: 'POST',

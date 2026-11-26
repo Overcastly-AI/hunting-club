@@ -270,10 +270,7 @@ export function fakeClubClient(data: FakeClubData = sampleData()): ClubApiClient
     listAreas: async () => data.areas,
     listHarvests: async () => data.harvests,
     getEntitlement: async (clubId) => ({ clubId, status: 'active' }),
-    async getSubscription() {
-      if (!data.subscription) throw new ClubApiRequestError('not_found', 404);
-      return data.subscription;
-    },
+    getSubscription: async () => ({ subscription: data.subscription ?? null }),
     async startCheckout(clubId, request) {
       const { planId, interval } = CheckoutRequestSchema.parse(request);
       if (data.paymentsConfigured === false) {

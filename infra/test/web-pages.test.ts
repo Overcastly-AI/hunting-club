@@ -1,4 +1,10 @@
-import { ADMIN_PATH, CHECKOUT_RETURN_PATHS, JOIN_PATH, LEGAL_PATHS } from '@huntclub/shared/app';
+import {
+  ADMIN_PATH,
+  BUILD_VERSION_URL,
+  CHECKOUT_RETURN_PATHS,
+  JOIN_PATH,
+  LEGAL_PATHS,
+} from '@huntclub/shared/app';
 import { MAP_PACKS_PREFIX } from '@huntclub/shared/maps';
 import { NOINDEX_PATHS, outputFile, REDIRECTS, ROUTES } from '@huntclub/site/routes';
 import {
@@ -42,6 +48,7 @@ describe('site and admin routing (CloudFront Function)', () => {
       expect(servedAs(uri)).toBe(uri === '/app/index.html' ? uri : ADMIN_PAGE_OBJECT);
     }
     expect(servedAs('/app/assets/index-abc.js')).toBe('/app/assets/index-abc.js');
+    expect(servedAs(BUILD_VERSION_URL)).toBe(BUILD_VERSION_URL);
   });
 
   it('serves the admin for /join, the Checkout return pages, Privacy and Terms', () => {
