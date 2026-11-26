@@ -3,7 +3,7 @@ import { useContext, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '../components/Button';
-import { formatClockTime } from '../conditions/clock';
+import { formatClockTime, formatShortDate } from '../conditions/clock';
 import { colors, spacing, textStyles } from '../theme';
 import { SEX_LABELS, SHARE_LABELS } from './form';
 import { HarvestRadioContext, shareHarvest } from './HarvestRadio';
@@ -14,8 +14,12 @@ import { harvestsChanged, useHarvests } from './useHarvests';
 /** One line about a harvest: "Deer · Male · Creek Stand · Nov 30, 6:52 AM". */
 export function harvestSummary(h: LocalHarvest): string {
   const when = new Date(h.harvestedAt);
-  const date = when.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  return [h.species, SEX_LABELS[h.sex], h.placeLabel, `${date}, ${formatClockTime(when)}`]
+  return [
+    h.species,
+    SEX_LABELS[h.sex],
+    h.placeLabel,
+    `${formatShortDate(when)}, ${formatClockTime(when)}`,
+  ]
     .filter(Boolean)
     .join(' · ');
 }

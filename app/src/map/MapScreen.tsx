@@ -11,6 +11,7 @@ import { StyleSheet, View, type NativeSyntheticEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useCheckInState } from '../checkin/CheckInRadio';
+import { useClubMapPacks } from '../club/ClubProvider';
 import { HarvestSheet } from '../harvest/HarvestSheet';
 import { CheckOutSheet } from '../checkin/CheckOutSheet';
 import { AskForHandSheet } from '../safety/components/AskForHandSheet';
@@ -68,7 +69,9 @@ export function MapScreen({ dataSource }: Props) {
   const { position: you, locate } = useYourLocation();
   const { packs, progress, start, remove } = useMapPacks();
 
-  const mapStyle = useMemo(() => basemapStyle(basemap), [basemap]);
+  const clubPacks = useClubMapPacks();
+  const clubPack = clubPacks.find((pack) => pack.source === BASEMAPS[basemap].source);
+  const mapStyle = useMemo(() => basemapStyle(basemap, clubPack), [basemap, clubPack]);
 
   const onRegionChange = useCallback((event: NativeSyntheticEvent<ViewStateChangeEvent>) => {
     const { center, zoom } = event.nativeEvent;
@@ -155,6 +158,7 @@ export function MapScreen({ dataSource }: Props) {
         visible={panel === 'layers'}
         basemap={basemap}
         packs={packs}
+        clubPack={clubPack}
         progress={progress}
         onSelect={setBasemap}
         onDownload={() => void openDownload()}

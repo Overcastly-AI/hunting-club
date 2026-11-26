@@ -1,6 +1,8 @@
 // USGS basemaps and slippy-map tile maths: the single source for the app's live map
 // and downloads, and for the club map-pack builder Lambda.
 
+import { WEB_DOMAINS } from './app';
+
 /**
  * Free basemaps from USGS The National Map (public domain), confirmed
  * 2026-11-26 against each service's `?f=json`:
@@ -160,6 +162,14 @@ export const MAP_PACKS_PREFIX = 'packs/';
 /** Where a club's map pack archive lives: `packs/<clubId>/<packId>.pmtiles`. */
 export function mapPackKey(clubId: string, packId: string): string {
   return `${MAP_PACKS_PREFIX}${clubId}/${packId}.pmtiles`;
+}
+
+/**
+ * Where a phone downloads a ready club map pack: the archive is served by the
+ * environment's web domain (CloudFront) at its S3 key.
+ */
+export function mapPackUrl(env: keyof typeof WEB_DOMAINS, pack: { s3Key: string }): string {
+  return `https://${WEB_DOMAINS[env]}/${pack.s3Key}`;
 }
 
 /** Bounding box of a GeoJSON Polygon or MultiPolygon (a club's property line). */

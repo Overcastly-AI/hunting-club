@@ -23,6 +23,11 @@ Group size: 3 hunters per party (the free limit), plus a 4th phone for the "part
   - Enter a name and initials.
   - Allow location, Bluetooth and alerts.
   - Download the map for the property.
+- [ ] If the club has a map pack (built by the admin on the website), sign in to the club on Wi-Fi so it downloads. Map layers then shows "Club map: downloaded …".
+- [ ] **Club map pack check (one iPhone and one Android).** It is the first time the map reads a club pack straight from the phone, so check it before relying on it:
+  - Turn on airplane mode, open the map and zoom into the property.
+  - The club pack's detail shows where the pack covers, and the phone's own download (or plain background) shows outside it.
+  - Write down on each phone: did the club map show, and did it look sharp at the closest zoom? If it does not show on either phone, tell the developers; the phone's own download still works.
 - [ ] Bring battery packs and the charging cables for both phones and radios.
 
 **Paper**

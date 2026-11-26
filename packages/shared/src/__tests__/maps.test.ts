@@ -8,6 +8,7 @@ import {
   countTiles,
   estimatePack,
   mapPackKey,
+  mapPackUrl,
   polygonBounds,
   tileUrl,
   tilesInBounds,
@@ -48,6 +49,9 @@ describe('shared map maths', () => {
       }),
     ).toEqual([-90, 40, -89.99, 40.01]);
     expect(mapPackKey('c1', 'p1')).toBe('packs/c1/p1.pmtiles');
+    expect(mapPackUrl('dev', { s3Key: mapPackKey('c1', 'p1') })).toBe(
+      'https://huntclub-dev.jaycobjones.com/packs/c1/p1.pmtiles',
+    );
   });
 
   it('caps club packs so a build at the polite rate fits the builder timeout', () => {
