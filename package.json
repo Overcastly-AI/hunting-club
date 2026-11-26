@@ -1,0 +1,25 @@
+{
+  "name": "hunt-club-mesh",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "app",
+    "packages/*"
+  ],
+  "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present && prettier --check .",
+    "format": "prettier --write .",
+    "test": "npm test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "prettier": "^3.10.1"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "overrides": {
+    "react": "19.3.0"
+  }
+}
