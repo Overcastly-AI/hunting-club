@@ -46,9 +46,9 @@ describe('scent cone', () => {
 });
 
 describe('distanceMeters', () => {
-  it('is zero for the same point and inverts destination()', () => {
-    const origin = { lat: 44.9778, lon: -93.265 };
-    expect(distanceMeters(origin, origin)).toBe(0);
-    expect(distanceMeters(origin, destination(origin, 63, 12_345))).toBeCloseTo(12_345, 3);
+  it('measures great-circle distance', () => {
+    const a = { lat: 40.79, lon: -77.86 };
+    expect(distanceMeters(a, a)).toBe(0);
+    expect(distanceMeters(a, destination(a, 90, 1234))).toBeCloseTo(1234, 3);
   });
 });

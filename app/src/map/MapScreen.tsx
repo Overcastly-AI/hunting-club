@@ -11,6 +11,8 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type NativeSyntheticEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useCheckInState } from '../checkin/CheckInRadio';
+import { CheckOutSheet } from '../checkin/CheckOutSheet';
 import { colors, spacing } from '../theme';
 import { BASEMAPS, DEFAULT_BASEMAP, basemapStyle, type BasemapId } from './basemaps';
 import { DownloadAreaSheet } from './components/DownloadAreaSheet';
@@ -24,9 +26,11 @@ import { OpenStandMarker } from './components/OpenStandMarker';
 import { ScaleBar } from './components/ScaleBar';
 import { TopBar } from './components/TopBar';
 import { YouMarker } from './components/YouMarker';
-import { useMapData, useNow, type MapDataSource } from './dataSource';
+import { useNow } from '../hooks/useNow';
+import { useMapData, type MapDataSource } from './dataSource';
 import type { Bounds } from './tiles';
 import type { LatLon } from '@huntclub/mesh';
+import { placeOf } from './place';
 import { useMapPacks } from './useMapPacks';
 import { useYourLocation } from './useYourLocation';
 import { useConditions } from '../weather/useConditions';
@@ -39,7 +43,7 @@ const CENTER_ON_ME_ZOOM = 15.5;
 const CONDITIONS_MIN_ZOOM = 8;
 
 type MapView = { center: LatLon; zoom: number };
-type Panel = 'layers' | 'download' | null;
+type Panel = 'layers' | 'download' | 'checkOut' | null;
 
 type Props = {
   /** Hunters, open stands and mesh status; defaults to the app store the radio will feed. */
@@ -48,6 +52,7 @@ type Props = {
 
 export function MapScreen({ dataSource }: Props) {
   const data = useMapData(dataSource);
+  const { radio, current } = useCheckInState();
   const now = useNow();
   const mapRef = useRef<MapRef>(null);
   const cameraRef = useRef<CameraRef>(null);
@@ -149,7 +154,21 @@ export function MapScreen({ dataSource }: Props) {
           <ScaleBar lat={view.center.lat} zoom={view.zoom} />
           <HaloText>Map: {BASEMAPS[basemap].credit}</HaloText>
         </View>
-        <MapBottomSheet state="notCheckedIn" onCheckIn={() => router.navigate('/check-in')} />
+        {current && radio ? (
+          <MapBottomSheet
+            state="checkedIn"
+            place={placeOf(current.placement)}
+            checkedInAt={current.checkedInAt}
+            now={now}
+            audience={radio.audience}
+            onAskForHand={() => undefined /* Milestone 6 */}
+            onCheckOut={() => setPanel('checkOut')}
+            onChangeMode={() => router.navigate('/check-in')}
+            onLogHarvest={() => undefined /* Milestone 7 */}
+          />
+        ) : (
+          <MapBottomSheet state="notCheckedIn" onCheckIn={() => router.navigate('/check-in')} />
+        )}
       </SafeAreaView>
 
       <LayersSheet
@@ -162,6 +181,7 @@ export function MapScreen({ dataSource }: Props) {
         onDelete={(id) => void remove(id)}
         onClose={() => setPanel(null)}
       />
+      <CheckOutSheet radio={radio} visible={panel === 'checkOut'} onClose={() => setPanel(null)} />
       <DownloadAreaSheet
         visible={panel === 'download'}
         bounds={downloadBounds}

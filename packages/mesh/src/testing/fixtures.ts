@@ -15,10 +15,11 @@ import {
 import { seededRandom } from './seededRandom';
 
 /** Node numbers used across tests. */
-export const NODES: Readonly<{ alice: number; bob: number; carol: number }> = {
+export const NODES: Readonly<{ alice: number; bob: number; carol: number; dave: number }> = {
   alice: 0xa11ce001,
   bob: 0xb0b00002,
   carol: 0xca401003,
+  dave: 0xda7e0004,
 };
 
 /** Advances Jest fake timers and flushes microtasks. */

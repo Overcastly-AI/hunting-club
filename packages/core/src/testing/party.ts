@@ -7,6 +7,7 @@ import { connectedMesh, NODES, seededRandom } from '@huntclub/mesh/testing';
 import type { FakeAirOptions, FakeRadio } from '@huntclub/mesh/testing';
 import {
   HUNTCLUB_PORT,
+  generatePartyChannelSet,
   decodeAppMessage,
   type AppMessage,
   type AppMessageType,
@@ -58,15 +59,25 @@ export interface Phone {
 /** Alice, Bob and (optionally) Carol, connected over FakeAir, with receipts running. */
 export async function party(
   opts: {
-    size?: 2 | 3;
+    size?: 2 | 3 | 4;
+    /** Each radio starts on its own private channel (nobody hears anybody until they share a party). */
+    separateChannels?: boolean;
     air?: FakeAirOptions;
     receipts?: Partial<ReceiptPolicy>;
     clubModes?: boolean;
   } = {},
 ): Promise<{ phones: Phone[]; air: Awaited<ReturnType<typeof connectedMesh>>['air'] }> {
-  const nodes = [NODES.alice, NODES.bob, NODES.carol].slice(0, opts.size ?? 3);
+  const nodes = [NODES.alice, NODES.bob, NODES.carol, NODES.dave].slice(0, opts.size ?? 3);
   const mesh = await connectedMesh(
-    nodes.map((nodeNum) => ({ nodeNum })),
+    nodes.map((nodeNum) =>
+      opts.separateChannels
+        ? {
+            nodeNum,
+            channels: generatePartyChannelSet({ random: seededRandom(nodeNum), name: 'Solo' })
+              .settings,
+          }
+        : { nodeNum },
+    ),
     opts.air ? { air: opts.air } : {},
   );
   const phones = mesh.clients.map((client, i) => {
