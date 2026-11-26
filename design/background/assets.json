@@ -1,0 +1,18 @@
+{
+ "note": "Third-party assets for the background loop. Nothing here is stored in the repo: `scene.py fetch` downloads each file into the cache and verifies its SHA-256. Human-readable credits: CREDITS.md.",
+ "assets": [
+  {
+   "id": "ph_hdri",
+   "what": "Poly Haven HDRI 'Autumn Forest 04' (Alexander Scholten), 8k: the forest backdrop and all of the light",
+   "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/8k/autumn_forest_04_8k.hdr",
+   "page": "https://polyhaven.com/a/autumn_forest_04",
+   "file": "autumn_forest_04_8k.hdr",
+   "dir": "polyhaven_hdri",
+   "sha256": "6029885a20354c3cb277f7f1865b66bf4fe2505345a253d7f0afc0997e00d31d",
+   "bytes": 116399171,
+   "licence": "CC0-1.0 (https://polyhaven.com/license)",
+   "commercial_use": true,
+   "retrieved": "2026-11-26"
+  }
+ ]
+}

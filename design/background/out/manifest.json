@@ -1,0 +1,34 @@
+{
+ "source": {
+  "quality": "draft",
+  "size": [
+   640,
+   360
+  ],
+  "fps": 24.0,
+  "frames": 240,
+  "seconds": 10
+ },
+ "poster_frame": 120,
+ "peak_srgb": {
+  "cap": 0.4,
+  "measured": 0.3255
+ },
+ "scrim_alpha_planned": 0.4,
+ "budget_bytes": {
+  "mobile": 1500000,
+  "desktop": 3000000
+ },
+ "files": {
+  "loop-desktop.mp4": 201180,
+  "loop-desktop.webm": 70848,
+  "loop-mobile.mp4": 273137,
+  "loop-mobile.webm": 54627,
+  "poster-mobile.avif": 2732,
+  "poster-mobile.jpg": 12221,
+  "poster-mobile.webp": 6110,
+  "poster.avif": 3232,
+  "poster.jpg": 13262,
+  "poster.webp": 7512
+ }
+}
