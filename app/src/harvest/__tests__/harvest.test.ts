@@ -102,10 +102,10 @@ describe('harvest storage', () => {
   });
 });
 
-describe('migration 3: harvest places', () => {
-  it('upgrades a version 2 database, keeps harvests private by default and checks the mode', async () => {
+describe('migration 4: harvest places', () => {
+  it('upgrades a version 3 database, keeps harvests private by default and checks the mode', async () => {
     const db = createTestDatabase();
-    await migrate(db, migrations.slice(0, 2));
+    await migrate(db, migrations.slice(0, 3));
     db.raw
       .prepare(
         `INSERT INTO harvests (id, member_id, species, harvested_at, updated_at) VALUES ('old', 'self', 'Deer', 1, 1)`,

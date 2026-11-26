@@ -1,8 +1,16 @@
 import { FRESHNESS_THRESHOLDS_MS, positionAge } from '@huntclub/core';
 
+import { colors } from '../theme';
 import type { MeshStatus } from './types';
 
 export type MeshTone = 'ok' | 'quiet' | 'none';
+
+/** Status dot color for each tone: green when heard, gold when quiet, grey with no radio. */
+export const MESH_TONE_COLOR: Record<MeshTone, string> = {
+  ok: colors.fresh,
+  quiet: colors.help,
+  none: colors.textSecondary,
+};
 
 /** Second line of the mesh-down banner: nothing on the map is live. */
 export const MESH_QUIET_DETAIL =

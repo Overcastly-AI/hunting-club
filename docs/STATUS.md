@@ -102,6 +102,9 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 ## Owner to-dos (non-blocking)
 
+- **Stripe account (needed to take club payments, Milestone 9):** create a Stripe account in test mode. Then Grok Bot (via a numbered request) creates the test price, the SSM parameters `/hunt-club-mesh/dev/stripe-api-key` and `/hunt-club-mesh/dev/stripe-webhook-secret`, and a thin-event webhook destination pointing at the `StripeWebhookUrl` stack output.
+- **Delete one PR comment by hand** (the tool keeps re-adding an AI footer): https://github.com/Overcastly-AI/hunting-club/pull/7#issuecomment-7188280309
+
 
 - **Open or closed source (needed before the app ships):** Meshtastic protobufs are GPL-3.0 with no app exception. Closed-source app + bundled protobufs conflicts with the license; open-sourcing the app (GPL-3.0) resolves it and the cloud can stay proprietary.
 - Optional: allow running `meshtasticd --sim` in the agent environment (blocked by sandbox policy) so agents can test against a simulated radio.

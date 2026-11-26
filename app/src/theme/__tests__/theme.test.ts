@@ -55,6 +55,9 @@ describe('type tokens', () => {
       body: 16,
       bodyLarge: 17,
       sheetTitle: 25,
+      boardDetail: 24,
+      boardName: 32,
+      boardTitle: 40,
     });
   });
 

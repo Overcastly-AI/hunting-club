@@ -38,6 +38,12 @@ export function sunPhrases(sun: { sunrise: string; sunset: string }): [string, s
   return [keepTogether(`Sunrise ${sun.sunrise}`), keepTogether(`Sunset ${sun.sunset}`)];
 }
 
+/** "Sunrise 7:03 AM · Sunset 4:26 PM": wraps only after the dot, never inside a time. */
+export function sunSentence(sun: { sunrise: string; sunset: string }): string {
+  const [sunrisePhrase, sunsetPhrase] = sunPhrases(sun);
+  return `${sunrisePhrase}\u00A0· ${sunsetPhrase}`;
+}
+
 export function ConditionsPanel({
   place,
   now,
@@ -45,18 +51,13 @@ export function ConditionsPanel({
   temperature = UNKNOWN_VALUE,
 }: Props) {
   const { sunrise, sunset } = sunLine(place, now);
-  const [sunrisePhrase, sunsetPhrase] = sunPhrases({ sunrise, sunset });
   return (
     <View
       accessible
       accessibilityLabel={`Sunrise ${sunrise}, sunset ${sunset}. Wind ${wind === UNKNOWN_VALUE ? 'not known yet' : wind}. Temperature ${temperature === UNKNOWN_VALUE ? 'not known yet' : temperature}.`}
       style={styles.panel}
     >
-      <Text style={styles.primary}>
-        {sunrisePhrase}
-        {'\u00A0· '}
-        {sunsetPhrase}
-      </Text>
+      <Text style={styles.primary}>{sunSentence({ sunrise, sunset })}</Text>
       <View style={styles.row}>
         <Text style={styles.secondary}>
           Wind <Text style={styles.wind}>{wind}</Text>

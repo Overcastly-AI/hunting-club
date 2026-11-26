@@ -48,6 +48,11 @@ const SECOND_MS = 1000;
 /** Short Meshtastic-style id for a node with no name, e.g. "!a1b2". */
 const nodeTag = (num: number) => `!${(num >>> 0).toString(16).slice(-4)}`;
 
+/** The name to show for a node: its long name, else its short name, else a short id. */
+export function nodeDisplayName(node: Pick<MapNode, 'user'> | undefined, num: number): string {
+  return node?.user?.longName?.trim() || node?.user?.shortName?.trim() || nodeTag(num);
+}
+
 export function nodePosition(node: MapNode): (LatLon & { heardAt: number }) | undefined {
   const p = node.position;
   if (p?.latitudeI === undefined || p.longitudeI === undefined) return undefined;
@@ -61,12 +66,9 @@ export function nodePosition(node: MapNode): (LatLon & { heardAt: number }) | un
 export function memberIdentity(node: MapNode | undefined, num: number, names: MapNames) {
   const known = names.member?.(num);
   if (known) return known;
-  const longName = node?.user?.longName?.trim();
   const shortName = node?.user?.shortName?.trim();
-  return {
-    displayName: longName || shortName || nodeTag(num),
-    initials: (shortName || longName || nodeTag(num)).slice(0, 3),
-  };
+  const displayName = nodeDisplayName(node, num);
+  return { displayName, initials: (shortName || displayName).slice(0, 3) };
 }
 
 function hunterFrom(

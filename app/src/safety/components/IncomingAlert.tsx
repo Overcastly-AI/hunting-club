@@ -9,21 +9,30 @@ import { useSafetyRadio } from '../hooks';
 import { incomingAlertText } from '../wording';
 import { AlertScreen } from './AlertScreen';
 
-type Props = { alert: Alert | undefined; me: LatLon | undefined };
+type Props = {
+  alert: Alert | undefined;
+  me: LatLon | undefined;
+  /** Where "Show on map" goes; the Map tab by default. The clubhouse board shows its own map. */
+  onShowOnMap?: () => void;
+  /** Offer "On my way". Off on the clubhouse board: nobody there is on their way. */
+  canReply?: boolean;
+};
+
+const goToMapTab = () => router.navigate('/');
 
 /** Another hunter asked for a hand or is overdue: who, where, and "On my way". */
-export function IncomingAlert({ alert, me }: Props) {
+export function IncomingAlert({ alert, me, onShowOnMap = goToMapTab, canReply = true }: Props) {
   const radio = useSafetyRadio();
   if (!alert) return null;
   const { title, detail } = incomingAlertText(alert, me);
   const close = () => alertStore.markSeen(alert.key);
   const showOnMap = () => {
     close();
-    router.navigate('/');
+    onShowOnMap();
   };
   return (
     <AlertScreen visible title={title} detail={alert.note ? `${detail}\n“${alert.note}”` : detail}>
-      {alert.kind === 'help' ? (
+      {alert.kind === 'help' && canReply ? (
         <Button
           variant="primary"
           label="On my way"

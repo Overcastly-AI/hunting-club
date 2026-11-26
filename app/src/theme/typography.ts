@@ -75,6 +75,12 @@ export const fontSize = {
   bodyLarge: 17,
   /** Bottom sheet title. */
   sheetTitle: 25,
+  /** Clubhouse board: details read from across a room (place, since when). */
+  boardDetail: 24,
+  /** Clubhouse board: names and section headings read from across a room. */
+  boardName: 32,
+  /** Clubhouse board: the club name and clock. */
+  boardTitle: 40,
 } as const;
 
 /** Ready-made text styles. Mixed case only; no letter-spaced all-caps. */
@@ -95,6 +101,13 @@ export const textStyles = {
     ...archivo(fontWeight.extraBold, fontWidth.sheetTitle),
     fontSize: fontSize.sheetTitle,
     lineHeight: 30,
+  },
+  boardDetail: { ...archivo(fontWeight.semiBold), fontSize: fontSize.boardDetail, lineHeight: 32 },
+  boardName: { ...archivo(fontWeight.extraBold), fontSize: fontSize.boardName, lineHeight: 40 },
+  boardTitle: {
+    ...archivo(fontWeight.extraBold, fontWidth.narrow),
+    fontSize: fontSize.boardTitle,
+    lineHeight: 48,
   },
 } as const satisfies Record<string, TextStyle>;
 
