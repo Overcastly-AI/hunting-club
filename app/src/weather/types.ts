@@ -1,4 +1,4 @@
-import type { LatLon } from '../domain/location';
+import type { LatLon } from '@huntclub/mesh';
 
 /** One forecast hour for the conditions panel and scent cone. */
 export type ForecastHour = {

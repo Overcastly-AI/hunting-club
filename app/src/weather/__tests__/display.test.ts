@@ -1,5 +1,5 @@
 import { UNKNOWN_VALUE } from '../../conditions/display';
-import { HOUR_MS } from '../../domain/time';
+import { HOUR_MS } from '@huntclub/core';
 import { FIXTURE_PLACES, cheyenneCache } from '../../test-utils/nwsFixtures';
 import { forecastToCache } from '../forecast';
 import { CALM, UNKNOWN_WEATHER, weatherDisplay } from '../display';

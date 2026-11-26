@@ -2,7 +2,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '../../components/Button';
 import { colors, opacity, radii, sizes, spacing, textStyles } from '../../theme';
-import { describeAge, elapsedMs } from '../../domain/time';
+import { positionAge } from '@huntclub/core';
+
+import { describeAge } from '../age';
 import { placeLabel } from '../labels';
 import type { HunterPlace } from '../types';
 
@@ -57,7 +59,7 @@ function NotCheckedIn({
 }
 
 function CheckedIn(props: Extract<MapBottomSheetProps, { state: 'checkedIn' }>) {
-  const since = describeAge(elapsedMs(props.checkedInAt, props.now)).short;
+  const since = describeAge(positionAge(props.checkedInAt, props.now)).short;
   return (
     <>
       <View accessible accessibilityRole="header">

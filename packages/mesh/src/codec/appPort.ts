@@ -66,6 +66,12 @@ interface Placement {
 export interface CheckIn extends Base, Placement {
   type: AppMessageType.CheckIn;
   mode: CheckInMode;
+  /**
+   * Unix seconds the hunter expects to be out until, when they extended past
+   * sunset + grace ("Still out? Extend 30 min"). Overdue is not raised
+   * before this time.
+   */
+  until?: number;
 }
 
 export interface CheckOut extends Base {
@@ -148,6 +154,7 @@ export const FIELDS: Readonly<Record<FieldName, FieldSpec>> = {
     values: Object.values(HARVEST_SEX_CODES),
     omitValue: HARVEST_SEX_CODES.unknown,
   },
+  until: { kind: 'varint', no: 15, omitZero: true },
 };
 
 // ---- Per-type schemas ----
@@ -171,7 +178,11 @@ const COMMON_REQUIRED: readonly FieldName[] = ['id', 'sender'];
 const PLACEMENT_FIELDS: readonly FieldName[] = ['mode', 'standId', 'areaId', 'pin'];
 
 export const APP_MESSAGE_SCHEMAS: Readonly<Record<AppMessageType, AppMessageSchema>> = {
-  [AppMessageType.CheckIn]: { fields: PLACEMENT_FIELDS, required: ['mode'], budget: 40 },
+  [AppMessageType.CheckIn]: {
+    fields: [...PLACEMENT_FIELDS, 'until'],
+    required: ['mode'],
+    budget: 40,
+  },
   [AppMessageType.CheckOut]: { fields: ['checkInId'], required: [], budget: 40 },
   [AppMessageType.HelpRequest]: { fields: [...PLACEMENT_FIELDS, 'note'], required: [], budget: 60 },
   [AppMessageType.Receipt]: { fields: ['ackedId'], required: ['ackedId'], budget: 20 },

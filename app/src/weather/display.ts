@@ -1,6 +1,8 @@
 import { UNKNOWN_SPOKEN, UNKNOWN_VALUE } from '../conditions/display';
-import type { LatLon } from '../domain/location';
-import { describeAge, elapsedMs } from '../domain/time';
+import type { LatLon } from '@huntclub/mesh';
+import { positionAge } from '@huntclub/core';
+
+import { describeAge } from '../map/age';
 import { downwindBearing } from '../map/geo';
 import { degreesToCompassPoint } from './compass';
 import { currentHour, isOutdated } from './forecast';
@@ -48,7 +50,7 @@ export function weatherDisplay(
   const from = mph > 0 ? hour.windFromDeg : null;
   const toward = from === null ? null : downwindBearing(from);
   const temperature = `${Math.round(hour.temperatureF)}°F`;
-  const age = isOutdated(forecast, now) ? describeAge(elapsedMs(forecast.fetchedAt, now)) : null;
+  const age = isOutdated(forecast, now) ? describeAge(positionAge(forecast.fetchedAt, now)) : null;
 
   let wind: string;
   let windSpoken: string;

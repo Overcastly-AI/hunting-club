@@ -1,5 +1,5 @@
-import { elapsedMs } from '../domain/time';
-import { FRESHNESS_THRESHOLDS_MS } from './freshness';
+import { FRESHNESS_THRESHOLDS_MS, positionAge } from '@huntclub/core';
+
 import type { MeshStatus } from './types';
 
 export type MeshTone = 'ok' | 'quiet' | 'none';
@@ -25,7 +25,7 @@ export function describeMeshStatus(
 ): { text: string; tone: MeshTone } {
   if (!status.radioConnected) return { text: 'No radio connected', tone: 'none' };
   if (status.lastHeardAt === null) return { text: 'Mesh: no radios heard yet', tone: 'quiet' };
-  const age = elapsedMs(status.lastHeardAt, now);
+  const age = positionAge(status.lastHeardAt, now);
   if (age >= MESH_QUIET_AFTER_MS)
     return { text: `No radios heard for ${shortDuration(age)}`, tone: 'quiet' };
   const radios = `${status.radioCount} radio${status.radioCount === 1 ? '' : 's'}`;

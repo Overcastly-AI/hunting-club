@@ -1,5 +1,5 @@
-import type { LatLon } from '../domain/location';
-import { HOUR_MS, MINUTE_MS, elapsedMs } from '../domain/time';
+import type { LatLon } from '@huntclub/mesh';
+import { HOUR_MS, MINUTE_MS, positionAge } from '@huntclub/core';
 import { distanceMeters } from '../map/geo';
 import { FORECAST_CACHE_VERSION, type CachedForecast, type ForecastHour } from './types';
 
@@ -94,7 +94,7 @@ export function currentHour(
 
 /** True when the forecast is older than the refresh interval (shown with its age). */
 export function isOutdated(forecast: CachedForecast, now: number): boolean {
-  return elapsedMs(forecast.fetchedAt, now) >= FORECAST_POLICY.refreshAfterMs;
+  return positionAge(forecast.fetchedAt, now) >= FORECAST_POLICY.refreshAfterMs;
 }
 
 /** Whether to try NWS now: nothing usable, outdated, or you've moved. */
@@ -111,5 +111,5 @@ export type LastAttempt = { at: number; ok: boolean } | null;
 export function mayAttempt(last: LastAttempt, now: number): boolean {
   if (!last) return true;
   const gap = last.ok ? FORECAST_POLICY.minAttemptGapMs : FORECAST_POLICY.retryAfterFailureMs;
-  return elapsedMs(last.at, now) >= gap;
+  return positionAge(last.at, now) >= gap;
 }

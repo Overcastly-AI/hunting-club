@@ -1,4 +1,5 @@
-import { MINUTE_MS } from '../../domain/time';
+import { MINUTE_MS } from '@huntclub/core';
+
 import { NOW } from '../../test-utils/mapFixtures';
 import { describeMeshStatus } from '../meshStatus';
 

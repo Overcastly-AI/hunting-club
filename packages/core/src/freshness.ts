@@ -1,10 +1,11 @@
-import { MINUTE_MS } from '../domain/time';
-
 /**
  * Position freshness from docs/SPEC.md, "Mesh protocol" rules: solid ring
  * under 2 min, dashed between 2 and 10 min, faded after that. These are the
- * only definitions of those thresholds.
+ * only definitions of those thresholds (the map, the board and mesh-down
+ * warnings all use them).
  */
+import { MINUTE_MS } from './config';
+
 export const FRESHNESS_THRESHOLDS_MS = {
   /** Below this a position is fresh (solid ring). */
   fresh: 2 * MINUTE_MS,
@@ -13,6 +14,11 @@ export const FRESHNESS_THRESHOLDS_MS = {
 } as const;
 
 export type Freshness = 'fresh' | 'stale' | 'faded';
+
+/** Time since `heardAt` in ms (a position, a forecast fetch); a timestamp from the future counts as just now. */
+export function positionAge(heardAt: number, now: number): number {
+  return Math.max(0, now - heardAt);
+}
 
 export function classifyFreshness(ageMs: number): Freshness {
   if (ageMs < FRESHNESS_THRESHOLDS_MS.fresh) return 'fresh';

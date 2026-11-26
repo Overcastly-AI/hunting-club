@@ -1,4 +1,4 @@
-import { HOUR_MS, MINUTE_MS } from '../../domain/time';
+import { HOUR_MS, MINUTE_MS } from '@huntclub/core';
 import { destination } from '../../map/geo';
 import { FIXTURE_PLACES, cheyenneCache } from '../../test-utils/nwsFixtures';
 import {

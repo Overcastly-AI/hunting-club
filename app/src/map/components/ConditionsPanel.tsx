@@ -1,10 +1,12 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { SUN } from '@huntclub/core';
+import type { LatLon } from '@huntclub/mesh';
+
 import { WindArrowIcon } from '../../components/icons';
+import { formatClockTime } from '../../conditions/clock';
 import { UNKNOWN_VALUE } from '../../conditions/display';
-import { formatClockTime, localCalendarDay, sunTimes } from '../../conditions/sun';
 import { colors, radii, sizes, spacing, textStyles } from '../../theme';
-import type { LatLon } from '../../domain/location';
 import { UNKNOWN_WEATHER, type WeatherDisplay } from '../../weather/display';
 
 type Props = {
@@ -18,7 +20,7 @@ type Props = {
 /** Sunrise and sunset only; never legal shooting hours. */
 export function sunLine(place: LatLon | null, now: number): { sunrise: string; sunset: string } {
   if (!place) return { sunrise: UNKNOWN_VALUE, sunset: UNKNOWN_VALUE };
-  const times = sunTimes(localCalendarDay(new Date(now)), place.lat, place.lon);
+  const times = SUN.sunTimes(SUN.localCalendarDay(new Date(now)), place.lat, place.lon);
   if (times.kind === 'polarDay') return { sunrise: 'Up all day', sunset: 'Up all day' };
   if (times.kind === 'polarNight') return { sunrise: 'Down all day', sunset: 'Down all day' };
   return { sunrise: formatClockTime(times.sunrise), sunset: formatClockTime(times.sunset) };

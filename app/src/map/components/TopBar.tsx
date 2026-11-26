@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, opacity, radii, sizes, spacing, textStyles } from '../../theme';
-import type { LatLon } from '../../domain/location';
+import type { LatLon } from '@huntclub/mesh';
 import type { WeatherDisplay } from '../../weather/display';
 import { ConditionsPanel } from './ConditionsPanel';
 

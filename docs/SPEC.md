@@ -80,7 +80,7 @@ Everything that matters in the field travels over the LoRa mesh, with no server 
  Hunter phone ──BLE── Personal radio ═LoRa═╬═ Solar repeater (ROUTER, optional)
  Clubhouse board ─USB/BLE─ Board radio ═LoRa═╝
         ┆ club users only, only when online
-        ├┄ Supabase (free plan): Postgres, auth, row-level security
+        ├┄ AWS DynamoDB (on-demand, always-free tier) + Cognito (sign-in)
         └┄ AWS
             ├─ S3 + CloudFront: web admin + checkout page, club map packs, DB backups
             ├─ Lambda (function URLs, no API Gateway): Stripe webhook, club
@@ -96,7 +96,7 @@ Everything that matters in the field travels over the LoRa mesh, with no server 
 - **Personal radio.** Any Meshtastic-compatible LoRa device **with GPS**. Positions come from the radio's GPS, so the phone doesn't need to stay awake in a pocket. Recommended test hardware: a RAK WisBlock or Heltec board with GPS.
 - **Solar repeater.** A Meshtastic node set to the ROUTER role, placed on high ground to cover the property.
 - **Clubhouse board.** A wall tablet connected to its own radio. *Open decision:* Board mode in the app, or a separate web page using Web Serial (see Open decisions).
-- **Supabase (free plan).** Club accounts, clubs, members, stands, subscriptions, club radio keys. Never required in the field.
+- **DynamoDB + Cognito (AWS).** Club data (clubs, members, stands, areas, invites, subscriptions, club radio keys, shared harvests) in one on-demand DynamoDB table; sign-in with a Cognito user pool (email one-time code). All access goes through our Lambda API, which enforces club permissions. Never required in the field.
 - **AWS.** Static web admin page, Stripe webhook and other Lambda functions, map-pack hosting, scheduled jobs. Defined as code with AWS CDK (TypeScript). An AWS budget alarm at $5/month.
 
 **Cost targets** (verify current free-tier limits before relying on them)
@@ -104,18 +104,12 @@ Everything that matters in the field travels over the LoRa mesh, with no server 
 | Item | Expected cost at launch |
 |---|---|
 | Free users | ~$0 (no backend calls; maps from USGS) |
-| Supabase | $0 (free plan) |
+| DynamoDB + Cognito | $0 (always-free: 25 GB DynamoDB; Cognito free to 10,000 monthly users) |
 | Lambda, CloudFront, EventBridge | $0 within always-free tiers |
 | S3 | Cents per month |
 | Route 53 hosted zone + domain | ~$0.50/month + domain |
 | Stripe | Per-sale fees only |
 | Apple Developer / Google Play | $99/year / ~$25 one-time |
-
-**Supabase free-plan caveats**
-
-- Projects pause after about a week with no activity (the off-season). A daily EventBridge → Lambda ping keeps it active; confirm this is within Supabase's terms.
-- No automatic backups on the free plan: a weekly Lambda runs `pg_dump` to S3.
-- Watch the database size and bandwidth limits; map packs never go through Supabase.
 
 **Suggested stack** (confirm current package names and versions before installing)
 
@@ -129,28 +123,28 @@ Everything that matters in the field travels over the LoRa mesh, with no server 
 | Maps | MapLibre React Native with offline packs | Free, open source, works fully offline |
 | Basemap data | USGS topo and imagery services (free); per-club PMTiles/MBTiles pack (Club) | Public domain in the US |
 | Local data | SQLite (expo-sqlite) | Offline-first storage and queueing |
-| Database + auth | Supabase free plan (Postgres, auth, RLS) | Clubs, members, entitlements |
+| Database + auth | DynamoDB on-demand (single-table) + Cognito user pool | $0, no pausing, no project limits, all in AWS; permissions enforced in the Lambda API |
 | Cloud functions + hosting | AWS Lambda, S3, CloudFront, EventBridge via CDK | Pay-per-use, nothing always running |
 | Payments | Stripe Checkout + webhooks on the web admin page | No app store cut; per-sale fees only |
 | Sun and wind | Sunrise and sunset computed on device; wind from forecast when online, cached | Works offline after the morning sync |
 
 ## Clubs and subscriptions
 
-**A club is rows in a shared database, never new infrastructure.** Every club-owned table carries `club_id`, and Postgres row-level security restricts members to their own club's rows. No database, schema or Supabase project per club.
+**A club is items in one shared DynamoDB table, never new infrastructure.** Every club item is keyed by club ID, and the Lambda API checks the caller's Cognito identity and club role on every request. No table or stack per club.
 
 **Setting up a club**
 
-1. The admin opens the web admin page (S3 + CloudFront), signs in with Supabase auth and pays through **Stripe Checkout**.
-2. Stripe calls a **webhook Lambda**. It verifies the Stripe signature and creates or updates the `clubs` and `subscriptions` rows (status and paid-through date). Webhooks are idempotent on the Stripe event ID.
-3. The admin signs in to the app with the same account. The app creates the club's radio channel key, stores it in Supabase, and generates the Club QR code. The admin draws the property line and adds stands.
-4. Members scan the Club QR code. That joins the mesh immediately, even offline. When online, the invite token in the QR code adds them to `club_members` and enforces the plan's member limit. Members sign in once to join a club.
+1. The admin opens the web admin page (S3 + CloudFront), signs in with Cognito (email one-time code) and pays through **Stripe Checkout**.
+2. Stripe calls a **webhook Lambda**. It verifies the Stripe signature and creates or updates the club and subscription items (status and paid-through date). Webhooks are idempotent on the Stripe event ID.
+3. The admin signs in to the app with the same account. The app creates the club's radio channel key, stores it through the API, and generates the Club QR code. The admin draws the property line and adds stands.
+4. Members scan the Club QR code. That joins the mesh immediately, even offline. When online, the invite token in the QR code adds them to the club's members (an atomic DynamoDB transaction that also enforces expiry, use count and the plan's member limit). Members sign in once to join a club.
 5. **Club features work offline.** A Lambda signs an entitlement token (club ID, plan, expires at paid-through date + grace period). Phones and the board cache it and check the signature locally.
 
 **When a subscription lapses:** status goes to `past_due`, then `canceled`. Club features freeze when the cached entitlement expires: no stand edits, no new invites, no board, no new map packs. The mesh, chat, Ask for a Hand and overdue alerts keep working. Club data is kept for [N] days so a club can renew without losing setup.
 
-**Club radio keys** are stored in Supabase, readable only by that club's admins (RLS). They let admins reset the key and add other admins. This is deliberately low-security: the key only protects radio traffic, and an attacker would also need to be within radio range of the property.
+**Club radio keys** are stored in DynamoDB, returned by the API only to that club's admins. They let admins reset the key and add other admins. This is deliberately low-security: the key only protects radio traffic, and an attacker would also need to be within radio range of the property.
 
-**Cloud tables**
+**Cloud data (logical entities; stored single-table in DynamoDB)**
 
 | Table | Key fields | Notes |
 |---|---|---|
@@ -182,7 +176,7 @@ Use stock Meshtastic channels, positions and text messages. Put the hunting-spec
 **Channels and onboarding**
 
 - **Free party:** the phone that starts the party generates a primary channel with a random 256-bit key, picks the region from GPS (US: 915 MHz) and a default modem preset (LongFast). The Party QR code shares it. Max 3 people.
-- **Club:** the admin's phone generates the club's primary channel the same way, and the key is stored in Supabase. A hunting party inside a club is a secondary channel (Meshtastic supports up to 8 per radio).
+- **Club:** the admin's phone generates the club's primary channel the same way, and the key is stored in the club's cloud data (DynamoDB, via the API). A hunting party inside a club is a secondary channel (Meshtastic supports up to 8 per radio).
 - QR codes wrap a standard Meshtastic channel-set URL in the app's own deep link (`huntclub://join?...`), plus the party ID or the club ID and invite token. Scanning one configures the paired radio and joins in one step.
 - **Reset club key:** the admin generates a new key and QR code. Old radios lose access.
 - Hunters never see channels, keys, presets or regions. An Advanced screen exposes them for power users.
@@ -376,7 +370,7 @@ Build in this order. Each milestone ends with something you can test on real rad
 5. **Check-in (free):** At a spot and On the move modes, mode switching, slide to check in and out, CheckIn and CheckOut app messages with acks, bottom sheet states.
 6. **Safety:** Ask for a Hand with retries and acks, overdue alert from sunset plus grace time, mesh-down warnings.
 7. **Chat and harvests:** party and direct channels, quick replies, delivery status; log a harvest, share with the party. *The free version is complete here.*
-8. **Cloud foundation:** Supabase schema and RLS, AWS CDK stack (S3, CloudFront, Lambda, EventBridge), budget alarm, keep-alive and backup jobs.
+8. **Cloud foundation:** AWS CDK stacks (S3, CloudFront, Lambda Function URLs, DynamoDB, Cognito, EventBridge), the club data layer and its permission checks with tests against DynamoDB Local, budget alarm.
 9. **Club subscriptions:** web admin page, Stripe Checkout and webhook, club provisioning, signed entitlements, invites and member limits.
 10. **Club in the app:** club sign-in, club key storage and reset, stand and area sync, At a stand and In an area check-in, whole-club chat and alerts, harvest sharing to the club.
 11. **Clubhouse board.**

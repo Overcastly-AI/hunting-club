@@ -1,4 +1,4 @@
-import type { LatLon } from '../domain/location';
+import type { LatLon } from '@huntclub/mesh';
 
 const EARTH_RADIUS_M = 6_371_008.8;
 const EARTH_CIRCUMFERENCE_M = 40_075_016.686;

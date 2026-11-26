@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 
-import type { LatLon } from '../domain/location';
+import type { LatLon } from '@huntclub/mesh';
 import { parseHourly, parsePoints, pointsUrl } from './nws';
 import type { ForecastHour } from './types';
 

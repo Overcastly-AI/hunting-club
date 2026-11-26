@@ -5,7 +5,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 ## Working agreements
 
 - AWS changes are requested by email to the owner with a subject starting with `Grok Bot`. Grok Bot configures AWS.
-- **Secrets (owner decision 2026-11-26):** project secrets live in AWS Secrets Manager (`hunt-club-mesh/<env>/<name>`). They may be sent by email between the coordinator and Grok Bot; the owner accepts that and will rotate them later. Never put secrets in the repo, PRs, commit messages, logs or worker briefs; Lambdas read them from Secrets Manager at runtime. Every secret that travels by email is listed under "Rotate later" below.
+- **Secrets (owner decision 2026-11-26):** project secrets live in AWS SSM Parameter Store as SecureString, standard tier, free (`/hunt-club-mesh/<env>/<name>`). Not Secrets Manager: it costs $0.40 per secret per month. They may be sent by email between the coordinator and Grok Bot; the owner accepts that and will rotate them later. Never put secrets in the repo, PRs, commit messages, logs or worker briefs; Lambdas read them from Parameter Store at runtime. Every secret that travels by email is listed under "Rotate later" below.
 - Commit messages never credit Claude or other AI tools (enforced by `.githooks/commit-msg`).
 - Stop and ask the owner before: spending money, open decisions in `docs/SPEC.md`, emails to anyone other than the owner, deleting anything.
 
@@ -78,10 +78,15 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 ## Rotate later (secrets that travelled by email)
 
-| Secret | Secrets Manager name | Sent | Rotated |
+| Secret | Parameter name | Sent | Rotated |
 |---|---|---|---|
 
-## Supabase
+## Database
+
+- **Decision (coordinator, 2026-11-26): DynamoDB (on-demand, single table) + Cognito (email OTP), all in AWS.** Replaces Supabase: no free-project limit, no pausing, $0 on the always-free tier, managed by Grok Bot via CDK. Permissions move from Postgres RLS into the Lambda API (tested against DynamoDB Local). Grok Bot informed 06:24 UTC.
+- The Postgres schema in `supabase/` (PR #5) is superseded: its RLS test cases are ported to API permission tests, then `supabase/` and `database.yml` are removed. `@huntclub/shared` becomes hand-written schemas (single source for StandType, HarvestSex, etc.), no longer generated from SQL.
+
+### Supabase (history)
 
 - **Owner rule (2026-11-26): the coordinator makes database decisions and proceeds without asking.**
 - Org "Grok Bot" (dtbdseniylkmipccqskx), free plan. Project `desk` (jvanxotplnwddodwxxcx) belongs to the owner's trading desk: it must stay. **Never modify, pause or delete desk's existing schemas, tables, functions, auth settings or API settings.**
@@ -90,7 +95,6 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 ## Owner to-dos (non-blocking)
 
-- Pause or delete the free Supabase project in the other organization (not `desk`), then tell the coordinator to create `hunt-club-mesh-dev`.
 
 - **Open or closed source (needed before the app ships):** Meshtastic protobufs are GPL-3.0 with no app exception. Closed-source app + bundled protobufs conflicts with the license; open-sourcing the app (GPL-3.0) resolves it and the cloud can stay proprietary.
 - Optional: allow running `meshtasticd --sim` in the agent environment (blocked by sandbox policy) so agents can test against a simulated radio.

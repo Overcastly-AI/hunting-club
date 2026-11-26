@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import type { LatLon } from '../domain/location';
+import type { LatLon } from '@huntclub/mesh';
 import { readDocument, writeDocument } from '../storage/documents';
 import { weatherDisplay, type WeatherDisplay } from './display';
 import {

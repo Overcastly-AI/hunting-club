@@ -1,8 +1,9 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { colors, opacity, sizes, spacing, textStyles } from '../../theme';
-import { describeAge, elapsedMs } from '../../domain/time';
-import { classifyFreshness, type Freshness } from '../freshness';
+import { classifyFreshness, positionAge, type Freshness } from '@huntclub/core';
+
+import { describeAge } from '../age';
 import { hunterAccessibilityLabel, placeLabel } from '../labels';
 import type { HunterOnMap } from '../types';
 import { HaloText } from './HaloText';
@@ -21,15 +22,16 @@ const RING: Record<Freshness, { borderColor: string; borderStyle: 'solid' | 'das
  * or area name (or "On the move") and how long ago they were heard.
  */
 export function HunterMarker({ hunter, now }: Props) {
-  const age = elapsedMs(hunter.heardAt, now);
+  const age = positionAge(hunter.heardAt, now);
   const freshness = classifyFreshness(age);
   return (
     <View
       accessible
       accessibilityLabel={hunterAccessibilityLabel(hunter, now)}
-      style={[styles.container, freshness === 'faded' && styles.faded]}
+      style={styles.container}
     >
-      <View style={[styles.circle, RING[freshness]]}>
+      {/* Only the circle fades: labels keep full contrast, and the age says how old it is. */}
+      <View style={[styles.circle, RING[freshness], freshness === 'faded' && styles.faded]}>
         <Text style={styles.initials} numberOfLines={1}>
           {hunter.initials}
         </Text>

@@ -1,4 +1,4 @@
-import { MINUTE_MS } from '../domain/time';
+import { MINUTE_MS } from '@huntclub/core';
 import type { HunterOnMap, OpenStandOnMap } from '../map/types';
 
 export const NOW = Date.UTC(2026, 10, 26, 12, 0, 0);
