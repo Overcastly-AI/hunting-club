@@ -3,7 +3,8 @@
  * instead of re-creating clients and radios in each test file.
  * Tests that use them must run with Jest fake timers (`tick`).
  */
-import { MeshClient, type MeshClientEvents, type MeshClientOptions } from '../MeshClient';
+import { MeshClient, type MeshClientOptions } from '../MeshClient';
+import type { Emitter } from '../emitter';
 import { decodeToRadio } from '../codec/radio';
 import {
   FakeAir,
@@ -62,13 +63,13 @@ export async function connectedMesh<const T extends readonly FakeRadioOptions[]>
   };
 }
 
-/** Collects every payload of one client event into an array. */
-export function collect<K extends keyof MeshClientEvents>(
-  client: MeshClient,
+/** Collects every payload of one event (MeshClient or any other Emitter) into an array. */
+export function collect<E extends { [K in keyof E]: unknown }, K extends keyof E>(
+  emitter: Emitter<E>,
   event: K,
-): MeshClientEvents[K][] {
-  const out: MeshClientEvents[K][] = [];
-  client.on(event, (e) => out.push(e));
+): E[K][] {
+  const out: E[K][] = [];
+  emitter.on(event, (e) => out.push(e));
   return out;
 }
 
