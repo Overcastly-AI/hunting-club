@@ -12,23 +12,24 @@ jest.mock(
   () => jest.requireActual('../../test-utils/fakeBleManager').fakeBleManagerModule,
 );
 jest.mock(
-  '../../permissions/location',
-  () => jest.requireActual('../../test-utils/fakeLocation').fakeLocationModule,
-);
-jest.mock(
-  'react-native-safe-area-context',
-  () => jest.requireActual('react-native-safe-area-context/jest/mock').default,
+  '@maplibre/maplibre-react-native',
+  () => jest.requireActual('../../test-utils/fakeMapLibre').fakeMapLibreModule,
 );
 
 beforeEach(resetBluetoothForTests);
 
 describe('OnboardingScreen', () => {
-  it('welcome → pair your radio, party (set up later) → name → map (set up later) → finished', async () => {
+  it('welcome → pair your radio, party (set up later) → name → permissions → map (set up later) → finished', async () => {
     const onFinish = jest.fn();
     const onProfile = jest.fn().mockResolvedValue(undefined);
     const onDownloadMap = jest.fn();
     await renderWithRadio(
-      <OnboardingScreen onFinish={onFinish} onProfile={onProfile} onDownloadMap={onDownloadMap} />,
+      <OnboardingScreen
+        onFinish={onFinish}
+        onProfile={onProfile}
+        onClubCode={jest.fn()}
+        onDownloadMap={onDownloadMap}
+      />,
     );
 
     expect(screen.getByText(onboardingCopy.welcome.title)).toBeTruthy();
@@ -45,6 +46,11 @@ describe('OnboardingScreen', () => {
     await fireEvent.press(screen.getByRole('button', { name: onboardingCopy.name.continue }));
 
     expect(onProfile).toHaveBeenCalledWith({ displayName: 'Jake Smith', initials: 'JS' });
+
+    expect(await screen.findByText(onboardingCopy.permissions.title)).toBeTruthy();
+    await fireEvent.press(
+      screen.getByRole('button', { name: onboardingCopy.permissions.continue }),
+    );
 
     expect(await screen.findByText(onboardingCopy.map.title)).toBeTruthy();
     expect(onFinish).not.toHaveBeenCalled();

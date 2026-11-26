@@ -12,6 +12,21 @@ export const onboardingCopy = {
     initialsLabel: 'Initials',
     continue: 'Continue',
   },
+  permissions: {
+    title: 'Allow access',
+    body: 'Hunt Club needs these to work in the woods. You can change them any time in your phone’s Settings.',
+    location: 'Location',
+    bluetooth: 'Bluetooth',
+    notifications: 'Alerts',
+    allow: {
+      location: 'Allow location',
+      bluetooth: 'Allow Bluetooth',
+      notifications: 'Allow alerts',
+    },
+    allowed: 'Allowed',
+    notAllowed: 'Not allowed. You can allow it later in your phone’s Settings.',
+    continue: 'Continue',
+  },
   map: {
     title: 'Download your map',
     body: 'Save the map around you now, so it works in the woods with no signal. You can save more areas from the Map tab.',

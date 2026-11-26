@@ -15,8 +15,9 @@ import {
   useState,
 } from 'react';
 
-import { type MyProfile, loadProfile } from '../db/appState';
+import type { MyProfile } from '../db/appState';
 import type { SqlDatabase } from '../db/types';
+import { useProfile } from '../profile/ProfileProvider';
 import { ClubEntitlementContext, entitlementOf } from './entitlement';
 import type { ClubSession } from '@huntclub/shared';
 import { type LocalClub, loadClubs } from './store';
@@ -80,17 +81,14 @@ export function ClubStateProvider({
   const { session, api } = services;
   const [clubs, setClubs] = useState<LocalClub[]>([]);
   const [signedIn, setSignedIn] = useState(false);
-  const [myProfile, setMyProfile] = useState<MyProfile | null>(null);
+  const myProfile: MyProfile | null = useProfile().profile ?? null;
 
   const reload = useCallback(
     () =>
-      Promise.all([loadClubs(db), session.isSignedIn(), loadProfile(db)]).then(
-        ([loaded, isSignedIn, profile]) => {
-          setClubs(loaded);
-          setSignedIn(isSignedIn);
-          setMyProfile(profile);
-        },
-      ),
+      Promise.all([loadClubs(db), session.isSignedIn()]).then(([loaded, isSignedIn]) => {
+        setClubs(loaded);
+        setSignedIn(isSignedIn);
+      }),
     [db, session],
   );
 

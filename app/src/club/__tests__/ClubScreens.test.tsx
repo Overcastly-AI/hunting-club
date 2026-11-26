@@ -9,6 +9,7 @@ import { migrations } from '../../db/migrations';
 import { createTestDatabase } from '../../test-utils/nodeSqlite';
 import { clubJoinUrl, fakeClubApi, fakeSession, partyJoinUrl } from '../../test-utils/fakeClubApi';
 import { ClubSection } from '../ClubSection';
+import { ProfileProvider } from '../../profile/ProfileProvider';
 import { type ClubServices, ClubStateProvider } from '../ClubProvider';
 import { JoinClubScreen } from '../JoinClubScreen';
 import { clubCopy } from '../copy';
@@ -23,9 +24,11 @@ async function setup(services: ClubServices) {
   const db = createTestDatabase();
   await migrate(db, migrations);
   const wrap = (children: ReactNode) => (
-    <ClubStateProvider db={db} services={services} now={() => NOW}>
-      {children}
-    </ClubStateProvider>
+    <ProfileProvider db={db}>
+      <ClubStateProvider db={db} services={services} now={() => NOW}>
+        {children}
+      </ClubStateProvider>
+    </ProfileProvider>
   );
   return { db, wrap };
 }
