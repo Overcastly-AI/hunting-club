@@ -73,11 +73,13 @@ export const StripePricesSchema = z.record(
   z.partialRecord(billingIntervalSchema, z.string().min(1)),
 );
 export type StripePrices = z.infer<typeof StripePricesSchema>;
-export const CheckoutResponseSchema = z.object({
-  /** Stripe-hosted Checkout page to redirect to. */
-  url: z.url({ protocol: /^https$/ }),
-});
+/** A Stripe-hosted page to redirect to (Checkout, or the customer portal). */
+export const StripeRedirectSchema = z.object({ url: z.url({ protocol: /^https$/ }) });
+export const CheckoutResponseSchema = StripeRedirectSchema;
 export type CheckoutResponse = z.infer<typeof CheckoutResponseSchema>;
+/** POST /clubs/{id}/billing-portal: Stripe's customer portal (change or cancel the plan). */
+export const BillingPortalResponseSchema = StripeRedirectSchema;
+export type BillingPortalResponse = z.infer<typeof BillingPortalResponseSchema>;
 
 /** Every error response body. */
 export interface ApiErrorBody {

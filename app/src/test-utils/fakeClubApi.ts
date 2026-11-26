@@ -118,6 +118,9 @@ export function fakeClubApi(
     startCheckout: offline(() => {
       throw new ClubApiRequestError('forbidden', 403);
     }),
+    openBillingPortal: offline(() => {
+      throw new ClubApiRequestError('forbidden', 403);
+    }),
     getClubSecret: offline(() => {
       throw new ClubApiRequestError('forbidden', 403);
     }),

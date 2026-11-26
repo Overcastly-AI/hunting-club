@@ -8,6 +8,7 @@ import {
   type CheckoutRequest,
   CheckoutRequestSchema,
   CheckoutResponseSchema,
+  BillingPortalResponseSchema,
   type ClubCreateRequest,
   ClubCreateRequestSchema,
   ClubSecretResponseSchema,
@@ -143,6 +144,9 @@ export function createClubApiClient(options: ClubApiClientOptions) {
         CheckoutResponseSchema,
         CheckoutRequestSchema.parse(request),
       ),
+    /** Stripe's customer portal for the club's subscription; redirect the browser to `url`. */
+    openBillingPortal: (clubId: string) =>
+      call('POST', API_PATHS.billingPortal, club(clubId), BillingPortalResponseSchema),
     getClubSecret: (clubId: string) =>
       call('GET', API_PATHS.secret, club(clubId), ClubSecretResponseSchema),
     listMapPacks: (clubId: string) =>

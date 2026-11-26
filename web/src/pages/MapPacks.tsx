@@ -98,7 +98,8 @@ function BuildPack(props: { api: ClubApi; club: Club; building: boolean; onStart
   const [request, setRequest] = useState<RequestState>({ kind: 'idle' });
 
   if (!props.club.boundary) {
-    return <p>Set the club's property line first. The map pack covers exactly that area.</p>;
+    // No estimate without a boundary; the line is drawn in the app (not on the web).
+    return <p>Draw the property line in the app first. The map pack covers exactly that area.</p>;
   }
   // The same rule the club service applies before it accepts a build.
   const estimate = estimateClubPack(props.club.boundary, { basemap });
