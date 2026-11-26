@@ -13,6 +13,7 @@ import { ogImageSvg, OG_FONT_FILE, renderPng } from './og';
 import { DAWN_SCRIPT_ENTRY, JOIN_SCRIPT_ENTRY } from '../vite.config';
 import { renderJoin, renderNotFound, renderPage } from './render';
 import {
+  HASH_FORWARD_SCRIPT,
   JOIN_PAGE,
   NOT_FOUND_PAGE,
   ogHeadline,
@@ -28,10 +29,11 @@ import { siteCss } from './styles';
 /** dist/, the parent of dist/.server where this file runs from. */
 const DIST = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-/** Writes a stylesheet as a content-hashed file beside the font (cached for a year like it). */
-function hashedCss(name: string, css: string): string {
-  const file = `assets/${name}-${createHash('sha256').update(css).digest('hex').slice(0, 10)}.css`;
-  writeFileSync(join(DIST, file), css);
+/** Writes `content` to assets/<name>-<hash>.<ext> (cached for a year like the font); its URL. */
+function hashedAsset(name: string, ext: string, content: string): string {
+  const hash = createHash('sha256').update(content).digest('hex').slice(0, 10);
+  const file = `assets/${name}-${hash}.${ext}`;
+  writeFileSync(join(DIST, file), content);
   return `/${file}`;
 }
 
@@ -44,11 +46,17 @@ const clientScript = (entry: string) => {
   return `/${file}`;
 };
 
+// Stylesheets and scripts are all files: no inline code under the CSP.
 const assets = {
   fontUrl,
-  cssUrl: hashedCss('site', siteCss(fontUrl)),
+  cssUrl: hashedAsset('site', 'css', siteCss(fontUrl)),
+  // The home page's old-bookmark forward.
+  forwardScriptUrl: hashedAsset('forward', 'js', HASH_FORWARD_SCRIPT),
   // The home hero's dawn scene: its CSS in its own file (only the home page links it).
-  dawn: { cssUrl: hashedCss('dawn', dawnSceneCss()), scriptUrl: clientScript(DAWN_SCRIPT_ENTRY) },
+  dawn: {
+    cssUrl: hashedAsset('dawn', 'css', dawnSceneCss()),
+    scriptUrl: clientScript(DAWN_SCRIPT_ENTRY),
+  },
 };
 for (const route of ROUTES) {
   const file = join(DIST, outputFile(route.path));

@@ -1,11 +1,14 @@
-import { StyleSheet, Text } from 'react-native';
+import { Text } from 'react-native';
 
-import { colors, textStyles } from '../../theme';
+import { makeStyles, textStyles } from '../../theme';
 import { SAFETY_NOTE } from '../wording';
 
 /** The plain note in settings. The only place the app mentions 911. */
 export function SafetyNote() {
+  const styles = useStyles();
   return <Text style={styles.note}>{SAFETY_NOTE}</Text>;
 }
 
-const styles = StyleSheet.create({ note: { ...textStyles.body, color: colors.textSecondary } });
+const useStyles = makeStyles((theme) => ({
+  note: { ...textStyles.body, color: theme.colors.textSecondary },
+}));

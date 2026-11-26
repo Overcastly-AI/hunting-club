@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { Text } from 'react-native';
 
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
@@ -9,7 +9,7 @@ import type { DownloadRequest } from '../map/offline';
 import type { Bounds } from '../map/tiles';
 import { ensureLocationPermission } from '../permissions/location';
 import { radioCopy } from '../radio/copy';
-import { colors, textStyles } from '../theme';
+import { makeStyles, textStyles } from '../theme';
 import { onboardingCopy } from './copy';
 
 /** How far around the hunter the onboarding download reaches (a 4-mile square). */
@@ -29,6 +29,7 @@ type Status = 'idle' | 'finding' | 'noLocation' | 'downloading';
  * around them. The download keeps going after onboarding.
  */
 export function MapDownloadStep({ onNext, onDownload }: Props) {
+  const styles = useStyles();
   const copy = onboardingCopy.map;
   const [status, setStatus] = useState<Status>('idle');
   const [bounds, setBounds] = useState<Bounds | null>(null);
@@ -79,6 +80,6 @@ export function MapDownloadStep({ onNext, onDownload }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  body: { ...textStyles.bodyLarge, color: colors.textSecondary },
-});
+const useStyles = makeStyles((theme) => ({
+  body: { ...textStyles.bodyLarge, color: theme.colors.textSecondary },
+}));

@@ -1,6 +1,9 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Radio, RadioOff } from 'lucide-react-native';
+import { Text, View } from 'react-native';
 
-import { colors, spacing, textStyles } from '../../theme';
+import { Badge } from '../../components/Badge';
+
+import { makeStyles, spacing, textStyles } from '../../theme';
 import { radioCopy } from '../copy';
 import { useRadio } from '../RadioProvider';
 
@@ -9,6 +12,7 @@ const PLUGGED_IN_LEVEL = 101;
 
 /** One-line link status, plus the radio's name, battery and software when known. */
 export function RadioStatus() {
+  const styles = useStyles();
   const { link, radio, pairedRadio } = useRadio();
   const ready = link === 'ready';
   const details: string[] = [];
@@ -25,34 +29,20 @@ export function RadioStatus() {
   const name = radio?.longName ?? pairedRadio?.name;
 
   return (
-    <View style={styles.row} accessibilityRole="summary">
-      <View style={[styles.dot, ready ? styles.dotReady : styles.dotIdle]} />
-      <View style={styles.text}>
-        <Text style={styles.status}>{radioCopy.link[link]}</Text>
-        {name ? <Text style={styles.detail}>{name}</Text> : null}
-        {details.length > 0 ? <Text style={styles.detail}>{details.join(' · ')}</Text> : null}
-      </View>
+    <View style={styles.status} accessibilityRole="summary">
+      <Badge
+        tone={ready ? 'success' : 'neutral'}
+        icon={ready ? Radio : RadioOff}
+        label={radioCopy.link[link]}
+      />
+      {name ? <Text style={styles.name}>{name}</Text> : null}
+      {details.length > 0 ? <Text style={styles.detail}>{details.join(' · ')}</Text> : null}
     </View>
   );
 }
 
-const DOT = 14;
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-  },
-  dot: {
-    width: DOT,
-    height: DOT,
-    borderRadius: DOT / 2,
-    marginTop: spacing.xs,
-  },
-  dotReady: { backgroundColor: colors.fresh },
-  dotIdle: { backgroundColor: colors.textSecondary },
-  text: { flex: 1, gap: spacing.xs },
-  status: { ...textStyles.label, color: colors.text },
-  detail: { ...textStyles.body, color: colors.textSecondary },
-});
+const useStyles = makeStyles((theme) => ({
+  status: { gap: spacing.xs },
+  name: { ...textStyles.label, color: theme.colors.text },
+  detail: { ...textStyles.body, color: theme.colors.textSecondary },
+}));

@@ -59,6 +59,16 @@ describe('type tokens', () => {
       boardDetail: 24,
       boardName: 32,
       boardTitle: 40,
+      display: 40,
+      title1: 28,
+      title1Compact: 24,
+      title2: 22,
+      title3: 18,
+      stat: 36,
+      statCompact: 30,
+      caption: 14,
+      code: 15,
+      codeField: 24,
     });
   });
 

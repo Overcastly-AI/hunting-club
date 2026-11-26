@@ -1,11 +1,11 @@
-import { StyleSheet, Text } from 'react-native';
+import { Text } from 'react-native';
 
 import { Button } from '../../components/Button';
 import { Sheet } from '../../components/Sheet';
 import { SlideToConfirm } from '../../components/SlideToConfirm';
 import { HELP_AUDIENCE_TEXT } from '../../domain/audience';
 import { memberIdentity } from '../../map/meshMapData';
-import { colors, textStyles } from '../../theme';
+import { makeStyles, textStyles } from '../../theme';
 import { useHelpState, useSafetyRadio } from '../hooks';
 import { ASK_FOR_A_HAND, helpProgress } from '../wording';
 
@@ -17,6 +17,7 @@ type Props = { visible: boolean; onClose: () => void };
  * not an emergency call.
  */
 export function AskForHandSheet({ visible, onClose }: Props) {
+  const styles = useStyles();
   const radio = useSafetyRadio();
   const state = useHelpState();
   const audience = radio?.audience ?? 'party';
@@ -58,7 +59,7 @@ export function AskForHandSheet({ visible, onClose }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  title: { ...textStyles.sheetTitle, color: colors.help },
-  body: { ...textStyles.bodyLarge, color: colors.text },
-});
+const useStyles = makeStyles((theme) => ({
+  title: { ...textStyles.sheetTitle, color: theme.colors.warning },
+  body: { ...textStyles.bodyLarge, color: theme.colors.text },
+}));

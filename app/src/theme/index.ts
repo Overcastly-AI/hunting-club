@@ -13,6 +13,8 @@ import {
 } from '@huntclub/design';
 
 import { fontSources } from './fonts';
+import { makeStyles } from './makeStyles';
+import { ThemeProvider, resolveThemeName, useTheme, useThemePreference } from './ThemeProvider';
 import { archivo, mapTextHalo, maxFontScale, textStyles } from './typography';
 
 export {
@@ -25,16 +27,43 @@ export {
   fontSources,
   fontWeight,
   fontWidth,
+  makeStyles,
   mapTextHalo,
   maxFontScale,
   opacity,
   radii,
   sizes,
   spacing,
+  resolveThemeName,
   textStyles,
+  ThemeProvider,
+  useTheme,
+  useThemePreference,
 };
-export type { ColorToken, FontWeight, FontWidth } from '@huntclub/design';
+export type {
+  ColorToken,
+  FontWeight,
+  FontWidth,
+  Theme,
+  ThemeColorToken,
+  ThemePreference,
+} from '@huntclub/design';
+export {
+  BUTTON_HEIGHT,
+  BUTTON_PADDING,
+  ICON_SIZE,
+  STATUS_TONE_COLORS,
+  STATUS_TONES,
+  THEME_PREFERENCE_LABELS,
+  THEME_PREFERENCES,
+} from '@huntclub/design';
+export type { ButtonSize, StatusTone } from '@huntclub/design';
 
+/**
+ * Static tokens. `colors` and `boundary` here are the map's own colours (markers,
+ * labels and their halo, the property line): they stay the same in both themes.
+ * Everything else takes its colours from useTheme() or makeStyles().
+ */
 export const theme = {
   colors,
   boundary,
@@ -49,5 +78,3 @@ export const theme = {
   radii,
   spacing,
 } as const;
-
-export type Theme = typeof theme;

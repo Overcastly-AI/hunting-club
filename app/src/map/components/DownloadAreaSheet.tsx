@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { Button } from '../../components/Button';
 import { formatShortDate } from '../../conditions/clock';
-import { colors, spacing, textStyles } from '../../theme';
+import { makeStyles, spacing, textStyles } from '../../theme';
 import { BASEMAP_IDS, BASEMAPS, type BasemapId } from '../basemaps';
 import type { DownloadRequest } from '../offline';
 import {
@@ -16,7 +16,7 @@ import {
 } from '../tiles';
 import { Choice } from '../../components/Choice';
 import { Sheet } from '../../components/Sheet';
-import { TextField } from '../../components/TextField';
+import { Field } from '../../components/Field';
 
 type LayerChoice = BasemapId | 'both';
 
@@ -61,6 +61,7 @@ export function DownloadAreaSheet({
   onClose,
   intro = DEFAULT_INTRO,
 }: Props) {
+  const styles = useStyles();
   const [layer, setLayer] = useState<LayerChoice>('both');
   const [levelId, setLevelId] = useState(DETAIL_LEVELS[DETAIL_LEVELS.length - 1]!.id);
   const [name, setName] = useState('');
@@ -126,12 +127,7 @@ export function DownloadAreaSheet({
         {formatBytes(DOWNLOAD_LIMITS.maxBytes)} per layer.
       </Text>
 
-      <TextField
-        placeholder="Name this area (optional)"
-        value={name}
-        onChangeText={setName}
-        maxLength={40}
-      />
+      <Field label="Name this area (optional)" value={name} onChangeText={setName} maxLength={40} />
 
       <Button
         variant="primary"
@@ -144,8 +140,8 @@ export function DownloadAreaSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   group: { gap: spacing.sm },
-  heading: { ...textStyles.label, color: colors.text },
-  body: { ...textStyles.body, color: colors.textSecondary },
-});
+  heading: { ...textStyles.label, color: theme.colors.text },
+  body: { ...textStyles.body, color: theme.colors.textSecondary },
+}));

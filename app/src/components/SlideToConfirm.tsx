@@ -2,14 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   PanResponder,
-  StyleSheet,
   Text,
   View,
   type AccessibilityActionEvent,
   type LayoutChangeEvent,
 } from 'react-native';
 
-import { colors, opacity, radii, sizes, spacing, textStyles } from '../theme';
+import { makeStyles, radii, sizes, spacing, textStyles } from '../theme';
 import { clampSlide, slideConfirms } from './slide';
 
 type Props = {
@@ -35,6 +34,7 @@ export function SlideToConfirm({
   disabledReason,
   tone = 'primary',
 }: Props) {
+  const styles = useStyles();
   const [travel, setTravel] = useState(0);
   const [x] = useState(() => new Animated.Value(0));
   // The pan responder is created once; it reads the latest props and track size from these refs.
@@ -82,20 +82,27 @@ export function SlideToConfirm({
         accessibilityActions={[{ name: 'activate', label }]}
         onAccessibilityAction={onAccessibilityAction}
         onLayout={onLayout}
-        style={[styles.track, disabled && { opacity: opacity.pressed }]}
+        style={[styles.track, disabled && styles.disabledTrack]}
       >
         {/* Wraps instead of cutting off at large text sizes; the track grows with it. */}
-        <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.label, disabled && styles.disabledText]}>{label}</Text>
         <Animated.View
           {...pan.panHandlers}
           testID="slide-thumb"
           style={[
             styles.thumb,
             tone === 'help' && styles.helpThumb,
+            disabled && styles.disabledThumb,
             { transform: [{ translateX: travel > 0 ? x : 0 }] },
           ]}
         >
-          <View style={styles.chevron} />
+          <View
+            style={[
+              styles.chevron,
+              tone === 'help' && styles.helpChevron,
+              disabled && styles.disabledChevron,
+            ]}
+          />
         </Animated.View>
       </View>
       {disabled && disabledReason ? <Text style={styles.reason}>{disabledReason}</Text> : null}
@@ -107,20 +114,20 @@ const INSET = spacing.xs;
 const THUMB = sizes.primaryButtonMaxHeight - 2 * INSET;
 const CHEVRON = 12;
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   wrap: { gap: spacing.sm },
   track: {
     minHeight: sizes.primaryButtonMaxHeight,
     borderRadius: radii.primaryButton,
-    backgroundColor: colors.surfaceRaised,
+    backgroundColor: theme.colors.surface2,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.colors.borderSubtle,
     justifyContent: 'center',
   },
   label: {
     ...textStyles.label,
     fontSize: textStyles.bodyLarge.fontSize,
-    color: colors.text,
+    color: theme.colors.text,
     textAlign: 'center',
     paddingLeft: THUMB + spacing.md,
     paddingRight: spacing.md,
@@ -132,18 +139,25 @@ const styles = StyleSheet.create({
     width: THUMB,
     height: THUMB,
     borderRadius: radii.primaryButton - INSET / 2,
-    backgroundColor: colors.accent,
+    backgroundColor: theme.colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  helpThumb: { backgroundColor: colors.help },
+  helpThumb: { backgroundColor: theme.colors.warning },
   chevron: {
     width: CHEVRON,
     height: CHEVRON,
     borderTopWidth: sizes.hairline + 1,
     borderRightWidth: sizes.hairline + 1,
-    borderColor: colors.surface,
+    borderColor: theme.colors.onAccent,
     transform: [{ rotate: '45deg' }],
   },
-  reason: { ...textStyles.body, color: colors.textSecondary },
-});
+  // Gold thumb: dark ink in the dark theme, white on the light theme's deep gold.
+  helpChevron: { borderColor: theme.colors.surface0 },
+  // Disabled is its own look, not a fade: tertiary text and a grey thumb, 4.5:1 in both themes.
+  disabledTrack: { backgroundColor: theme.colors.surface1 },
+  disabledText: { color: theme.colors.textTertiary },
+  disabledThumb: { backgroundColor: theme.colors.surface3 },
+  disabledChevron: { borderColor: theme.colors.textTertiary },
+  reason: { ...textStyles.body, color: theme.colors.textSecondary },
+}));

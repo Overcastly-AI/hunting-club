@@ -1,13 +1,14 @@
 import { MAX_TEXT_CHARS } from '@huntclub/mesh';
-import { StyleSheet, Text, View } from 'react-native';
+import { Send } from 'lucide-react-native';
+import { Text, View } from 'react-native';
 
 import { Button } from '../components/Button';
 import { OptionButtons } from '../components/OptionButtons';
-import { TextField } from '../components/TextField';
+import { Field } from '../components/Field';
 import { formatClockTime } from '../conditions/clock';
 import { QUICK_REPLIES } from '../domain/quickReplies';
 import { placeLabel } from '../map/labels';
-import { colors, radii, spacing, textStyles } from '../theme';
+import { makeStyles, radii, spacing, textStyles } from '../theme';
 import type { ChatItem } from './model';
 import { bubbleLabel, charactersLeft, deliveryText } from './wording';
 
@@ -16,6 +17,7 @@ type System = Extract<ChatItem, { kind: 'system' }>;
 
 /** A message: sender, their stand/spot/area or On the move, time, and delivery for ours. */
 export function MessageBubble({ item }: { item: Text_ }) {
+  const styles = useStyles();
   const time = formatClockTime(new Date(item.at));
   const delivery = deliveryText(item);
   return (
@@ -38,6 +40,7 @@ export function MessageBubble({ item }: { item: Text_ }) {
 
 /** Check-ins, help requests and shared harvests in the stream. */
 export function SystemCard({ item }: { item: System }) {
+  const styles = useStyles();
   const time = formatClockTime(new Date(item.at));
   return (
     <View
@@ -46,7 +49,7 @@ export function SystemCard({ item }: { item: System }) {
       style={[styles.card, item.event === 'help' && styles.helpCard]}
     >
       <Text style={[styles.cardText, item.event === 'help' && styles.helpText]}>{item.text}</Text>
-      <Text style={styles.meta}>{time}</Text>
+      <Text style={[styles.meta, item.event === 'help' && styles.helpText]}>{time}</Text>
     </View>
   );
 }
@@ -78,17 +81,19 @@ type ComposerProps = {
 
 /** Text field with the live 200-character counter. */
 export function Composer({ value, onChange, onSend, disabled }: ComposerProps) {
+  const styles = useStyles();
   const counter = charactersLeft(value);
   const nearLimit = counter.left <= 20;
   return (
     <View style={styles.composer}>
-      <TextField
+      <Field
+        label="Message"
+        hideLabel
         placeholder="Message"
         value={value}
         onChangeText={onChange}
         multiline
         maxLength={MAX_TEXT_CHARS + 20}
-        style={styles.field}
       />
       <View style={styles.composerRow}>
         <Text
@@ -99,6 +104,7 @@ export function Composer({ value, onChange, onSend, disabled }: ComposerProps) {
         </Text>
         <Button
           variant="primary"
+          icon={Send}
           label="Send"
           onPress={onSend}
           disabled={disabled || counter.over || !value.trim()}
@@ -108,41 +114,43 @@ export function Composer({ value, onChange, onSend, disabled }: ComposerProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   bubble: {
     maxWidth: '86%',
-    borderRadius: radii.primaryButton,
-    padding: spacing.sm + spacing.xs,
+    borderRadius: radii.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + spacing.xs,
     gap: spacing.xs,
   },
-  mine: { alignSelf: 'flex-end', backgroundColor: colors.surfaceRaised },
+  mine: { alignSelf: 'flex-end', backgroundColor: theme.colors.surface2 },
   theirs: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.surface,
+    backgroundColor: theme.colors.surface1,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.colors.borderSubtle,
   },
-  meta: { ...textStyles.body, color: colors.textSecondary },
-  body: { ...textStyles.bodyLarge, color: colors.text },
-  problem: { color: colors.help },
+  meta: { ...textStyles.body, color: theme.colors.textSecondary },
+  body: { ...textStyles.bodyLarge, color: theme.colors.text },
+  problem: { color: theme.colors.warning },
   card: {
     alignSelf: 'center',
-    borderRadius: radii.primaryButton,
+    borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.colors.borderSubtle,
+    backgroundColor: theme.colors.surface1,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     alignItems: 'center',
   },
-  helpCard: { borderColor: colors.help },
-  cardText: { ...textStyles.label, color: colors.text, textAlign: 'center' },
-  helpText: { color: colors.help },
+  // Ask for a Hand in the stream: gold on the warning tint, never red, never an emergency.
+  helpCard: { borderColor: theme.colors.warning, backgroundColor: theme.colors.warningTint },
+  cardText: { ...textStyles.label, color: theme.colors.text, textAlign: 'center' },
+  helpText: { color: theme.colors.warning },
   composer: { gap: spacing.sm },
-  field: { paddingVertical: spacing.sm },
   composerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.md,
   },
-});
+}));

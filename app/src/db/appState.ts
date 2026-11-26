@@ -1,3 +1,4 @@
+import { DEFAULT_THEME_PREFERENCE, type ThemePreference } from '@huntclub/design';
 import type { MemberJoin } from '@huntclub/shared';
 
 import type { SqlDatabase } from './types';
@@ -32,4 +33,19 @@ export async function saveProfile(db: SqlDatabase, profile: MyProfile): Promise<
     profile.displayName,
     profile.initials,
   );
+}
+
+/** System (follow the phone), Dark or Light, as the hunter chose it in Settings. */
+export async function loadThemePreference(db: SqlDatabase): Promise<ThemePreference> {
+  const row = await db.getFirstAsync<{ theme_preference: ThemePreference }>(
+    'SELECT theme_preference FROM app_state WHERE id = 1',
+  );
+  return row?.theme_preference ?? DEFAULT_THEME_PREFERENCE;
+}
+
+export async function saveThemePreference(
+  db: SqlDatabase,
+  preference: ThemePreference,
+): Promise<void> {
+  await db.runAsync('UPDATE app_state SET theme_preference = ? WHERE id = 1', preference);
 }

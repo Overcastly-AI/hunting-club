@@ -127,6 +127,7 @@ Everything that matters in the field travels over the LoRa mesh, with no server 
 | Cloud functions + hosting | AWS Lambda, S3, CloudFront, EventBridge via CDK | Pay-per-use, nothing always running |
 | Payments | Stripe Checkout + webhooks on the web admin page | No app store cut; per-sale fees only |
 | Sun and wind | Sunrise and sunset computed on device; wind from forecast when online, cached | Works offline after the morning sync |
+| Icons | Lucide: `lucide-react` (web admin) and `lucide-react-native` (app, drawn through react-native-svg), exact pinned versions | Approved in docs/UI_REDESIGN.md (coordinator decisions); one icon set on both, stand-type icons shared through `STAND_TYPE_ICON_NAMES` in `@huntclub/shared` |
 
 ## Clubs and subscriptions
 
@@ -224,9 +225,11 @@ The phone's SQLite database is the source of truth in the field. For club users,
 
 ## Design system (from Design D)
 
-The look is a full-screen aerial map with dark floating controls and a bottom sheet. Orange is reserved for three things: you, the main action and the selected tab. Build these as theme tokens; do not hard-code colors in components.
+The look is a full-screen aerial map with dark floating controls and a bottom sheet. Orange is reserved for three things: you, the main action and the selected item. Build these as theme tokens; do not hard-code colors in components.
 
-**Color tokens**
+**Themes:** dark-first, with a light ("sunlight") theme for both the app and the club admin. The theme choice is System / Dark / Light (System follows the device). Both themes use the same semantic tokens (`themes` in `@huntclub/design`; values and contrast rules in docs/UI_REDESIGN.md section 4), and a test holds every text pair at 4.5:1 and every control edge at 3:1 in both. The redesign brief (docs/UI_REDESIGN.md) sets the type scale, spacing, radii, elevation and motion tokens.
+
+**Color tokens (Design D: the map and the dark theme's originals)**
 
 | Token | Value | Use |
 |---|---|---|
@@ -247,7 +250,7 @@ The look is a full-screen aerial map with dark floating controls and a bottom sh
 
 **Light sections (public marketing site only)**
 
-The app and the club admin stay dark. Marketing pages alternate dark and light bands; light bands use only these (`lightColors` in `@huntclub/design`), each at 4.5:1 or better on `bg-light`.
+The app and the club admin use the light theme above. Marketing pages alternate dark and light bands; light bands use only these (`lightColors` in `@huntclub/design`), each at 4.5:1 or better on `bg-light`.
 
 | Token | Value | Use |
 |---|---|---|

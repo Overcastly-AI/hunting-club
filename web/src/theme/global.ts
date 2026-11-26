@@ -7,6 +7,7 @@ import {
   textClasses,
   textScale,
   textStyleCss,
+  themeCss,
 } from '@huntclub/design';
 
 /** The whole stylesheet: font face, tokens, base elements and components. */
@@ -14,6 +15,7 @@ export function globalCssFor(fontUrl: string): string {
   return `
 ${fontFaceCss(fontUrl)}
 ${rootVariablesCss()}
+${themeCss()}
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--color-surface); color: var(--color-text); }
 body { ${textStyleCss(textScale.body)}; }

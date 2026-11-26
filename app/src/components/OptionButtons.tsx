@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { colors, opacity, radii, sizes, spacing, textStyles } from '../theme';
+import { makeStyles, radii, sizes, spacing, textStyles } from '../theme';
 
 type Props<T extends string> = {
   options: readonly T[];
@@ -20,6 +20,7 @@ export function OptionButtons<T extends string>({
   selected,
   disabled,
 }: Props<T>) {
+  const styles = useStyles();
   return (
     <View style={styles.row}>
       {options.map((option) => (
@@ -33,27 +34,31 @@ export function OptionButtons<T extends string>({
           style={({ pressed }) => [
             styles.option,
             selected === option && styles.selected,
-            (pressed || disabled) && { opacity: opacity.pressed },
+            pressed && styles.pressed,
+            disabled && styles.disabled,
           ]}
         >
-          <Text style={styles.text}>{option}</Text>
+          <Text style={[styles.text, disabled && styles.disabledText]}>{option}</Text>
         </Pressable>
       ))}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   option: {
     minHeight: sizes.minTapTarget,
     borderRadius: radii.primaryButton,
     borderWidth: sizes.hairline,
-    borderColor: colors.surfaceRaised,
-    backgroundColor: colors.surfaceRaised,
+    borderColor: theme.colors.surface2,
+    backgroundColor: theme.colors.surface2,
     paddingHorizontal: spacing.md,
     justifyContent: 'center',
   },
-  selected: { borderColor: colors.text },
-  text: { ...textStyles.label, color: colors.text },
-});
+  selected: { borderColor: theme.colors.text },
+  pressed: { backgroundColor: theme.colors.surface3, borderColor: theme.colors.surface3 },
+  disabled: { backgroundColor: theme.colors.surface1, borderColor: theme.colors.borderSubtle },
+  disabledText: { color: theme.colors.textTertiary },
+  text: { ...textStyles.label, color: theme.colors.text },
+}));

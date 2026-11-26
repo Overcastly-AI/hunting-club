@@ -1,17 +1,18 @@
 import { CORE_CONFIG } from '@huntclub/core';
 import { CheckInMode, type LatLon } from '@huntclub/mesh';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Banner } from '../components/Banner';
 import { Choice } from '../components/Choice';
 import { SlideToConfirm } from '../components/SlideToConfirm';
-import { TextField } from '../components/TextField';
+import { Field } from '../components/Field';
 import { placeLabel } from '../map/labels';
 import { useNow } from '../hooks/useNow';
 import { placeOf } from '../map/place';
 import { ensureLocationPermission } from '../permissions/location';
-import { colors, spacing, textStyles } from '../theme';
+import { makeStyles, spacing, textStyles } from '../theme';
 import { useCheckInActions, useCheckInState } from './CheckInRadio';
 import { SLIDE_TO_CHECK_OUT } from './CheckOutSheet';
 import { checkInChoices } from './modes';
@@ -24,6 +25,7 @@ const NO_RADIO =
 
 /** Check In tab: pick how you're hunting, then slide to check in (or change mode, or check out). */
 export function CheckInScreen() {
+  const styles = useStyles();
   const { radio, current } = useCheckInState();
   const now = useNow();
   const { checkIn, checkOut, status } = useCheckInActions(radio);
@@ -83,8 +85,8 @@ export function CheckInScreen() {
         </View>
 
         {draft.mode === CheckInMode.Spot ? (
-          <TextField
-            placeholder="Name this spot (optional)"
+          <Field
+            label="Name this spot (optional)"
             value={draft.spotName ?? ''}
             onChangeText={(spotName) => setDraft((d) => ({ ...d, spotName }))}
             maxLength={24}
@@ -125,14 +127,14 @@ export function CheckInScreen() {
           </View>
         ) : null}
 
-        <Text style={styles.note}>
+        <Banner tone="info">
           {overdueNote(
             current?.checkedInAt ?? now,
             pin,
             radio?.graceMinutes ?? CORE_CONFIG.overdue.graceMinutes,
             radio?.audience ?? 'party',
           )}
-        </Text>
+        </Banner>
 
         <SlideToConfirm
           label={changing ? 'Slide to change mode' : 'Slide to check in'}
@@ -155,12 +157,11 @@ export function CheckInScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.surface },
+const useStyles = makeStyles((theme) => ({
+  safe: { flex: 1, backgroundColor: theme.colors.surface0 },
   content: { padding: spacing.md, gap: spacing.md },
-  overline: { ...textStyles.body, color: colors.textSecondary },
-  title: { ...textStyles.sheetTitle, color: colors.text },
-  heading: { ...textStyles.label, color: colors.text },
+  overline: { ...textStyles.body, color: theme.colors.textSecondary },
+  title: { ...textStyles.title1, color: theme.colors.text },
+  heading: { ...textStyles.title3, color: theme.colors.text },
   group: { gap: spacing.sm },
-  note: { ...textStyles.body, color: colors.textSecondary },
-});
+}));

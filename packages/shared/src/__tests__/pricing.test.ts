@@ -11,7 +11,17 @@ describe('club pricing (owner decision)', () => {
       amountCents: 10000,
       price: '$100/year',
       badge: '2 months free',
+      savings: 'save $20',
     });
+  });
+
+  it('gives each interval its own free-trial line', () => {
+    expect(CLUB_PRICING.intervals.month.trial).toBe(
+      "14-day free trial, then $10/month. Cancel anytime before day 14 and you won't be charged.",
+    );
+    expect(CLUB_PRICING.intervals.year.trial).toBe(
+      "14-day free trial, then $100/year. Cancel anytime before day 14 and you won't be charged.",
+    );
   });
 
   it('derives the call to action and the terms line', () => {

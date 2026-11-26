@@ -1,9 +1,9 @@
 import { LEGAL_DOCS, type LegalDocId } from '@huntclub/shared';
 import { router } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollText } from 'lucide-react-native';
 
 import { Button } from '../components/Button';
-import { colors, spacing, textStyles } from '../theme';
+import { Card } from '../components/Card';
 import { legalRoute } from './routes';
 
 const DOCS = Object.keys(LEGAL_DOCS) as LegalDocId[];
@@ -11,18 +11,15 @@ const DOCS = Object.keys(LEGAL_DOCS) as LegalDocId[];
 /** Settings → About: Privacy and Terms, readable offline. */
 export function AboutSection() {
   return (
-    <View style={styles.section}>
-      <Text accessibilityRole="header" style={styles.heading}>
-        About
-      </Text>
+    <Card title="About">
       {DOCS.map((id) => (
-        <Button key={id} label={LEGAL_DOCS[id].title} onPress={() => router.push(legalRoute(id))} />
+        <Button
+          key={id}
+          icon={ScrollText}
+          label={LEGAL_DOCS[id].title}
+          onPress={() => router.push(legalRoute(id))}
+        />
       ))}
-    </View>
+    </Card>
   );
 }
-
-const styles = StyleSheet.create({
-  section: { gap: spacing.sm },
-  heading: { ...textStyles.label, color: colors.text },
-});

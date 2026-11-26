@@ -1,6 +1,6 @@
 import { useKeepAwake } from 'expo-keep-awake';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { hasClubFeatures } from '@huntclub/shared';
@@ -11,7 +11,7 @@ import { useNow } from '../hooks/useNow';
 import { sunLine, sunSentence } from '../map/components/ConditionsPanel';
 import { nodePosition } from '../map/meshMapData';
 import { SafetyLayer } from '../safety/SafetyLayer';
-import { colors, spacing, textStyles } from '../theme';
+import { makeStyles, spacing, textStyles } from '../theme';
 import { useBoardRadio, type BoardRadio } from './BoardRadio';
 import { boardLinkStatus, buildBoard } from './boardModel';
 import { BoardMap } from './components/BoardMap';
@@ -46,6 +46,7 @@ function useBoardRadioUpdates(radio: BoardRadio | null): void {
  * has lapsed; only the board itself freezes.
  */
 export function BoardScreen() {
+  const styles = useStyles();
   useKeepAwake();
   const radio = useBoardRadio();
   const entitlement = useClubEntitlement();
@@ -105,12 +106,12 @@ export function BoardScreen() {
 
 const EMPTY = { myNodeNum: 0, nodes: new Map() };
 
-const styles = StyleSheet.create({
-  root: { flex: 1, flexDirection: 'row', backgroundColor: colors.surface },
+const useStyles = makeStyles((theme) => ({
+  root: { flex: 1, flexDirection: 'row', backgroundColor: theme.colors.surface0 },
   mapPane: { flex: 1 },
   listPane: { flex: 1, padding: spacing.lg, gap: spacing.md },
   header: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md },
-  title: { ...textStyles.boardTitle, color: colors.text, flexShrink: 1 },
-  sun: { ...textStyles.boardDetail, color: colors.text },
+  title: { ...textStyles.boardTitle, color: theme.colors.text, flexShrink: 1 },
+  sun: { ...textStyles.boardDetail, color: theme.colors.text },
   lists: { gap: spacing.xl, paddingBottom: spacing.xl },
-});
+}));

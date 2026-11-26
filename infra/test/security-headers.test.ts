@@ -1,6 +1,4 @@
-import { createHash } from 'node:crypto';
 import { cognitoEndpoint } from '@huntclub/shared';
-import { HASH_FORWARD_SCRIPT } from '@huntclub/site/routes';
 import { dev } from '../config/dev';
 import { cloudFor } from '../src/cloud';
 import {
@@ -32,9 +30,8 @@ describe('Content-Security-Policy', () => {
     expect(csp['font-src']).toEqual(["'self'"]);
   });
 
-  it('has no inline styles or scripts, except the home page forward, by its hash', () => {
-    const hash = createHash('sha256').update(HASH_FORWARD_SCRIPT).digest('base64');
-    expect(csp['script-src']).toEqual(["'self'", `'sha256-${hash}'`]);
+  it('allows no inline scripts or styles at all: only files from this origin', () => {
+    expect(csp['script-src']).toEqual(["'self'"]);
     expect(csp['style-src']).toEqual(["'self'"]);
     expect(contentSecurityPolicy(dev)).not.toMatch(/unsafe-inline|unsafe-eval|\*/);
   });

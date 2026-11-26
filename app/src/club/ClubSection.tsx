@@ -1,9 +1,14 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
+import { LogIn, LogOut, RefreshCw, ShieldCheck, UserRound } from 'lucide-react-native';
+
+import { Badge } from '../components/Badge';
+import { Banner } from '../components/Banner';
 import { Button } from '../components/Button';
-import { colors, spacing, textStyles } from '../theme';
+import { Card } from '../components/Card';
+import { makeStyles, spacing, textStyles } from '../theme';
 import { useClub } from './ClubProvider';
 import { clubCopy } from './copy';
 import { hasClubFeatures } from '@huntclub/shared';
@@ -14,6 +19,7 @@ const copy = clubCopy.section;
 
 /** Club mode on the Party/Club tab: the clubs on this phone, sign-in and sync. */
 export function ClubSection({ now = Date.now }: { now?: () => number }) {
+  const styles = useStyles();
   const { clubs, signedIn, cloudAvailable, sync, session, reload } = useClub();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -31,52 +37,66 @@ export function ClubSection({ now = Date.now }: { now?: () => number }) {
   };
 
   return (
-    <View style={styles.section}>
-      <Text accessibilityRole="header" style={styles.heading}>
-        {copy.heading}
-      </Text>
+    <Card title={copy.heading}>
       {clubs.length === 0 ? <Text style={styles.body}>{copy.none}</Text> : null}
       {clubs.map((club) => (
         <View key={club.id} style={styles.club}>
-          <Text style={styles.name}>{club.name}</Text>
-          {club.role ? <Text style={styles.body}>{copy.role[club.role]}</Text> : null}
-          {club.pendingInvite ? <Text style={styles.body}>{copy.pending}</Text> : null}
+          <View style={styles.nameRow}>
+            <Text style={styles.name}>{club.name}</Text>
+            {club.role ? (
+              <Badge
+                tone={club.role === 'admin' ? 'info' : 'neutral'}
+                icon={club.role === 'admin' ? ShieldCheck : UserRound}
+                label={copy.role[club.role]}
+              />
+            ) : null}
+          </View>
+          {club.pendingInvite ? <Banner tone="info">{copy.pending}</Banner> : null}
           {club.syncedAt !== null ? (
-            <Text style={styles.body}>
-              {hasClubFeatures(entitlementOf(club), now())
-                ? copy.featuresOpen
-                : copy.featuresClosed}
-            </Text>
+            hasClubFeatures(entitlementOf(club), now()) ? (
+              <Badge tone="success" label={copy.featuresOpen} />
+            ) : (
+              <Banner tone="warning">{copy.featuresClosed}</Banner>
+            )
           ) : null}
         </View>
       ))}
-      {failed ? <Text style={styles.body}>{copy.syncFailed}</Text> : null}
+      {failed ? (
+        <Banner tone="warning" live>
+          {copy.syncFailed}
+        </Banner>
+      ) : null}
       {!cloudAvailable ? (
         clubs.length > 0 ? (
-          <Text style={styles.body}>{copy.unavailable}</Text>
+          <Banner tone="info">{copy.unavailable}</Banner>
         ) : null
       ) : signedIn ? (
         <>
           {clubs.length > 0 ? (
             <Button
+              icon={RefreshCw}
               label={busy ? copy.syncing : copy.sync}
-              disabled={busy}
+              loading={busy}
               onPress={() => void runSync()}
             />
           ) : null}
-          <Button label={copy.signOut} onPress={() => void session.signOut().then(reload)} />
+          <Button
+            variant="tertiary"
+            icon={LogOut}
+            label={copy.signOut}
+            onPress={() => void session.signOut().then(reload)}
+          />
         </>
       ) : (
-        <Button label={copy.signIn} onPress={() => router.push(SIGN_IN_ROUTE)} />
+        <Button icon={LogIn} label={copy.signIn} onPress={() => router.push(SIGN_IN_ROUTE)} />
       )}
-    </View>
+    </Card>
   );
 }
 
-const styles = StyleSheet.create({
-  section: { gap: spacing.sm },
-  club: { gap: spacing.xs },
-  heading: { ...textStyles.label, color: colors.text },
-  name: { ...textStyles.bodyLarge, color: colors.text },
-  body: { ...textStyles.body, color: colors.textSecondary },
-});
+const useStyles = makeStyles((theme) => ({
+  club: { gap: spacing.sm },
+  nameRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
+  name: { ...textStyles.title3, color: theme.colors.text },
+  body: { ...textStyles.body, color: theme.colors.textSecondary },
+}));

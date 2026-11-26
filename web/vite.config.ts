@@ -6,6 +6,7 @@ import { dawnStylesheet } from './dawn-stylesheet';
 import { globalStylesheet } from './global-stylesheet';
 import { noEvalEntry } from './no-eval-entry';
 import { siteHead } from './site-head';
+import { themeBootstrap } from './theme-bootstrap';
 
 export default defineConfig({
   // Served under /app/ (the public site is at the root): asset URLs are /app/assets/….
@@ -16,6 +17,7 @@ export default defineConfig({
     globalStylesheet(),
     dawnStylesheet(),
     siteHead(),
+    themeBootstrap(),
     buildVersion(),
   ],
   build: { outDir: 'dist', emptyOutDir: true },

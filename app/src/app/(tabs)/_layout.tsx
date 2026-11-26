@@ -6,13 +6,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChatConnector } from '../../chat/ChatConnector';
 import { ONBOARDING_ROUTE } from '../../onboarding/routes';
 import { useOnboarded } from '../../onboarding/useOnboarded';
-import { TAB_BAR_PADDING, TAB_LABEL_MAX_LINES, tabBarHeight } from '../../navigation/tabBarLayout';
+import {
+  TAB_BAR_PADDING,
+  TAB_ICON_SIZE,
+  TAB_LABEL_MAX_LINES,
+  tabBarHeight,
+} from '../../navigation/tabBarLayout';
+import { TABS } from '../../navigation/tabs';
 import { SafetyLayer } from '../../safety/SafetyLayer';
-import { colors, maxFontScale, sizes, textStyles } from '../../theme';
+import { maxFontScale, sizes, textStyles, useTheme } from '../../theme';
 
 export default function TabLayout() {
   const { fontScale } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
   const onboarded = useOnboarded();
 
   if (onboarded === undefined) return null;
@@ -24,19 +31,19 @@ export default function TabLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          sceneStyle: { backgroundColor: colors.surface },
-          tabBarActiveTintColor: colors.accent,
-          tabBarInactiveTintColor: colors.textSecondary,
+          sceneStyle: { backgroundColor: theme.colors.surface0 },
+          // Selected tab: accent icon and label. Others: secondary text colour.
+          tabBarActiveTintColor: theme.colors.accentText,
+          tabBarInactiveTintColor: theme.colors.textSecondary,
           tabBarStyle: {
-            backgroundColor: colors.surface,
-            borderTopColor: colors.border,
+            backgroundColor: theme.colors.surface0,
+            borderTopColor: theme.colors.borderSubtle,
+            // Includes the bottom safe-area inset (home indicator, Android gesture bar).
             height: tabBarHeight({ fontScale, bottomInset: insets.bottom }),
           },
           tabBarItemStyle: styles.item,
           tabBarLabelPosition: 'below-icon',
-          // No icons yet; hide the icon slot so the label gets the whole bar.
-          // Every tab keeps a word label.
-          tabBarIconStyle: styles.hidden,
+          tabBarIconStyle: styles.icon,
           tabBarLabel: ({ color, children }) => (
             <Text
               maxFontSizeMultiplier={maxFontScale}
@@ -48,16 +55,26 @@ export default function TabLayout() {
           ),
         }}
       >
-        <Tabs.Screen name="index" options={{ title: 'Map', tabBarAccessibilityLabel: 'Map' }} />
-        <Tabs.Screen name="chat" options={{ title: 'Chat', tabBarAccessibilityLabel: 'Chat' }} />
-        <Tabs.Screen
-          name="check-in"
-          options={{ title: 'Check In', tabBarAccessibilityLabel: 'Check In' }}
-        />
-        <Tabs.Screen
-          name="party"
-          options={{ title: 'Party/Club', tabBarAccessibilityLabel: 'Party or Club' }}
-        />
+        {TABS.map(({ name, title, accessibilityLabel, icon: Icon }) => (
+          <Tabs.Screen
+            key={name}
+            name={name}
+            options={{
+              title,
+              tabBarAccessibilityLabel: accessibilityLabel,
+              // The word label is spoken; the icon is decoration.
+              tabBarIcon: ({ color }) => (
+                <Icon
+                  testID={`tab-icon-${name}`}
+                  size={TAB_ICON_SIZE}
+                  color={color}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                />
+              ),
+            }}
+          />
+        ))}
       </Tabs>
       <SafetyLayer />
       <ChatConnector />
@@ -67,6 +84,7 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   item: { minHeight: sizes.minTapTarget, paddingVertical: TAB_BAR_PADDING },
-  hidden: { display: 'none' },
+  // A fixed icon box on every phone (the library's default box changes with the screen size).
+  icon: { width: TAB_ICON_SIZE, height: TAB_ICON_SIZE },
   label: { ...textStyles.tabLabel, textAlign: 'center' },
 });

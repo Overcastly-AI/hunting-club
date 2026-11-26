@@ -1,14 +1,15 @@
 import type { ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from './Button';
-import { colors, radii, spacing, textStyles } from '../theme';
+import { makeStyles, radii, spacing, textStyles } from '../theme';
 
 type Props = { visible: boolean; title: string; onClose: () => void; children: ReactNode };
 
 /** A panel that slides up over the map, with a title and a Close button. */
 export function Sheet({ visible, title, onClose, children }: Props) {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -35,19 +36,19 @@ export function Sheet({ visible, title, onClose, children }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   backdrop: { flex: 1, justifyContent: 'flex-end' },
   dismiss: { flex: 1 },
   sheet: {
     maxHeight: '85%',
-    backgroundColor: colors.surface,
+    backgroundColor: theme.colors.surface0,
     borderTopLeftRadius: radii.sheetTop,
     borderTopRightRadius: radii.sheetTop,
     borderTopWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.colors.borderSubtle,
     padding: spacing.md,
     gap: spacing.md,
   },
-  title: { ...textStyles.sheetTitle, color: colors.text },
+  title: { ...textStyles.title2, color: theme.colors.text },
   content: { gap: spacing.md },
-});
+}));

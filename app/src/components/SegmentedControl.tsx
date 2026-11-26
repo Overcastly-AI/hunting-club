@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { colors, opacity, radii, sizes, spacing, textStyles } from '../theme';
+import { makeStyles, radii, sizes, spacing, textStyles } from '../theme';
 
 type Props<T extends string> = {
   segments: readonly T[];
@@ -9,13 +9,17 @@ type Props<T extends string> = {
   onSelect: (segment: T) => void;
 };
 
-/** Rounded-rectangle segments (no pills, no orange): selected is raised with a white outline. */
+/**
+ * Segmented control, as on the club admin: segments in a bordered surface-2 tray; the
+ * selected one is filled with the accent (orange is for the selected item).
+ */
 export function SegmentedControl<T extends string>({
   segments,
   labels,
   selected,
   onSelect,
 }: Props<T>) {
+  const styles = useStyles();
   return (
     <View accessibilityRole="tablist" style={styles.row}>
       {segments.map((segment) => {
@@ -30,7 +34,7 @@ export function SegmentedControl<T extends string>({
             style={({ pressed }) => [
               styles.segment,
               isSelected && styles.selected,
-              pressed && { opacity: opacity.pressed },
+              pressed && !isSelected && styles.pressed,
             ]}
           >
             <Text style={[styles.label, isSelected && styles.selectedLabel]}>
@@ -43,19 +47,26 @@ export function SegmentedControl<T extends string>({
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: spacing.xs, backgroundColor: colors.surface },
+const useStyles = makeStyles((theme) => ({
+  row: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    padding: spacing.xs,
+    borderWidth: 1,
+    borderColor: theme.colors.borderControl,
+    borderRadius: radii.md,
+    backgroundColor: theme.colors.surface2,
+  },
   segment: {
     flex: 1,
     minHeight: sizes.minTapTarget,
-    borderRadius: radii.primaryButton,
-    borderWidth: sizes.hairline,
-    borderColor: colors.border,
+    borderRadius: radii.sm,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.sm,
   },
-  selected: { backgroundColor: colors.surfaceRaised, borderColor: colors.text },
-  label: { ...textStyles.label, color: colors.textSecondary },
-  selectedLabel: { color: colors.text },
-});
+  pressed: { backgroundColor: theme.colors.surface3 },
+  selected: { backgroundColor: theme.colors.accent },
+  label: { ...textStyles.label, color: theme.colors.textSecondary, textAlign: 'center' },
+  selectedLabel: { color: theme.colors.onAccent },
+}));

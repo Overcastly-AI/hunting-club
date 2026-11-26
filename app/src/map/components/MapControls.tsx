@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { colors, opacity, radii, sizes, spacing, textStyles } from '../../theme';
+import { makeStyles, radii, sizes, spacing, textStyles } from '../../theme';
 import { LayersIcon, LocateIcon, NorthIcon } from '../../components/icons';
 
 type Props = { onLayers: () => void; onNorthUp: () => void; onCenterOnMe: () => void };
 
 /** Right-side controls: map layers, north-up, center on me. Each has a word label. */
 export function MapControls({ onLayers, onNorthUp, onCenterOnMe }: Props) {
+  const styles = useStyles();
   return (
     <View style={styles.column}>
       <ControlButton
@@ -43,12 +44,13 @@ function ControlButton({
   onPress: () => void;
   icon: ReactNode;
 }) {
+  const styles = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={a11y}
       onPress={onPress}
-      style={({ pressed }) => [styles.button, pressed && { opacity: opacity.pressed }]}
+      style={({ pressed }) => [styles.button, pressed && styles.pressed]}
     >
       {icon}
       <Text style={styles.label}>{label}</Text>
@@ -56,16 +58,20 @@ function ControlButton({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   column: { gap: spacing.sm },
   button: {
     width: sizes.control,
     minHeight: sizes.control,
-    borderRadius: radii.control,
-    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    // Floating over the map in either theme: a 3:1 control edge so the button reads on imagery.
+    borderWidth: 1,
+    borderColor: theme.colors.borderControl,
+    backgroundColor: theme.colors.surface0,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.xs,
   },
-  label: { ...textStyles.mapLabel, color: colors.text },
-});
+  pressed: { backgroundColor: theme.colors.surface2 },
+  label: { ...textStyles.badge, color: theme.colors.text },
+}));
