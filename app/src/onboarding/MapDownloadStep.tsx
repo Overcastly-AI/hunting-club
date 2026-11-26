@@ -1,6 +1,7 @@
+import { Download } from 'lucide-react-native';
 import { useState } from 'react';
-import { Text } from 'react-native';
 
+import { Banner } from '../components/Banner';
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
 import { DownloadAreaSheet } from '../map/components/DownloadAreaSheet';
@@ -9,7 +10,6 @@ import type { DownloadRequest } from '../map/offline';
 import type { Bounds } from '../map/tiles';
 import { ensureLocationPermission } from '../permissions/location';
 import { radioCopy } from '../radio/copy';
-import { makeStyles, textStyles } from '../theme';
 import { onboardingCopy } from './copy';
 
 /** How far around the hunter the onboarding download reaches (a 4-mile square). */
@@ -29,7 +29,6 @@ type Status = 'idle' | 'finding' | 'noLocation' | 'downloading';
  * around them. The download keeps going after onboarding.
  */
 export function MapDownloadStep({ onNext, onDownload }: Props) {
-  const styles = useStyles();
   const copy = onboardingCopy.map;
   const [status, setStatus] = useState<Status>('idle');
   const [bounds, setBounds] = useState<Bounds | null>(null);
@@ -54,19 +53,27 @@ export function MapDownloadStep({ onNext, onDownload }: Props) {
     <Screen title={copy.title} description={copy.body}>
       {status === 'downloading' ? (
         <>
-          <Text style={styles.body}>{copy.downloading}</Text>
-          <Button variant="primary" label={copy.continue} onPress={onNext} />
+          <Banner tone="success" live>
+            {copy.downloading}
+          </Banner>
+          <Button variant="primary" size="lg" label={copy.continue} onPress={onNext} />
         </>
       ) : (
         <>
-          {status === 'noLocation' ? <Text style={styles.body}>{copy.noLocation}</Text> : null}
+          {status === 'noLocation' ? (
+            <Banner tone="warning" live>
+              {copy.noLocation}
+            </Banner>
+          ) : null}
           <Button
             variant="primary"
+            size="lg"
+            icon={Download}
             label={status === 'finding' ? copy.finding : copy.findArea}
-            disabled={status === 'finding'}
+            loading={status === 'finding'}
             onPress={() => void findArea()}
           />
-          <Button label={radioCopy.pair.setUpLater} onPress={onNext} />
+          <Button variant="tertiary" label={radioCopy.pair.setUpLater} onPress={onNext} />
         </>
       )}
       <DownloadAreaSheet
@@ -79,7 +86,3 @@ export function MapDownloadStep({ onNext, onDownload }: Props) {
     </Screen>
   );
 }
-
-const useStyles = makeStyles((theme) => ({
-  body: { ...textStyles.bodyLarge, color: theme.colors.textSecondary },
-}));

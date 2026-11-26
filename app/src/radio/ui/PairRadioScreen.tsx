@@ -1,11 +1,24 @@
 import { MESHTASTIC_BLE } from '@huntclub/mesh';
+import { BluetoothSearching, Radio, RadioOff, Settings, Unlink } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Platform, Pressable, Text, View } from 'react-native';
 
+import { Banner } from '../../components/Banner';
 import { Button } from '../../components/Button';
+import { Card } from '../../components/Card';
+import { EmptyState } from '../../components/EmptyState';
 import { ensureBluetoothPermission, type BluetoothReadiness } from '../../permissions/bluetooth';
 import { Screen } from '../../components/Screen';
-import { makeStyles, opacity, radii, sizes, spacing, textStyles } from '../../theme';
+import {
+  ICON_SIZE,
+  makeStyles,
+  radii,
+  sizes,
+  spacing,
+  tabularNums,
+  textStyles,
+  useTheme,
+} from '../../theme';
 import { radioCopy } from '../copy';
 import { useRadio } from '../RadioProvider';
 import { scanForRadios, type FoundRadio } from '../scan';
@@ -32,6 +45,7 @@ type Props = {
 /** Onboarding step 1 and Party/Club settings: find, pair and connect a radio. */
 export function PairRadioScreen({ onDone, onSkip }: Props) {
   const styles = useStyles();
+  const theme = useTheme();
   const { link, pairedRadio, repairNeeded, pair, forget } = useRadio();
   const [found, setFound] = useState<FoundRadio[]>([]);
   const [scanning, setScanning] = useState(false);
@@ -82,35 +96,44 @@ export function PairRadioScreen({ onDone, onSkip }: Props) {
 
   const linked = pairedRadio !== null && link !== 'none' && link !== 'disconnected';
 
+  const openSettings = (
+    <Button icon={Settings} label={radioCopy.repair.openSettings} onPress={openBluetoothSettings} />
+  );
+
   return (
     <Screen title={radioCopy.pair.title} description={linked ? undefined : radioCopy.pair.intro}>
       {pairedRadio ? (
-        <View style={styles.card}>
+        <Card title={radioCopy.settingsEntry}>
           <RadioStatus />
           {link === 'ready' && onDone ? (
-            <Button variant="primary" label={radioCopy.pair.done} onPress={onDone} />
+            <Button variant="primary" size="lg" label={radioCopy.pair.done} onPress={onDone} />
           ) : null}
-          <Button label={radioCopy.repair.forgetHere} onPress={() => void forget()} />
-        </View>
+          <Button
+            variant="danger"
+            icon={Unlink}
+            label={radioCopy.repair.forgetHere}
+            onPress={() => void forget()}
+          />
+        </Card>
       ) : null}
 
       {repairNeeded ? (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>{radioCopy.repair.needed}</Text>
-          <Button label={radioCopy.repair.openSettings} onPress={openBluetoothSettings} />
-        </View>
+        <Banner tone="warning" action={openSettings}>
+          {radioCopy.repair.needed}
+        </Banner>
       ) : null}
 
       {readiness === 'bluetoothOff' ? (
-        <View style={styles.card}>
-          <Text style={styles.body}>{radioCopy.permissions.bluetoothOff}</Text>
-          <Button label={radioCopy.repair.openSettings} onPress={openBluetoothSettings} />
-        </View>
+        <Banner tone="warning" action={openSettings}>
+          {radioCopy.permissions.bluetoothOff}
+        </Banner>
       ) : null}
 
       {!linked ? (
         <Button
           variant="primary"
+          size="lg"
+          icon={BluetoothSearching}
           label={
             scanning
               ? radioCopy.pair.searching
@@ -118,12 +141,17 @@ export function PairRadioScreen({ onDone, onSkip }: Props) {
                 ? radioCopy.pair.searchAgain
                 : radioCopy.pair.findRadios
           }
-          disabled={scanning || connectingId !== null}
+          loading={scanning}
+          disabled={connectingId !== null}
           onPress={() => void findRadios()}
         />
       ) : null}
 
-      {failed ? <Text style={styles.body}>{radioCopy.pair.failed}</Text> : null}
+      {failed ? (
+        <Banner tone="warning" live>
+          {radioCopy.pair.failed}
+        </Banner>
+      ) : null}
 
       {!linked && found.length > 0 ? (
         <View style={styles.list} accessibilityRole="list">
@@ -134,10 +162,17 @@ export function PairRadioScreen({ onDone, onSkip }: Props) {
                 key={radio.id}
                 accessibilityRole="button"
                 accessibilityLabel={`${radioCopy.pair.connect} ${radio.name}, ${signalLabel(radio.rssi)}`}
+                accessibilityState={{ disabled: connectingId !== null, busy }}
                 disabled={connectingId !== null}
                 onPress={() => void connect(radio)}
                 style={({ pressed }) => [styles.radioRow, pressed && styles.pressed]}
               >
+                <Radio
+                  size={ICON_SIZE.lg}
+                  color={theme.colors.textSecondary}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                />
                 <View style={styles.radioText}>
                   <Text style={styles.radioName}>{radio.name}</Text>
                   <Text style={styles.detail}>{signalLabel(radio.rssi)}</Text>
@@ -152,27 +187,29 @@ export function PairRadioScreen({ onDone, onSkip }: Props) {
       ) : null}
 
       {!linked && !scanning && readiness === 'granted' && found.length === 0 ? (
-        <Text style={styles.body}>{radioCopy.pair.noneFound}</Text>
+        <EmptyState icon={RadioOff} title={radioCopy.pair.noneFoundTitle}>
+          {radioCopy.pair.noneFound}
+        </EmptyState>
       ) : null}
 
-      {onSkip && !linked ? <Button label={radioCopy.pair.setUpLater} onPress={onSkip} /> : null}
+      {onSkip && !linked ? (
+        <Button variant="tertiary" label={radioCopy.pair.setUpLater} onPress={onSkip} />
+      ) : null}
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>{radioCopy.pin.title}</Text>
+      <Card title={radioCopy.pin.title}>
         <Text style={styles.body}>
           {radioCopy.pin.body} <Text style={styles.pin}>{MESHTASTIC_BLE.defaultFixedPin}</Text>.
         </Text>
-      </View>
+      </Card>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>{radioCopy.repair.title}</Text>
+      <Card title={radioCopy.repair.title}>
         {radioCopy.repair.body.map((line) => (
           <Text key={line} style={styles.body}>
             {line}
           </Text>
         ))}
-        <Button label={radioCopy.repair.openSettings} onPress={openBluetoothSettings} />
-      </View>
+        {openSettings}
+      </Card>
     </Screen>
   );
 }
@@ -180,17 +217,9 @@ export function PairRadioScreen({ onDone, onSkip }: Props) {
 const RADIO_ROW_HEIGHT = 64;
 
 const useStyles = makeStyles((theme) => ({
-  card: {
-    gap: spacing.sm,
-    padding: spacing.md,
-    borderRadius: radii.control,
-    borderWidth: 1,
-    borderColor: theme.colors.borderSubtle,
-  },
-  cardTitle: { ...textStyles.label, color: theme.colors.text },
   body: { ...textStyles.body, color: theme.colors.textSecondary },
   detail: { ...textStyles.body, color: theme.colors.textSecondary },
-  pin: { ...textStyles.label, color: theme.colors.text },
+  pin: { ...textStyles.label, ...tabularNums, color: theme.colors.text },
   list: { gap: spacing.sm },
   radioRow: {
     minHeight: Math.max(RADIO_ROW_HEIGHT, sizes.minTapTarget),
@@ -198,10 +227,14 @@ const useStyles = makeStyles((theme) => ({
     alignItems: 'center',
     gap: spacing.md,
     paddingHorizontal: spacing.md,
-    borderRadius: radii.control,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: theme.colors.borderSubtle,
     backgroundColor: theme.colors.surface2,
   },
-  pressed: { opacity: opacity.pressed },
+  // Pressed is a tone step, never a fade (faded text drops under 4.5:1 in the light theme).
+  pressed: { backgroundColor: theme.colors.surface3 },
   radioText: { flex: 1, gap: spacing.xs },
   radioName: { ...textStyles.label, color: theme.colors.text },
   action: { ...textStyles.label, color: theme.colors.text },

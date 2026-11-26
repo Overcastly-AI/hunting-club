@@ -8,33 +8,23 @@ import {
 } from '@huntclub/shared';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
-import { migrate } from '../../db/migrate';
-import { migrations } from '../../db/migrations';
-import { createTestDatabase } from '../../test-utils/nodeSqlite';
+import { clubWrapper } from '../../test-utils/clubFixture';
 import { fakeClubApi, fakeSession, memorySecureStorage } from '../../test-utils/fakeClubApi';
-import { ProfileProvider } from '../../profile/ProfileProvider';
-import { ClubStateProvider } from '../ClubProvider';
 import { SignInScreen } from '../SignInScreen';
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), replace: jest.fn() } }));
 jest.mock('expo-sqlite', () => ({ useSQLiteContext: jest.fn() }));
 
 async function signInWith(challenge: CodeChallenge) {
-  const db = createTestDatabase();
-  await migrate(db, migrations);
   const session = fakeSession(false);
   jest.mocked(session.requestCode).mockResolvedValue(challenge);
   const onDone = jest.fn();
-  await render(
-    <ProfileProvider db={db}>
-      <ClubStateProvider
-        db={db}
-        services={{ session, api: fakeClubApi(), secrets: memorySecureStorage() }}
-      >
-        <SignInScreen onDone={onDone} />
-      </ClubStateProvider>
-    </ProfileProvider>,
-  );
+  const { wrap } = await clubWrapper({
+    session,
+    api: fakeClubApi(),
+    secrets: memorySecureStorage(),
+  });
+  await render(wrap(<SignInScreen onDone={onDone} />));
   await fireEvent.changeText(screen.getByLabelText(signInCopy.email), challenge.email);
   await fireEvent.press(screen.getByRole('button', { name: signInCopy.sendCode }));
   await waitFor(() => expect(session.requestCode).toHaveBeenCalled());

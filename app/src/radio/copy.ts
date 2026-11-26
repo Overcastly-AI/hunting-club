@@ -9,8 +9,8 @@ export const radioCopy = {
     findRadios: 'Find radios',
     searching: 'Looking for radios…',
     searchAgain: 'Search again',
-    noneFound:
-      'No radios found. Make sure your radio is on, close by, and not connected to another phone.',
+    noneFoundTitle: 'No radios found',
+    noneFound: 'Make sure your radio is on, close by, and not connected to another phone.',
     connect: 'Connect',
     connecting: 'Connecting…',
     connectedTo: (name: string) => `Connected to ${name}`,

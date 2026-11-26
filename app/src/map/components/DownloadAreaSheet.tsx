@@ -1,3 +1,4 @@
+import { Download } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 
@@ -122,7 +123,7 @@ export function DownloadAreaSheet({
           />
         ))}
       </View>
-      <Text style={styles.body}>
+      <Text style={styles.caption}>
         Limit: {DOWNLOAD_LIMITS.maxTiles.toLocaleString()} map tiles or{' '}
         {formatBytes(DOWNLOAD_LIMITS.maxBytes)} per layer.
       </Text>
@@ -131,9 +132,12 @@ export function DownloadAreaSheet({
 
       <Button
         variant="primary"
+        size="lg"
+        icon={Download}
         label={busy ? 'Starting download…' : 'Download'}
         detail={chosen && !chosen.tooBig ? `About ${formatBytes(chosen.bytes)}` : undefined}
-        disabled={!canStart}
+        loading={busy}
+        disabled={!busy && !canStart}
         onPress={() => void start()}
       />
     </Sheet>
@@ -142,6 +146,7 @@ export function DownloadAreaSheet({
 
 const useStyles = makeStyles((theme) => ({
   group: { gap: spacing.sm },
-  heading: { ...textStyles.label, color: theme.colors.text },
+  heading: { ...textStyles.title3, color: theme.colors.text },
   body: { ...textStyles.body, color: theme.colors.textSecondary },
+  caption: { ...textStyles.caption, color: theme.colors.textSecondary },
 }));

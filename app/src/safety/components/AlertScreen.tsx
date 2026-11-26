@@ -41,11 +41,11 @@ const useStyles = makeStyles((theme) => ({
   card: {
     borderWidth: sizes.hairline,
     borderColor: theme.colors.warning,
-    borderRadius: radii.sheetTop,
+    borderRadius: radii.xl,
     padding: spacing.lg,
     gap: spacing.md,
   },
-  title: { ...textStyles.sheetTitle, color: theme.colors.warning },
+  title: { ...textStyles.title1, color: theme.colors.warning },
   detail: { ...textStyles.bodyLarge, color: theme.colors.text },
   actions: { gap: spacing.sm },
 }));

@@ -1,7 +1,9 @@
 import { codeDigits, CognitoAuthError, emailCodeRules, type CodeChallenge } from '@huntclub/shared';
 import { useState } from 'react';
+import { LogIn, Mail } from 'lucide-react-native';
 import { Text } from 'react-native';
 
+import { Banner } from '../components/Banner';
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
 import { Field } from '../components/Field';
@@ -58,6 +60,7 @@ export function SignInScreen({ onDone }: { onDone: () => void }) {
         <>
           <Field
             label={copy.email}
+            placeholder={copy.emailPlaceholder}
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
@@ -67,8 +70,11 @@ export function SignInScreen({ onDone }: { onDone: () => void }) {
           />
           <Button
             variant="primary"
+            size="lg"
+            icon={Mail}
             label={busy ? copy.sending : copy.sendCode}
-            disabled={busy || !email.includes('@')}
+            loading={busy}
+            disabled={!busy && !email.includes('@')}
             onPress={() => void sendCode()}
           />
         </>
@@ -77,31 +83,42 @@ export function SignInScreen({ onDone }: { onDone: () => void }) {
           <Text style={styles.body}>{copy.codeSent(challenge.email)}</Text>
           <Field
             label={copy.code}
+            hint={copy.codeHelp(challenge.kind)}
             value={code}
             onChangeText={(text) => setCode(codeDigits(text))}
             keyboardType="number-pad"
             autoComplete="one-time-code"
             textContentType="oneTimeCode"
+            style={styles.code}
           />
-          <Text style={styles.body}>{copy.codeHelp(challenge.kind)}</Text>
           <Button
             variant="primary"
+            size="lg"
+            icon={LogIn}
             label={busy ? copy.signingIn : copy.confirm}
-            disabled={busy || code.length === 0}
+            loading={busy}
+            disabled={!busy && code.length === 0}
             onPress={() => void confirm()}
           />
-          <Button label={copy.useOtherEmail} onPress={() => setChallenge(null)} />
+          <Button
+            variant="tertiary"
+            label={copy.useOtherEmail}
+            disabled={busy}
+            onPress={() => setChallenge(null)}
+          />
         </>
       )}
       {error ? (
-        <Text accessibilityRole="alert" style={styles.body}>
+        <Banner tone="danger" live>
           {error}
-        </Text>
+        </Banner>
       ) : null}
     </Screen>
   );
 }
 
 const useStyles = makeStyles((theme) => ({
-  body: { ...textStyles.body, color: theme.colors.text },
+  body: { ...textStyles.bodyLarge, color: theme.colors.text },
+  /** The code itself: code-field type (24/32, fixed-width digits). */
+  code: { ...textStyles.codeField, color: theme.colors.text },
 }));
