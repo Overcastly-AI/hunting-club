@@ -1,4 +1,5 @@
-import { type AuthTokens, type CognitoAuth, CognitoAuthError } from '../cognito';
+import { type AuthTokens, type CognitoAuth, CognitoAuthError, userFromIdToken } from '../cognito';
+import { fakeIdToken } from '../testing';
 import { ClubSession, memoryTokenStore } from '../session';
 
 const tokens = (expiresAt: number): AuthTokens => ({
@@ -61,4 +62,21 @@ it('sign out clears the keystore and revokes the refresh token', async () => {
   await new ClubSession(auth, store).signOut();
   expect(await store.load()).toBeNull();
   expect(auth.revoke).toHaveBeenCalledWith('r');
+});
+
+it('knows who signed in from the ID token, and again after a restore and refresh', async () => {
+  const dale = { userId: 'sub-dale', email: 'dale@example.com' };
+  const withId = (expiresAt: number) => ({ ...tokens(expiresAt), idToken: fakeIdToken(dale) });
+  const auth = fakeAuth({ refresh: jest.fn(async () => withId(20_000_000)) });
+  // Stored tokens carry only the refresh token (browser storage): no user until a refresh.
+  const restored = new ClubSession(auth, memoryTokenStore(tokens(0)), () => 1);
+  expect(await restored.user()).toBeUndefined();
+  await restored.refresh();
+  expect(await restored.user()).toEqual(dale);
+});
+
+it('reads no user from a missing or broken ID token', () => {
+  expect(userFromIdToken(undefined)).toBeUndefined();
+  expect(userFromIdToken('not-a-jwt')).toBeUndefined();
+  expect(userFromIdToken(fakeIdToken({ userId: 's' }))).toEqual({ userId: 's' });
 });

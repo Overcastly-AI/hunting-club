@@ -100,8 +100,13 @@ function Report(props: { data: ClubHarvests; season: Season; onRefresh: () => vo
   return (
     <>
       <p>
-        <strong>{report.total}</strong> {report.total === 1 ? 'harvest' : 'harvests'} from{' '}
-        {formatDay(season.from)} to {formatDay(season.to)}.{' '}
+        {/* No "0 harvests" line: the empty state below says it. */}
+        {report.total > 0 ? (
+          <>
+            <strong>{report.total}</strong> {report.total === 1 ? 'harvest' : 'harvests'} from{' '}
+            {formatDay(season.from)} to {formatDay(season.to)}.{' '}
+          </>
+        ) : null}
         <button className="button" type="button" onClick={props.onRefresh}>
           Refresh
         </button>{' '}
@@ -109,6 +114,7 @@ function Report(props: { data: ClubHarvests; season: Season; onRefresh: () => vo
           className="button"
           type="button"
           disabled={report.total === 0}
+          aria-describedby={report.total === 0 ? 'export-hint' : undefined}
           onClick={() =>
             saveFile(
               `harvests-${season.from}-to-${season.to}.csv`,
@@ -119,6 +125,12 @@ function Report(props: { data: ClubHarvests; season: Season; onRefresh: () => vo
         >
           Export CSV
         </button>
+        {report.total === 0 ? (
+          <span id="export-hint" className="muted">
+            {' '}
+            Nothing to export yet
+          </span>
+        ) : null}
       </p>
       {report.total === 0 ? (
         <p>No shared harvests in this season yet.</p>
