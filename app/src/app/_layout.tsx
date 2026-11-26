@@ -1,10 +1,4 @@
-import {
-  Archivo_500Medium,
-  Archivo_600SemiBold,
-  Archivo_700Bold,
-  Archivo_800ExtraBold,
-  useFonts,
-} from '@expo-google-fonts/archivo';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SQLiteProvider } from 'expo-sqlite';
@@ -13,17 +7,12 @@ import { useEffect } from 'react';
 
 import { DATABASE_NAME, initDatabase } from '../db';
 import { AppRadioProvider } from '../radio/AppRadioProvider';
-import { colors } from '../theme';
+import { colors, fontSources } from '../theme';
 
 void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [fontsLoaded, fontError] = useFonts({
-    Archivo_500Medium,
-    Archivo_600SemiBold,
-    Archivo_700Bold,
-    Archivo_800ExtraBold,
-  });
+  const [fontsLoaded, fontError] = useFonts(fontSources);
   const ready = fontsLoaded || fontError !== null;
 
   useEffect(() => {

@@ -53,6 +53,9 @@ export const radioCopy = {
     firmware: (version: string) => `Software ${version}`,
   },
   permissions: {
+    /** iOS system prompt (NSBluetoothAlwaysUsageDescription), set in app.config.ts. */
+    iosBluetoothUsage:
+      'Hunt Club Mesh uses Bluetooth to talk to your radio, so you can text and share your location with your party without cell service.',
     title: 'Allow Bluetooth',
     bluetooth:
       'Hunt Club Mesh uses Bluetooth to talk to your radio. It does not use Bluetooth to find your location.',
