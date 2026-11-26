@@ -83,6 +83,7 @@ a { color: var(--color-text); }
 .button.primary { min-height: var(--button-min-height); background: var(--color-accent);
   border-color: var(--color-accent); color: var(--color-surface); }
 .button:disabled { opacity: 0.5; cursor: not-allowed; }
+a.button { display: inline-flex; align-items: center; text-decoration: none; }
 .field { display: grid; gap: var(--space-xs); margin-bottom: var(--space-md); }
 .field input { ${textStyleCss(textScale.bodyLarge)}; min-height: var(--tap-min); padding: 0 var(--space-md);
   border-radius: var(--radius-control); border: 1px solid var(--color-border);

@@ -10,6 +10,7 @@ import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import type { Construct } from 'constructs';
 import type { EnvConfig } from '../../config';
 import { LOG_RETENTION } from '../constructs/node-lambda';
+import { webPageRewriteSource } from '../web-pages';
 import { wellKnownFiles } from '../well-known';
 
 export interface WebStackProps extends StackProps {
@@ -42,6 +43,13 @@ export class WebStack extends Stack {
       removalPolicy: RemovalPolicy.RETAIN,
     });
 
+    // Pay-per-request (no always-on compute): index.html for the join and Checkout pages.
+    const webPages = new cloudfront.Function(this, 'WebPageRewrite', {
+      comment: 'Serve index.html for the web page paths (WEB_PAGE_PATHS)',
+      runtime: cloudfront.FunctionRuntime.JS_2_0,
+      code: cloudfront.FunctionCode.fromInline(webPageRewriteSource()),
+    });
+
     this.distribution = new cloudfront.Distribution(this, 'Distribution', {
       comment: `${config.domainName} web admin page`,
       domainNames: [config.domainName],
@@ -56,6 +64,9 @@ export class WebStack extends Stack {
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
         responseHeadersPolicy: cloudfront.ResponseHeadersPolicy.SECURITY_HEADERS,
+        functionAssociations: [
+          { function: webPages, eventType: cloudfront.FunctionEventType.VIEWER_REQUEST },
+        ],
       },
     });
 

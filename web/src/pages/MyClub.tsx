@@ -5,7 +5,7 @@ import { Field } from '../components/Field';
 import { Loadable } from '../components/Loadable';
 import { useAsync } from '../components/useAsync';
 
-/** Your club, or a form to start one. Payment (Stripe Checkout) arrives in Milestone 9. */
+/** Your club, or a form to start one. Payment is on the Billing page. */
 export function MyClub(props: { api: ClubApi }) {
   const [reload, setReload] = useState(0);
   const state = useAsync(() => props.api.getClub(), [props.api, reload]);
@@ -35,6 +35,9 @@ function ClubSummary({ club }: { club: Club }) {
           ? 'Acreage not set'
           : `${club.acreage.toLocaleString('en-US')} acres`}
       </p>
+      <a className="button" href="#/billing">
+        Billing and payment
+      </a>
     </div>
   );
 }
@@ -88,13 +91,7 @@ function CreateClub(props: { api: ClubApi; onCreated: () => void }) {
       <button className="button primary" type="submit" disabled={busy || !ready}>
         Create club
       </button>
-      <h2>Subscription</h2>
-      <p className="muted">
-        Club features need a subscription. Checkout opens here once payments are set up.
-      </p>
-      <button className="button" type="button" disabled>
-        Continue to payment
-      </button>
+      <p className="muted">Next, pay for the club on the Billing page.</p>
     </form>
   );
 }

@@ -6,6 +6,7 @@ import {
   ClubSecretResponseSchema,
   InviteSchema,
   MemberSchema,
+  PlanSchema,
   StandSchema,
   SubscriptionSchema,
 } from '@huntclub/shared';
@@ -19,6 +20,7 @@ describe('fake club API data', () => {
     expect(() => ClubSchema.parse(data.club)).not.toThrow();
     for (const m of data.members) expect(() => MemberSchema.parse(m)).not.toThrow();
     for (const s of data.stands) expect(() => StandSchema.parse(s)).not.toThrow();
+    for (const p of data.plans) expect(() => PlanSchema.parse(p)).not.toThrow();
     for (const a of data.areas) expect(() => AreaSchema.parse(a)).not.toThrow();
     expect(() => SubscriptionSchema.parse(data.subscription)).not.toThrow();
     const secret = await fakeClubClient(data).getClubSecret(data.club!.id);
@@ -71,6 +73,14 @@ describe('admin API over the shared client', () => {
     const settings = decodeChannelSet(encodeChannelSet(channelSet)).settings[0]!;
     expect(settings.name).toBe('Club');
     expect(btoa(String.fromCharCode(...settings.psk))).toBe(secret.channelKey);
+  });
+
+  it('offers only active plans and starts Checkout for its own club', async () => {
+    const api = adminApi(fakeClubClient());
+    expect((await api.listPlans()).map((p) => p.id)).toEqual(['club_standard']);
+    expect(await api.startCheckout('club_standard')).toBe(
+      'https://checkout.stripe.com/c/pay/cs_test_club_standard_true',
+    );
   });
 
   it('passes other errors through', async () => {

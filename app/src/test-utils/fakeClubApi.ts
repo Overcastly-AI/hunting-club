@@ -84,6 +84,9 @@ export function fakeClubApi(options: { featuresUntil?: string; offline?: boolean
     getSubscription: offline(() => {
       throw new ClubApiRequestError('forbidden', 403);
     }),
+    startCheckout: offline(() => {
+      throw new ClubApiRequestError('forbidden', 403);
+    }),
     getClubSecret: offline(() => {
       throw new ClubApiRequestError('forbidden', 403);
     }),

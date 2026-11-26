@@ -5,6 +5,7 @@ import type {
   ClubCreateRequest,
   Invite,
   InviteCreate,
+  Plan,
   Member,
   Stand,
   Subscription,
@@ -25,4 +26,8 @@ export interface ClubApi {
   listStands(): Promise<readonly Stand[]>;
   listAreas(): Promise<readonly Area[]>;
   getSubscription(): Promise<Subscription | null>;
+  /** Plans on sale (active only). */
+  listPlans(): Promise<readonly Plan[]>;
+  /** Starts Stripe Checkout for the club; resolves to the Stripe page to open. */
+  startCheckout(planId: string): Promise<string>;
 }

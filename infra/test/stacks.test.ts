@@ -16,6 +16,7 @@ import {
 import { dev } from '../config/dev';
 import { CLUB_API_TABLE_ACTIONS } from '../src/stacks/api-stack';
 import { buildApp } from '../src/app';
+import { webPageRewriteSource } from '../src/web-pages';
 import { synthTemplates } from './helpers';
 
 const templates = synthTemplates();
@@ -106,6 +107,21 @@ describe('web stack', () => {
         }),
         DefaultCacheBehavior: Match.objectLike({ ViewerProtocolPolicy: 'redirect-to-https' }),
         PriceClass: 'PriceClass_100',
+      }),
+    });
+  });
+
+  it('rewrites only the web page paths, with a pay-per-request CloudFront Function', () => {
+    t.resourceCountIs('AWS::CloudFront::Function', 1);
+    t.hasResourceProperties('AWS::CloudFront::Function', {
+      FunctionCode: webPageRewriteSource(),
+      FunctionConfig: Match.objectLike({ Runtime: 'cloudfront-js-2.0' }),
+    });
+    t.hasResourceProperties('AWS::CloudFront::Distribution', {
+      DistributionConfig: Match.objectLike({
+        DefaultCacheBehavior: Match.objectLike({
+          FunctionAssociations: [Match.objectLike({ EventType: 'viewer-request' })],
+        }),
       }),
     });
   });
