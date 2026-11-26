@@ -1,10 +1,9 @@
-import { appJoinUrl, classifyJoinFragment } from '@huntclub/mesh/join-kind';
+import { appJoinUrl, classifyJoinFragment, joinClubName } from '@huntclub/mesh/join-kind';
 import { qrSvg } from '@huntclub/shared/qr';
-import { JOIN_HOOKS, JOIN_QR_LABEL, type JoinState } from './states';
+import { JOIN_HOOKS, JOIN_QR_LABEL, joinClubHeading, type JoinState } from './states';
 
-/** Which state a page URL's fragment puts the /join page in. */
+/** Which state a page URL's fragment puts the /join page in: no invite at all is invalid too. */
 export function joinStateOf(hash: string): JoinState {
-  if (!hash.replace(/^#/, '')) return 'generic';
   return classifyJoinFragment(hash)?.kind ?? 'invalid';
 }
 
@@ -19,6 +18,13 @@ export function showInvite(doc: Document, href: string): JoinState {
   const state = joinStateOf(hash);
   for (const el of doc.querySelectorAll<HTMLElement>(`[${JOIN_HOOKS.state}]`)) {
     el.hidden = !(el.getAttribute(JOIN_HOOKS.state) ?? '').split(' ').includes(state);
+  }
+  const clubName = state === 'club' ? joinClubName(hash) : null;
+  if (clubName) {
+    // textContent, never innerHTML: the name comes from the link and is shown as plain text.
+    for (const el of doc.querySelectorAll<HTMLElement>(`[${JOIN_HOOKS.clubName}]`)) {
+      el.textContent = joinClubHeading(clubName);
+    }
   }
   const app = appJoinUrl(hash);
   if (app) {

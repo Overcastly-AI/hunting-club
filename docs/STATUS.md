@@ -114,6 +114,13 @@ Owner rule (2026-11-26): Grok Bot runs UAT and reviews UI decisions by email. Ev
 
 | Date | Thread / subject | Finding | Decision | PR |
 |---|---|---|---|---|
+| 2026-11-26 | UAT retest 23:03 (deploy 0971fd7) | 0 Blocker/Major; all fix-note items, public pages, headers, dawn, admin pass | Closed | #64–#77 |
+| 2026-11-26 | UAT 23:03 | MINOR invite page doesn't name club; POLISH /join no/invalid invite | Accepted: club name in invite fragment (shared encodeJoinUrl, textContent), invalid-invite state | #80 |
+| 2026-11-26 | UAT 23:03 | MINOR dawn SVG console errors (ridge Q) | Accepted: ridge() fix + path-parse test (no art change) | #80 |
+| 2026-11-26 | UAT 23:03 | MINOR pause button touches hero CTA at 400px; POLISH /pricing desktop gap | Accepted | #80 |
+| 2026-11-26 | UAT 23:03 | POLISH admin nav at 400px; sign-out shows expired + keeps hash | Redesign P2 (shell, account menu) | — |
+| 2026-11-26 | UAT 23:03 | Q: theme toggle; web stand/area/harvest editing; invite revoke | Toggle in P2; editing = owner question; revoke in P3b | — |
+| 2026-11-26 | Redesign progress | P1a tokens #77, P5a app theme #78, P5b app components #79 merged; P1b kit, P5c in progress | — | #77–#79 |
 | 2026-11-26 | UI redesign 22:03 (owner: "UI is trash") | Full admin + app redesign: tokens (dark + light), primitives/_kit, shell (sidebar/rail/tabs), page rebuilds, polish, Expo restyle. Brief: docs/UI_REDESIGN.md (P1a) | Accepted, phased P1a→P5. Pushback: 48px min (no 40px sm), sign-in keeps dawn scene, no Crosshair icon, map colours unchanged. First deploy (P1+P2) by 2026-11-28 | P1a in progress |
 | 2026-11-26 | UI 21:59 (nav cue, billing dates, focus ring, tables, code copy) | Admin polish | Superseded by redesign (P2/P3) | — |
 | 2026-11-26 | Site 22:00 (CSP smoke, trial CTA, 404 shell, contrast, /download beta, pricing cards, phone header, claims) | Public site | Accepted; worker auditing and fixing | ui-review-notes-2200 |

@@ -123,7 +123,11 @@ function ridge(
     pts.push(`${n(x)} ${n(level)}`);
   }
   const [first, ...rest] = pts;
-  return `M${first} ${rest.map((p, i) => (i % 2 ? p : `Q${p}`)).join(' ')} L${DAWN_VIEW.width + BLEED} ${closeY} L${-BLEED} ${closeY}Z`;
+  // Pairs of points make quadratic curves (control, end). With an odd count the last point has
+  // no partner: complete its Q by ending on that same point (a straight segment to it).
+  const curve = (p: string, i: number) =>
+    i % 2 ? p : i === rest.length - 1 ? `Q${p} ${p}` : `Q${p}`;
+  return `M${first} ${rest.map(curve).join(' ')} L${DAWN_VIEW.width + BLEED} ${closeY} L${-BLEED} ${closeY}Z`;
 }
 
 /**
