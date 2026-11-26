@@ -36,6 +36,8 @@ The root `package.json` uses npm workspaces. Use npm (not yarn or pnpm).
 
 ## Rules
 
+- **DRY, no shortcuts** (owner rule, see `CLAUDE.md`): one source of truth for every definition and piece of logic; extract shared code into `packages/` instead of copying it. PRs with duplicated code or definitions are sent back. List in your PR description anything you extracted or reused.
+
 - App identifiers: iOS bundle ID and Android package `com.overcastly.huntclub`; URL scheme `huntclub`.
 - Every change must work on iOS and Android. Say in the PR what you verified on each platform.
 
