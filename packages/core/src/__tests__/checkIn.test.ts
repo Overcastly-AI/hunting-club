@@ -1,6 +1,7 @@
 import { AppMessageType, CheckInMode, type MeshClient } from '@huntclub/mesh';
 import { collect, tick } from '@huntclub/mesh/testing';
-import { CheckInController, CheckInError, SAME_OUTING_MS } from '../checkIn';
+import { CheckInController, CheckInError } from '../checkIn';
+import { CORE_CONFIG } from '../config';
 import { HOME, HOUR, MIN, T0, onAir, party } from '../testing/party';
 
 beforeEach(() => jest.useFakeTimers({ now: T0 }));
@@ -64,6 +65,28 @@ describe('check-in', () => {
     ]);
   });
 
+  it('extend() keeps the check-in and mode and tells the party the new time', async () => {
+    const { phones, air } = await party({ size: 2 });
+    const [alice, bob] = phones;
+    expect(() => alice!.checkIns.extend()).toThrow('Not checked in');
+    alice!.checkIns.checkIn({ mode: CheckInMode.Spot, pin: HOME });
+    await tick(HOUR);
+    alice!.checkIns.extend();
+    await tick(1000);
+    const expected = T0 + HOUR + CORE_CONFIG.overdue.extendMinutes * MIN;
+    expect(alice!.checkIns.current).toMatchObject({
+      checkedInAt: T0,
+      modeSince: T0,
+      until: expected,
+      placement: { mode: CheckInMode.Spot },
+    });
+    const last = onAir(air, AppMessageType.CheckIn).at(-1)!;
+    expect(last.until).toBe(expected / 1000);
+    expect(air.log.at(-1)!.data.payload.length).toBeLessThan(40);
+    expect(bob!.board.get(alice!.client.myNodeNum)).toMatchObject({ since: T0, until: expected });
+    expect(onAir(air, AppMessageType.CheckOut)).toEqual([]);
+  });
+
   it('keeps CheckIn messages under the spec budget', async () => {
     const { phones, air } = await party({ size: 2, clubModes: true });
     phones[0]!.checkIns.checkIn({ mode: CheckInMode.Stand, standId: 12, pin: HOME });
@@ -113,7 +136,7 @@ describe('check-in', () => {
     alice!.checkIns.checkIn({ mode: CheckInMode.Moving });
     await tick(1000);
     // Alice's CheckOut never reached Bob; the next morning she checks in again.
-    const next = T0 + SAME_OUTING_MS + HOUR;
+    const next = T0 + CORE_CONFIG.checkIn.sameOutingMs + HOUR;
     jest.setSystemTime(next);
     alice!.checkIns.checkIn({ mode: CheckInMode.Moving });
     await tick(1000);

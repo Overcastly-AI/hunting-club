@@ -23,6 +23,7 @@ import {
   type CoreContext,
   type ResolvedContext,
 } from './context';
+import { CORE_CONFIG, type CoreConfig } from './config';
 
 /** Calls `cb` for every Receipt from another node (first copies and repeats). */
 export function onReceipt(client: MeshClient, cb: (receipt: Receipt) => void): Unsubscribe {
@@ -41,23 +42,7 @@ export const RECEIPTED_TYPES: readonly AppMessageType[] = [
   AppMessageType.HelpRequest,
 ];
 
-export interface ReceiptPolicy {
-  /** Receipts a single sender can trigger in a burst. Default 3. */
-  burst: number;
-  /** One more receipt per sender is allowed every this many ms. Default 20 s. */
-  refillMs: number;
-  /** A repeat of the same message (a sender retry) is answered again at most this often. Default 60 s. */
-  repeatMinMs: number;
-  /** Random delay before sending, so phones that heard the same message don't collide. Default 3 s. */
-  jitterMs: number;
-}
-
-export const DEFAULT_RECEIPT_POLICY: ReceiptPolicy = {
-  burst: 3,
-  refillMs: 20_000,
-  repeatMinMs: 60_000,
-  jitterMs: 3_000,
-};
+export type ReceiptPolicy = CoreConfig['receipts'];
 
 interface Bucket {
   tokens: number;
@@ -78,7 +63,7 @@ export class ReceiptService {
 
   constructor(ctx: CoreContext, policy: Partial<ReceiptPolicy> = {}) {
     this.ctx = resolveContext(ctx);
-    this.policy = { ...DEFAULT_RECEIPT_POLICY, ...policy };
+    this.policy = { ...CORE_CONFIG.receipts, ...policy };
   }
 
   start(): this {

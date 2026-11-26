@@ -1,6 +1,7 @@
 import { AppMessageType, CheckInMode, Protobufs, type MeshClient } from '@huntclub/mesh';
 import { collect, tick } from '@huntclub/mesh/testing';
-import { DEFAULT_HELP_RETRY, HelpRequester, helpRetryDelay } from '../help';
+import { HelpRequester, helpRetryDelay } from '../help';
+import { CORE_CONFIG } from '../config';
 import { HOME, HOUR, MIN, T0, onAir, party, type Phone } from '../testing/party';
 
 beforeEach(() => jest.useFakeTimers({ now: T0 }));
@@ -17,7 +18,7 @@ describe('retry schedule', () => {
     expect([1, 2, 3, 4, 5, 6, 7].map((a) => helpRetryDelay(a) / 1000)).toEqual([
       20, 40, 80, 160, 300, 300, 300,
     ]);
-    expect(helpRetryDelay(0)).toBe(DEFAULT_HELP_RETRY.initialMs);
+    expect(helpRetryDelay(0)).toBe(CORE_CONFIG.help.initialMs);
   });
 });
 

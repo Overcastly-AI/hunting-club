@@ -22,6 +22,7 @@ import {
   type Unsubscribe,
 } from '@huntclub/mesh';
 import { resolveContext, unixSeconds, type CoreContext, type ResolvedContext } from './context';
+import { CORE_CONFIG, MINUTE_MS } from './config';
 
 /** Where the hunter is. Stand and area are club-only modes. */
 export type Placement =
@@ -41,6 +42,8 @@ export interface OpenCheckIn {
   checkedInAt: number;
   /** When the current mode started (ms). */
   modeSince: number;
+  /** Set by extend(): we expect to be out until this time (ms). */
+  until?: number;
 }
 
 export class CheckInError extends Error {
@@ -87,6 +90,20 @@ export class CheckInController extends Emitter<CheckInEvents> {
    */
   checkIn(placement: Placement): SendHandle {
     this.validate(placement);
+    return this.send(placement, undefined);
+  }
+
+  /**
+   * "Still out? Extend": keeps the check-in and mode, and tells the party we
+   * expect to be out `minutes` longer, so no one raises an overdue alert
+   * before then.
+   */
+  extend(minutes: number = CORE_CONFIG.overdue.extendMinutes): SendHandle {
+    if (!this.open) throw new CheckInError('Not checked in');
+    return this.send(this.open.placement, this.ctx.now() + minutes * MINUTE_MS);
+  }
+
+  private send(placement: Placement, until: number | undefined): SendHandle {
     const { client, random, now } = this.ctx;
     const t = now();
     const messageId = randomUint32(random);
@@ -98,16 +115,18 @@ export class CheckInController extends Emitter<CheckInEvents> {
       ...wirePlacement(placement),
       mode: placement.mode,
     };
+    if (until !== undefined) message.until = unixSeconds(until);
     const handle = client.sendAppMessage(message);
-    const wasOpen = this.open !== null;
+    const prev = this.open;
     this.open = {
       placement,
       messageId,
-      checkedInAt: this.open?.checkedInAt ?? t,
-      modeSince: t,
+      checkedInAt: prev?.checkedInAt ?? t,
+      modeSince: prev && prev.placement.mode === placement.mode ? prev.modeSince : t,
     };
+    if (until !== undefined) this.open.until = until;
     this.emit('change', this.open);
-    if (!wasOpen) this.emit('locationSharing', true);
+    if (!prev) this.emit('locationSharing', true);
     return handle;
   }
 
@@ -148,9 +167,6 @@ function wirePlacement(p: Placement): Pick<CheckIn, 'standId' | 'areaId' | 'pin'
   return out;
 }
 
-/** A CheckIn this soon after a member's previous one is a mode change in the same outing. */
-export const SAME_OUTING_MS = 16 * 3_600_000;
-
 /** Someone else's open check-in, as heard over the mesh. */
 export interface MemberCheckIn {
   node: number;
@@ -162,6 +178,8 @@ export interface MemberCheckIn {
   checkInId: number;
   /** When they checked in (ms): their timestamp if sent, else when we heard it. */
   since: number;
+  /** They extended: expect them out until this time (ms). */
+  until?: number;
 }
 
 /** Open check-ins of other members, kept from CheckIn / CheckOut messages. */
@@ -201,11 +219,14 @@ export class CheckInBoard extends Emitter<{ change: MemberCheckIn[] }> {
         // A mode change keeps the original check-in time (unless the previous
         // check-in is from an earlier outing whose CheckOut we missed).
         since:
-          prev && heardAt - prev.since < SAME_OUTING_MS ? Math.min(prev.since, heardAt) : heardAt,
+          prev && heardAt - prev.since < CORE_CONFIG.checkIn.sameOutingMs
+            ? Math.min(prev.since, heardAt)
+            : heardAt,
       };
       if (m.standId) entry.standId = m.standId;
       if (m.areaId) entry.areaId = m.areaId;
       if (m.pin) entry.pin = m.pin;
+      if (m.until) entry.until = m.until * 1000;
       this.entries.set(m.sender, entry);
       this.emit('change', this.all);
     } else if (m.type === AppMessageType.CheckOut) {

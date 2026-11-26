@@ -1,16 +1,21 @@
 import { AppMessageType, CheckInMode } from '@huntclub/mesh';
 import { collect, tick } from '@huntclub/mesh/testing';
-import { DEFAULT_OVERDUE_GRACE_MINUTES, OverdueMonitor, nodeLocation, overdueAt } from '../overdue';
+import { CORE_CONFIG } from '../config';
+import { OverdueMonitor, nodeLocation, overdueAt, type OverdueOptions } from '../overdue';
 import { HOME, HOUR, MIN, T0, fixedSun, onAir, party, type Phone } from '../testing/party';
 
 beforeEach(() => jest.useFakeTimers({ now: T0 }));
 afterEach(() => jest.useRealTimers());
 
+const { graceMinutes, selfPromptMinutes, othersDelayMinutes, extendMinutes, alertJitterMs } =
+  CORE_CONFIG.overdue;
 /** fixedSun(): sunset 23:00 UTC, so with 30 min grace the deadline is 23:30 UTC. */
 const SUNSET = Date.UTC(2026, 10, 26, 23);
-const DEADLINE = SUNSET + DEFAULT_OVERDUE_GRACE_MINUTES * MIN;
+const DEADLINE = SUNSET + graceMinutes * MIN;
+/** Our check loop runs every minute, so a deadline is noticed within a minute. */
+const NOTICE = CORE_CONFIG.overdue.checkIntervalMs;
 
-function monitor(p: Phone, opts: Partial<ConstructorParameters<typeof OverdueMonitor>[1]> = {}) {
+function monitor(p: Phone, opts: Partial<OverdueOptions> = {}) {
   return new OverdueMonitor(p.ctx, {
     checkIns: p.checkIns,
     board: p.board,
@@ -19,6 +24,9 @@ function monitor(p: Phone, opts: Partial<ConstructorParameters<typeof OverdueMon
     ...opts,
   }).start();
 }
+
+/** Advance fake time to an absolute moment. */
+const until = (at: number) => tick(at - Date.now());
 
 describe('overdueAt', () => {
   const sun = fixedSun();
@@ -33,9 +41,15 @@ describe('overdueAt', () => {
     expect(overdueAt(DEADLINE + MIN, HOME, 30, sun)).toBe(DEADLINE + 24 * HOUR);
   });
 
-  it('is undefined when the sun does not set or rise', () => {
+  it('an extension moves the deadline later, never earlier', () => {
+    expect(overdueAt(T0, HOME, 30, sun, DEADLINE + HOUR)).toBe(DEADLINE + HOUR);
+    expect(overdueAt(T0, HOME, 30, sun, T0 + HOUR)).toBe(DEADLINE);
+  });
+
+  it('is undefined when the sun does not set or rise, unless extended', () => {
     expect(overdueAt(T0, HOME, 30, fixedSun(23, 'polarDay'))).toBeUndefined();
     expect(overdueAt(T0, HOME, 30, fixedSun(23, 'polarNight'))).toBeUndefined();
+    expect(overdueAt(T0, HOME, 30, fixedSun(23, 'polarDay'), T0 + HOUR)).toBe(T0 + HOUR);
   });
 
   it('passes the place to the sun calculation', () => {
@@ -52,57 +66,125 @@ describe('overdueAt', () => {
   });
 });
 
-describe('OverdueMonitor', () => {
-  it('fires for us at sunset + grace, and the party hears one OverdueAlert', async () => {
+describe('our own deadline: prompt first', () => {
+  it('prompts at the deadline and sends nothing while waiting for an answer', async () => {
     const { phones, air } = await party();
-    const alice = phones[0];
-    const monitors = phones.map((p) => monitor(p));
-    const events = monitors.map((m) => collect(m, 'overdue'));
-    alice!.checkIns.checkIn({ mode: CheckInMode.Spot, pin: HOME });
+    const m = monitor(phones[0]!);
+    const prompts = collect(m, 'selfPrompt');
+    phones[0]!.checkIns.checkIn({ mode: CheckInMode.Spot, pin: HOME });
+    await until(DEADLINE - MIN);
+    expect(prompts).toEqual([]);
+    await until(DEADLINE + NOTICE);
+    expect(prompts).toHaveLength(1);
+    expect(prompts[0]!.overdueAt).toBe(DEADLINE);
+    expect(prompts[0]!.alertAt - DEADLINE).toBeLessThanOrEqual(selfPromptMinutes * MIN + NOTICE);
+    await tick(selfPromptMinutes * MIN - NOTICE - MIN);
+    expect(onAir(air, AppMessageType.OverdueAlert)).toEqual([]);
+  });
 
-    await tick(DEADLINE - T0 - MIN);
-    expect(events.flat()).toEqual([]);
+  it('responds by checking out: no alert, ever', async () => {
+    const { phones, air } = await party();
+    const ms = phones.map((p) => monitor(p));
+    const cleared = collect(ms[0]!, 'selfPromptCleared');
+    const overdue = ms.map((m) => collect(m, 'overdue'));
+    phones[0]!.checkIns.checkIn({ mode: CheckInMode.Moving });
+    await until(DEADLINE + 3 * MIN);
+    phones[0]!.checkIns.checkOut();
+    await tick(3 * HOUR);
+    expect(cleared).toEqual([{ reason: 'checkedOut' }]);
+    expect(overdue.flat()).toEqual([]);
+    expect(onAir(air, AppMessageType.OverdueAlert)).toEqual([]);
+  });
+
+  it('extends: new deadline for everyone, then prompts again at it', async () => {
+    const { phones, air } = await party();
+    const [alice, bob, carol] = phones;
+    const ms = phones.map((p) => monitor(p));
+    const prompts = collect(ms[0]!, 'selfPrompt');
+    const cleared = collect(ms[0]!, 'selfPromptCleared');
+    const others = [collect(ms[1]!, 'overdue'), collect(ms[2]!, 'overdue')];
+    alice!.checkIns.checkIn({ mode: CheckInMode.Spot, pin: HOME });
+    await until(DEADLINE + 3 * MIN);
+    expect(prompts).toHaveLength(1);
+
+    ms[0]!.extend(); // "Still out? Extend 30 min"
+    const extendedTo = Date.now() + extendMinutes * MIN;
+    await tick(1000);
+    expect(cleared).toEqual([{ reason: 'extended' }]);
+    expect(ms[0]!.selfDeadline).toBe(extendedTo);
+    for (const p of [bob!, carol!]) {
+      expect(p.board.get(alice!.client.myNodeNum)!.until).toBe(
+        Math.floor(extendedTo / 1000) * 1000,
+      );
+    }
+
+    // Past the old deadline + the others' wait: nobody alerts.
+    await until(DEADLINE + othersDelayMinutes * MIN + alertJitterMs + 2 * MIN);
+    expect(others.flat()).toEqual([]);
     expect(onAir(air, AppMessageType.OverdueAlert)).toEqual([]);
 
-    await tick(2 * MIN + 2 * MIN); // past the deadline (+ any alert jitter is irrelevant for self)
-    expect(events[0]).toEqual([
-      expect.objectContaining({ subject: alice!.client.myNodeNum, self: true, source: 'detected' }),
-    ]);
-    // Bob and Carol get exactly one event each (heard or detected, not both).
-    for (const e of [events[1]!, events[2]!]) {
-      expect(e).toHaveLength(1);
-      expect(e[0]).toMatchObject({ subject: alice!.client.myNodeNum, self: false });
-    }
-    await tick(5 * MIN);
+    // At the new deadline Alice is asked again.
+    await until(extendedTo + NOTICE);
+    expect(prompts).toHaveLength(2);
+    expect(prompts[1]!.overdueAt).toBe(extendedTo);
+  });
+
+  it('silent: the alert goes out after the prompt time, once, and the party hears it', async () => {
+    const { phones, air } = await party();
+    const [alice] = phones;
+    const ms = phones.map((p) => monitor(p));
+    const events = ms.map((m) => collect(m, 'overdue'));
+    alice!.checkIns.checkIn({ mode: CheckInMode.Spot, pin: HOME });
+
+    await until(DEADLINE + selfPromptMinutes * MIN - MIN);
+    expect(onAir(air, AppMessageType.OverdueAlert)).toEqual([]);
+    await until(DEADLINE + selfPromptMinutes * MIN + NOTICE + MIN);
+
     const alerts = onAir(air, AppMessageType.OverdueAlert);
     expect(alerts).toHaveLength(1);
     expect(alerts[0]).toMatchObject({
+      sender: alice!.client.myNodeNum,
       subject: alice!.client.myNodeNum,
       checkInId: alice!.checkIns.current!.messageId,
       mode: CheckInMode.Spot,
       pin: { lat: HOME.lat, lon: HOME.lon },
     });
+    expect(events[0]).toEqual([
+      expect.objectContaining({ subject: alice!.client.myNodeNum, self: true, source: 'detected' }),
+    ]);
+    for (const e of [events[1]!, events[2]!]) {
+      expect(e).toEqual([
+        expect.objectContaining({ subject: alice!.client.myNodeNum, source: 'heard' }),
+      ]);
+    }
+    await tick(2 * HOUR);
+    expect(onAir(air, AppMessageType.OverdueAlert)).toHaveLength(1);
   });
+});
 
-  it("when the hunter's phone is silent, only one of the others sends the alert", async () => {
+describe("others' deadlines", () => {
+  it("when the hunter's phone is silent, one of the others alerts after the wait", async () => {
     const { phones, air } = await party();
     const [alice, bob, carol] = phones;
     alice!.checkIns.checkIn({ mode: CheckInMode.Moving });
     await tick(MIN);
     alice!.radio.dropLink(); // battery died
-    const monitors = [bob!, carol!].map((p) => monitor(p));
-    const events = monitors.map((m) => collect(m, 'overdue'));
+    const ms = [bob!, carol!].map((p) => monitor(p));
+    const events = ms.map((m) => collect(m, 'overdue'));
 
-    await tick(DEADLINE - Date.now() + 3 * MIN); // past the deadline + full alert jitter
+    await until(DEADLINE + othersDelayMinutes * MIN - MIN);
+    expect(events.flat()).toEqual([]);
+    await until(DEADLINE + othersDelayMinutes * MIN + NOTICE + alertJitterMs + MIN);
+
     const alerts = onAir(air, AppMessageType.OverdueAlert);
     expect(alerts).toHaveLength(1);
     expect(alerts[0]!.subject).toBe(alice!.client.myNodeNum);
     expect([bob!.client.myNodeNum, carol!.client.myNodeNum]).toContain(alerts[0]!.sender);
     for (const e of events) {
-      expect(e).toHaveLength(1);
-      expect(e[0]).toMatchObject({ subject: alice!.client.myNodeNum, source: 'detected' });
+      expect(e).toEqual([
+        expect.objectContaining({ subject: alice!.client.myNodeNum, source: 'detected' }),
+      ]);
     }
-    // Nothing more later.
     await tick(HOUR);
     expect(onAir(air, AppMessageType.OverdueAlert)).toHaveLength(1);
   });
@@ -111,43 +193,45 @@ describe('OverdueMonitor', () => {
     const { phones, air } = await party();
     phones.forEach((p) => monitor(p));
     phones[0]!.checkIns.checkIn({ mode: CheckInMode.Spot, pin: HOME });
-    await tick(DEADLINE - T0 - 10 * MIN);
+    await until(DEADLINE - 10 * MIN);
     phones[0]!.checkIns.checkOut();
     await tick(2 * HOUR);
     expect(onAir(air, AppMessageType.OverdueAlert)).toEqual([]);
   });
 
   it('a mode change does not reset the deadline', async () => {
-    const { phones, air } = await party({ size: 2 });
-    const m = monitor(phones[0]!);
-    const events = collect(m, 'overdue');
-    phones[0]!.checkIns.checkIn({ mode: CheckInMode.Spot, pin: HOME });
-    await tick(DEADLINE - T0 - 5 * MIN);
-    phones[0]!.checkIns.checkIn({ mode: CheckInMode.Moving });
-    await tick(10 * MIN);
-    expect(events).toHaveLength(1);
-    expect(onAir(air, AppMessageType.OverdueAlert)).toHaveLength(1);
-  });
-
-  it('honours a club grace time', async () => {
     const { phones } = await party({ size: 2 });
-    const m = monitor(phones[0]!, { graceMinutes: 60 });
-    const events = collect(m, 'overdue');
+    const m = monitor(phones[0]!);
+    const prompts = collect(m, 'selfPrompt');
+    phones[0]!.checkIns.checkIn({ mode: CheckInMode.Spot, pin: HOME });
+    await until(DEADLINE - 5 * MIN);
     phones[0]!.checkIns.checkIn({ mode: CheckInMode.Moving });
-    await tick(SUNSET + 59 * MIN - T0);
-    expect(events).toEqual([]);
-    await tick(2 * MIN);
-    expect(events).toHaveLength(1);
+    await until(DEADLINE + 2 * MIN);
+    expect(prompts).toEqual([expect.objectContaining({ overdueAt: DEADLINE })]);
+  });
+});
+
+describe('configuration and location', () => {
+  it("honours the club's grace time", async () => {
+    const { phones } = await party({ size: 2 });
+    const m = monitor(phones[0]!, { config: { graceMinutes: 60 } });
+    const prompts = collect(m, 'selfPrompt');
+    phones[0]!.checkIns.checkIn({ mode: CheckInMode.Moving });
+    await until(SUNSET + 59 * MIN);
+    expect(prompts).toEqual([]);
+    await until(SUNSET + 61 * MIN);
+    expect(prompts).toHaveLength(1);
     m.stop();
   });
 
   it('cannot compute a deadline without a location', async () => {
     const { phones } = await party({ size: 2 });
     const m = monitor(phones[0]!, { locationOf: () => undefined });
-    const events = collect(m, 'overdue');
+    const prompts = collect(m, 'selfPrompt');
     phones[0]!.checkIns.checkIn({ mode: CheckInMode.Moving });
     await tick(24 * HOUR);
-    expect(events).toEqual([]);
+    expect(prompts).toEqual([]);
+    expect(m.selfDeadline).toBeUndefined();
   });
 
   it('defaults to node DB positions for location', async () => {
@@ -170,10 +254,8 @@ describe('OverdueMonitor', () => {
       board: alice.board,
       sun: fixedSun(),
     }).start();
-    const events = collect(m, 'overdue');
     alice.checkIns.checkIn({ mode: CheckInMode.Moving });
-    await tick(DEADLINE - T0 + 2 * MIN);
-    expect(events).toHaveLength(1);
+    expect(m.selfDeadline).toBe(DEADLINE);
     m.stop();
   });
 });

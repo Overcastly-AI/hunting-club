@@ -29,27 +29,12 @@ import {
   type ResolvedContext,
 } from './context';
 import { onReceipt } from './receipts';
+import { CORE_CONFIG, type CoreConfig } from './config';
 
-export interface HelpRetrySchedule {
-  /** Delay before the first retry. Default 20 s. */
-  initialMs: number;
-  /** Multiplier per retry. Default 2. */
-  factor: number;
-  /** Longest delay between retries. Default 5 min. */
-  maxMs: number;
-  /** ± fraction of random jitter on each delay. Default 0.2. */
-  jitter: number;
-}
-
-export const DEFAULT_HELP_RETRY: HelpRetrySchedule = {
-  initialMs: 20_000,
-  factor: 2,
-  maxMs: 5 * 60_000,
-  jitter: 0.2,
-};
+export type HelpRetrySchedule = CoreConfig['help'];
 
 /** Delay before retry number `attempt` (1 = first retry), without jitter. */
-export function helpRetryDelay(attempt: number, s: HelpRetrySchedule = DEFAULT_HELP_RETRY): number {
+export function helpRetryDelay(attempt: number, s: HelpRetrySchedule = CORE_CONFIG.help): number {
   return Math.min(s.maxMs, s.initialMs * s.factor ** Math.max(0, attempt - 1));
 }
 
@@ -96,7 +81,7 @@ export class HelpRequester extends Emitter<{ change: HelpState }> {
     super();
     this.ctx = resolveContext(ctx);
     this.opts = opts;
-    this.schedule = { ...DEFAULT_HELP_RETRY, ...opts.schedule };
+    this.schedule = { ...CORE_CONFIG.help, ...opts.schedule };
     this.offReceipt = onReceipt(this.ctx.client, (r) => {
       const s = this.state;
       if (!s || r.ackedId !== s.id || s.acknowledgedBy.includes(r.sender)) return;

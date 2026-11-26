@@ -16,6 +16,8 @@ npm run typecheck
 | `party.ts`         | `FREE_PARTY_MAX_MEMBERS` (3), `canJoinParty`, `assertCanJoinParty`, `shouldShowPartyQr`                                                                                               |
 | `testing/party.ts` | Test harness: a party of phones on one FakeAir with the core services running                                                                                                         |
 
+All tunables (receipt rate limits, help backoff, overdue grace, prompt and wait times) live in one object, `CORE_CONFIG` in `config.ts`; services accept partial overrides.
+
 Every service takes a `CoreContext` (`client`, plus optional `random`, `timers` and `now`), so tests can drive time and randomness.
 
 Sunrise and sunset come from the map work (`app/src/conditions/sun.ts`, PR #6) and are passed in as `SunApi`. The module can be passed as is: `new OverdueMonitor(ctx, { sun: { sunTimes, localCalendarDay }, ... })`.

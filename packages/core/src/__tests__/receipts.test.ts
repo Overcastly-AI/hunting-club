@@ -1,6 +1,7 @@
 import { AppMessageType, CheckInMode } from '@huntclub/mesh';
 import { collect, tick } from '@huntclub/mesh/testing';
-import { DEFAULT_RECEIPT_POLICY, DeliveryTracker } from '../receipts';
+import { DeliveryTracker } from '../receipts';
+import { CORE_CONFIG } from '../config';
 import { MIN, T0, onAir, party } from '../testing/party';
 
 beforeEach(() => jest.useFakeTimers({ now: T0 }));
@@ -12,7 +13,7 @@ describe('receipts', () => {
     const [alice, bob, carol] = phones;
     const h = alice!.client.sendText('Coming down at dark');
     alice!.delivery.track(h.id, 2);
-    await tick(DEFAULT_RECEIPT_POLICY.jitterMs + 1000);
+    await tick(CORE_CONFIG.receipts.jitterMs + 1000);
 
     const receipts = onAir(air, AppMessageType.Receipt);
     expect(receipts.map((r) => r.sender).sort()).toEqual(
@@ -51,14 +52,14 @@ describe('receipts', () => {
     const [alice, bob] = phones;
     for (let i = 0; i < 10; i++) alice!.client.sendText(`msg ${i}`);
     await tick(10_000);
-    expect(onAir(air, AppMessageType.Receipt)).toHaveLength(DEFAULT_RECEIPT_POLICY.burst);
-    expect(bob!.receipts.suppressed).toBe(10 - DEFAULT_RECEIPT_POLICY.burst);
+    expect(onAir(air, AppMessageType.Receipt)).toHaveLength(CORE_CONFIG.receipts.burst);
+    expect(bob!.receipts.suppressed).toBe(10 - CORE_CONFIG.receipts.burst);
 
     // The bucket refills over time.
-    await tick(DEFAULT_RECEIPT_POLICY.refillMs * 2);
+    await tick(CORE_CONFIG.receipts.refillMs * 2);
     alice!.client.sendText('later');
     await tick(10_000);
-    expect(onAir(air, AppMessageType.Receipt)).toHaveLength(DEFAULT_RECEIPT_POLICY.burst + 1);
+    expect(onAir(air, AppMessageType.Receipt)).toHaveLength(CORE_CONFIG.receipts.burst + 1);
   });
 
   it('answers a retried message again, but not more than once a minute', async () => {
@@ -74,7 +75,7 @@ describe('receipts', () => {
     alice!.client.sendAppMessage(help); // retry 10 s later: too soon
     await tick(5000);
     expect(onAir(air, AppMessageType.Receipt)).toHaveLength(1);
-    await tick(DEFAULT_RECEIPT_POLICY.repeatMinMs);
+    await tick(CORE_CONFIG.receipts.repeatMinMs);
     alice!.client.sendAppMessage(help); // retry after a minute: answered again
     await tick(5000);
     expect(onAir(air, AppMessageType.Receipt)).toHaveLength(2);
@@ -91,10 +92,10 @@ describe('receipts', () => {
       };
     }
     phones[0]!.client.sendText('hello');
-    await tick(DEFAULT_RECEIPT_POLICY.jitterMs + 1000);
+    await tick(CORE_CONFIG.receipts.jitterMs + 1000);
     expect(times).toHaveLength(2);
     expect(times[0]).not.toBe(times[1]);
-    for (const t of times) expect(t - T0).toBeLessThan(DEFAULT_RECEIPT_POLICY.jitterMs + 1000);
+    for (const t of times) expect(t - T0).toBeLessThan(CORE_CONFIG.receipts.jitterMs + 1000);
   });
 
   it('stop() ends receipts; DeliveryTracker ignores untracked ids and repeat senders', async () => {

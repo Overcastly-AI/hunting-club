@@ -32,6 +32,7 @@ const worstCases: AppMessage[] = [
     areaId: MAX_U32,
   },
   { ...base, type: AppMessageType.CheckIn, mode: CheckInMode.Spot, pin },
+  { ...base, type: AppMessageType.CheckIn, mode: CheckInMode.Spot, pin, until: MAX_U32 },
   { ...base, type: AppMessageType.CheckIn, mode: CheckInMode.Area, areaId: MAX_U32 },
   { ...base, type: AppMessageType.CheckIn, mode: CheckInMode.Moving, pin },
   { ...base, type: AppMessageType.CheckOut, checkInId: MAX_U32 },
