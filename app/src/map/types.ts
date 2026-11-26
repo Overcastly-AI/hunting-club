@@ -3,8 +3,8 @@ import type { StandType } from '@huntclub/shared';
 
 /**
  * Map-facing view model. The map renders these; it does not know about the
- * radio. A later milestone fills them from `@huntclub/mesh` positions and
- * check-ins (see `MapDataSource`).
+ * radio. `buildMapData` (meshMapData.ts) fills them from @huntclub/mesh nodes
+ * and @huntclub/core check-ins.
  */
 
 type Place<K extends CheckInModeKey, Fields> = { kind: K } & Fields;

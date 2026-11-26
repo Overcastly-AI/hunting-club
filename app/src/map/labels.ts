@@ -8,6 +8,9 @@ import type { HunterOnMap, HunterPlace, OpenStandOnMap } from './types';
 export const ON_THE_MOVE = 'On the move';
 /** Shown under a hunter at an unnamed spot. */
 export const UNNAMED_SPOT = 'Spot';
+/** Shown when a club stand or area name isn't on this phone yet. */
+export const UNNAMED_STAND = 'Club stand';
+export const UNNAMED_AREA = 'Club area';
 /** Shown under a club stand nobody is in. */
 export const OPEN_STAND = 'Open';
 /** Label beside your scent cone. */
