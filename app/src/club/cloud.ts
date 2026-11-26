@@ -11,6 +11,7 @@ import {
   type FetchLike,
 } from '@huntclub/shared';
 
+import { secureStorage } from '../storage/secure';
 import { secureTokenStore } from './secureTokenStore';
 
 /** The app talks to dev until a production environment exists. */
@@ -37,5 +38,5 @@ export function createAppClubServices() {
         refresh: () => session.refresh(),
       })
     : undefined;
-  return { session, api };
+  return { session, api, secrets: secureStorage };
 }

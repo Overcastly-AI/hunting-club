@@ -2,6 +2,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useMemo, type ReactNode } from 'react';
 
 import { startRadioService, stopRadioService } from '../../modules/radio-service';
+import { useClub } from '../club/ClubProvider';
 import { clearPairedRadio, loadPairedRadio, savePairedRadio } from '../db/pairedRadio';
 import { sqlitePartyStore } from '../db/partyStore';
 import { useProfile } from '../profile/ProfileProvider';
@@ -39,6 +40,8 @@ export function AppRadioProvider({ children }: { children: ReactNode }) {
     [db],
   );
   const services = useMemo(() => ({ partyStore: sqlitePartyStore(db) }), [db]);
+  // Club check-in, whole-club chat and the club channel, once the phone has joined a club.
+  const { radioClub } = useClub();
   const { profile } = useProfile();
   return (
     <RadioProvider
@@ -47,6 +50,7 @@ export function AppRadioProvider({ children }: { children: ReactNode }) {
       background={androidForegroundService}
       clientOptions={clientOptions}
       services={services}
+      club={radioClub}
     >
       <OwnerSync profile={profile} />
       {children}

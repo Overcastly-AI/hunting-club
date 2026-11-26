@@ -14,23 +14,41 @@ import {
   type CoreContext,
   type PartyStore,
   type SunApi,
+  applyChannelSet,
+  radioHasChannelSet,
 } from '@huntclub/core';
-import type { MeshClient } from '@huntclub/mesh';
+import type { ChannelSet, MeshClient } from '@huntclub/mesh';
 
 import type { BoardRadio } from '../board/BoardRadio';
 import type { ChatRadio } from '../chat/ChatRadio';
 import type { CheckInRadio } from '../checkin/CheckInRadio';
+import type { ClubArea, ClubStand } from '../checkin/placement';
 import type { Audience } from '../domain/audience';
 import type { HarvestRadio } from '../harvest/HarvestRadio';
 import { nodePosition, type MapNames, type MapRadio } from '../map/meshMapData';
 import type { SafetyRadio } from '../safety/SafetyRadio';
 import { PRIMARY_CHANNEL } from './RadioController';
 
-export type RadioServicesOptions = Omit<CoreContext, 'client'> & {
-  /** Free party or club. Free parties use one channel (the primary). */
-  audience: Audience;
-  /** Overdue grace time (club: admin-set). */
+/**
+ * The club this phone hunts with, from the club layer (app/src/club): stands and
+ * areas with mesh ids, the admin's overdue grace time, and the club channels.
+ */
+export type RadioClub = {
+  clubId: string;
   graceMinutes: number;
+  stands: readonly ClubStand[];
+  areas: readonly ClubArea[];
+  /** From the Club QR code; put on the radio when its primary channel isn't the club's. */
+  channelSet?: ChannelSet;
+};
+
+export type RadioServicesOptions = Omit<CoreContext, 'client'> & {
+  /** Free party or club (a club given in `club` makes it 'club'). */
+  audience: Audience;
+  /** Overdue grace time (club: admin-set, taken from `club`). */
+  graceMinutes: number;
+  /** Set when the phone belongs to a club: club check-in, whole-club chat, the board. */
+  club?: RadioClub;
   names?: MapNames;
   /** Test hooks: receipt policy and help retry schedule overrides. */
   receipts?: Partial<CoreConfig['receipts']>;
@@ -74,18 +92,20 @@ export class RadioServices {
     readonly options: RadioServicesOptions = DEFAULT_SERVICES_OPTIONS,
   ) {
     const {
-      audience,
-      graceMinutes,
       names,
       receipts,
       helpSchedule,
       partyConfig,
       sun,
       partyStore,
-      ...context
+      club: clubInfo,
+      ...rest
     } = options;
+    const { audience: partyAudience, graceMinutes: partyGrace, ...context } = rest;
     const ctx: CoreContext = { ...context, client };
-    const club = audience === 'club';
+    const club = clubInfo !== undefined;
+    const audience: Audience = club ? 'club' : partyAudience;
+    const graceMinutes = clubInfo?.graceMinutes ?? partyGrace;
 
     this.checkIns = new CheckInController(ctx, { clubModes: club });
     this.board = new CheckInBoard(ctx);
@@ -114,10 +134,17 @@ export class RadioServices {
     }).start();
 
     const withNames = names ? { names } : {};
-    // Free parties hunt on the primary channel; club channels arrive with Milestone 10.
+    // The hunt channel is the radio's primary: the party's, or the club's in a club.
+    // (A free party inside a club needs a second channel: a follow-up.)
     const channelOf = () => PRIMARY_CHANNEL;
+    const groupSegment: 'club' | 'party' = club ? 'club' : 'party';
     this.mapRadio = { client, board: this.board };
-    this.checkInRadio = { checkIns: this.checkIns, audience, graceMinutes };
+    this.checkInRadio = {
+      checkIns: this.checkIns,
+      audience,
+      graceMinutes,
+      ...(clubInfo ? { club: { stands: clubInfo.stands, areas: clubInfo.areas } } : {}),
+    };
     this.safetyRadio = {
       client,
       help: this.help,
@@ -141,10 +168,31 @@ export class RadioServices {
         return [...client.nodes.keys()].filter((n) => n !== client.myNodeNum).length;
       },
       channelOf,
-      segmentOfChannel: () => 'party',
+      segmentOfChannel: () => groupSegment,
     };
     this.harvestRadio = { sharer: this.sharer, audience, channelOf };
-    this.boardRadio = { ...this.mapRadio, graceMinutes, stands: [], ...withNames };
+    this.boardRadio = {
+      ...this.mapRadio,
+      graceMinutes,
+      stands: clubInfo?.stands ?? [],
+      ...withNames,
+    };
+    if (clubInfo?.channelSet) this.clubChannel = this.ensureChannel(clubInfo.channelSet);
+  }
+
+  /** Settles once the club channel is on the radio (or failed: the radio keeps its old channels). */
+  readonly clubChannel: Promise<'already' | 'applied' | 'failed'> = Promise.resolve('already');
+
+  /** Puts the club channels on the radio unless its primary channel already has the key. */
+  private async ensureChannel(channelSet: ChannelSet): Promise<'already' | 'applied' | 'failed'> {
+    try {
+      await this.client.waitUntilReady();
+      if (radioHasChannelSet(this.client, channelSet)) return 'already';
+      await applyChannelSet(this.client, channelSet);
+      return 'applied';
+    } catch {
+      return 'failed';
+    }
   }
 
   dispose(): void {

@@ -7,6 +7,7 @@ export * from './help';
 export * from './receipts';
 export * from './partyStore';
 export * from './partyService';
+export * from './radioChannels';
 export * from './sun';
 export * from './freshness';
 export * from './harvest';
