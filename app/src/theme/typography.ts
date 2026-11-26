@@ -32,15 +32,13 @@ export type FontWidth = (typeof fontWidth)[keyof typeof fontWidth];
 
 /**
  * Archivo at a given weight and width. Both axes are always set explicitly
- * through `fontVariationSettings` (iOS, Android 8+ / API 26+), so both
- * platforms render the same instance of the variable font.
+ * through `fontVariationSettings`, so iOS and Android render the same
+ * instance of the variable font. Android needs API 26+, which is why the app's
+ * Android minSdkVersion is 26 (app.config.ts).
  *
  * `fontWeight` stays 'normal' on purpose: it overrides weights that libraries
  * (for example React Navigation's tab labels) apply, which would otherwise make
  * iOS look for a separate bold face or Android fake-bold the glyphs.
- *
- * Android 7 (API 24–25) ignores `fontVariationSettings` and shows the font's
- * default instance: weight 600, width 100.
  */
 export function archivo(weight: FontWeight, width: FontWidth = fontWidth.normal) {
   return {

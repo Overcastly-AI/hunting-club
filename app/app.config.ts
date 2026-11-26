@@ -6,6 +6,12 @@ import { colors } from './src/theme/colors.ts';
 /** App identifiers (docs/AGENTS.md). */
 const APP_ID = 'com.overcastly.huntclub';
 
+/**
+ * Android 8.0 (API 26): the lowest version that applies font variation axes
+ * (weight and width of the Archivo variable font).
+ */
+const ANDROID_MIN_SDK = 26;
+
 const config: ExpoConfig = {
   name: 'Hunt Club Mesh',
   slug: 'hunt-club-mesh',
@@ -36,6 +42,7 @@ const config: ExpoConfig = {
     'expo-router',
     'expo-sqlite',
     'expo-font',
+    ['expo-build-properties', { android: { minSdkVersion: ANDROID_MIN_SDK } }],
     [
       'expo-splash-screen',
       {
