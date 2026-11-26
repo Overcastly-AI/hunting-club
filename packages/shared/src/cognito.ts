@@ -8,6 +8,8 @@ import { type FetchLike, readJson } from './http';
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
+  /** Who signed in (sub, email). Absent on tokens loaded from storage until a refresh. */
+  idToken?: string;
   /** When the access token expires (ms since epoch). */
   expiresAt: number;
 }
@@ -42,6 +44,7 @@ export class CognitoAuthError extends Error {
 
 interface AuthenticationResult {
   AccessToken: string;
+  IdToken?: string;
   RefreshToken?: string;
   ExpiresIn: number;
 }
@@ -89,6 +92,7 @@ export function createCognitoAuth(options: CognitoAuthOptions) {
     return {
       accessToken: r.AccessToken,
       refreshToken: refresh,
+      ...(r.IdToken ? { idToken: r.IdToken } : {}),
       expiresAt: now() + r.ExpiresIn * 1000,
     };
   };
@@ -179,3 +183,30 @@ export function createCognitoAuth(options: CognitoAuthOptions) {
 }
 
 export type CognitoAuth = ReturnType<typeof createCognitoAuth>;
+
+/** The signed-in account: Cognito's user id (the club API's userId) and email. */
+export interface SignedInUser {
+  userId: string;
+  email?: string;
+}
+
+/**
+ * Reads `sub` and `email` from an ID token (no signature check: the club API verifies
+ * tokens; this only labels the UI). Undefined if the token is missing or unreadable.
+ */
+export function userFromIdToken(idToken: string | undefined): SignedInUser | undefined {
+  try {
+    const payload = idToken?.split('.')[1];
+    if (!payload) return undefined;
+    const claims = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/'))) as {
+      sub?: unknown;
+      email?: unknown;
+    };
+    if (typeof claims.sub !== 'string') return undefined;
+    return typeof claims.email === 'string'
+      ? { userId: claims.sub, email: claims.email }
+      : { userId: claims.sub };
+  } catch {
+    return undefined;
+  }
+}

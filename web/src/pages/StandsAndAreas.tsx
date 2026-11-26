@@ -28,12 +28,12 @@ export function StandsAndAreas(props: { api: ClubApi }) {
 function Places({ stands, areas }: { stands: readonly Stand[]; areas: readonly Area[] }) {
   return (
     <>
-      <h2>Stands</h2>
+      <h2 id="stands-list">Stands ({stands.length})</h2>
       {stands.length === 0 ? (
         <p>No stands yet.</p>
       ) : (
         <DataTable
-          caption="Stands"
+          labelledBy="stands-list"
           rows={stands}
           rowKey={(s) => s.id}
           stack
@@ -41,16 +41,17 @@ function Places({ stands, areas }: { stands: readonly Stand[]; areas: readonly A
             { label: 'Name', cell: (s) => s.name },
             { label: 'Type', cell: (s) => STAND_TYPE_LABELS[s.type] },
             { label: 'Area', cell: (s) => areas.find((a) => a.id === s.areaId)?.name ?? '—' },
-            { label: 'In use', cell: (s) => (s.active ? 'Yes' : 'No') },
+            // Inactive stands are hidden from check-in in the app (store: active = 1).
+            { label: 'Available for check-in', cell: (s) => (s.active ? 'Yes' : 'No') },
           ]}
         />
       )}
-      <h2>Areas</h2>
+      <h2 id="areas-list">Areas ({areas.length})</h2>
       {areas.length === 0 ? (
         <p>No areas yet.</p>
       ) : (
         <DataTable
-          caption="Areas"
+          labelledBy="areas-list"
           rows={areas}
           rowKey={(a) => a.id}
           stack

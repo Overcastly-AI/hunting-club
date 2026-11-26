@@ -47,7 +47,7 @@ describe.each([
   [
     { kind: 'signIn', email: 'dale@example.com', session: 's' } as const,
     EMAIL_OTP_CODE_LENGTH,
-    '3 minutes',
+    '10 minutes',
   ],
 ])('a %s code', (challenge, length, validFor) => {
   it(`expects ${length} digits, says how long it works, and keeps a long paste whole`, async () => {

@@ -43,19 +43,3 @@ export function browserTokenStore(storage: () => Storage | undefined = defaultSt
     },
   };
 }
-
-/**
- * Who is signed in, from the access token's `username` claim (the email: accounts are
- * created with the email as username). Undefined if it is not readable as an email.
- */
-export function signedInEmail(accessToken: string | undefined): string | undefined {
-  try {
-    const payload = accessToken?.split('.')[1];
-    if (!payload) return undefined;
-    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-    const username: unknown = (JSON.parse(json) as { username?: unknown }).username;
-    return typeof username === 'string' && username.includes('@') ? username : undefined;
-  } catch {
-    return undefined;
-  }
-}

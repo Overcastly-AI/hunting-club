@@ -1,12 +1,13 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import type { ClubApi } from './api/types';
 import { bundleBuildId, newerBuildIsLive } from './buildVersion';
+import type { SignedInUser } from '@huntclub/shared';
 import type { WebClubServices } from './cloud';
 import { Loading } from './components/Loading';
 import { SignIn } from './pages/SignIn';
 import { NOT_FOUND_TITLE, NotFound } from './pages/NotFound';
 import { ADMIN_TITLE, useDocumentTitle } from './title';
-import { signedInEmail } from './tokenStore';
+import { SignedInUserContext } from './signedInUser';
 
 // Each admin page loads on first visit (the roster also pulls in the mesh codec and QR encoder).
 const MyClub = lazy(() => import('./pages/MyClub').then((m) => ({ default: m.MyClub })));
@@ -61,7 +62,7 @@ export const SESSION_EXPIRED = 'Your session expired. Sign in again.';
 type Auth =
   | { kind: 'restoring' }
   | { kind: 'signedOut'; expired: boolean }
-  | { kind: 'signedIn'; email: string | undefined };
+  | { kind: 'signedIn'; user: SignedInUser | undefined };
 
 export function App(props: WebClubServices) {
   const { session, api } = props;
@@ -87,7 +88,7 @@ export function App(props: WebClubServices) {
       let next: Auth = { kind: 'signedOut', expired: false };
       if (await session.isSignedIn()) {
         next = (await session.refresh())
-          ? { kind: 'signedIn', email: signedInEmail(await session.accessToken()) }
+          ? { kind: 'signedIn', user: await session.user() }
           : { kind: 'signedOut', expired: true };
       }
       if (live) setAuth(next);
@@ -129,7 +130,7 @@ export function App(props: WebClubServices) {
         <SignIn
           session={session}
           notice={auth.kind === 'signedOut' && auth.expired ? SESSION_EXPIRED : undefined}
-          onSignedIn={(email) => setAuth({ kind: 'signedIn', email })}
+          onSignedIn={() => void session.user().then((user) => setAuth({ kind: 'signedIn', user }))}
         />
       </main>
     );
@@ -152,17 +153,21 @@ export function App(props: WebClubServices) {
             {p.label}
           </a>
         ))}
-        <button className="button" type="button" onClick={signOut}>
-          Sign out
-        </button>
       </nav>
       <main id="main">
         {/* Keyed by page: each page mounts fresh, and its heading takes focus. */}
-        <Suspense key={page?.path ?? ''} fallback={<Loading />}>
-          {page ? page.render(api) : <NotFound signedIn />}
-        </Suspense>
+        <SignedInUserContext.Provider value={auth.user}>
+          <Suspense key={page?.path ?? ''} fallback={<Loading />}>
+            {page ? page.render(api) : <NotFound signedIn />}
+          </Suspense>
+        </SignedInUserContext.Provider>
       </main>
-      {auth.email ? <p className="muted">Signed in as {auth.email}</p> : null}
+      <footer className="app-footer">
+        {auth.user?.email ? <p className="muted">Signed in as {auth.user.email}</p> : null}
+        <button className="button" type="button" onClick={signOut}>
+          Sign out
+        </button>
+      </footer>
     </div>
   );
 }

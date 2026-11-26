@@ -5,7 +5,13 @@
  * (expo-secure-store); the web admin's memory, plus its refresh token in browser storage
  * (SECURE_KEYS.webClubRefreshToken). Never SQLite or logs.
  */
-import type { AuthTokens, CodeChallenge, CognitoAuth } from './cognito';
+import {
+  type AuthTokens,
+  type CodeChallenge,
+  type CognitoAuth,
+  type SignedInUser,
+  userFromIdToken,
+} from './cognito';
 
 export interface TokenStore {
   load(): Promise<AuthTokens | null>;
@@ -46,6 +52,11 @@ export class ClubSession {
 
   async isSignedIn(): Promise<boolean> {
     return (await this.current()) !== null;
+  }
+
+  /** Who is signed in, from the ID token (after a sign-in or a refresh). */
+  async user(): Promise<SignedInUser | undefined> {
+    return userFromIdToken((await this.current())?.idToken);
   }
 
   /** Step 1: email a one-time code (signs new people up). */

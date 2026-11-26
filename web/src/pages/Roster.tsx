@@ -8,6 +8,7 @@ import { PageHeading } from '../components/PageHeading';
 import { QrCode } from '../components/QrCode';
 import { isOffline, useAsync } from '../components/useAsync';
 import { ROLE_LABELS, formatDate } from '../format';
+import { useSignedInUser } from '../signedInUser';
 
 /** How long a new member invite stays valid. */
 const INVITE_DAYS = 14;
@@ -28,11 +29,20 @@ type InviteState =
 /** `copied`: the clipboard took it. `manual`: no clipboard, so the link is selected to copy by hand. */
 type CopyState = 'idle' | 'copied' | 'manual';
 
+/**
+ * Members other than the signed-in admin. Without a known user (an ID token that could
+ * not be read), the viewer is still on the roster, so one row is theirs.
+ */
+function otherMembers(list: readonly Member[], me: string | undefined): number {
+  return me ? list.filter((m) => m.userId !== me).length : Math.max(0, list.length - 1);
+}
+
 /** Members and their roles, plus a fresh invite link for new members. */
 export function Roster(props: { api: ClubApi }) {
   const members = useAsync(() => props.api.listMembers(), [props.api], { keepLastOn: isOffline });
   const [invite, setInvite] = useState<InviteState>({ kind: 'idle' });
   const [copy, setCopy] = useState<CopyState>('idle');
+  const me = useSignedInUser();
 
   const makeInvite = async () => {
     setInvite({ kind: 'busy' });
@@ -84,9 +94,8 @@ export function Roster(props: { api: ClubApi }) {
               rowKey={(m) => m.userId}
               stack
             />
-            {/* The admin is always on the roster: one row means nobody has joined yet. */}
-            {list.length <= 1 ? (
-              <p>No members yet. Make an invite below and share it with your members.</p>
+            {otherMembers(list, me?.userId) === 0 ? (
+              <p>No other members yet. Make an invite below and share it with your hunters.</p>
             ) : null}
           </>
         )}
@@ -97,8 +106,8 @@ export function Roster(props: { api: ClubApi }) {
         <>
           <h2>Invite a member</h2>
           <p className="muted">
-            New members scan the invite with their phone camera. It joins the club radio channel
-            even with no cell service.
+            New members scan the invite with their phone camera. The new member joins the club radio
+            channel.
           </p>
           <button
             className="button primary"

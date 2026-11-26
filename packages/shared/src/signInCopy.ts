@@ -7,6 +7,12 @@ export const SIGN_UP_CODE_LENGTH = 6;
 /** Digits in the code Cognito emails to sign in an existing account (EMAIL_OTP). */
 export const EMAIL_OTP_CODE_LENGTH = 8;
 
+/**
+ * Minutes an EMAIL_OTP sign-in code works: the user pool client's AuthSessionValidity
+ * (10 minutes, Request #11), which is also the EMAIL_OTP lifetime.
+ */
+export const EMAIL_OTP_VALID_MINUTES = 10;
+
 /** The emailed code for a challenge: how many digits, and how long it works (in words). */
 export interface EmailCodeRules {
   readonly length: number;
@@ -14,9 +20,10 @@ export interface EmailCodeRules {
 }
 
 const CODE_RULES: Record<CodeChallenge['kind'], EmailCodeRules> = {
-  // Cognito: sign-up confirmation codes last 24 hours; EMAIL_OTP sign-in codes 3 minutes.
+  // Cognito: sign-up confirmation codes last 24 hours; EMAIL_OTP sign-in codes last the
+  // session validity (EMAIL_OTP_VALID_MINUTES).
   signUp: { length: SIGN_UP_CODE_LENGTH, validFor: '24 hours' },
-  signIn: { length: EMAIL_OTP_CODE_LENGTH, validFor: '3 minutes' },
+  signIn: { length: EMAIL_OTP_CODE_LENGTH, validFor: `${EMAIL_OTP_VALID_MINUTES} minutes` },
 };
 
 /** The one place the expected code depends on the challenge kind. */

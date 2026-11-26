@@ -15,7 +15,7 @@ import {
 import { ClubSession, memoryTokenStore, signInCopy } from '@huntclub/shared';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { adminApi } from '../api/admin';
-import { App } from '../App';
+import { App, PAGES } from '../App';
 import * as download from '../download';
 import * as navigate from '../navigate';
 import { Loading } from '../components/Loading';
@@ -172,7 +172,7 @@ describe('sign in', () => {
   it('sends a new code on request, with the expiry and a spam hint', async () => {
     renderApp();
     await requestCode();
-    expect(screen.getByText(signInCopy.codeHelp('signIn')).textContent).toMatch(/3 minutes.*spam/);
+    expect(screen.getByText(signInCopy.codeHelp('signIn')).textContent).toMatch(/10 minutes.*spam/);
     fireEvent.click(screen.getByRole('button', { name: signInCopy.resend }));
     expect((await screen.findByRole('status')).textContent).toBe(signInCopy.resent);
     expect(screen.getByLabelText(signInCopy.code)).toBeTruthy();
@@ -332,6 +332,19 @@ describe('club pages', () => {
         ['Sam Ortiz', '1'],
       ]);
       expect(rows('By week')).toContainEqual(['November 15, 2026', '2']);
+    });
+
+    it('offers no export, and no "0 harvests" line, for a season without harvests', async () => {
+      await openHarvests();
+      fireEvent.change(screen.getByLabelText('Season starts'), { target: { value: '2030-01-01' } });
+      fireEvent.change(screen.getByLabelText('Season ends'), { target: { value: '2030-12-31' } });
+      expect(await screen.findByText('No shared harvests in this season yet.')).toBeTruthy();
+      const exportCsv = screen.getByRole('button', { name: 'Export CSV' }) as HTMLButtonElement;
+      expect(exportCsv.disabled).toBe(true);
+      expect(screen.getByText('Nothing to export yet').id).toBe(
+        exportCsv.getAttribute('aria-describedby'),
+      );
+      expect(screen.queryByText(/harvests from/)).toBeNull();
     });
 
     it('asks for a season that ends after it starts', async () => {
@@ -660,10 +673,44 @@ describe('errors, empty states and navigation', () => {
     renderApp({ ...data, members: admin, stands: [], areas: [] });
     await signIn();
     go('#/roster');
-    expect(await screen.findByText(/No members yet/)).toBeTruthy();
+    expect(
+      await screen.findByText(
+        'No other members yet. Make an invite below and share it with your hunters.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText(/The new member joins the club radio channel\./)).toBeTruthy();
     go('#/stands');
-    expect(await screen.findByText('No stands yet.')).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 2, name: 'Stands (0)' })).toBeTruthy();
+    expect(screen.getByText('No stands yet.')).toBeTruthy();
     expect(screen.getByText('No areas yet.')).toBeTruthy();
+  });
+
+  it('counts members other than the signed-in admin', async () => {
+    const data = sampleData();
+    // Only the signed-in admin and one other member: no "no other members" line.
+    renderApp({ ...data, members: data.members.slice(0, 2) });
+    await signIn();
+    go('#/roster');
+    expect(await screen.findByText('Ruth Keller')).toBeTruthy();
+    expect(screen.queryByText(/No other members yet/)).toBeNull();
+  });
+
+  it('names the stands and areas tables by their counted headings', async () => {
+    renderApp();
+    await signIn();
+    go('#/stands');
+    const standsHeading = await screen.findByRole('heading', {
+      level: 2,
+      name: /^Stands \(\d+\)$/,
+    });
+    const stands = screen.getByRole('table', { name: standsHeading.textContent! });
+    expect(stands.getAttribute('aria-labelledby')).toBe(standsHeading.id);
+    expect(stands.querySelector('caption')).toBeNull();
+    expect(
+      within(stands).getByRole('columnheader', { name: 'Available for check-in' }),
+    ).toBeTruthy();
+    const areasHeading = screen.getByRole('heading', { level: 2, name: /^Areas \(\d+\)$/ });
+    expect(screen.getByRole('table', { name: areasHeading.textContent! })).toBeTruthy();
   });
 
   it('asks for a club before map packs', async () => {
@@ -684,9 +731,9 @@ describe('errors, empty states and navigation', () => {
     expect(table.classList.contains('stack')).toBe(true);
     expect(within(table).getAllByRole('cell')[0]!.getAttribute('data-label')).toBe('Name');
     go('#/stands');
-    expect((await screen.findByRole('table', { name: 'Stands' })).classList.contains('stack')).toBe(
-      true,
-    );
+    expect(
+      (await screen.findByRole('table', { name: /^Stands \(/ })).classList.contains('stack'),
+    ).toBe(true);
   });
 
   it('focuses the new page heading on a route change and marks the current tab', async () => {
@@ -704,6 +751,29 @@ describe('errors, empty states and navigation', () => {
       .filter((link) => link.hasAttribute('aria-current'));
     expect(current.map((link) => link.textContent)).toEqual(['Stands and areas']);
     expect(globalCss()).toMatch(/\.nav a\[aria-current='page'\] \{[^}]*text-decoration: underline/);
+  });
+
+  it('keeps Sign out and who is signed in in the footer, and the nav one row on phones', async () => {
+    renderApp();
+    await signIn();
+    const footer = screen.getByRole('contentinfo');
+    expect(within(footer).getByText('Signed in as dale@example.com')).toBeTruthy();
+    expect(within(footer).getByRole('button', { name: 'Sign out' })).toBeTruthy();
+    const nav = screen.getByRole('navigation', { name: 'Club admin' });
+    expect(within(nav).queryByRole('button')).toBeNull();
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .map((a) => a.textContent),
+    ).toEqual(PAGES.map((p) => p.label));
+    const css = globalCss();
+    expect(css).toMatch(/\.app-footer \{[^}]*margin-top: var\(--space-lg\)/);
+    expect(css).toMatch(
+      /@media \(max-width: 639px\) \{\s*\.nav \{ flex-wrap: nowrap; overflow-x: auto; \}/,
+    );
+    // The heading that takes focus on a route change shows its ring only for the keyboard.
+    expect(css).toMatch(/h1:focus \{ outline: none; \}/);
+    expect(css).toMatch(/h1:focus-visible \{ outline: 3px solid/);
   });
 
   it('announces loading as a status and offers a skip link to the page', async () => {

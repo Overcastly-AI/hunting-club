@@ -1,4 +1,5 @@
 import { defaultRandom } from '@huntclub/mesh';
+import { fakeIdToken } from '@huntclub/shared/testing';
 import {
   type AuthTokens,
   ClubApiRequestError,
@@ -297,10 +298,14 @@ export function fakeClubClient(data: FakeClubData = sampleData()): ClubApiClient
 export const testCode = (kind: CodeChallenge['kind'] = 'signIn') =>
   '2468135790'.slice(0, emailCodeRules(kind).length);
 
-/** Cognito stand-in: emails "send" instantly and only testCode(kind) signs in. */
+/** Who the fake sign-in signs in: Dale, sampleData()'s admin. */
+export const SIGNED_IN = { userId: userId(1), email: 'dale@example.com' };
+
+/** Cognito stand-in: emails "send" instantly and only testCode(kind) signs in (as SIGNED_IN). */
 export function fakeCognitoAuth(kind: CodeChallenge['kind'] = 'signIn'): CognitoAuth {
   const tokens: AuthTokens = {
     accessToken: 'a',
+    idToken: fakeIdToken(SIGNED_IN),
     refreshToken: 'r',
     expiresAt: Date.now() + 3_600_000,
   };

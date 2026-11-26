@@ -35,6 +35,14 @@ a { color: var(--color-text); }
   background: var(--color-surface-raised); color: var(--color-text-secondary); text-decoration: none; }
 .nav a[aria-current='page'] { color: var(--color-accent); font-weight: 700;
   text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 6px; }
+.app-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: var(--space-sm); margin-top: var(--space-lg); }
+.app-footer p { margin: 0; }
+/* Phones: the nav is one row, in page order, that scrolls sideways. */
+@media (max-width: 639px) {
+  .nav { flex-wrap: nowrap; overflow-x: auto; }
+  .nav a { flex: none; white-space: nowrap; }
+}
 .skip-link { position: absolute; left: var(--space-md); top: -100px; z-index: 1;
   padding: var(--space-sm) var(--space-md); background: var(--color-surface-raised); }
 .skip-link:focus { top: var(--space-md); }

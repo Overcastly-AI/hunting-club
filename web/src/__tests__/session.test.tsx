@@ -2,8 +2,9 @@ import { ClubSession, CognitoAuthError, SECURE_KEYS } from '@huntclub/shared';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { adminApi } from '../api/admin';
 import { App, SESSION_EXPIRED } from '../App';
-import { browserTokenStore, signedInEmail } from '../tokenStore';
-import { fakeClubClient, fakeCognitoAuth, sampleData } from './fakeClubApi';
+import { browserTokenStore } from '../tokenStore';
+import { fakeIdToken } from '@huntclub/shared/testing';
+import { fakeClubClient, fakeCognitoAuth, SIGNED_IN, sampleData } from './fakeClubApi';
 
 const KEY = SECURE_KEYS.webClubRefreshToken;
 
@@ -26,7 +27,6 @@ function memoryStorage(blocked = false): Storage {
 }
 
 /** A Cognito access token (JWT) whose username is the email. */
-const jwt = (username: string) => `h.${btoa(JSON.stringify({ username })).replace(/=+$/, '')}.s`;
 
 describe('browserTokenStore', () => {
   it('keeps only the refresh token in storage, and returns it expired so it refreshes first', async () => {
@@ -58,13 +58,6 @@ describe('browserTokenStore', () => {
       expect(await store.load()).toBeNull();
     }
   });
-
-  it('reads the email from the access token, or nothing', () => {
-    expect(signedInEmail(jwt('dale@example.com'))).toBe('dale@example.com');
-    expect(signedInEmail(jwt('5f1c-uuid'))).toBeUndefined();
-    expect(signedInEmail('not a jwt')).toBeUndefined();
-    expect(signedInEmail(undefined)).toBeUndefined();
-  });
 });
 
 describe('the web session across reloads', () => {
@@ -81,7 +74,8 @@ describe('the web session across reloads', () => {
     storage.setItem(KEY, 'kept-refresh-token');
     const auth = fakeCognitoAuth();
     auth.refresh = vi.fn(async () => ({
-      accessToken: jwt('dale@example.com'),
+      accessToken: 'a',
+      idToken: fakeIdToken(SIGNED_IN),
       refreshToken: 'kept-refresh-token',
       expiresAt: Date.now() + 3_600_000,
     }));

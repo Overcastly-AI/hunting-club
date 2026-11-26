@@ -7,11 +7,11 @@ import {
 } from '../signInCopy';
 
 describe('emailed code rules', () => {
-  it('follow the challenge: 6-digit sign-up codes for 24 hours, 8-digit sign-in codes for 3 minutes', () => {
+  it('follow the challenge: 6-digit sign-up codes for 24 hours, 8-digit sign-in codes for 10 minutes', () => {
     expect(emailCodeRules('signUp')).toEqual({ length: SIGN_UP_CODE_LENGTH, validFor: '24 hours' });
     expect(emailCodeRules('signIn')).toEqual({
       length: EMAIL_OTP_CODE_LENGTH,
-      validFor: '3 minutes',
+      validFor: '10 minutes',
     });
     expect([SIGN_UP_CODE_LENGTH, EMAIL_OTP_CODE_LENGTH]).toEqual([6, 8]);
   });
