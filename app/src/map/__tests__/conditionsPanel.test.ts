@@ -1,4 +1,4 @@
-import { sunLine, sunPhrases, UNKNOWN_VALUE } from '../components/ConditionsPanel';
+import { sunLine, sunPhrases, sunSentence, UNKNOWN_VALUE } from '../components/ConditionsPanel';
 
 describe('sunPhrases', () => {
   it('keeps each time on one line: no breakable spaces inside a phrase', () => {
@@ -12,5 +12,13 @@ describe('sunPhrases', () => {
     expect(unknown[0]).toContain(UNKNOWN_VALUE);
     const polar = sunPhrases({ sunrise: 'Up all day', sunset: 'Up all day' });
     for (const phrase of polar) expect(phrase).not.toMatch(/ /);
+  });
+});
+
+describe('sunSentence', () => {
+  it('joins both phrases so a line can only break after the dot', () => {
+    const sentence = sunSentence({ sunrise: '7:03 AM', sunset: '4:26 PM' });
+    expect(sentence.replace(/\u00A0/g, ' ')).toBe('Sunrise 7:03 AM · Sunset 4:26 PM');
+    expect(sentence.split(' ')).toHaveLength(2);
   });
 });

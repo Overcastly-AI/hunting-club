@@ -43,7 +43,8 @@ const config: ExpoConfig = {
   slug: 'hunt-club-mesh',
   scheme: URL_SCHEME,
   version: '0.1.0',
-  orientation: 'portrait',
+  // Each screen locks its own orientation (src/app/_layout.tsx): portrait, and landscape for /board.
+  orientation: 'default',
   icon: './assets/icon.png',
   userInterfaceStyle: 'dark',
   backgroundColor: colors.surface,

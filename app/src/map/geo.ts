@@ -1,5 +1,7 @@
 import type { LatLon } from '@huntclub/mesh';
 
+import type { Bounds } from './tiles';
+
 const EARTH_RADIUS_M = 6_371_008.8;
 const EARTH_CIRCUMFERENCE_M = 40_075_016.686;
 const DEG = Math.PI / 180;
@@ -126,4 +128,25 @@ export function distanceAndDirection(from: LatLon, to: LatLon): string {
       ? `${Math.max(10, Math.round(feet / 10) * 10)} ft`
       : `${(meters / MILE_M).toFixed(1)} mi`;
   return `${distance} ${compassWord(bearingDeg(from, to))}`;
+}
+
+/** Smallest box the map frames around a single point (about 1 km across). */
+export const MIN_BOUNDS_SPAN_DEG = 0.01;
+
+/**
+ * [west, south, east, north] around the points, at least MIN_BOUNDS_SPAN_DEG
+ * wide and tall so one hunter doesn't zoom the map to the street. Undefined
+ * for no points.
+ */
+export function boundsAround(points: readonly LatLon[]): Bounds | undefined {
+  if (points.length === 0) return undefined;
+  const lons = points.map((p) => p.lon);
+  const lats = points.map((p) => p.lat);
+  const pad = (min: number, max: number) => {
+    const extra = Math.max(0, MIN_BOUNDS_SPAN_DEG - (max - min)) / 2;
+    return [min - extra, max + extra] as const;
+  };
+  const [west, east] = pad(Math.min(...lons), Math.max(...lons));
+  const [south, north] = pad(Math.min(...lats), Math.max(...lats));
+  return [west, south, east, north];
 }

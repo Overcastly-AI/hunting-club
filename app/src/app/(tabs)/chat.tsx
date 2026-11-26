@@ -1,10 +1,5 @@
-import { Screen } from '../../components/Screen';
-import { RadioTestPanel } from '../../radio/ui/RadioTestPanel';
+import { ChatScreen } from '../../chat/ChatScreen';
 
-export default function ChatScreen() {
-  return (
-    <Screen title="Chat" description="Text your party over the radio, with no cell service.">
-      <RadioTestPanel />
-    </Screen>
-  );
+export default function ChatTab() {
+  return <ChatScreen />;
 }

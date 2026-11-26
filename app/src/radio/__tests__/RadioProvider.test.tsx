@@ -5,9 +5,8 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { backgroundSpy, memoryStore, RADIO_A, RADIO_B } from '../../test-utils/radioFixtures';
 import { radioCopy } from '../copy';
 import { RadioProvider, useRadio } from '../RadioProvider';
+import { RadioStatus } from '../ui/RadioStatus';
 import { RadioTestPanel } from '../ui/RadioTestPanel';
-
-jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 
 const REMEMBERED = { peripheralId: 'AA:BB:CC:DD:EE:FF', name: 'Meshtastic 3c4d', pairedAt: 1 };
 
@@ -20,6 +19,7 @@ async function renderPhone(radio: FakeRadio, store = memoryStore(REMEMBERED)) {
       createTransport={() => radio}
       clientOptions={{ random: seededRandom(1), pacingMs: 0 }}
     >
+      <RadioStatus />
       <RadioTestPanel />
     </RadioProvider>,
   );
@@ -35,11 +35,10 @@ describe('RadioProvider', () => {
     expect(background.running).toBe(true);
   });
 
-  it('asks to pair first when no radio is remembered', async () => {
+  it('shows no radio and disables sending when none is remembered', async () => {
     await renderPhone(new FakeRadio(RADIO_A), memoryStore(null));
 
     expect(await screen.findByText(radioCopy.link.none)).toBeTruthy();
-    expect(screen.getByRole('button', { name: radioCopy.test.pairFirst })).toBeTruthy();
     expect(screen.getByRole('button', { name: radioCopy.test.send })).toBeDisabled();
   });
 

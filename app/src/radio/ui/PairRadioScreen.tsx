@@ -11,6 +11,7 @@ import { useRadio } from '../RadioProvider';
 import { scanForRadios, type FoundRadio } from '../scan';
 import { signalLabel } from '../signal';
 import { RadioStatus } from './RadioStatus';
+import { RadioTestPanel } from './RadioTestPanel';
 
 const ANDROID_BLUETOOTH_SETTINGS = 'android.settings.BLUETOOTH_SETTINGS';
 
@@ -88,6 +89,12 @@ export function PairRadioScreen({ onDone }: Props) {
             <Button variant="primary" label={radioCopy.pair.done} onPress={onDone} />
           ) : null}
           <Button label={radioCopy.repair.forgetHere} onPress={() => void forget()} />
+        </View>
+      ) : null}
+
+      {pairedRadio ? (
+        <View style={styles.card}>
+          <RadioTestPanel />
         </View>
       ) : null}
 

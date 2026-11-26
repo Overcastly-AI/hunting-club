@@ -69,7 +69,6 @@ export const radioCopy = {
     placeholder: 'Type a message',
     send: 'Send',
     remaining: (n: number) => `${n} characters left`,
-    pairFirst: 'Pair your radio first',
     you: 'You',
     status: {
       sending: 'Sending…',

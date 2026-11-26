@@ -33,8 +33,12 @@ export default function RootLayout() {
           screenOptions={{
             headerShown: false,
             contentStyle: { backgroundColor: colors.surface },
+            // The app is portrait; only the clubhouse board turns landscape.
+            orientation: 'portrait',
           }}
-        />
+        >
+          <Stack.Screen name="board" options={{ orientation: 'landscape' }} />
+        </Stack>
       </AppRadioProvider>
     </SQLiteProvider>
   );

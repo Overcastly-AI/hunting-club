@@ -1,5 +1,4 @@
 import { MAX_TEXT_CHARS } from '@huntclub/mesh';
-import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -9,16 +8,15 @@ import { colors, radii, sizes, spacing, textStyles } from '../../theme';
 import { radioCopy } from '../copy';
 import type { RadioText } from '../RadioController';
 import { useRadio } from '../RadioProvider';
-import { PAIR_RADIO_ROUTE } from '../routes';
-import { RadioStatus } from './RadioStatus';
 
 /**
- * Temporary Milestone 2 acceptance test: text on the radio's primary channel
- * with delivery status, so two phones can text with no cell service.
- * Replaced by the real Chat screen in Milestone 7.
+ * Temporary Milestone 2 acceptance test, shown on the Pair your radio screen
+ * once a radio is paired: text on the radio's primary channel with delivery
+ * status, so two phones can text with no cell service. Remove once the Chat
+ * tab is wired to RadioProvider.
  */
 export function RadioTestPanel() {
-  const { link, pairedRadio, texts, sendText } = useRadio();
+  const { link, texts, sendText } = useRadio();
   const [draft, setDraft] = useState('');
   const ready = link === 'ready';
   const trimmed = draft.trim();
@@ -35,10 +33,6 @@ export function RadioTestPanel() {
         {radioCopy.test.title}
       </Text>
       <Text style={styles.hint}>{radioCopy.test.hint}</Text>
-      <RadioStatus />
-      {!pairedRadio ? (
-        <Button label={radioCopy.test.pairFirst} onPress={() => router.push(PAIR_RADIO_ROUTE)} />
-      ) : null}
 
       <View style={styles.messages} accessibilityRole="list">
         {texts.map((t) => (

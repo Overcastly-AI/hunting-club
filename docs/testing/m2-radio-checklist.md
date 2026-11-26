@@ -23,7 +23,7 @@ For the owner, with two phones (ideally one iPhone and one Android) and two Mesh
 ## 2. Texting with no cell service (the Milestone 2 acceptance test)
 
 - [ ] Put both phones in airplane mode, then turn Bluetooth back on (airplane mode turns it off on some phones).
-- [ ] On phone A, open **Chat** → **Radio test**, type a message and tap **Send**.
+- [ ] On phone A, open **Party** → **Pair your radio**; with the radio connected, use the **Radio test** section: type a message and tap **Send**. (The Chat tab takes over once it is wired to the radio.)
 - [ ] Phone B shows the message with the sender's radio name and time.
 - [ ] Phone A's status under the message changes from "Sending…" to "Heard by the mesh" or "Delivered". Write down which one and how long it took.
 - [ ] Reply from phone B; phone A receives it.
