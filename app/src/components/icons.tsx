@@ -43,6 +43,19 @@ export function LocateIcon({ color = colors.text }: IconProps) {
   );
 }
 
+/** Arrow pointing `towardDeg` clockwise from north (up): where the wind blows toward. */
+export function WindArrowIcon({
+  towardDeg,
+  color = colors.wind,
+}: IconProps & { towardDeg: number }) {
+  return (
+    <View style={[styles.box, { transform: [{ rotate: `${towardDeg}deg` }] }]}>
+      <View style={[styles.triangleUp, { borderBottomColor: color }]} />
+      <View style={[styles.shaft, { backgroundColor: color }]} />
+    </View>
+  );
+}
+
 /** Tree stand: post with a seat. Ladder: two rails and rungs. Ground blind: a tent. */
 export function StandTypeIcon({ type, color = colors.text }: IconProps & { type: StandType }) {
   if (type === 'ground_blind') {
@@ -100,6 +113,7 @@ const styles = StyleSheet.create({
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
   },
+  shaft: { width: LINE + 1, height: 10 },
   ring: { position: 'absolute', width: 14, height: 14, borderRadius: 7, borderWidth: LINE },
   hLine: { position: 'absolute', width: S, height: LINE },
   vLine: { position: 'absolute', width: LINE, height: S },

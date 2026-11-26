@@ -1,3 +1,4 @@
+import { HOUR_MS } from '@huntclub/core';
 import type { LatLon } from '@huntclub/mesh';
 
 import type { HunterPlace } from '../map/types';
@@ -19,7 +20,7 @@ export type IncomingAlert = {
 };
 
 /** How long a help or overdue pin stays on the map after it was last heard. */
-export const ALERT_PIN_TTL_MS = 60 * 60_000;
+export const ALERT_PIN_TTL_MS = HOUR_MS;
 
 export type AlertStore = {
   getSnapshot(): readonly IncomingAlert[];

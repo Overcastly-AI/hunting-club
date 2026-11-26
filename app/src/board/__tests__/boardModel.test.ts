@@ -1,4 +1,5 @@
-import { fixedSun, HOME, HOUR, MIN, T0 } from '@huntclub/core/testing';
+import { HOUR_MS, MINUTE_MS } from '@huntclub/core';
+import { fixedSun, HOME, T0 } from '@huntclub/core/testing';
 import type { MemberCheckIn } from '@huntclub/core';
 import { CheckInMode } from '@huntclub/mesh';
 
@@ -15,7 +16,7 @@ import {
 /** T0 is 14:00 UTC; fixedSun(23) sets the sun at 23:00 UTC, so with 30 min grace people are overdue from 23:30. */
 const SUN = fixedSun(23);
 const GRACE = 30;
-const OVERDUE_FROM = T0 + 9 * HOUR + GRACE * MIN;
+const OVERDUE_FROM = T0 + 9 * HOUR_MS + GRACE * MINUTE_MS;
 const BOARD = 1;
 
 const node = (num: number, longName: string, at?: { lat: number; lon: number }): MapNode => ({
@@ -68,13 +69,13 @@ describe('buildBoard', () => {
   const ann = node(3, 'Ann', HOME);
   const both = [
     checkIn(2, CheckInMode.Stand, { standId: 8, since: T0 }),
-    checkIn(3, CheckInMode.Moving, { since: T0 + HOUR }),
+    checkIn(3, CheckInMode.Moving, { since: T0 + HOUR_MS }),
   ];
 
   it('lists everyone out by check-in time with their place, and never the board itself', () => {
     const { out } = buildBoard(
       input([...both, checkIn(BOARD, CheckInMode.Spot)], [dale, ann]),
-      T0 + 2 * HOUR,
+      T0 + 2 * HOUR_MS,
     );
     expect(out.map((e) => [e.name, e.place, e.overdue])).toEqual([
       ['Dale', 'Creek Stand', false],
@@ -83,9 +84,9 @@ describe('buildBoard', () => {
   });
 
   it('marks people overdue after sunset plus grace and puts them first', () => {
-    const late = checkIn(3, CheckInMode.Moving, { since: T0 + HOUR });
-    const extended = checkIn(2, CheckInMode.Stand, { standId: 8, until: OVERDUE_FROM + HOUR });
-    const { out } = buildBoard(input([extended, late], [dale, ann]), OVERDUE_FROM + MIN);
+    const late = checkIn(3, CheckInMode.Moving, { since: T0 + HOUR_MS });
+    const extended = checkIn(2, CheckInMode.Stand, { standId: 8, until: OVERDUE_FROM + HOUR_MS });
+    const { out } = buildBoard(input([extended, late], [dale, ann]), OVERDUE_FROM + MINUTE_MS);
     expect(out.map((e) => [e.name, e.overdue])).toEqual([
       ['Ann', true],
       ['Dale', false],
@@ -135,6 +136,6 @@ describe('boardLinkStatus', () => {
       text: 'Mesh: 1 radio · heard 5s ago',
       tone: 'ok',
     });
-    expect(boardLinkStatus('ready', heard, T0 + HOUR).tone).toBe('quiet');
+    expect(boardLinkStatus('ready', heard, T0 + HOUR_MS).tone).toBe('quiet');
   });
 });

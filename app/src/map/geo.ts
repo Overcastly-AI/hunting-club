@@ -6,7 +6,7 @@ const EARTH_RADIUS_M = 6_371_008.8;
 const EARTH_CIRCUMFERENCE_M = 40_075_016.686;
 const DEG = Math.PI / 180;
 const FOOT_M = 0.3048;
-const MILE_M = 1609.344;
+export const MILE_M = 1609.344;
 
 /** Ground metres per screen point at a MapLibre (512 px based) zoom. */
 export function metersPerPoint(lat: number, zoom: number): number {

@@ -1,4 +1,6 @@
-import { MINUTES, NOW } from '../../test-utils/mapFixtures';
+import { MINUTE_MS } from '@huntclub/core';
+
+import { NOW } from '../../test-utils/mapFixtures';
 import { describeMeshStatus } from '../meshStatus';
 
 describe('describeMeshStatus', () => {
@@ -14,7 +16,7 @@ describe('describeMeshStatus', () => {
   it('says plainly when the mesh has gone quiet', () => {
     expect(
       describeMeshStatus(
-        { radioConnected: true, radioCount: 2, lastHeardAt: NOW - 15 * MINUTES },
+        { radioConnected: true, radioCount: 2, lastHeardAt: NOW - 15 * MINUTE_MS },
         NOW,
       ),
     ).toEqual({ text: 'No radios heard for 15 min', tone: 'quiet' });
@@ -32,7 +34,7 @@ describe('describeMeshStatus', () => {
   it('uses the singular for one radio', () => {
     expect(
       describeMeshStatus(
-        { radioConnected: true, radioCount: 1, lastHeardAt: NOW - 3 * MINUTES },
+        { radioConnected: true, radioCount: 1, lastHeardAt: NOW - 3 * MINUTE_MS },
         NOW,
       ).text,
     ).toBe('Mesh: 1 radio · heard 3 min ago');
