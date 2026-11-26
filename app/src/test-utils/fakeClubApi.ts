@@ -1,8 +1,11 @@
 import { encodeJoinUrl, generatePartyChannelSet } from '@huntclub/mesh';
 import { seededRandom } from '@huntclub/mesh/testing';
 import {
+  BASEMAPS,
   ClubApiRequestError,
   type ClubApiClient,
+  type MapPack,
+  mapPackKey,
   type Member,
   type Stand,
   type ClubSession,
@@ -44,8 +47,29 @@ export function stand(meshId: number, name: string): Stand {
   };
 }
 
+/** A club map pack as the API lists it: ready unless `over` says otherwise. */
+export function mapPack(id: string, over: Partial<MapPack> = {}): MapPack {
+  return {
+    id,
+    clubId: CLUB_ID,
+    bounds: [-94.1, 45.9, -93.9, 46.1],
+    minZoom: 10,
+    maxZoom: 16,
+    source: BASEMAPS.topo.source,
+    s3Key: mapPackKey(CLUB_ID, id),
+    status: 'ready',
+    sizeBytes: 48_000_000,
+    builtAt: '2026-11-20T08:00:00.000Z',
+    createdAt: ISO,
+    updatedAt: ISO,
+    ...over,
+  } as MapPack;
+}
+
 /** An in-memory club API with one club ("Oak Ridge"); every method is a jest mock. */
-export function fakeClubApi(options: { featuresUntil?: string; offline?: boolean } = {}) {
+export function fakeClubApi(
+  options: { featuresUntil?: string; offline?: boolean; mapPacks?: () => MapPack[] } = {},
+) {
   const member: Member = {
     clubId: CLUB_ID,
     userId: USER_ID,
@@ -97,7 +121,7 @@ export function fakeClubApi(options: { featuresUntil?: string; offline?: boolean
     getClubSecret: offline(() => {
       throw new ClubApiRequestError('forbidden', 403);
     }),
-    listMapPacks: offline(() => []),
+    listMapPacks: offline(() => options.mapPacks?.() ?? []),
     requestMapPack: offline(() => {
       throw new ClubApiRequestError('forbidden', 403);
     }),

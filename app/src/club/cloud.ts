@@ -9,13 +9,17 @@ import {
   createClubApiClient,
   createCognitoAuth,
   type FetchLike,
+  type WEB_DOMAINS,
 } from '@huntclub/shared';
 
 import { secureStorage } from '../storage/secure';
+import { appMapPackFiles } from './mapPackFiles';
 import { secureTokenStore } from './secureTokenStore';
 
 /** The app talks to dev until a production environment exists. */
-const ENVIRONMENT: CloudEnvironment = CLOUD_ENVIRONMENTS.dev;
+const ENVIRONMENT_NAME = 'dev' as const satisfies keyof typeof CLOUD_ENVIRONMENTS &
+  keyof typeof WEB_DOMAINS;
+const ENVIRONMENT: CloudEnvironment = CLOUD_ENVIRONMENTS[ENVIRONMENT_NAME];
 
 /** The club API URL; until it's deployed, club sign-in shows "not available yet". */
 export const CLUB_API_URL: string | undefined =
@@ -38,5 +42,10 @@ export function createAppClubServices() {
         refresh: () => session.refresh(),
       })
     : undefined;
-  return { session, api, secrets: secureStorage };
+  return {
+    session,
+    api,
+    secrets: secureStorage,
+    mapPacks: { files: appMapPackFiles, env: ENVIRONMENT_NAME },
+  };
 }
