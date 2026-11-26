@@ -11,7 +11,7 @@ import type { HarvestToShare, OpenCheckIn } from '@huntclub/core';
 import type { Audience } from '../domain/audience';
 import { placeLabel } from '../map/labels';
 import { placeOf } from '../map/place';
-import type { LocalHarvest, NewHarvest, SharedWith } from './harvests';
+import { type LocalHarvest, type NewHarvest, SHARE_TARGETS, type SharedWith } from './harvests';
 
 /** Quick picks above the species field; any species can be typed. */
 export const COMMON_SPECIES = ['Deer', 'Turkey', 'Elk', 'Bear', 'Hog'] as const;
@@ -27,7 +27,7 @@ export const SHARE_LABELS: Record<SharedWith, string> = {
 
 /** Private always; Party for everyone; Club only for club members. */
 export function shareChoices(audience: Audience): readonly SharedWith[] {
-  return audience === 'club' ? ['none', 'party', 'club'] : ['none', 'party'];
+  return audience === 'club' ? SHARE_TARGETS : SHARE_TARGETS.filter((t) => t !== 'club');
 }
 
 export type HarvestDraft = { species: string; sex: HarvestSex; notes: string; share: SharedWith };

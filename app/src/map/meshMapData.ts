@@ -1,5 +1,6 @@
 import {
   FRESHNESS_THRESHOLDS_MS,
+  SECOND_MS,
   positionAge,
   type CheckInBoard,
   type MemberCheckIn,
@@ -43,8 +44,6 @@ export type MeshSnapshot = {
   nodes: Iterable<MapNode>;
   checkIns: readonly MemberCheckIn[];
 };
-
-const SECOND_MS = 1000;
 
 /** Short Meshtastic-style id for a node with no name, e.g. "!a1b2". */
 const nodeTag = (num: number) => `!${(num >>> 0).toString(16).slice(-4)}`;

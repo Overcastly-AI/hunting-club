@@ -1,7 +1,10 @@
 import { CHECK_IN_MODE_KEYS, MAX_TEXT_CHARS } from '@huntclub/mesh';
-import { MEMBER_ROLES } from '@huntclub/shared';
+import { MEMBER_ROLES, STAND_TYPES } from '@huntclub/shared';
 
 import { CHAT_ITEM_KINDS, SEND_STATES } from '../chat/model';
+import { AUDIENCES } from '../domain/audience';
+import { SHARE_TARGETS } from '../harvest/harvests';
+import { MAP_PACK_STATUSES } from '../map/mapPacks';
 import type { Migration } from './types';
 
 /**
@@ -15,10 +18,13 @@ import type { Migration } from './types';
  * - Mesh-sourced rows (check-ins, positions, messages, help requests) have no
  *   foreign keys: they can arrive before the member or group they refer to.
  */
+/** A SQL `IN (...)` list from a shared constant, so CHECKs never retype the values. */
+const sqlList = (values: readonly string[]) => values.map((v) => `'${v}'`).join(', ');
+
 const initialSchema = `
 CREATE TABLE groups (
   id TEXT PRIMARY KEY NOT NULL,
-  kind TEXT NOT NULL CHECK (kind IN ('party', 'club')),
+  kind TEXT NOT NULL CHECK (kind IN (${sqlList(AUDIENCES)})),
   name TEXT NOT NULL,
   channel_key BLOB,
   region TEXT,
@@ -32,7 +38,7 @@ CREATE TABLE members (
   group_id TEXT NOT NULL REFERENCES groups (id) ON DELETE CASCADE,
   display_name TEXT NOT NULL,
   initials TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member', 'guest')),
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN (${sqlList(MEMBER_ROLES)})),
   node_id INTEGER,
   updated_at INTEGER NOT NULL
 );
@@ -64,7 +70,7 @@ CREATE TABLE stands (
   club_id TEXT NOT NULL REFERENCES groups (id) ON DELETE CASCADE,
   area_id TEXT REFERENCES areas (id) ON DELETE SET NULL,
   name TEXT NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('tree_stand', 'ladder', 'ground_blind')),
+  type TEXT NOT NULL CHECK (type IN (${sqlList(STAND_TYPES)})),
   lat REAL NOT NULL,
   lon REAL NOT NULL,
   notes TEXT,
@@ -76,7 +82,7 @@ CREATE INDEX stands_club_id ON stands (club_id);
 CREATE TABLE check_ins (
   id TEXT PRIMARY KEY NOT NULL,
   member_id TEXT NOT NULL,
-  mode TEXT NOT NULL CHECK (mode IN ('stand', 'area', 'spot', 'moving')),
+  mode TEXT NOT NULL CHECK (mode IN (${sqlList(Object.values(CHECK_IN_MODE_KEYS))})),
   stand_id TEXT,
   area_id TEXT,
   pin_lat REAL,
@@ -104,7 +110,7 @@ CREATE TABLE messages (
   id TEXT PRIMARY KEY NOT NULL,
   channel TEXT NOT NULL CHECK (channel IN ('club', 'party', 'direct')),
   sender TEXT NOT NULL,
-  body TEXT NOT NULL CHECK (length(body) <= 200),
+  body TEXT NOT NULL CHECK (length(body) <= ${MAX_TEXT_CHARS}),
   sent_at INTEGER NOT NULL,
   delivered_count INTEGER NOT NULL DEFAULT 0
 );
@@ -131,7 +137,7 @@ CREATE TABLE harvests (
   area_id TEXT,
   notes TEXT,
   photo_uri TEXT,
-  shared_with TEXT NOT NULL DEFAULT 'none' CHECK (shared_with IN ('none', 'party', 'club')),
+  shared_with TEXT NOT NULL DEFAULT 'none' CHECK (shared_with IN (${sqlList(SHARE_TARGETS)})),
   harvested_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -155,7 +161,7 @@ const mapPackDownloads = `
 ALTER TABLE map_packs ADD COLUMN name TEXT NOT NULL DEFAULT 'Downloaded area';
 ALTER TABLE map_packs ADD COLUMN tile_count INTEGER;
 ALTER TABLE map_packs ADD COLUMN status TEXT NOT NULL DEFAULT 'complete'
-  CHECK (status IN ('downloading', 'complete', 'failed'));
+  CHECK (status IN (${sqlList(MAP_PACK_STATUSES)}));
 ALTER TABLE map_packs ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0;
 `;
 
@@ -177,8 +183,6 @@ CREATE TABLE paired_radio (
  * at the time: mode and the stand/area mesh ids (so it can be shared later)
  * and the place label shown in the list. `shared_at` is when it was last sent.
  */
-const sqlList = (values: readonly string[]) => values.map((v) => `'${v}'`).join(', ');
-
 const harvestPlaces = `
 ALTER TABLE harvests ADD COLUMN place_mode TEXT CHECK (place_mode IN (${sqlList(Object.values(CHECK_IN_MODE_KEYS))}));
 ALTER TABLE harvests ADD COLUMN place_label TEXT;

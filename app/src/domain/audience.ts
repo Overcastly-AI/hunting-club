@@ -1,5 +1,6 @@
 /** Who hears your check-ins, Ask for a Hand and overdue alerts: your free party or your club. */
-export type Audience = 'party' | 'club';
+export const AUDIENCES = ['party', 'club'] as const;
+export type Audience = (typeof AUDIENCES)[number];
 
 /** Ask for a Hand's reach. Never worded or styled like an emergency call. */
 export const HELP_AUDIENCE_TEXT: Record<Audience, string> = {
