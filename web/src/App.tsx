@@ -1,11 +1,13 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import type { ClubApi } from './api/types';
 import type { WebClubServices } from './cloud';
 import { Billing } from './pages/Billing';
 import { MyClub } from './pages/MyClub';
-import { Roster } from './pages/Roster';
 import { SignIn } from './pages/SignIn';
 import { StandsAndAreas } from './pages/StandsAndAreas';
+
+// The roster pulls in the mesh join-link codec and QR encoder: load it on first visit.
+const Roster = lazy(() => import('./pages/Roster').then((m) => ({ default: m.Roster })));
 
 /** Pages reachable once signed in, in navigation order. Hash routes: no server rewrites. */
 export const PAGES = [
@@ -78,7 +80,9 @@ export function App(props: WebClubServices) {
           Sign out
         </button>
       </nav>
-      <main>{page.render(api)}</main>
+      <main>
+        <Suspense fallback={<p className="muted">Loading…</p>}>{page.render(api)}</Suspense>
+      </main>
       <p className="muted">Signed in as {email}</p>
     </div>
   );

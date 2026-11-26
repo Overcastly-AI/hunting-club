@@ -11,6 +11,7 @@ import {
   type Area,
   type Club,
   type Member,
+  type Plan,
   type Stand,
   type Subscription,
 } from '@huntclub/shared';
@@ -22,6 +23,7 @@ export interface FakeClubData {
   stands: Stand[];
   areas: Area[];
   subscription: Subscription | null;
+  plans: Plan[];
 }
 
 const CLUB = '0b9c4b6e-6a43-4c55-9a1e-2f6a8f0c1a01';
@@ -101,6 +103,10 @@ export function sampleData(): FakeClubData {
       stand(2, 'Big Oak Ladder', 'ladder', AREA_NORTH),
       stand(3, 'Field Blind', 'ground_blind', AREA_NORTH, false),
     ],
+    plans: [
+      { id: 'club_standard', name: 'Club', active: true, ...timestamps },
+      { id: 'club_legacy', name: 'Old club plan', active: false, ...timestamps },
+    ],
     subscription: {
       clubId: CLUB,
       stripeCustomerId: 'cus_sample',
@@ -129,7 +135,7 @@ export function fakeClubClient(data: FakeClubData = sampleData()): ClubApiClient
     return data.club;
   };
   return {
-    listPlans: async () => [],
+    listPlans: async () => data.plans,
     listMyClubs: async () => (data.club ? [{ club: data.club, membership: admin() }] : []),
     async createClub(request) {
       const { club, admin: profile } = ClubCreateRequestSchema.parse(request);
@@ -169,6 +175,9 @@ export function fakeClubClient(data: FakeClubData = sampleData()): ClubApiClient
       if (!data.subscription) throw new ClubApiRequestError('not_found', 404);
       return data.subscription;
     },
+    startCheckout: async (clubId, { planId }) => ({
+      url: `https://checkout.stripe.com/c/pay/cs_test_${planId}_${clubOrThrow().id === clubId}`,
+    }),
     getClubSecret: async (clubId) => ({
       clubId,
       channelKey,

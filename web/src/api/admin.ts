@@ -1,4 +1,3 @@
-import { base64UrlDecode, CLUB_CHANNEL_NAME, channelSetWithKey } from '@huntclub/mesh';
 import { ClubApiRequestError, type ClubApiClient } from '@huntclub/shared';
 import type { ClubApi } from './types';
 
@@ -36,11 +35,19 @@ export function adminApi(client: ClubApiClient): ClubApi {
     createInvite: async (request) => client.createInvite(await requireClub(), request),
     async getClubChannelSet() {
       // The key never leaves this function except inside the invite link; never log it.
-      const secret = await client.getClubSecret(await requireClub());
+      const [secret, { base64UrlDecode, CLUB_CHANNEL_NAME, channelSetWithKey }] = await Promise.all(
+        [
+          client.getClubSecret(await requireClub()),
+          import('@huntclub/mesh'), // the protobuf codec loads only when an invite is made
+        ],
+      );
       return channelSetWithKey(base64UrlDecode(secret.channelKey), { name: CLUB_CHANNEL_NAME });
     },
     listStands: async () => client.listStands(await requireClub()),
     listAreas: async () => client.listAreas(await requireClub()),
+    listPlans: async () => (await client.listPlans()).filter((plan) => plan.active),
+    startCheckout: async (planId) =>
+      (await client.startCheckout(await requireClub(), { planId })).url,
     async getSubscription() {
       try {
         return await client.getSubscription(await requireClub());

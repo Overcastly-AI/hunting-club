@@ -1,9 +1,17 @@
-import { decodeJoinUrl, JOIN_WEB_PATH } from '@huntclub/mesh';
-import { WEB_DOMAINS } from '@huntclub/shared';
+import {
+  decodeJoinUrl,
+  defaultRandom,
+  encodeJoinUrl,
+  generatePartyChannelSet,
+  JOIN_WEB_PATH,
+} from '@huntclub/mesh';
+import { CHECKOUT_RETURN_PATHS, JOIN_PATH, WEB_DOMAINS } from '@huntclub/shared';
 import { ClubSession, memoryTokenStore, signInCopy } from '@huntclub/shared';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { adminApi } from '../api/admin';
 import { App } from '../App';
+import * as navigate from '../navigate';
+import { Root } from '../Root';
 import type { WebClubServices } from '../cloud';
 import { fakeClubClient, fakeCognitoAuth, sampleData, TEST_CODE } from './fakeClubApi';
 
@@ -118,11 +126,72 @@ describe('club pages', () => {
     expect(screen.getAllByText('North 40').length).toBeGreaterThan(0);
   });
 
-  it('shows billing status and paid-through date', async () => {
+  it('shows billing status and paid-through date, with no payment button while active', async () => {
     renderApp();
     await signIn();
     go('#/billing');
     expect(await screen.findByText('Active')).toBeTruthy();
     expect(screen.getByText('August 1, 2027')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Continue to payment/ })).toBeNull();
+  });
+
+  it('sends a club with no subscription to Stripe Checkout for an active plan', async () => {
+    const goTo = vi.spyOn(navigate, 'navigateTo').mockImplementation(() => undefined);
+    renderApp({ ...sampleData(), subscription: null });
+    await signIn();
+    go('#/billing');
+    expect(await screen.findByText('No subscription yet.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Old club plan/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to payment: Club' }));
+    await vi.waitFor(() => expect(goTo).toHaveBeenCalledTimes(1));
+    expect(goTo.mock.calls[0]![0]).toMatch(/^https:\/\/checkout\.stripe\.com\//);
+    goTo.mockRestore();
+  });
+});
+
+describe('pages on their own paths (no sign-in)', () => {
+  const services = { session: undefined, api: undefined };
+  const at = (pathname: string, hash = '') => ({
+    pathname,
+    href: `https://${WEB_DOMAINS.dev}${pathname}${hash}`,
+  });
+
+  it('hands a web club invite to the app, without showing the key', async () => {
+    const channelSet = generatePartyChannelSet({ random: defaultRandom, name: 'Club' });
+    const web = encodeJoinUrl(
+      {
+        channelSet,
+        target: { kind: 'club', clubId: sampleData().club!.id, inviteToken: 'ab'.repeat(32) },
+      },
+      { form: 'web' },
+    );
+    render(<Root {...services} location={at(JOIN_PATH, web.slice(web.indexOf('#')))} />);
+    expect(await screen.findByRole('heading', { name: 'Club invite' })).toBeTruthy();
+    const open = screen.getByRole('link', { name: 'Open in the app' }).getAttribute('href')!;
+    expect(open.startsWith('huntclub://')).toBe(true);
+    expect(decodeJoinUrl(open)).toEqual(decodeJoinUrl(web));
+    expect(screen.getByRole('img', { name: 'Invite QR code' })).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/channel|key|LongFast/i);
+  });
+
+  it('explains a broken invite link', async () => {
+    render(<Root {...services} location={at(`${JOIN_PATH}/`, '#cs=nope')} />);
+    expect((await screen.findByRole('alert')).textContent).toMatch(/not complete/);
+  });
+
+  it('thanks the admin after Checkout, and reassures after a cancel', async () => {
+    const { unmount } = render(<Root {...services} location={at(CHECKOUT_RETURN_PATHS.success)} />);
+    expect(await screen.findByRole('heading', { name: 'Payment received' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Back to club admin' }).getAttribute('href')).toBe(
+      '/#/billing',
+    );
+    unmount();
+    render(<Root {...services} location={at(CHECKOUT_RETURN_PATHS.cancel)} />);
+    expect(await screen.findByText(/Nothing was charged/)).toBeTruthy();
+  });
+
+  it('shows the club admin on any other path', async () => {
+    render(<Root {...services} location={at('/')} />);
+    expect(await screen.findByText(/not available yet/)).toBeTruthy();
   });
 });
