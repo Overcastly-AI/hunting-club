@@ -1,6 +1,7 @@
 import { ADMIN_PATH } from '@huntclub/shared/app';
 import {
   ADMIN_PAGE_PATHS,
+  JOIN_PAGE,
   NOINDEX_PATHS,
   NOT_FOUND_PAGE,
   outputFile,
@@ -20,9 +21,12 @@ export const WELL_KNOWN_PREFIX = '.well-known/';
 /** The branded not-found page CloudFront serves, with a 404 status, for any missing path. */
 export const NOT_FOUND_OBJECT = `/${NOT_FOUND_PAGE.file}`;
 
-/** Public site pages by path → their object in the bucket (from the site's route registry). */
+/** Public site pages by path → their object in the bucket (the registry, plus /join). */
 export function sitePageObjects(): Record<string, string> {
-  return Object.fromEntries(ROUTES.map((r) => [r.path, `/${outputFile(r.path)}`]));
+  return Object.fromEntries([
+    ...ROUTES.map((r) => [r.path, `/${outputFile(r.path)}`]),
+    [JOIN_PAGE.path, `/${JOIN_PAGE.file}`],
+  ]);
 }
 
 /**
@@ -32,9 +36,8 @@ export function sitePageObjects(): Record<string, string> {
  * 2. The admin: /app → /app/ (301); /app/ and any extensionless path under it → its
  *    index.html (hash routes); its files (/app/assets/…) pass through.
  * 3. A trailing slash anywhere else → 301 to the path without it.
- * 4. A registered site page → its <path>/index.html.
- * 5. A real path the admin still answers (/join, /checkout/*, /privacy, /terms) → the
- *    admin's index.html.
+ * 4. A site page (the registry, and /join) → its <path>/index.html.
+ * 5. A real path the admin still answers (/checkout/*) → the admin's index.html.
  * Anything else goes to S3 as is: a missing key is a 404, which the distribution answers
  * with the 404 page. Join links keep their data in the URL fragment, which never
  * reaches CloudFront.

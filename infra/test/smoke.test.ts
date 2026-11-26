@@ -1,6 +1,6 @@
 import { colors } from '@huntclub/design';
 import { ADMIN_PATH, API_PATHS, BUILD_VERSION_URL, WEB_PAGE_PATHS } from '@huntclub/shared';
-import { NOT_FOUND_PAGE, ROUTES, sitemapXml, SITEMAP_FILE } from '@huntclub/site/routes';
+import { JOIN_PAGE, NOT_FOUND_PAGE, ROUTES, sitemapXml, SITEMAP_FILE } from '@huntclub/site/routes';
 import { dev } from '../config/dev';
 import {
   cloudFor,
@@ -27,6 +27,7 @@ const ADMIN = '<!doctype html><head><title>Club admin</title></head><div id="roo
 const NOT_FOUND = `<!doctype html><head><title>${NOT_FOUND_PAGE.title}</title></head>`;
 const ADMIN_PATHS = [ADMIN_PATH, ...WEB_PAGE_PATHS];
 const HTML = { 'content-type': 'text/html' };
+const JOIN_SCRIPT = '/assets/join-abc.js';
 
 /** A healthy deployment as the checks expect it; `override` breaks one URL. */
 function fakeDev(override: Record<string, number> = {}): {
@@ -46,6 +47,12 @@ function fakeDev(override: Record<string, number> = {}): {
     if (url === `${SITE}/`) {
       return reply(200, HOME, { ...HTML, 'x-robots-tag': NOINDEX_HEADER.value });
     }
+    if (url === `${SITE}${JOIN_PAGE.path}`) {
+      const page = `<title>${JOIN_PAGE.title}</title><meta name="robots" content="noindex"/><script type="module" src="${JOIN_SCRIPT}"></script>`;
+      return reply(200, page, { ...HTML, 'referrer-policy': 'no-referrer' });
+    }
+    if (url === `${SITE}${JOIN_SCRIPT}`)
+      return reply(200, '', { 'content-type': 'text/javascript' });
     const route = ROUTES.find((r) => r.path !== '/' && url === `${SITE}${r.path}`);
     if (route) return reply(200, `<title>${route.title}</title><h1>Page</h1>`, HTML);
     if (ADMIN_PATHS.some((p) => url === `${SITE}${p}`)) return reply(200, ADMIN, HTML);
@@ -153,6 +160,16 @@ describe('dev smoke check', () => {
     expect(failed.map((r) => [r.name, r.detail])).toEqual([
       ['site page /pricing is served', 'not this page (title differs)'],
     ]);
+  });
+
+  it('fails an invite page sent with a referrer', async () => {
+    const { fetch } = fakeDev();
+    const leaky: SmokeFetch = async (url, init) => {
+      const res = await fetch(url, init);
+      return url === `${SITE}${JOIN_PAGE.path}` ? { ...res, headers: { get: () => null } } : res;
+    };
+    const failed = (await runSmoke(dev, leaky)).filter((r) => !r.ok);
+    expect(failed.map((r) => r.detail)).toEqual(['referrer-policy is missing']);
   });
 
   it('fails when the sitemap is missing', async () => {

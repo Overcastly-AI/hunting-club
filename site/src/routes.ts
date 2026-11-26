@@ -155,8 +155,8 @@ export const NOT_FOUND_PAGE = {
 } as const;
 
 /**
- * Real paths the club admin (web/, under ADMIN_PATH) still answers: /join and the
- * Checkout return pages. CloudFront sends them to the admin's index.html.
+ * Real paths the club admin (web/, under ADMIN_PATH) still answers: the Checkout return
+ * pages. CloudFront sends them to the admin's index.html.
  */
 export const ADMIN_PAGE_PATHS: readonly string[] = WEB_PAGE_PATHS;
 
@@ -199,3 +199,17 @@ export const HASH_FORWARD_SCRIPT = `if(location.hash.indexOf('#/')===0)location.
 /** Where a page is written in dist: `/` → index.html, `/clubs` → clubs/index.html. */
 export const outputFile = (path: string) =>
   path === '/' ? 'index.html' : `${path.slice(1)}/index.html`;
+
+/**
+ * The invite landing page (/join): never indexed, no canonical URL, sent with no
+ * referrer. The invite (with the radio channel key) is in the URL fragment, which never
+ * reaches the server: the page's one self-hosted script reads it in the browser and
+ * never sends or logs it. No third-party scripts, fonts or images.
+ */
+export const JOIN_PAGE = {
+  path: JOIN_PATH,
+  file: outputFile(JOIN_PATH),
+  title: 'Your invite · Hunt Club Mesh',
+  description:
+    'Open your Hunt Club Mesh invite on your phone to join a hunting party or club. The app sets up your radio and works with no cell service.',
+} as const;

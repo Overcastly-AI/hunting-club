@@ -28,6 +28,10 @@ export interface PageMeta {
   readonly path?: string;
   /** The page's one inline script, if any (HASH_FORWARD_SCRIPT on the home page). */
   readonly script?: string;
+  /** A self-hosted module script (the /join page's), loaded after the page is parsed. */
+  readonly scriptSrc?: string;
+  /** Send no Referer from this page (/join: its URL holds an invite). */
+  readonly noReferrer?: boolean;
 }
 
 /** A whole page: head from the registry, then header, main content and footer. */
@@ -39,6 +43,7 @@ export function Document(props: { meta: PageMeta; assets: PageAssets; children: 
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {meta.noReferrer ? <meta name="referrer" content="no-referrer" /> : null}
         <title>{meta.title}</title>
         <meta name="description" content={meta.description} />
         {url ? (
@@ -60,6 +65,7 @@ export function Document(props: { meta: PageMeta; assets: PageAssets; children: 
         <link rel="preload" as="font" type="font/woff2" href={assets.fontUrl} crossOrigin="" />
         <style dangerouslySetInnerHTML={{ __html: assets.css }} />
         {meta.script ? <script dangerouslySetInnerHTML={{ __html: meta.script }} /> : null}
+        {meta.scriptSrc ? <script type="module" src={meta.scriptSrc} /> : null}
       </head>
       <body>
         <a className="skip-link" href="#main">

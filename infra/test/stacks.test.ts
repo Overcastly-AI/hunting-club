@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { JOIN_PATH } from '@huntclub/shared/app';
 import { App } from 'aws-cdk-lib';
 import { Match } from 'aws-cdk-lib/assertions';
 import { GSIS, PARTITION_PREFIXES, TABLE_KEYS, TTL_ATTRIBUTE } from '@huntclub/club-data';
@@ -234,6 +235,33 @@ describe('web stack', () => {
     const indexable = synthTemplates({ searchIndexing: true }).web;
     indexable.hasResourceProperties('AWS::CloudFront::ResponseHeadersPolicy', {
       ResponseHeadersPolicyConfig: Match.objectLike({ CustomHeadersConfig: Match.absent() }),
+    });
+  });
+
+  it('sends no referrer from /join, with the same security headers and rewrite', () => {
+    const policies = t.findResources('AWS::CloudFront::ResponseHeadersPolicy');
+    const byReferrer = Object.fromEntries(
+      Object.entries(policies).map(([id, r]) => [
+        r.Properties.ResponseHeadersPolicyConfig.SecurityHeadersConfig.ReferrerPolicy
+          .ReferrerPolicy,
+        id,
+      ]),
+    );
+    expect(Object.keys(byReferrer).sort()).toEqual([
+      'no-referrer',
+      'strict-origin-when-cross-origin',
+    ]);
+    const [dist] = Object.values(t.findResources('AWS::CloudFront::Distribution'));
+    const config = dist!.Properties.DistributionConfig;
+    const behaviors = config.CacheBehaviors as Record<string, unknown>[];
+    expect(behaviors.map((b) => b.PathPattern)).toEqual([JOIN_PATH, `${JOIN_PATH}/*`]);
+    for (const b of behaviors) {
+      expect(b.ResponseHeadersPolicyId).toEqual({ Ref: byReferrer['no-referrer'] });
+      expect(b.FunctionAssociations).toEqual(config.DefaultCacheBehavior.FunctionAssociations);
+      expect(b.TargetOriginId).toBe(config.DefaultCacheBehavior.TargetOriginId);
+    }
+    expect(config.DefaultCacheBehavior.ResponseHeadersPolicyId).toEqual({
+      Ref: byReferrer['strict-origin-when-cross-origin'],
     });
   });
 

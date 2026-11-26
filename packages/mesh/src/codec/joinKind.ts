@@ -21,6 +21,9 @@ export const JOIN_PARAMS = {
 
 export type JoinKind = 'club' | 'party';
 
+/** The app's own join link (its URL scheme); the web link carries the same parameters. */
+export const JOIN_URL_PREFIX = 'huntclub://join';
+
 /** The kind of join link these parameters describe, or null when incomplete. */
 export function joinKindOf(params: ReadonlyMap<string, string>): JoinKind | null {
   if (!params.get(JOIN_PARAMS.channelSet)) return null;
@@ -43,4 +46,14 @@ export function classifyJoinFragment(hash: string): { kind: JoinKind } | null {
   }
   const kind = joinKindOf(params);
   return kind ? { kind } : null;
+}
+
+/**
+ * The app link for a web join link's fragment: the same parameters under the app's
+ * scheme, which decodeJoinUrl reads the same way. Null when the fragment is not a
+ * complete join link. The result holds the channel key: never log or send it.
+ */
+export function appJoinUrl(hash: string): string | null {
+  const fragment = hash.replace(/^#/, '');
+  return classifyJoinFragment(fragment) ? `${JOIN_URL_PREFIX}?${fragment}` : null;
 }

@@ -7,7 +7,8 @@ import {
 } from '@huntclub/design';
 import { CLUB_PRICING, LEGAL_DOCS, LEGAL_DRAFT_NOTICE, SAFETY_NOTE } from '@huntclub/shared';
 import { ADMIN_PATH, SUPPORT_EMAIL } from '@huntclub/shared/app';
-import { renderNotFound, renderPage } from '../render';
+import { renderJoin, renderNotFound, renderPage } from '../render';
+import { assets, FONT } from './fixtures';
 import {
   canonicalUrl,
   FOOTER_LINKS,
@@ -28,14 +29,13 @@ import {
 import { MESHTASTIC_ATTRIBUTION } from '../Shell';
 import { siteCss } from '../styles';
 
-const FONT = '/assets/Archivo-Latin-test.woff2';
-const assets = { fontUrl: FONT, css: siteCss(FONT) };
 const pages = ROUTES.map((r) => ({ route: r, html: renderPage(r.path, assets) }));
 const notFound = renderNotFound(assets);
-/** Every HTML file the site builds: the registered pages and 404.html. */
+/** Every HTML file the site builds: the registered pages, 404.html and the /join page. */
 const allPages = [
   ...pages.map((p) => ({ name: p.route.path, html: p.html })),
   { name: '404.html', html: notFound },
+  { name: 'join/index.html', html: renderJoin(assets, '/assets/join-test.js') },
 ];
 const count = (html: string, pattern: RegExp) => (html.match(pattern) ?? []).length;
 /** Visible text only (no tags or inline CSS). */
