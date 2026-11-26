@@ -26,6 +26,7 @@ Build a phone app that pairs over Bluetooth with low-cost Meshtastic LoRa radios
 6. Large text, large buttons and a word label on every control.
 7. Location is shared only while you're checked in (at a stand, at a spot or on the move).
 11. Stands are optional. Many hunters walk the woods; every feature must work for a hunter who never sits in a stand.
+12. **Runs on both iOS and Android, with equal features.** Every milestone is tested on both platforms (simulator/emulator at minimum; real phones for Bluetooth). No platform-only features.
 8. "Ask for a Hand" pings your party or club. Nothing in the app may look like it calls 911.
 9. No legal shooting hours. Show sunrise and sunset only, since rules vary by state.
 10. Compatible with stock Meshtastic radios and firmware.
@@ -121,6 +122,7 @@ Everything that matters in the field travels over the LoRa mesh, with no server 
 | Layer | Choice | Why |
 |---|---|---|
 | App | React Native with Expo (dev build), TypeScript | One codebase for iOS and Android |
+| Mobile builds | EAS Build (free tier) for iOS and Android; local Android builds in CI | iOS builds need macOS; EAS avoids paying for a Mac. No AWS Mac instances (24-hour minimum billing) |
 | Bluetooth | react-native-ble-plx | Mature BLE library for the Meshtastic BLE service |
 | Mesh protocol | Official Meshtastic TypeScript packages (protobufs, core) with a custom BLE transport | Wire compatibility with stock radios; no hand-written protocol code |
 | Maps | MapLibre React Native with offline packs | Free, open source, works fully offline |
