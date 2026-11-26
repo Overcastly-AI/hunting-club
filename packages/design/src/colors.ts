@@ -1,4 +1,4 @@
-import { darkTheme, lightTheme } from './theme';
+import { darkTheme, lightTheme } from './theme.ts';
 
 const dark = darkTheme.colors;
 
