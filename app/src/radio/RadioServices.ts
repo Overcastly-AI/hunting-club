@@ -1,4 +1,5 @@
 import {
+  CLUB_PARTY_CHANNEL,
   CORE_CONFIG,
   CheckInBoard,
   CheckInController,
@@ -110,6 +111,8 @@ export class RadioServices {
     this.party = new PartyService(ctx, {
       store: partyStore ?? new MemoryPartyStore(),
       ...(partyConfig ? { config: partyConfig } : {}),
+      // Inside a club, a party is a secondary channel next to the club's (no cap).
+      ...(clubInfo?.channelSet ? { clubChannelSet: clubInfo.channelSet } : {}),
     });
     void this.party.restore();
     this.help = new HelpRequester(ctx, {
@@ -128,10 +131,12 @@ export class RadioServices {
     }).start();
 
     const withNames = names ? { names } : {};
-    // The hunt channel is the radio's primary: the party's, or the club's in a club.
-    // (A free party inside a club needs a second channel: a follow-up.)
-    const channelOf = () => PRIMARY_CHANNEL;
-    const groupSegment: 'club' | 'party' = club ? 'club' : 'party';
+    // The primary channel is the party's, or the club's in a club; a party inside a
+    // club is the secondary CLUB_PARTY_CHANNEL.
+    const channelOf = (group: Audience) =>
+      club && group === 'party' ? CLUB_PARTY_CHANNEL : PRIMARY_CHANNEL;
+    const segmentOfChannel = (channel: number): Audience =>
+      club && channel !== CLUB_PARTY_CHANNEL ? 'club' : 'party';
     this.mapRadio = { client, board: this.board };
     this.checkInRadio = {
       checkIns: this.checkIns,
@@ -156,7 +161,7 @@ export class RadioServices {
       // Everyone else our radio knows on the hunt channel.
       groupSize: () => [...client.nodes.keys()].filter((n) => n !== client.myNodeNum).length,
       channelOf,
-      segmentOfChannel: () => groupSegment,
+      segmentOfChannel,
     };
     this.harvestRadio = { sharer: this.sharer, audience, channelOf };
     this.boardRadio = {
