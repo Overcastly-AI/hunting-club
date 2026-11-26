@@ -21,6 +21,13 @@ Source of truth: docs/SPEC.md. Read it before starting any milestone.
 - Clubs are rows with club_id + RLS in one shared database, never per-club infrastructure.
 - Never log channel keys or message bodies.
 
+## DRY (owner rule, no shortcuts)
+- Every constant, type, schema, message format, validation rule and piece of logic has exactly one source of truth. Never copy-paste code or definitions.
+- If two places need the same thing, extract it and import it: shared TypeScript goes in `packages/` (for example `packages/mesh` for protocol code, `packages/shared` for domain types and constants used by app, web, infra and Lambdas).
+- Generate instead of retyping where a definition crosses a boundary (for example database types generated from the SQL schema, theme values from the token file).
+- Before writing anything new, search the repo for an existing helper and reuse or extend it.
+- Duplication is a review blocker, including "temporary" copies and copy-pasted tests; use shared fixtures and helpers.
+
 ## Workflow
 - Work one milestone at a time; list what you will build and the test, then build.
 - Write unit tests for protobuf encode/decode and message de-duplication.
