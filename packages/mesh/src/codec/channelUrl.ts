@@ -99,7 +99,9 @@ export interface JoinLink {
 /**
  * Hosts that serve the web join page (and, later, the iOS/Android universal
  * link) at JOIN_WEB_PATH. First entry is the default for new links.
- * Only the dev domain exists so far; production is added here when chosen.
+ * TODO(backlog): the production host is not decided yet. Add it here (as
+ * the first entry) once chosen; until then QR codes default to the app
+ * form, and the web form only works on the dev domain.
  */
 export const JOIN_WEB_HOSTS: readonly string[] = ['huntclub-dev.jaycobjones.com'];
 export const JOIN_WEB_PATH = '/join';

@@ -11,9 +11,8 @@
  *   waits a random moment and stays quiet if another alert was heard.
  * - An extension (CheckIn with `until`) moves the deadline for everyone.
  *
- * Sunrise/sunset is computed on the device by the map work (PR #6,
- * app/src/conditions/sun.ts). It is injected here as `SunApi` instead of
- * copied; the backlog moves it into this package once #6 merges.
+ * Sunset comes from `sun.ts` in this package; tests inject fixed times
+ * through `OverdueOptions.sun`.
  */
 import {
   AppMessageType,
@@ -26,6 +25,7 @@ import {
 } from '@huntclub/mesh';
 import type { CheckInBoard, CheckInController, MemberCheckIn, OpenCheckIn } from './checkIn';
 import { CORE_CONFIG, MINUTE_MS, type CoreConfig } from './config';
+import { SUN, type SunApi } from './sun';
 import {
   randomFraction,
   resolveContext,
@@ -35,22 +35,6 @@ import {
 } from './context';
 
 const DAY_MS = 86_400_000;
-
-export interface CalendarDay {
-  year: number;
-  month: number;
-  day: number;
-}
-
-/** Shape of app/src/conditions/sun.ts (structurally typed so that module can be passed as-is). */
-export interface SunApi {
-  sunTimes(
-    day: CalendarDay,
-    lat: number,
-    lon: number,
-  ): { kind: 'normal'; sunset: Date } | { kind: 'polarDay' | 'polarNight' };
-  localCalendarDay(date: Date): CalendarDay;
-}
 
 /**
  * When a check-in becomes overdue: the first sunset + grace after the
@@ -108,7 +92,8 @@ export interface OverdueEvents {
 export interface OverdueOptions {
   checkIns: CheckInController;
   board: CheckInBoard;
-  sun: SunApi;
+  /** Defaults to the on-device calculation; tests pass fixed times. */
+  sun?: SunApi;
   /** Overrides of CORE_CONFIG.overdue (for example the club's grace minutes). */
   config?: Partial<CoreConfig['overdue']>;
   /** Best known location of a node, for its sunset. Defaults to the node DB / our radio. */
@@ -226,7 +211,13 @@ export class OverdueMonitor extends Emitter<OverdueEvents> {
   private deadlineForSelf(mine: OpenCheckIn): number | undefined {
     const place = mine.placement.pin ?? this.locate(this.ctx.client.myNodeNum);
     return place
-      ? overdueAt(mine.checkedInAt, place, this.config.graceMinutes, this.opts.sun, mine.until)
+      ? overdueAt(
+          mine.checkedInAt,
+          place,
+          this.config.graceMinutes,
+          this.opts.sun ?? SUN,
+          mine.until,
+        )
       : mine.until;
   }
 
@@ -235,7 +226,7 @@ export class OverdueMonitor extends Emitter<OverdueEvents> {
   private deadlineForMember(m: MemberCheckIn): number | undefined {
     const place = m.pin ?? this.locate(m.node);
     return place
-      ? overdueAt(m.since, place, this.config.graceMinutes, this.opts.sun, m.until)
+      ? overdueAt(m.since, place, this.config.graceMinutes, this.opts.sun ?? SUN, m.until)
       : m.until;
   }
 
