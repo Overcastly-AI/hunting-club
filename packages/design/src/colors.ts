@@ -45,3 +45,18 @@ export const boundary = {
 } as const;
 
 export type ColorToken = keyof typeof colors;
+
+/**
+ * Light sections of the public marketing site (docs/SPEC.md "Light sections"). The app
+ * and the club admin stay dark; only marketing pages alternate light and dark bands.
+ */
+export const lightColors = {
+  /** Background of a light section. */
+  bgLight: '#F4F1EA',
+  /** Text on a light section. */
+  textOnLight: '#121416',
+  /** Secondary text on a light section. */
+  mutedOnLight: '#4A5158',
+  /** Links on a light section (accent darkened to read as text). */
+  linkOnLight: '#A8420A',
+} as const;

@@ -1,0 +1,26 @@
+{
+  "name": "@huntclub/site",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Public marketing site: static pages rendered at build time with react-dom/server (no client JavaScript), from one route registry.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit && vite build --configLoader runner && node dist/.server/prerender.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --configLoader runner"
+  },
+  "dependencies": {
+    "@huntclub/design": "*",
+    "@huntclub/shared": "*",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.7",
+    "@types/react": "~19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "~6.0.3",
+    "vite": "8.3.8",
+    "vitest": "5.1.2"
+  }
+}

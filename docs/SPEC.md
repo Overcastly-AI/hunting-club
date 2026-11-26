@@ -245,6 +245,17 @@ The look is a full-screen aerial map with dark floating controls and a bottom sh
 | map-halo | #0B0D0E | 3 px outline behind all map text |
 | boundary | #FFFFFF at 85% + 1 px accent inner line | Club property line |
 
+**Light sections (public marketing site only)**
+
+The app and the club admin stay dark. Marketing pages alternate dark and light bands; light bands use only these (`lightColors` in `@huntclub/design`), each at 4.5:1 or better on `bg-light`.
+
+| Token | Value | Use |
+|---|---|---|
+| bg-light | #F4F1EA | Light section background |
+| text-on-light | #121416 | Text on a light section |
+| muted-on-light | #4A5158 | Secondary text on a light section |
+| link-on-light | #A8420A | Links on a light section |
+
 **Type:** Archivo variable font (width 75–100, weight 500–800). Map labels at least 13 px; marker names 15 px / 800; sheet title 25 px / 800 at 82% width; body 16–17 px; tab labels 14 px. Use mixed case; no letter-spaced all-caps labels.
 
 **Shape and size:** controls 52 × 52 px with 14 px corners; primary buttons 62–66 px tall with 12 px corners; bottom sheet 20 px top corners; hunters are circles, stands are rounded squares with a type icon. Minimum tap target is 48 px everywhere.
