@@ -245,7 +245,7 @@ describe('api stack', () => {
     t.hasResourceProperties('AWS::Lambda::Function', { Environment: { Variables: variables } });
   });
 
-  it('lets the webhook read exactly its own SSM parameters, with no KMS or wildcard grant', () => {
+  it('lets the webhook read exactly its own SSM parameters, with no wildcard', () => {
     const ssmStatements = statements().filter((s) =>
       actionsOf(s).some((a) => a.startsWith('ssm:')),
     );
@@ -264,6 +264,17 @@ describe('api stack', () => {
     ).toBe(false);
   });
 
+  it('decrypts only through SSM and only for its own parameters', () => {
+    const kms = statements().filter((s) => actionsOf(s).includes('kms:Decrypt'));
+    expect(kms).toHaveLength(1);
+    expect(actionsOf(kms[0]!)).toEqual(['kms:Decrypt']);
+    const condition = JSON.stringify(kms[0]!.Condition);
+    expect(condition).toContain(`ssm.${dev.region}.amazonaws.com`);
+    for (const key of STRIPE_WEBHOOK_SECRETS) {
+      expect(condition).toContain(`parameter${secretParameterName(dev.name, key)}`);
+    }
+  });
+
   it('names parameters /hunt-club-mesh/<env>/<name>', () => {
     expect(secretParameterName('dev', 'stripeWebhookSecret')).toBe(
       '/hunt-club-mesh/dev/stripe-webhook-secret',
@@ -271,7 +282,9 @@ describe('api stack', () => {
   });
 
   it('limits the webhook to billing partitions of the table', () => {
-    const conditioned = statements().filter((s) => s.Condition !== undefined);
+    const conditioned = statements().filter(
+      (s) => s.Condition !== undefined && actionsOf(s).some((a) => a.startsWith('dynamodb:')),
+    );
     expect(conditioned).toHaveLength(1);
     expect(conditioned[0]?.Condition).toEqual({
       'ForAllValues:StringLike': {

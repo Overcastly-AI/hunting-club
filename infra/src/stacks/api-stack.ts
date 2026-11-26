@@ -94,12 +94,26 @@ export class ApiStack extends Stack {
     });
 
     // Least privilege: read exactly its SecureString parameters (created outside CDK, so
-    // values never touch the repo). With the default aws/ssm key no KMS grant is needed.
-    for (const key of STRIPE_WEBHOOK_SECRETS) {
+    // values never touch the repo), and decrypt them only through SSM, only for those
+    // parameters (SSM puts the parameter ARN in the KMS encryption context).
+    const parameters = STRIPE_WEBHOOK_SECRETS.map((key) =>
       ssm.StringParameter.fromSecureStringParameterAttributes(this, `Secret-${key}`, {
         parameterName: secretParameterName(config.name, key),
-      }).grantRead(this.stripeWebhook.function);
-    }
+      }),
+    );
+    for (const parameter of parameters) parameter.grantRead(this.stripeWebhook.function);
+    this.stripeWebhook.function.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['kms:Decrypt'],
+        resources: [this.formatArn({ service: 'kms', resource: 'key', resourceName: '*' })],
+        conditions: {
+          StringEquals: {
+            'kms:ViaService': `ssm.${this.region}.amazonaws.com`,
+            'kms:EncryptionContext:PARAMETER_ARN': parameters.map((p) => p.parameterArn),
+          },
+        },
+      }),
+    );
 
     // Only items whose partition key starts with a billing prefix (subscriptions, processed
     // Stripe events): IAM checks every item's partition key via dynamodb:LeadingKeys.

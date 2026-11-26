@@ -86,6 +86,23 @@ export function findCostViolations(template: CfnTemplate, options: CostGuardOpti
         );
       }
     }
+    // Owner cost rule: secrets live in SSM Parameter Store (free), never Secrets Manager.
+    if (resource.Type.startsWith('AWS::SecretsManager::')) {
+      violations.push(`${id}: ${resource.Type} (use SSM Parameter Store SecureString)`);
+    }
+    if (resource.Type === 'AWS::IAM::Policy' || resource.Type === 'AWS::IAM::ManagedPolicy') {
+      const statements =
+        (props.PolicyDocument as { Statement?: { Action?: string | string[] }[] })?.Statement ?? [];
+      if (
+        statements.some((st) =>
+          [st.Action ?? []].flat().some((a) => a.startsWith('secretsmanager:')),
+        )
+      ) {
+        violations.push(
+          `${id}: grants secretsmanager actions (use SSM Parameter Store SecureString)`,
+        );
+      }
+    }
     if (resource.Type === 'AWS::Lambda::Function') {
       const logging = props.LoggingConfig as { LogGroup?: unknown } | undefined;
       if (logging?.LogGroup === undefined) {

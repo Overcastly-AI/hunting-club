@@ -4,6 +4,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { dev } from '../config/dev';
 import { findCostViolations } from './guards';
 import { synthTemplates } from './helpers';
@@ -54,6 +55,9 @@ describe('cost guard', () => {
       pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
     });
 
+    new secretsmanager.Secret(stack, 'Paid');
+    secretsmanager.Secret.fromSecretNameV2(stack, 'Existing', 'x').grantRead(fn);
+
     const messages = findCostViolations(Template.fromStack(stack).toJSON(), devGuard).join('\n');
     expect(messages).toMatch(/AWS::EC2::Instance/);
     expect(messages).toMatch(/AWS::EC2::NatGateway/);
@@ -62,5 +66,7 @@ describe('cost guard', () => {
     expect(messages).toMatch(/Lambda without an explicit log group/);
     expect(messages).toMatch(/not on-demand/);
     expect(messages).toMatch(/point-in-time recovery/);
+    expect(messages).toMatch(/AWS::SecretsManager::Secret/);
+    expect(messages).toMatch(/grants secretsmanager actions/);
   });
 });
