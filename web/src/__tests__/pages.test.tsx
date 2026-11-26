@@ -1,10 +1,4 @@
-import {
-  decodeJoinUrl,
-  defaultRandom,
-  encodeJoinUrl,
-  generatePartyChannelSet,
-  JOIN_WEB_PATH,
-} from '@huntclub/mesh';
+import { decodeJoinUrl, JOIN_WEB_PATH } from '@huntclub/mesh';
 import {
   ADMIN_PATH,
   APP_DESCRIPTION,
@@ -16,7 +10,6 @@ import {
   INITIALS_MAX,
   LEGAL_PATHS,
   ClubApiRequestError,
-  JOIN_PATH,
   WEB_DOMAINS,
 } from '@huntclub/shared';
 import { ClubSession, memoryTokenStore, signInCopy } from '@huntclub/shared';
@@ -535,30 +528,6 @@ describe('pages on their own paths (no sign-in)', () => {
   const at = (pathname: string, hash = '') => ({
     pathname,
     href: `https://${WEB_DOMAINS.dev}${pathname}${hash}`,
-  });
-
-  it('hands a web club invite to the app, without showing the key', async () => {
-    const channelSet = generatePartyChannelSet({ random: defaultRandom, name: 'Club' });
-    const web = encodeJoinUrl(
-      {
-        channelSet,
-        target: { kind: 'club', clubId: sampleData().club!.id, inviteToken: 'ab'.repeat(32) },
-      },
-      { form: 'web' },
-    );
-    render(<Root {...services} location={at(JOIN_PATH, web.slice(web.indexOf('#')))} />);
-    expect(await screen.findByRole('heading', { name: 'Club invite' })).toBeTruthy();
-    expect(document.title).toBe(`Club invite · ${APP_NAME}`);
-    const open = screen.getByRole('link', { name: 'Open in the app' }).getAttribute('href')!;
-    expect(open.startsWith('huntclub://')).toBe(true);
-    expect(decodeJoinUrl(open)).toEqual(decodeJoinUrl(web));
-    expect(screen.getByRole('img', { name: 'Invite QR code' })).toBeTruthy();
-    expect(document.body.textContent).not.toMatch(/channel|key|LongFast/i);
-  });
-
-  it('explains a broken invite link', async () => {
-    render(<Root {...services} location={at(`${JOIN_PATH}/`, '#cs=nope')} />);
-    expect((await screen.findByRole('alert')).textContent).toMatch(/not complete/);
   });
 
   it('thanks the admin after Checkout, and reassures after a cancel', async () => {

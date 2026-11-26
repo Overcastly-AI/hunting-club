@@ -1,4 +1,4 @@
-import { QR_QUIET_ZONE_MODULES, qrMatrix, qrPath } from '../qr';
+import { QR_QUIET_ZONE_MODULES, qrMatrix, qrPath, qrSvg } from '../qr';
 
 /** Every QR code has a 7×7 finder pattern in three corners: a dark ring around a dark 3×3 core. */
 function hasFinderAt(rows: boolean[][], top: number, left: number): boolean {
@@ -40,5 +40,19 @@ describe('qrPath', () => {
         [false, true],
       ]),
     ).toBe(`M${q},${q}h1v1h-1zM${q + 1},${q + 1}h1v1h-1z`);
+  });
+});
+
+describe('qrSvg', () => {
+  it('draws the shared path with the quiet zone, dark on light, with an escaped label', () => {
+    const value = 'https://example.com/join#cs=abc';
+    const { rows } = qrMatrix(value);
+    const extent = rows.length + 2 * QR_QUIET_ZONE_MODULES;
+    const svg = qrSvg(value, { label: 'Invite "QR" & more', size: 200 });
+    expect(svg).toContain(`viewBox="0 0 ${extent} ${extent}" width="200" height="200"`);
+    expect(svg).toContain(`<path d="${qrPath(rows)}" fill="var(--color-surface)"/>`);
+    expect(svg).toContain('fill="var(--color-text)"');
+    expect(svg).toContain('aria-label="Invite &quot;QR&quot; &amp; more"');
+    expect(svg).toContain('role="img"');
   });
 });

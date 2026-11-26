@@ -15,7 +15,7 @@ import type { RandomSource } from '../random';
 import { base64UrlDecode, base64UrlEncode } from './base64url';
 import { encodeUtf8 } from '../runtime';
 import { ChannelUrlError } from './channelUrlError';
-import { JOIN_PARAMS, type JoinKind, joinKindOf } from './joinKind';
+import { JOIN_PARAMS, JOIN_URL_PREFIX, type JoinKind, joinKindOf } from './joinKind';
 import { parseQuery } from './query';
 import { DEFAULT_HOP_LIMIT } from './radio';
 
@@ -24,7 +24,6 @@ export type ChannelSettings = Channel.ChannelSettings;
 export type LoRaConfig = Config.Config_LoRaConfig;
 
 export const MESHTASTIC_URL_PREFIX = 'https://meshtastic.org/e/';
-export const JOIN_URL_PREFIX = 'huntclub://join';
 /** Firmware: channel names must be under 12 bytes. */
 export const MAX_CHANNEL_NAME_BYTES = 11;
 /** A radio holds up to 8 channels (index 0 = PRIMARY, 1-7 = SECONDARY). */

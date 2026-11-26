@@ -56,11 +56,11 @@ export const CHECKOUT_RETURN_PATHS = {
 
 /**
  * Real (non-hash) paths the club admin (web/) answers on its own domain, with no sign-in:
- * the join fallback and the Checkout return pages. CloudFront serves the admin's
- * index.html for each; the admin's own pages use hash routes under ADMIN_PATH. Privacy and
- * Terms (LEGAL_PATHS) are static pages of the public site.
+ * the Checkout return pages. CloudFront serves the admin's index.html for each; the
+ * admin's own pages use hash routes under ADMIN_PATH. /join, Privacy and Terms are static
+ * pages of the public site.
  */
-export const WEB_PAGE_PATHS = [JOIN_PATH, ...Object.values(CHECKOUT_RETURN_PATHS)] as const;
+export const WEB_PAGE_PATHS = Object.values(CHECKOUT_RETURN_PATHS);
 
 /**
  * Support email, shown on the site's Contact page. OPEN DECISION (owner): no address yet,

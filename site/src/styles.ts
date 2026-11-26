@@ -87,6 +87,12 @@ section { padding: var(--space-xl) 0; }
 .notice { display: inline-block; padding: var(--space-sm) var(--space-md); border: 1px solid var(--color-control-border);
   border-radius: var(--radius-control); color: var(--color-text-secondary); }
 .legal .wrap { max-width: 45rem; }
+.eyebrow { ${textStyleCss(textScale.label)}; color: var(--color-text-secondary); margin: 0 0 var(--space-sm); }
+.join .wrap { max-width: 45rem; }
+.join-qr { display: none; margin-top: var(--space-xl); }
+.join-qr svg { display: block; }
+@media (min-width: 960px) and (pointer: fine) { .join-qr { display: block; } }
+[hidden] { display: none !important; }
 
 .site-footer { border-top: 1px solid var(--color-border); padding: var(--space-xl) 0; color: var(--color-text-secondary); }
 .site-footer a { color: var(--color-text-secondary); }

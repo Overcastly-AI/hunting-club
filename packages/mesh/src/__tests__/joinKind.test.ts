@@ -6,7 +6,7 @@ import {
   encodeJoinUrl,
   type JoinTarget,
 } from '../codec/channelUrl';
-import { classifyJoinFragment } from '../codec/joinKind';
+import { appJoinUrl, classifyJoinFragment } from '../codec/joinKind';
 import pkg from '../../package.json';
 
 const channelSet = channelSetWithKey(new Uint8Array(32).fill(7));
@@ -42,6 +42,19 @@ describe('classifyJoinFragment', () => {
 
   it('checks only presence: the channel data is not decoded', () => {
     expect(classifyJoinFragment('#cs=not-protobuf&party=p1')).toEqual({ kind: 'party' });
+  });
+});
+
+describe('appJoinUrl', () => {
+  it.each(TARGETS)('opens a $kind web link in the app with the same invite', (target) => {
+    const app = appJoinUrl(webFragment(target));
+    expect(app).toBe(encodeJoinUrl({ channelSet, target }));
+    expect(decodeJoinUrl(app!)).toEqual({ channelSet, target });
+  });
+
+  it('gives no app link for an incomplete fragment', () => {
+    expect(appJoinUrl('#cs=AAAA')).toBeNull();
+    expect(appJoinUrl('')).toBeNull();
   });
 });
 
