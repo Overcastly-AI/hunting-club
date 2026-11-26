@@ -1,6 +1,6 @@
 // The page head that Vite writes into index.html at build (and dev) time: title,
 // description, theme color and favicon, all from the shared sources.
-import { colors, FAVICON_ICO, logoMarkSvg } from '@huntclub/design';
+import { colors, FAVICON_ICO, FONT_FILE_PATTERN, logoMarkSvg } from '@huntclub/design';
 import { APP_DESCRIPTION, APP_NAME } from '@huntclub/shared/app';
 import type { Plugin } from 'vite';
 
@@ -19,15 +19,12 @@ export function siteHeadTags() {
   ];
 }
 
-/** The web font file (web/src/theme/fonts), preloaded so text does not wait for the CSS. */
-const FONT_FILE = /Archivo-Latin-[\w-]+\.woff2$/;
-
 /** Vite plugin: injects siteHeadTags(), preloads the font and emits the favicon from the logo mark. */
 export function siteHead(): Plugin {
   return {
     name: 'huntclub-site-head',
     transformIndexHtml: (_html, ctx) => {
-      const font = Object.keys(ctx.bundle ?? {}).find((name) => FONT_FILE.test(name));
+      const font = Object.keys(ctx.bundle ?? {}).find((name) => FONT_FILE_PATTERN.test(name));
       const preload = font
         ? [
             {

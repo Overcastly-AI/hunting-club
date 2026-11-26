@@ -1,70 +1,21 @@
 import {
-  colors,
-  fontAxisLimits,
-  fontFamily,
-  fontWidth,
-  radii,
-  sizes,
-  spacing,
+  fontFaceCss,
+  rootVariablesCss,
+  textClasses,
   textScale,
-  type TextScaleEntry,
-  type TextStyleName,
+  textStyleCss,
 } from '@huntclub/design';
-// Archivo, Latin subset of the app's font file (see fonts/README.md); Vite fingerprints it.
-import fontUrl from './fonts/Archivo-Latin.woff2?url';
+// Archivo, Latin subset of the app's font file (see packages/design/fonts/README.md).
+import fontUrl from '@huntclub/design/fonts/Archivo-Latin.woff2?url';
 
-/** Browser default root size: type is set in rem so it follows the reader's text-size setting. */
-const ROOT_FONT_PX = 16;
-const rem = (px: number) => `${px / ROOT_FONT_PX}rem`;
-
-const kebab = (name: string) => name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
-
-/** CSS custom properties for every design token, e.g. `--color-surface-raised`. */
-export function tokenVariables(): Record<string, string> {
-  const vars: Record<string, string> = {};
-  for (const [name, value] of Object.entries(colors)) vars[`--color-${kebab(name)}`] = value;
-  for (const [name, value] of Object.entries(spacing)) vars[`--space-${name}`] = `${value}px`;
-  for (const [name, value] of Object.entries(radii)) vars[`--radius-${kebab(name)}`] = `${value}px`;
-  vars['--tap-min'] = `${sizes.minTapTarget}px`;
-  vars['--button-min-height'] = `${sizes.primaryButtonMinHeight}px`;
-  return vars;
-}
-
-/** CSS declarations for one named text style of the shared type scale. */
-export function textStyleCss(entry: TextScaleEntry): string {
-  const width = entry.width ?? fontWidth.normal;
-  return [
-    `font-family: '${fontFamily}', sans-serif`,
-    `font-weight: ${entry.weight}`,
-    `font-stretch: ${width}%`,
-    `font-size: ${rem(entry.size)}`,
-    entry.lineHeight === undefined ? '' : `line-height: ${rem(entry.lineHeight)}`,
-  ]
-    .filter(Boolean)
-    .join('; ');
-}
-
-/** Utility classes `.text-body`, `.text-sheet-title`, … one per text style. */
-export function textClasses(): string {
-  return (Object.entries(textScale) as [TextStyleName, TextScaleEntry][])
-    .map(([name, entry]) => `.text-${kebab(name)} { ${textStyleCss(entry)}; }`)
-    .join('\n');
-}
+// The token CSS helpers live in @huntclub/design (shared with the public site).
+export { textStyleCss, tokenVariables } from '@huntclub/design';
 
 /** The whole stylesheet: font face, tokens, base elements and components. */
 export function globalCss(): string {
-  const vars = Object.entries(tokenVariables())
-    .map(([k, v]) => `${k}: ${v};`)
-    .join(' ');
   return `
-@font-face {
-  font-family: '${fontFamily}';
-  src: url('${fontUrl}') format('woff2');
-  font-weight: ${fontAxisLimits.weight.min} ${fontAxisLimits.weight.max};
-  font-stretch: ${fontAxisLimits.width.min}% ${fontAxisLimits.width.max}%;
-  font-display: swap;
-}
-:root { ${vars} color-scheme: dark; }
+${fontFaceCss(fontUrl)}
+${rootVariablesCss()}
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--color-surface); color: var(--color-text); }
 body { ${textStyleCss(textScale.body)}; }

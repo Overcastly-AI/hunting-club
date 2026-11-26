@@ -6,6 +6,7 @@ import {
   colors,
   contrastRatio,
   fontSize,
+  lightColors,
   logoMarkSvg,
   sizes,
   textScale,
@@ -18,8 +19,9 @@ describe('web theme from @huntclub/design', () => {
     expect(vars['--color-surface']).toBe(colors.surface);
     expect(vars['--color-surface-raised']).toBe(colors.surfaceRaised);
     expect(vars['--color-accent']).toBe(colors.accent);
+    expect(vars['--color-bg-light']).toBe(lightColors.bgLight);
     expect(Object.keys(vars).filter((k) => k.startsWith('--color-'))).toHaveLength(
-      Object.keys(colors).length,
+      Object.keys(colors).length + Object.keys(lightColors).length,
     );
   });
 
