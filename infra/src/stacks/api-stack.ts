@@ -11,6 +11,7 @@ import {
   STRIPE_WEBHOOK_SECRETS,
   secretParameterName,
   secretParameterEnvVar,
+  userPoolClientIds,
   type EnvConfig,
 } from '../../config';
 import { NodeLambda } from '../constructs/node-lambda';
@@ -70,9 +71,7 @@ export class ApiStack extends Stack {
       grantIndexPermissions: true,
     });
     const userPool = cognito.UserPool.fromUserPoolId(this, 'Users', config.cognito.userPoolId);
-    const clientIds = [config.cognito.appClientId, config.cognito.webClientId].filter(
-      (id): id is string => Boolean(id),
-    );
+    const clientIds = userPoolClientIds(config);
 
     // ---- Club API ----------------------------------------------------------------
     this.clubApi = new NodeLambda(this, 'ClubApi', {
