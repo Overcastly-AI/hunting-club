@@ -91,6 +91,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 - Done: #41 map packs backend (global + per-club TTL locks instead of reserved concurrency, which new accounts can't spare), #43 harvest reports (M13).
 - Active (2-worker cap): onboarding worker = M12 app side; web worker = map-packs admin PR. Paused: club-data, mesh, map, CI/board, weather.
 - Done: #44 web map-packs admin, #45 app club map packs (M12 complete in code; device check of pmtiles://file:// in field-test plan), #46 Lambda ESM require fix + dev clubApiUrl.
+- 17:23 UTC: first automatic Deploy dev (run 45866729496, #56) succeeded with smoke. Merged since 16:30: #47 DRY, #48 smoke + webhook 400, #49 TestFlight, #50 dev seed, #51 SignUp-first, #52 site 404/SPA, #53 web UI review fixes, #54 app icons, #55 legal drafts, #56 auto-deploy, #57 app legal screens.
 - All workers paused 15:15 UTC (remaining work waits on owner: GitHub dev env/variable, Stripe, Apple Team ID/Android fingerprints, field test).
 - Was in progress: M12 app side (onboarding worker); map packs #41 backend → app (club-data); #41 review then web Map packs admin (web).
 
