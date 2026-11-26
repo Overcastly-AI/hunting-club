@@ -33,6 +33,7 @@ export type RadioServicesOptions = Omit<CoreContext, 'client'> & {
   /** Test hooks: receipt policy and help retry schedule overrides. */
   receipts?: Partial<CoreConfig['receipts']>;
   helpSchedule?: Partial<CoreConfig['help']>;
+  partyConfig?: Partial<CoreConfig['party']>;
   /** Where the free party is kept (the app: SQLite). Default: in memory. */
   partyStore?: PartyStore;
 };
@@ -68,8 +69,16 @@ export class RadioServices {
     readonly client: MeshClient,
     readonly options: RadioServicesOptions = DEFAULT_SERVICES_OPTIONS,
   ) {
-    const { audience, graceMinutes, names, receipts, helpSchedule, partyStore, ...context } =
-      options;
+    const {
+      audience,
+      graceMinutes,
+      names,
+      receipts,
+      helpSchedule,
+      partyConfig,
+      partyStore,
+      ...context
+    } = options;
     const ctx: CoreContext = { ...context, client };
     const club = audience === 'club';
 
@@ -78,7 +87,10 @@ export class RadioServices {
     this.receipts = new ReceiptService(ctx, receipts).start();
     this.delivery = new DeliveryTracker(client);
     this.sharer = new HarvestSharer(ctx);
-    this.party = new PartyService(ctx, { store: partyStore ?? new MemoryPartyStore() });
+    this.party = new PartyService(ctx, {
+      store: partyStore ?? new MemoryPartyStore(),
+      ...(partyConfig ? { config: partyConfig } : {}),
+    });
     void this.party.restore();
     this.help = new HelpRequester(ctx, {
       getLocation: () => {

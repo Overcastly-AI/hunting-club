@@ -11,10 +11,6 @@ jest.mock(
   '../../permissions/location',
   () => jest.requireActual('../../test-utils/fakeLocation').fakeLocationModule,
 );
-jest.mock(
-  'react-native-safe-area-context',
-  () => jest.requireActual('react-native-safe-area-context/jest/mock').default,
-);
 
 const copy = onboardingCopy.map;
 const HERE = { lat: 40.79, lon: -77.86 };

@@ -8,6 +8,7 @@ const ESM_PACKAGES = ['@meshtastic', '@bufbuild'];
 
 module.exports = {
   preset: 'jest-expo',
+  setupFiles: ['<rootDir>/jest.setup.ts'],
   testPathIgnorePatterns: ['/node_modules/', '/ios/', '/android/'],
   // Extend the preset's allow-list of node_modules to transform.
   transformIgnorePatterns: transformIgnorePatterns.map((pattern, i) =>

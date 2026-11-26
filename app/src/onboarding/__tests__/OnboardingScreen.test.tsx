@@ -15,10 +15,6 @@ jest.mock(
   '../../permissions/location',
   () => jest.requireActual('../../test-utils/fakeLocation').fakeLocationModule,
 );
-jest.mock(
-  'react-native-safe-area-context',
-  () => jest.requireActual('react-native-safe-area-context/jest/mock').default,
-);
 
 beforeEach(resetBluetoothForTests);
 
