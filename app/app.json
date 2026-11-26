@@ -10,10 +10,10 @@
     "backgroundColor": "#121416",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.huntclubmesh.app"
+      "bundleIdentifier": "com.overcastly.huntclub"
     },
     "android": {
-      "package": "com.huntclubmesh.app",
+      "package": "com.overcastly.huntclub",
       "adaptiveIcon": {
         "backgroundColor": "#121416",
         "foregroundImage": "./assets/android-icon-foreground.png",
