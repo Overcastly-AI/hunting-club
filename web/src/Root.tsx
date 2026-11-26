@@ -1,6 +1,7 @@
 import { CHECKOUT_RETURN_PATHS, JOIN_PATH } from '@huntclub/shared';
 import { lazy, Suspense, type ReactNode } from 'react';
 import type { WebClubServices } from './cloud';
+import { Loading } from './components/Loading';
 
 // Each entry path loads only its own code: the join page doesn't pull in the admin,
 // and the admin doesn't pull in the mesh codec until an invite is made.
@@ -52,10 +53,6 @@ export function Root(props: WebClubServices & { location: Pick<Location, 'pathna
 
 /** The admin's own file name, which also opens the admin. */
 const ADMIN_INDEX = '/index.html';
-
-function Loading() {
-  return <p className="muted">Loading…</p>;
-}
 
 function Page(props: { children: ReactNode }) {
   return (

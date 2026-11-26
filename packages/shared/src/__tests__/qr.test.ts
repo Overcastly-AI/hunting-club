@@ -1,4 +1,4 @@
-import { qrMatrix } from '../qr';
+import { QR_QUIET_ZONE_MODULES, qrMatrix, qrPath } from '../qr';
 
 /** Every QR code has a 7×7 finder pattern in three corners: a dark ring around a dark 3×3 core. */
 function hasFinderAt(rows: boolean[][], top: number, left: number): boolean {
@@ -28,5 +28,17 @@ describe('qrMatrix', () => {
     const long = qrMatrix('x'.repeat(200));
     expect(long.size).toBeGreaterThan(short.size);
     expect(qrMatrix('hi')).toEqual(short);
+  });
+});
+
+describe('qrPath', () => {
+  it('draws one square per dark module, inside the quiet zone', () => {
+    const q = QR_QUIET_ZONE_MODULES;
+    expect(
+      qrPath([
+        [true, false],
+        [false, true],
+      ]),
+    ).toBe(`M${q},${q}h1v1h-1zM${q + 1},${q + 1}h1v1h-1z`);
   });
 });

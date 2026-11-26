@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { ClubApiRequestError } from '@huntclub/shared';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type AsyncState<T> =
   | { status: 'loading' }
@@ -6,20 +7,31 @@ export type AsyncState<T> =
   | { status: 'ready'; value: T; stale?: boolean }
   | { status: 'error'; message: string };
 
+/** The state plus `reload()`, which runs `load()` again (Try again, Check again, after a save). */
+export type AsyncResult<T> = AsyncState<T> & { reload: () => void };
+
 export interface AsyncOptions {
   /** Keep showing the last loaded value (marked stale) when a reload fails like this. */
   keepLastOn?: (error: unknown) => boolean;
 }
 
-/** Loads `load()` once per `deps` change; ignores results that arrive after unmount. */
+/** The club service could not be reached: keep what was loaded rather than an error. */
+export const isOffline = (error: unknown) =>
+  error instanceof ClubApiRequestError && error.code === 'network';
+
+export const LOAD_ERROR = 'Could not load this.';
+
+/** Loads `load()` once per `deps` change or reload(); ignores results that arrive after unmount. */
 export function useAsync<T>(
   load: () => Promise<T>,
   deps: readonly unknown[],
   options: AsyncOptions = {},
-): AsyncState<T> {
+): AsyncResult<T> {
   const [state, setState] = useState<AsyncState<T>>({ status: 'loading' });
+  const [attempt, setAttempt] = useState(0);
   const last = useRef<{ value: T } | null>(null);
-  // Re-runs only when a dependency changes (the deps array is the caller's contract).
+  const reload = useCallback(() => setAttempt((n) => n + 1), []);
+  // Re-runs only when a dependency changes or on reload() (the deps array is the caller's contract).
   useEffect(() => {
     let live = true;
     // While reloading, keep the last value on screen rather than flashing "Loading".
@@ -35,13 +47,13 @@ export function useAsync<T>(
         if (last.current && options.keepLastOn?.(error)) {
           setState({ status: 'ready', value: last.current.value, stale: true });
         } else {
-          setState({ status: 'error', message: 'Could not load this. Try again.' });
+          setState({ status: 'error', message: LOAD_ERROR });
         }
       },
     );
     return () => {
       live = false;
     };
-  }, deps);
-  return state;
+  }, [...deps, attempt]);
+  return { ...state, reload };
 }

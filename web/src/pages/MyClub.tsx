@@ -3,22 +3,22 @@ import { useState, type FormEvent } from 'react';
 import type { ClubApi } from '../api/types';
 import { Field } from '../components/Field';
 import { Loadable } from '../components/Loadable';
-import { useAsync } from '../components/useAsync';
+import { PageHeading } from '../components/PageHeading';
+import { isOffline, useAsync } from '../components/useAsync';
 
 /** Your club, or a form to start one. Payment is on the Billing page. */
 export function MyClub(props: { api: ClubApi }) {
-  const [reload, setReload] = useState(0);
-  const state = useAsync(() => props.api.getClub(), [props.api, reload]);
+  const state = useAsync(() => props.api.getClub(), [props.api]);
 
   return (
     <section aria-labelledby="club-title">
-      <h1 id="club-title">My club</h1>
+      <PageHeading id="club-title">My club</PageHeading>
       <Loadable state={state}>
         {(club) =>
           club ? (
             <ClubSummary club={club} />
           ) : (
-            <CreateClub api={props.api} onCreated={() => setReload((n) => n + 1)} />
+            <CreateClub api={props.api} onCreated={state.reload} />
           )
         }
       </Loadable>
@@ -47,17 +47,25 @@ function CreateClub(props: { api: ClubApi; onCreated: () => void }) {
   const [displayName, setDisplayName] = useState('');
   const [initials, setInitials] = useState('');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const ready = [name, displayName, initials].every((v) => v.trim() !== '');
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
+    setError(null);
     try {
       await props.api.createClub({
         club: { name: name.trim() },
         admin: { displayName: displayName.trim(), initials: initials.trim().toUpperCase() },
       });
       props.onCreated();
+    } catch (e) {
+      setError(
+        isOffline(e)
+          ? 'No connection. Try again when you are online.'
+          : 'Could not create the club. Try again.',
+      );
     } finally {
       setBusy(false);
     }
@@ -89,8 +97,13 @@ function CreateClub(props: { api: ClubApi; onCreated: () => void }) {
         onChange={(e) => setInitials(e.target.value)}
       />
       <button className="button primary" type="submit" disabled={busy || !ready}>
-        Create club
+        {busy ? 'Creating club…' : 'Create club'}
       </button>
+      {error ? (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      ) : null}
       <p className="muted">Next, pay for the club on the Billing page.</p>
     </form>
   );

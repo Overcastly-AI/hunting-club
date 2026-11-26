@@ -233,6 +233,7 @@ The look is a full-screen aerial map with dark floating controls and a bottom sh
 | surface | #121416 | Floating panels, bottom sheet, tab bar |
 | surface-raised | #23272B | Secondary buttons |
 | border | #2A2E33 | Dividers and outlines |
+| control-border | #7A828A | Text input and control outlines (≥3:1 against surface and surface-raised) |
 | text | #FFFFFF | Primary text |
 | text-secondary | #B8BDC2 | Labels, inactive tabs |
 | accent | #FF7A1F | You marker, primary button (Check Out), active tab only |

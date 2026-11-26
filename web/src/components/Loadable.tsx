@@ -1,15 +1,19 @@
 import type { ReactNode } from 'react';
-import type { AsyncState } from './useAsync';
+import { Loading } from './Loading';
+import type { AsyncResult } from './useAsync';
 
 /** Renders loading and error states the same way on every page. */
-export function Loadable<T>(props: { state: AsyncState<T>; children: (value: T) => ReactNode }) {
+export function Loadable<T>(props: { state: AsyncResult<T>; children: (value: T) => ReactNode }) {
   const { state } = props;
-  if (state.status === 'loading') return <p className="muted">Loading…</p>;
+  if (state.status === 'loading') return <Loading />;
   if (state.status === 'error') {
     return (
-      <p className="error" role="alert">
-        {state.message}
-      </p>
+      <div role="alert" className="row">
+        <p className="error">{state.message}</p>
+        <button className="button" type="button" onClick={state.reload}>
+          Try again
+        </button>
+      </div>
     );
   }
   return (

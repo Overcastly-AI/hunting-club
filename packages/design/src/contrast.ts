@@ -4,6 +4,9 @@
  */
 export const MIN_TEXT_CONTRAST = 4.5;
 
+/** WCAG 2.2 non-text contrast (1.4.11): control outlines against what is next to them. */
+export const MIN_UI_CONTRAST = 3;
+
 function channels(hex: string): [number, number, number] {
   const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
   if (!match) throw new Error(`Expected #RRGGBB, got ${hex}`);

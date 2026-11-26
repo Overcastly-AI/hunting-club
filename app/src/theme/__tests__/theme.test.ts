@@ -23,6 +23,7 @@ describe('color tokens', () => {
       surface: '#121416',
       surfaceRaised: '#23272B',
       border: '#2A2E33',
+      controlBorder: '#7A828A',
       text: '#FFFFFF',
       textSecondary: '#B8BDC2',
       accent: '#FF7A1F',

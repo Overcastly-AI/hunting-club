@@ -12,6 +12,11 @@ export const colors = {
   surfaceRaised: '#23272B',
   /** Dividers and outlines. */
   border: '#2A2E33',
+  /**
+   * Outline of text inputs and other controls: at least MIN_UI_CONTRAST (3:1) against
+   * both `surface` and `surfaceRaised`, so a field's edge is visible.
+   */
+  controlBorder: '#7A828A',
   /** Primary text. */
   text: '#FFFFFF',
   /** Labels, inactive tabs. */

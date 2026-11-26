@@ -6,8 +6,11 @@ import {
   JOIN_WEB_PATH,
 } from '@huntclub/mesh';
 import {
+  APP_DESCRIPTION,
   APP_NAME,
   CHECKOUT_RETURN_PATHS,
+  type ClubApiClient,
+  LEGAL_PATHS,
   ClubApiRequestError,
   JOIN_PATH,
   WEB_DOMAINS,
@@ -18,7 +21,9 @@ import { adminApi } from '../api/admin';
 import { App } from '../App';
 import * as download from '../download';
 import * as navigate from '../navigate';
+import { Loading } from '../components/Loading';
 import { Root } from '../Root';
+import { globalCss } from '../theme/css';
 import { pageTitle } from '../title';
 import type { WebClubServices } from '../cloud';
 import { fakeClubClient, fakeCognitoAuth, sampleData, TEST_CODE } from './fakeClubApi';
@@ -35,6 +40,21 @@ async function signIn() {
   fireEvent.change(await requestCode(), { target: { value: TEST_CODE } });
   fireEvent.click(screen.getByRole('button', { name: signInCopy.confirm }));
   await screen.findByRole('navigation', { name: 'Club admin' });
+}
+
+/** An inline field error: shown under the input, which is marked invalid and points to it. */
+function expectFieldError(input: HTMLElement, message: string) {
+  const error = screen.getByText(message);
+  expect(input.getAttribute('aria-invalid')).toBe('true');
+  expect(input.getAttribute('aria-describedby')).toContain(error.id);
+}
+
+/** Signed-in services over a fake club client, so a test can make one call fail. */
+function servicesFor(client: ClubApiClient): WebClubServices {
+  return {
+    session: new ClubSession(fakeCognitoAuth(), memoryTokenStore()),
+    api: adminApi(client),
+  };
 }
 
 function go(hash: string) {
@@ -70,13 +90,67 @@ describe('sign in', () => {
     expect(screen.getByLabelText(signInCopy.code)).toBeTruthy();
   });
 
-  it('keeps only digits and needs all six', async () => {
+  it('keeps only digits, and asks for all six on submit next to the field', async () => {
     renderApp();
     const input = (await requestCode()) as HTMLInputElement;
     fireEvent.change(input, { target: { value: '12a4' } });
     expect(input.value).toBe('124');
     const submit = screen.getByRole('button', { name: signInCopy.confirm }) as HTMLButtonElement;
-    expect(submit.disabled).toBe(true);
+    expect(submit.disabled).toBe(false);
+    fireEvent.click(submit);
+    expectFieldError(input, signInCopy.codeIncomplete);
+    expect(input.getAttribute('aria-describedby')).toContain(
+      screen.getByText(signInCopy.codeHelp).id,
+    );
+  });
+
+  it('checks the email on submit and explains a typo inline, without asking for a code', async () => {
+    const auth = fakeCognitoAuth();
+    const start = vi.spyOn(auth, 'requestCode');
+    renderApp(sampleData(), { session: new ClubSession(auth, memoryTokenStore()), api: undefined });
+    const email = screen.getByLabelText(signInCopy.email) as HTMLInputElement;
+    expect(email.getAttribute('inputmode')).toBe('email');
+    expect(email.getAttribute('autocapitalize')).toBe('none');
+    expect(email.getAttribute('spellcheck')).toBe('false');
+    expect(email.placeholder).toBe(signInCopy.emailPlaceholder);
+    fireEvent.change(email, { target: { value: 'dale@example' } });
+    fireEvent.click(screen.getByRole('button', { name: signInCopy.sendCode }));
+    expectFieldError(email, signInCopy.errors.invalid_email);
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it('says Sending code while the code is on its way', async () => {
+    renderApp();
+    fireEvent.change(screen.getByLabelText(signInCopy.email), {
+      target: { value: 'dale@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: signInCopy.sendCode }));
+    expect(screen.getByRole('button', { name: signInCopy.sending })).toBeTruthy();
+    await screen.findByLabelText(signInCopy.code);
+  });
+
+  it('sends a new code on request, with the expiry and a spam hint', async () => {
+    renderApp();
+    await requestCode();
+    expect(screen.getByText(signInCopy.codeHelp).textContent).toMatch(/3 minutes.*spam/);
+    fireEvent.click(screen.getByRole('button', { name: signInCopy.resend }));
+    expect((await screen.findByRole('status')).textContent).toBe(signInCopy.resent);
+    expect(screen.getByLabelText(signInCopy.code)).toBeTruthy();
+  });
+
+  it('shows the app name, logo, description and Privacy and Terms links', () => {
+    renderApp();
+    expect(screen.getByText(APP_NAME)).toBeTruthy();
+    expect(screen.getByText(APP_DESCRIPTION)).toBeTruthy();
+    expect(document.querySelector('.auth-brand img')?.getAttribute('src')).toMatch(
+      /^data:image\/svg\+xml,/,
+    );
+    expect(screen.getByRole('link', { name: 'Privacy' }).getAttribute('href')).toBe(
+      LEGAL_PATHS.privacy,
+    );
+    expect(screen.getByRole('link', { name: 'Terms' }).getAttribute('href')).toBe(
+      LEGAL_PATHS.terms,
+    );
   });
 
   it('says the club service is not ready when the cloud ids are not set yet', () => {
@@ -365,5 +439,167 @@ describe('pages on their own paths (no sign-in)', () => {
     expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to sign in' }).getAttribute('href')).toBe('/');
     expect(document.title).toBe(pageTitle('Page not found'));
+  });
+});
+
+describe('errors, empty states and navigation', () => {
+  const offline = () => new ClubApiRequestError('network', 0);
+
+  it('explains a club that could not be created, and keeps the form', async () => {
+    const client = fakeClubClient({ ...sampleData(), club: null });
+    vi.spyOn(client, 'createClub').mockRejectedValue(offline());
+    renderApp(undefined, servicesFor(client));
+    await signIn();
+    fireEvent.change(await screen.findByLabelText('Club name'), { target: { value: 'Pine' } });
+    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Pat Lane' } });
+    fireEvent.change(screen.getByLabelText('Your initials'), { target: { value: 'PL' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create club' }));
+    expect((await screen.findByRole('alert')).textContent).toMatch(/No connection/);
+    expect((screen.getByLabelText('Club name') as HTMLInputElement).value).toBe('Pine');
+  });
+
+  it('says Making invite while it works, and explains an invite that failed', async () => {
+    const client = fakeClubClient(sampleData());
+    let fail!: (e: unknown) => void;
+    vi.spyOn(client, 'createInvite').mockReturnValue(new Promise((_, reject) => (fail = reject)));
+    renderApp(undefined, servicesFor(client));
+    await signIn();
+    go('#/roster');
+    fireEvent.click(await screen.findByRole('button', { name: 'Make an invite' }));
+    const busy = screen.getByRole('button', { name: 'Making invite…' }) as HTMLButtonElement;
+    expect(busy.disabled).toBe(true);
+    fail(new ClubApiRequestError('forbidden', 403));
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Could not make the invite. Try again.',
+    );
+    expect(screen.getByRole('button', { name: 'Make an invite' })).toBeTruthy();
+  });
+
+  describe('copying the invite link', () => {
+    async function invite() {
+      renderApp();
+      await signIn();
+      go('#/roster');
+      fireEvent.click(await screen.findByRole('button', { name: 'Make an invite' }));
+      await screen.findByTestId('invite-link');
+      return screen.getByTestId('invite-link').textContent!;
+    }
+    const clipboard = (writeText?: (text: string) => Promise<void>) =>
+      Object.defineProperty(navigator, 'clipboard', {
+        value: writeText ? { writeText } : undefined,
+        configurable: true,
+      });
+
+    it('says Copied only once the clipboard has it', async () => {
+      const writeText = vi.fn(async () => undefined);
+      clipboard(writeText);
+      const link = await invite();
+      fireEvent.click(screen.getByRole('button', { name: 'Copy link' }));
+      expect(await screen.findByRole('button', { name: 'Copied' })).toBeTruthy();
+      expect(writeText).toHaveBeenCalledWith(link);
+    });
+
+    it('selects the link in a read-only field when the browser will not copy', async () => {
+      clipboard(vi.fn(async () => Promise.reject(new Error('denied'))));
+      const link = await invite();
+      fireEvent.click(screen.getByRole('button', { name: 'Copy link' }));
+      const field = (await screen.findByLabelText('Copy this link')) as HTMLInputElement;
+      expect(field.readOnly).toBe(true);
+      expect(field.value).toBe(link);
+      expect(document.activeElement).toBe(field);
+      expect([field.selectionStart, field.selectionEnd]).toEqual([0, link.length]);
+      expect(screen.queryByRole('button', { name: 'Copied' })).toBeNull();
+      clipboard(undefined);
+    });
+  });
+
+  it('offers Try again when a page cannot load, and loads on the retry', async () => {
+    const client = fakeClubClient(sampleData());
+    const list = vi.spyOn(client, 'listStands').mockRejectedValueOnce(offline());
+    renderApp(undefined, servicesFor(client));
+    await signIn();
+    go('#/stands');
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Big Oak Ladder')).toBeTruthy();
+    expect(list).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the last roster, stands and map packs on screen when the connection drops', async () => {
+    const client = fakeClubClient(sampleData());
+    renderApp(undefined, servicesFor(client));
+    await signIn();
+    go('#/maps');
+    expect(await screen.findByRole('table')).toBeTruthy();
+    vi.spyOn(client, 'listMapPacks').mockRejectedValue(offline());
+    fireEvent.click(screen.getByRole('button', { name: 'Check again' }));
+    expect((await screen.findByRole('status')).textContent).toMatch(/No connection/);
+    expect(screen.getByRole('table')).toBeTruthy();
+  });
+
+  it('says so when nobody but the admin has joined, and there are no stands or areas', async () => {
+    const data = sampleData();
+    const admin = data.members.filter((m) => m.role === 'admin');
+    renderApp({ ...data, members: admin, stands: [], areas: [] });
+    await signIn();
+    go('#/roster');
+    expect(await screen.findByText(/No members yet/)).toBeTruthy();
+    go('#/stands');
+    expect(await screen.findByText('No stands yet.')).toBeTruthy();
+    expect(screen.getByText('No areas yet.')).toBeTruthy();
+  });
+
+  it('asks for a club before map packs', async () => {
+    renderApp({ ...sampleData(), club: null });
+    await signIn();
+    go('#/maps');
+    expect(await screen.findByText(/Create your club first/)).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Go to My club' }).getAttribute('href')).toBe('#/club');
+  });
+
+  it('puts each table in a labelled scroll region; roster and stands stack on phones', async () => {
+    renderApp();
+    await signIn();
+    go('#/roster');
+    const region = await screen.findByRole('region', { name: 'Club members' });
+    expect(region.getAttribute('tabindex')).toBe('0');
+    const table = within(region).getByRole('table', { name: 'Club members' });
+    expect(table.classList.contains('stack')).toBe(true);
+    expect(within(table).getAllByRole('cell')[0]!.getAttribute('data-label')).toBe('Name');
+    go('#/stands');
+    expect((await screen.findByRole('table', { name: 'Stands' })).classList.contains('stack')).toBe(
+      true,
+    );
+  });
+
+  it('focuses the new page heading on a route change and marks the current tab', async () => {
+    renderApp();
+    await signIn();
+    go('#/stands');
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Stands and areas' });
+    await vi.waitFor(() => expect(document.activeElement).toBe(heading));
+    const nav = screen.getByRole('navigation', { name: 'Club admin' });
+    expect(
+      within(nav).getByRole('link', { name: 'Stands and areas' }).getAttribute('aria-current'),
+    ).toBe('page');
+    expect(globalCss()).toMatch(/\.nav a\[aria-current='page'\] \{[^}]*text-decoration: underline/);
+  });
+
+  it('announces loading as a status and offers a skip link to the page', async () => {
+    renderApp();
+    await signIn();
+    expect(screen.getByRole('link', { name: 'Skip to content' }).getAttribute('href')).toBe(
+      '#main',
+    );
+    expect(document.getElementById('main')?.tagName).toBe('MAIN');
+    render(<Loading />);
+    expect(screen.getByRole('status').textContent).toBe('Loading…');
+  });
+
+  it('spaces the payment buttons apart', async () => {
+    renderApp({ ...sampleData(), subscription: null });
+    await signIn();
+    go('#/billing');
+    const pay = await screen.findByRole('button', { name: /Continue to payment/ });
+    expect(pay.parentElement?.classList.contains('row')).toBe(true);
   });
 });

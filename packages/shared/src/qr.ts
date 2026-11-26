@@ -20,3 +20,15 @@ export function qrMatrix(text: string): QrMatrix {
   );
   return { size: modules.size, rows };
 }
+
+/**
+ * SVG path data for a QR matrix: one 1×1 square per dark module, offset by the quiet
+ * zone. The viewBox is `rows.length + 2 * QR_QUIET_ZONE_MODULES` square. Shared by the
+ * app and the web page, which only differ in how they draw the SVG.
+ */
+export function qrPath(rows: readonly (readonly boolean[])[]): string {
+  const q = QR_QUIET_ZONE_MODULES;
+  return rows
+    .flatMap((row, y) => row.map((dark, x) => (dark ? `M${x + q},${y + q}h1v1h-1z` : '')))
+    .join('');
+}

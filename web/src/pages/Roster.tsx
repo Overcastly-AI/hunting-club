@@ -1,67 +1,95 @@
 import { encodeJoinUrl } from '@huntclub/mesh';
-import { useState } from 'react';
+import type { Member } from '@huntclub/shared';
+import { useEffect, useRef, useState } from 'react';
 import type { ClubApi } from '../api/types';
+import { DataTable, type Column } from '../components/DataTable';
 import { Loadable } from '../components/Loadable';
+import { PageHeading } from '../components/PageHeading';
 import { QrCode } from '../components/QrCode';
-import { useAsync } from '../components/useAsync';
+import { isOffline, useAsync } from '../components/useAsync';
 import { ROLE_LABELS, formatDate } from '../format';
 
 /** How long a new member invite stays valid. */
 const INVITE_DAYS = 14;
 const DAY_MS = 86_400_000;
 
+const MEMBER_COLUMNS: readonly Column<Member>[] = [
+  { label: 'Name', cell: (m) => m.displayName },
+  { label: 'Role', cell: (m) => ROLE_LABELS[m.role] },
+  { label: 'Guest pass until', cell: (m) => (m.expiresAt ? formatDate(m.expiresAt) : '—') },
+];
+
+type InviteState =
+  | { kind: 'idle' }
+  | { kind: 'busy' }
+  | { kind: 'error'; message: string }
+  | { kind: 'ready'; joinUrl: string; expiresAt: string };
+
+/** `copied`: the clipboard took it. `manual`: no clipboard, so the link is selected to copy by hand. */
+type CopyState = 'idle' | 'copied' | 'manual';
+
 /** Members and their roles, plus a fresh invite link for new members. */
 export function Roster(props: { api: ClubApi }) {
-  const members = useAsync(() => props.api.listMembers(), [props.api]);
-  const [invite, setInvite] = useState<{ joinUrl: string; expiresAt: string } | null>(null);
-  const [copied, setCopied] = useState(false);
+  const members = useAsync(() => props.api.listMembers(), [props.api], { keepLastOn: isOffline });
+  const [invite, setInvite] = useState<InviteState>({ kind: 'idle' });
+  const [copy, setCopy] = useState<CopyState>('idle');
 
   const makeInvite = async () => {
-    setCopied(false);
-    const [created, channelSet] = await Promise.all([
-      props.api.createInvite({
-        role: 'member',
-        expiresAt: new Date(Date.now() + INVITE_DAYS * DAY_MS).toISOString(),
-      }),
-      props.api.getClubChannelSet(),
-    ]);
-    // The one join-link builder (@huntclub/mesh); the https form works in any camera app.
-    const target = { kind: 'club', clubId: created.clubId, inviteToken: created.token } as const;
-    setInvite({
-      joinUrl: encodeJoinUrl({ channelSet, target }, { form: 'web' }),
-      expiresAt: created.expiresAt,
-    });
+    setInvite({ kind: 'busy' });
+    setCopy('idle');
+    try {
+      const [created, channelSet] = await Promise.all([
+        props.api.createInvite({
+          role: 'member',
+          expiresAt: new Date(Date.now() + INVITE_DAYS * DAY_MS).toISOString(),
+        }),
+        props.api.getClubChannelSet(),
+      ]);
+      // The one join-link builder (@huntclub/mesh); the https form works in any camera app.
+      const target = { kind: 'club', clubId: created.clubId, inviteToken: created.token } as const;
+      setInvite({
+        kind: 'ready',
+        joinUrl: encodeJoinUrl({ channelSet, target }, { form: 'web' }),
+        expiresAt: created.expiresAt,
+      });
+    } catch (error) {
+      setInvite({
+        kind: 'error',
+        message: isOffline(error)
+          ? 'No connection. Try again when you are online.'
+          : 'Could not make the invite. Try again.',
+      });
+    }
   };
 
-  const copy = async () => {
-    if (!invite) return;
-    await navigator.clipboard?.writeText(invite.joinUrl);
-    setCopied(true);
+  const copyLink = async (joinUrl: string) => {
+    try {
+      if (!navigator.clipboard) throw new Error('no clipboard');
+      await navigator.clipboard.writeText(joinUrl);
+      setCopy('copied');
+    } catch {
+      setCopy('manual');
+    }
   };
 
   return (
     <section aria-labelledby="roster-title">
-      <h1 id="roster-title">Roster</h1>
+      <PageHeading id="roster-title">Roster</PageHeading>
       <Loadable state={members}>
         {(list) => (
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Name</th>
-                <th scope="col">Role</th>
-                <th scope="col">Guest pass until</th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((m) => (
-                <tr key={m.userId}>
-                  <td>{m.displayName}</td>
-                  <td>{ROLE_LABELS[m.role]}</td>
-                  <td>{m.expiresAt ? formatDate(m.expiresAt) : '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <>
+            <DataTable
+              caption="Club members"
+              columns={MEMBER_COLUMNS}
+              rows={list}
+              rowKey={(m) => m.userId}
+              stack
+            />
+            {/* The admin is always on the roster: one row means nobody has joined yet. */}
+            {list.length <= 1 ? (
+              <p>No members yet. Make an invite below and share it with your members.</p>
+            ) : null}
+          </>
         )}
       </Loadable>
 
@@ -70,21 +98,62 @@ export function Roster(props: { api: ClubApi }) {
         New members scan the invite with their phone camera. It joins the club radio channel even
         with no cell service.
       </p>
-      <button className="button primary" type="button" onClick={() => void makeInvite()}>
-        Make an invite
+      <button
+        className="button primary"
+        type="button"
+        disabled={invite.kind === 'busy'}
+        onClick={() => void makeInvite()}
+      >
+        {invite.kind === 'busy' ? 'Making invite…' : 'Make an invite'}
       </button>
-      {invite ? (
+      {invite.kind === 'error' ? (
+        <p className="error" role="alert">
+          {invite.message}
+        </p>
+      ) : null}
+      {invite.kind === 'ready' ? (
         <div className="panel" aria-live="polite">
           <QrCode value={invite.joinUrl} label="Club invite QR code" />
           <p>Or send this link (valid until {formatDate(invite.expiresAt)}):</p>
           <p className="code" data-testid="invite-link">
             {invite.joinUrl}
           </p>
-          <button className="button" type="button" onClick={() => void copy()}>
-            {copied ? 'Copied' : 'Copy link'}
-          </button>
+          {copy === 'manual' ? (
+            <ManualCopy value={invite.joinUrl} />
+          ) : (
+            <button className="button" type="button" onClick={() => void copyLink(invite.joinUrl)}>
+              {copy === 'copied' ? 'Copied' : 'Copy link'}
+            </button>
+          )}
         </div>
       ) : null}
     </section>
+  );
+}
+
+/** When the browser will not copy for us: the link, selected, ready for Ctrl+C or ⌘C. */
+function ManualCopy(props: { value: string }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    ref.current?.focus();
+    ref.current?.select();
+  }, []);
+  return (
+    <div className="field">
+      <label htmlFor="invite-copy" className="text-label">
+        Copy this link
+      </label>
+      <input
+        id="invite-copy"
+        ref={ref}
+        readOnly
+        value={props.value}
+        aria-describedby="invite-copy-hint"
+        onFocus={(e) => e.currentTarget.select()}
+      />
+      <span id="invite-copy-hint" className="muted">
+        The link is selected. Press Ctrl+C (⌘C on a Mac) to copy it.
+      </span>
+    </div>
   );
 }

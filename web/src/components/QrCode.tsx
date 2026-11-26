@@ -1,22 +1,16 @@
-import { QR_QUIET_ZONE_MODULES, qrMatrix } from '@huntclub/shared';
+import { QR_QUIET_ZONE_MODULES, qrMatrix, qrPath } from '@huntclub/shared';
 import { useMemo } from 'react';
 
 /**
- * Draws a QR code as SVG from the shared encoder (`qrMatrix` in @huntclub/shared, the
- * same one the app's QR uses): dark modules on a light background with the quiet zone
- * scanners need, which is what phone cameras read most reliably.
+ * Draws a QR code as SVG from the shared encoder and path (`qrMatrix`, `qrPath` in
+ * @huntclub/shared, the same ones the app's QR uses): dark modules on a light background
+ * with the quiet zone scanners need, which is what phone cameras read most reliably.
  */
 export function QrCode(props: { value: string; label: string; size?: number }) {
   const { value } = props;
   const path = useMemo(() => {
     const { rows } = qrMatrix(value);
-    let d = '';
-    rows.forEach((row, r) =>
-      row.forEach((dark, c) => {
-        if (dark) d += `M${c + QR_QUIET_ZONE_MODULES} ${r + QR_QUIET_ZONE_MODULES}h1v1h-1z`;
-      }),
-    );
-    return { d, extent: rows.length + 2 * QR_QUIET_ZONE_MODULES };
+    return { d: qrPath(rows), extent: rows.length + 2 * QR_QUIET_ZONE_MODULES };
   }, [value]);
 
   return (

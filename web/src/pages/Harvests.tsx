@@ -1,5 +1,4 @@
 import {
-  ClubApiRequestError,
   defaultSeason,
   HARVEST_SEX_LABELS,
   HARVEST_SEXES,
@@ -18,16 +17,15 @@ import { useMemo, useState } from 'react';
 import type { ClubApi } from '../api/types';
 import { Field } from '../components/Field';
 import { Loadable } from '../components/Loadable';
-import { useAsync } from '../components/useAsync';
+import { isOffline, useAsync } from '../components/useAsync';
+import { PageHeading } from '../components/PageHeading';
+import { DataTable } from '../components/DataTable';
 import { toCsv } from '../csv';
 import { saveFile } from '../download';
 import { formatDate } from '../format';
 
 /** The admin's own time zone: harvest days and weeks are local calendar days. */
 const TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-const isOffline = (error: unknown) =>
-  error instanceof ClubApiRequestError && error.code === 'network';
 
 interface ClubHarvests {
   harvests: readonly Harvest[];
@@ -41,7 +39,6 @@ interface ClubHarvests {
  * whatever date range the admin picks; changing it needs no network.
  */
 export function Harvests(props: { api: ClubApi }) {
-  const [reload, setReload] = useState(0);
   const club = useAsync(
     async (): Promise<ClubHarvests> => {
       const [harvests, members, stands, areas] = await Promise.all([
@@ -52,7 +49,7 @@ export function Harvests(props: { api: ClubApi }) {
       ]);
       return { harvests, members, stands, areas };
     },
-    [props.api, reload],
+    [props.api],
     { keepLastOn: isOffline },
   );
   const [season, setSeason] = useState<Season>(() =>
@@ -61,7 +58,7 @@ export function Harvests(props: { api: ClubApi }) {
 
   return (
     <section aria-labelledby="harvests-title">
-      <h1 id="harvests-title">Harvests</h1>
+      <PageHeading id="harvests-title">Harvests</PageHeading>
       <p className="muted">Harvests members shared with the club.</p>
       <div className="row">
         <Field
@@ -80,7 +77,7 @@ export function Harvests(props: { api: ClubApi }) {
       <Loadable state={club}>
         {(data) =>
           isSeason(season) ? (
-            <Report data={data} season={season} onRefresh={() => setReload((n) => n + 1)} />
+            <Report data={data} season={season} onRefresh={club.reload} />
           ) : (
             <p className="error" role="alert">
               Pick a season end on or after its start.
@@ -159,22 +156,15 @@ function CountTable(props: { title: string; heading: string; rows: readonly Coun
   return (
     <>
       <h2>{props.title}</h2>
-      <table>
-        <thead>
-          <tr>
-            <th scope="col">{props.heading}</th>
-            <th scope="col">Harvests</th>
-          </tr>
-        </thead>
-        <tbody>
-          {props.rows.map((r) => (
-            <tr key={r.key}>
-              <td>{r.label}</td>
-              <td>{r.count}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <DataTable
+        caption={`Harvests ${props.title.toLowerCase()}`}
+        rows={props.rows}
+        rowKey={(r) => r.key}
+        columns={[
+          { label: props.heading, cell: (r) => r.label },
+          { label: 'Harvests', cell: (r) => r.count },
+        ]}
+      />
     </>
   );
 }

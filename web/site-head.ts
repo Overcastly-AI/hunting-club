@@ -17,11 +17,31 @@ export function siteHeadTags() {
   ];
 }
 
-/** Vite plugin: injects siteHeadTags() and emits the favicon from the logo mark. */
+/** The web font file (web/src/theme/fonts), preloaded so text does not wait for the CSS. */
+const FONT_FILE = /Archivo-Latin-[\w-]+\.woff2$/;
+
+/** Vite plugin: injects siteHeadTags(), preloads the font and emits the favicon from the logo mark. */
 export function siteHead(): Plugin {
   return {
     name: 'huntclub-site-head',
-    transformIndexHtml: () => siteHeadTags().map((t) => ({ ...t, injectTo: 'head' as const })),
+    transformIndexHtml: (_html, ctx) => {
+      const font = Object.keys(ctx.bundle ?? {}).find((name) => FONT_FILE.test(name));
+      const preload = font
+        ? [
+            {
+              tag: 'link',
+              attrs: {
+                rel: 'preload',
+                as: 'font',
+                type: 'font/woff2',
+                href: `/${font}`,
+                crossorigin: '',
+              },
+            },
+          ]
+        : [];
+      return [...siteHeadTags(), ...preload].map((t) => ({ ...t, injectTo: 'head' as const }));
+    },
     generateBundle() {
       this.emitFile({ type: 'asset', fileName: FAVICON_FILE, source: logoMarkSvg() });
     },

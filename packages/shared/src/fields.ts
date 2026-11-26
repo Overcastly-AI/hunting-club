@@ -62,3 +62,11 @@ export function hasLatLonPair(value: { lat?: number | undefined; lon?: number | 
   return (value.lat === undefined) === (value.lon === undefined);
 }
 export const LAT_LON_PAIR_MESSAGE = 'lat and lon must be given together';
+
+/**
+ * A quick check before asking for a sign-in code: something@something.something, no
+ * spaces. Cognito makes the real decision; this only catches typos early.
+ */
+export function isPlausibleEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
