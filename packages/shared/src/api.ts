@@ -10,6 +10,9 @@ import {
   MemberJoinSchema,
   MemberSchema,
   type Subscription,
+  ZOOM_RANGE_ORDERED,
+  boundsSchema,
+  zoomRangeOrdered,
 } from './club';
 import { SubscriptionStatusSchema, isEntitledStatus } from './enums';
 import {
@@ -20,6 +23,7 @@ import {
   timestampSchema,
 } from './fields';
 import type { ClubApiError } from './enums';
+import { BASEMAP_IDS, DOWNLOAD_LIMITS, type BasemapId } from './maps';
 
 /** POST /clubs: a new club with the caller as its first admin. */
 export const ClubCreateRequestSchema = z.strictObject({
@@ -101,3 +105,47 @@ export function entitlementFor(
   const until = Date.parse(paidThrough) + ENTITLEMENT_GRACE_DAYS * 24 * 60 * 60 * 1000;
   return { ...base, featuresUntil: new Date(until).toISOString() };
 }
+
+const basemapIdSchema = z.enum(BASEMAP_IDS as [BasemapId, ...BasemapId[]]);
+
+/** POST /clubs/:clubId/map-packs (admin): build a pack of the club's property for one basemap. */
+export const MapPackRequestSchema = z
+  .strictObject({
+    basemap: basemapIdSchema,
+    /** Map zooms (512 px based); defaults cover overview to the deepest USGS level. */
+    minZoom: z
+      .number()
+      .int()
+      .min(DOWNLOAD_LIMITS.minZoom)
+      .max(DOWNLOAD_LIMITS.maxZoom)
+      .default(DOWNLOAD_LIMITS.minZoom),
+    maxZoom: z
+      .number()
+      .int()
+      .min(DOWNLOAD_LIMITS.minZoom)
+      .max(DOWNLOAD_LIMITS.maxZoom)
+      .default(DOWNLOAD_LIMITS.maxZoom),
+  })
+  .refine(zoomRangeOrdered, ZOOM_RANGE_ORDERED);
+export type MapPackRequest = z.input<typeof MapPackRequestSchema>;
+
+/** What the map-pack builder Lambda is asked to do (the API's async invoke payload). */
+export const MapPackBuildSchema = z
+  .strictObject({
+    clubId: idSchema,
+    packId: idSchema,
+    basemap: basemapIdSchema,
+    bounds: boundsSchema,
+    minZoom: z.number().int(),
+    maxZoom: z.number().int(),
+  })
+  .refine(zoomRangeOrdered, ZOOM_RANGE_ORDERED);
+export type MapPackBuild = z.infer<typeof MapPackBuildSchema>;
+
+/** 202 answer: the pack is being built; it appears in GET map-packs when done. */
+export const MapPackRequestResponseSchema = z.object({
+  packId: idSchema,
+  tiles: z.number().int().min(0),
+  bytes: z.number().int().min(0),
+});
+export type MapPackRequestResponse = z.infer<typeof MapPackRequestResponseSchema>;

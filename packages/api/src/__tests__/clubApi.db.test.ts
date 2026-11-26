@@ -1,7 +1,7 @@
 // Club API handler end to end: Function URL event → JWT check → routes → club-data on
 // DynamoDB Local. Permission rules themselves are covered in club-data's tests; these
 // check the HTTP contract (status codes, error shape, auth, body validation).
-import { World, keyOf } from '@huntclub/club-data/testing';
+import { POLYGON, World, keyOf } from '@huntclub/club-data/testing';
 import { SERVICE } from '@huntclub/club-data';
 import { cognitoVerifier } from '../auth';
 import type { StripeApi } from '../billing';
@@ -13,6 +13,7 @@ import { urlEvent } from '../testing/requests';
 let w: World;
 let api: Handler;
 const pool = new TestUserPool();
+const startMapPackBuild = jest.fn(async () => undefined);
 const createCheckoutSession = jest.fn(async () => ({ url: 'https://checkout.stripe.test/s' }));
 const fakeStripe = { createCheckoutSession } as unknown as StripeApi;
 
@@ -22,6 +23,8 @@ beforeAll(async () => {
     data: w.data,
     verifier: cognitoVerifier(TEST_POOL, pool.jwks),
     stripe: async () => fakeStripe,
+    startMapPackBuild,
+    newId: () => '00000000-0000-4000-8000-0000000000b2',
     checkout: {
       prices: { club_standard: 'price_test_123' },
       successUrl: 'https://web.test/checkout/done',
@@ -295,5 +298,75 @@ describe('billing', () => {
       status: 503,
       body: { error: { code: 'not_configured' } },
     });
+  });
+});
+
+describe('map packs', () => {
+  const path = () => `/clubs/${oak()}/map-packs`;
+
+  it('asks for the property line first', async () => {
+    expect(await call('POST', path(), { as: 'ada', body: { basemap: 'topo' } })).toMatchObject({
+      status: 400,
+      body: { error: { code: 'invalid', message: 'draw the property line first' } },
+    });
+  });
+
+  it('starts a build for an admin and answers 202 with the estimate', async () => {
+    await w.data.updateClub(SERVICE, oak(), { boundary: POLYGON });
+    const res = await call('POST', path(), { as: 'ada', body: { basemap: 'aerial', maxZoom: 14 } });
+    expect(res).toMatchObject({
+      status: 202,
+      body: {
+        packId: '00000000-0000-4000-8000-0000000000b2',
+        tiles: expect.any(Number),
+        bytes: expect.any(Number),
+      },
+    });
+    expect(startMapPackBuild).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clubId: oak(),
+        basemap: 'aerial',
+        minZoom: 8,
+        maxZoom: 14,
+        bounds: [-90, 40, -89.99, 40.01],
+      }),
+    );
+  });
+
+  it('refuses members, unknown basemaps and properties over the caps', async () => {
+    expect((await call('POST', path(), { as: 'max', body: { basemap: 'topo' } })).status).toBe(403);
+    expect((await call('POST', path(), { as: 'ada', body: { basemap: 'satellite' } })).status).toBe(
+      400,
+    );
+    await w.data.updateClub(SERVICE, oak(), {
+      boundary: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [-95, 35],
+            [-95, 45],
+            [-85, 45],
+            [-95, 35],
+          ],
+        ],
+      },
+    });
+    expect((await call('POST', path(), { as: 'ada', body: { basemap: 'topo' } })).status).toBe(400);
+  });
+
+  it('needs an active subscription', async () => {
+    await w.data.applyStripeEvent(SERVICE, {
+      eventId: 'evt_mappack_lapsed',
+      clubId: w.club('Pine Hollow'),
+      stripeCustomerId: 'cus_pine',
+      stripeSubscriptionId: `sub_${w.club('Pine Hollow')}`,
+      planId: 'club_standard',
+      status: 'canceled',
+    });
+    const res = await call('POST', `/clubs/${w.club('Pine Hollow')}/map-packs`, {
+      as: 'pat',
+      body: { basemap: 'topo' },
+    });
+    expect(res).toMatchObject({ status: 403, body: { error: { code: 'club_inactive' } } });
   });
 });

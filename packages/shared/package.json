@@ -10,7 +10,8 @@
     ".": "./src/index.ts",
     "./app": "./src/app.ts",
     "./qr": "./src/qr.ts",
-    "./cloud": "./src/cloud.ts"
+    "./cloud": "./src/cloud.ts",
+    "./maps": "./src/maps.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

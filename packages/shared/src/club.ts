@@ -297,11 +297,13 @@ export type HarvestUpdate = z.input<typeof HarvestUpdateSchema>;
 
 const zoomSchema = z.number().int().min(0).max(22);
 
+/** [west, south, east, north] in degrees. */
+export const boundsSchema = z
+  .tuple([longitudeSchema, latitudeSchema, longitudeSchema, latitudeSchema])
+  .refine(([, south, , north]) => south < north, { message: 'south must be below north' });
+
 const mapPackFields = {
-  /** [west, south, east, north] in degrees. */
-  bounds: z
-    .tuple([longitudeSchema, latitudeSchema, longitudeSchema, latitudeSchema])
-    .refine(([, south, , north]) => south < north, { message: 'south must be below north' }),
+  bounds: boundsSchema,
   minZoom: zoomSchema,
   maxZoom: zoomSchema,
   source: z.string().min(1).max(200),
@@ -309,8 +311,8 @@ const mapPackFields = {
   sizeBytes: z.number().int().min(0),
   builtAt: timestampSchema,
 };
-const zoomRangeOrdered = (p: { minZoom: number; maxZoom: number }) => p.minZoom <= p.maxZoom;
-const ZOOM_RANGE_ORDERED = { message: 'minZoom must not exceed maxZoom', path: ['minZoom'] };
+export const zoomRangeOrdered = (p: { minZoom: number; maxZoom: number }) => p.minZoom <= p.maxZoom;
+export const ZOOM_RANGE_ORDERED = { message: 'minZoom must not exceed maxZoom', path: ['minZoom'] };
 
 export const MapPackSchema = z
   .object({ id: idSchema, clubId: idSchema, ...mapPackFields, ...timestamps })

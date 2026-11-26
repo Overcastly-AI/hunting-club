@@ -1,5 +1,12 @@
 /** High-res offline map packs: members read; only the map-pack Lambda (service) writes. */
-import { type MapPack, MapPackCreateSchema, MapPackSchema } from '@huntclub/shared';
+import {
+  type Club,
+  ClubSchema,
+  idSchema,
+  type MapPack,
+  MapPackCreateSchema,
+  MapPackSchema,
+} from '@huntclub/shared';
 import type { z } from 'zod';
 import type { Actor } from '../actor';
 import {
@@ -13,18 +20,21 @@ import {
   TransactionFailed,
 } from '../db';
 import { ATTR, CLUB_COLLECTIONS, keys } from '../items';
-import { authorizeClub, fromItem, notFound, validate } from './common';
+import { authorizeClub, fromItem, getEntity, notFound, validate } from './common';
 
 export async function createMapPack(
   ctx: Ctx,
   actor: Actor,
   clubId: string,
   input: z.input<typeof MapPackCreateSchema>,
+  /** The map-pack Lambda picks the id up front (it names the S3 object). */
+  options: { id?: string } = {},
 ): Promise<MapPack> {
   await authorizeClub(ctx, actor, clubId, 'writeMapPacks');
   const fields = validate(MapPackCreateSchema, input);
+  const id = options.id === undefined ? ctx.newId() : validate(idSchema, options.id);
   const now = ctx.nowIso();
-  const pack: MapPack = { id: ctx.newId(), clubId, ...fields, createdAt: now, updatedAt: now };
+  const pack: MapPack = { id, clubId, ...fields, createdAt: now, updatedAt: now };
   try {
     await transact(ctx, [
       { check: keys.club(clubId), condition: EXISTS },
@@ -35,6 +45,14 @@ export async function createMapPack(
     throw e;
   }
   return pack;
+}
+
+/** Admin: the club to build a map pack for (its property line gives the bounds). */
+export async function getClubForMapPack(ctx: Ctx, actor: Actor, clubId: string): Promise<Club> {
+  await authorizeClub(ctx, actor, clubId, 'requestMapPack');
+  const club = await getEntity(ctx, ClubSchema, keys.club(clubId));
+  if (!club) throw notFound();
+  return club;
 }
 
 export async function listMapPacks(ctx: Ctx, actor: Actor, clubId: string): Promise<MapPack[]> {

@@ -66,6 +66,7 @@ const EXPECTED: Record<
   readPlaces: MEMBERS,
   writePlaces: ADMINS,
   readMapPacks: MEMBERS,
+  requestMapPack: ADMINS,
   writeMapPacks: SERVICE_ONLY,
   readSubscription: ADMINS,
   readEntitlement: MEMBERS,

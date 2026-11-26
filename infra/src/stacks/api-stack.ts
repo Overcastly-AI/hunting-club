@@ -1,11 +1,13 @@
-import { CfnOutput, Stack, type StackProps } from 'aws-cdk-lib';
+import { CfnOutput, Duration, Stack, type StackProps } from 'aws-cdk-lib';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import type * as s3 from 'aws-cdk-lib/aws-s3';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import type { Construct } from 'constructs';
 import { PARTITION_PREFIXES } from '@huntclub/club-data';
+import { MAP_PACKS_PREFIX } from '@huntclub/shared/maps';
 import {
   API_ENV,
   CLUB_API_SECRETS,
@@ -20,7 +22,19 @@ import { NodeLambda } from '../constructs/node-lambda';
 
 export interface ApiStackProps extends StackProps {
   readonly config: EnvConfig;
+  /** The web stack's bucket: map packs go under packs/ and are served by its CloudFront. */
+  readonly packBucket: s3.IBucket;
 }
+
+/** Item actions the map-pack builder needs to record a pack (club ConditionCheck + Put). */
+export const MAP_PACK_BUILDER_TABLE_ACTIONS = [
+  'dynamodb:GetItem',
+  'dynamodb:PutItem',
+  'dynamodb:ConditionCheckItem',
+];
+
+/** A pack build is bounded by the tile cap and the polite fetch rate; Lambda's maximum. */
+export const MAP_PACK_BUILD_TIMEOUT = Duration.minutes(15);
 
 /** ARN of the externally owned club table, in the stack's (explicit) account and region. */
 export function clubTableArn(stack: Stack, config: EnvConfig): string {
@@ -93,6 +107,7 @@ export const STRIPE_WEBHOOK_TABLE_ACTIONS = [
  */
 export class ApiStack extends Stack {
   readonly clubApi: NodeLambda;
+  readonly mapPackBuilder: NodeLambda;
   readonly clubApiUrl: lambda.FunctionUrl;
   readonly stripeWebhook: NodeLambda;
   readonly stripeWebhookUrl: lambda.FunctionUrl;
@@ -109,6 +124,26 @@ export class ApiStack extends Stack {
     const userPool = cognito.UserPool.fromUserPoolId(this, 'Users', config.cognito.userPoolId);
     const clientIds = userPoolClientIds(config);
 
+    // ---- Map-pack builder (on demand: the club API invokes it asynchronously) -----------
+    this.mapPackBuilder = new NodeLambda(this, 'MapPackBuilder', {
+      entry: 'map-pack-builder',
+      timeout: MAP_PACK_BUILD_TIMEOUT,
+      memorySize: 1024,
+      environment: {
+        [API_ENV.envName]: config.name,
+        [API_ENV.tableName]: table.tableName,
+        [API_ENV.mapPackBucket]: props.packBucket.bucketName,
+        [API_ENV.webOrigin]: `https://${config.domainName}`,
+      },
+    });
+    // One retry for a failed build; old requests are dropped rather than built late.
+    this.mapPackBuilder.function.configureAsyncInvoke({
+      retryAttempts: 1,
+      maxEventAge: Duration.hours(1),
+    });
+    props.packBucket.grantPut(this.mapPackBuilder.function, `${MAP_PACKS_PREFIX}*`);
+    table.grant(this.mapPackBuilder.function, ...MAP_PACK_BUILDER_TABLE_ACTIONS);
+
     // ---- Club API ----------------------------------------------------------------
     this.clubApi = new NodeLambda(this, 'ClubApi', {
       entry: 'club-api',
@@ -119,9 +154,11 @@ export class ApiStack extends Stack {
         [API_ENV.userPoolClientIds]: clientIds.join(','),
         [API_ENV.webOrigin]: `https://${config.domainName}`,
         [API_ENV.stripePrices]: JSON.stringify(config.stripe.prices),
+        [API_ENV.mapPackBuilder]: this.mapPackBuilder.function.functionName,
         ...secretEnvironment(config, CLUB_API_SECRETS),
       },
     });
+    this.mapPackBuilder.function.grantInvoke(this.clubApi.function);
     grantSecretReads(this.clubApi, config, CLUB_API_SECRETS);
     // Table and its indexes; permissions per club are enforced in the API (tested in M9).
     table.grant(this.clubApi.function, ...CLUB_API_TABLE_ACTIONS);

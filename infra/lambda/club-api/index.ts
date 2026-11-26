@@ -7,6 +7,7 @@ import {
   createClubApi,
   errorResponse,
   lazyHandler,
+  mapPackStarter,
   missingEnv,
   readSecureParameter,
   type FunctionUrlEvent,
@@ -22,6 +23,7 @@ const REQUIRED_ENV = [
   API_ENV.userPoolClientIds,
   API_ENV.webOrigin,
   API_ENV.stripePrices,
+  API_ENV.mapPackBuilder,
   ...CLUB_API_SECRETS.map(secretParameterEnvVar),
 ];
 
@@ -44,6 +46,7 @@ const run = lazyHandler(async () => {
       successUrl: `${webOrigin}${CHECKOUT_RETURN_PATHS.success}`,
       cancelUrl: `${webOrigin}${CHECKOUT_RETURN_PATHS.cancel}`,
     },
+    startMapPackBuild: mapPackStarter(env(API_ENV.mapPackBuilder)),
   });
 });
 

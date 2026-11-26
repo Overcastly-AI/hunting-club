@@ -53,6 +53,7 @@ const OPERATIONS = {
 
   createMapPack: mapPacks.createMapPack,
   listMapPacks: mapPacks.listMapPacks,
+  getClubForMapPack: mapPacks.getClubForMapPack,
   deleteMapPack: mapPacks.deleteMapPack,
 
   listPlans: billing.listPlans,
