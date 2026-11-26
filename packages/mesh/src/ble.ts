@@ -2,6 +2,9 @@
  * Meshtastic BLE GATT constants (docs/research/meshtastic.md §1). Used by
  * the app's BLE transport; this package itself has no BLE code.
  */
+/** Firmware MAX_TO_FROM_RADIO_SIZE: the largest ToRadio/FromRadio, one GATT read/write. */
+const MAX_TO_FROM_RADIO_SIZE = 512;
+
 export const MESHTASTIC_BLE = {
   serviceUuid: '6ba1b218-15a8-461f-9fa8-5dcae273eafd',
   /** Write with response: one write = one ToRadio. */
@@ -12,8 +15,9 @@ export const MESHTASTIC_BLE = {
   fromNumUuid: 'ed9da18c-a800-4f66-a670-aa7547e34453',
   /** Notify: LogRecord protobufs (optional). */
   logRadioUuid: '5a3d6e49-06e6-4423-9944-e9de8cdf9547',
-  /** Request on Android right after connecting (MAX_TO_FROM_RADIO_SIZE). */
-  preferredMtu: 512,
+  maxToFromRadioSize: MAX_TO_FROM_RADIO_SIZE,
+  /** Request on Android right after connecting. */
+  preferredMtu: MAX_TO_FROM_RADIO_SIZE,
   /** Default PIN on radios without a screen (FIXED_PIN mode). */
   defaultFixedPin: '123456',
 } as const;

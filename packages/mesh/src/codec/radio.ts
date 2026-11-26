@@ -11,6 +11,9 @@ export const MAX_DATA_PAYLOAD_BYTES = 228;
 export const RADIO_TX_QUEUE_SIZE = 16;
 export const SPECIAL_CONFIG_NONCES: readonly number[] = [69420, 69421];
 
+/** Meshtastic user id for a node number, e.g. 0x1a2b3c4d → "!1a2b3c4d". */
+export const nodeId = (num: number): string => `!${(num >>> 0).toString(16).padStart(8, '0')}`;
+
 export type ToRadio = Mesh.ToRadio;
 export type FromRadio = Mesh.FromRadio;
 export type MeshPacket = Mesh.MeshPacket;

@@ -21,6 +21,7 @@ import {
   RADIO_TX_QUEUE_SIZE,
   decodeAdmin,
   decodeToRadio,
+  nodeId,
   encodeFromRadio,
   encodeRouting,
 } from '../codec/radio';
@@ -91,8 +92,6 @@ interface AirPacket {
 export const QUEUE_FULL_RES = 1;
 
 export const TEST_PSK = Uint8Array.from({ length: 32 }, (_, i) => (i * 7 + 3) & 0xff);
-
-const nodeId = (num: number): string => `!${(num >>> 0).toString(16).padStart(8, '0')}`;
 
 export class FakeRadio implements Transport {
   readonly nodeNum: number;
