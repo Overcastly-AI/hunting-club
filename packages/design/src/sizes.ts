@@ -39,19 +39,65 @@ export const opacity = {
   pressed: 0.7,
 } as const;
 
+/** Corner radii in px (docs/UI_REDESIGN.md 4.4), plus the map and app names that use them. */
+const radius = {
+  /** Badges, chips in table cells. */
+  sm: 8,
+  /** Buttons, inputs, selects. */
+  md: 12,
+  /** Cards, tiles. */
+  lg: 16,
+  /** Dialogs, sheets. */
+  xl: 20,
+  /** Avatars, pills. */
+  full: 999,
+} as const;
+
 export const radii = {
+  ...radius,
   control: 14,
   /** Club stand markers. */
   standMarker: 10,
-  primaryButton: 12,
+  primaryButton: radius.md,
   /** Top corners of the bottom sheet. */
-  sheetTop: 20,
+  sheetTop: radius.xl,
 } as const;
 
+/** The 4/8 spacing scale in px (docs/UI_REDESIGN.md 4.3): `space-1` … `space-16`. */
+export const space = {
+  1: 4,
+  2: 8,
+  3: 12,
+  4: 16,
+  5: 20,
+  6: 24,
+  8: 32,
+  10: 40,
+  12: 48,
+  16: 64,
+} as const;
+
+/** The spacing scale plus the original xs–xl names, kept as aliases. */
 export const spacing = {
-  xs: 4,
-  sm: 8,
-  md: 16,
-  lg: 24,
-  xl: 32,
+  ...space,
+  xs: space[1],
+  sm: space[2],
+  md: space[4],
+  lg: space[6],
+  xl: space[8],
+} as const;
+
+/** Layout breakpoints in px: tablet from 640, desktop from 1024. */
+export const breakpoints = {
+  tablet: 640,
+  desktop: 1024,
+} as const;
+
+/** Motion (docs/UI_REDESIGN.md 4.4). Under prefers-reduced-motion: no transforms, instant. */
+export const motion = {
+  /** Hover and press, in ms. */
+  fast: 120,
+  /** Dialogs and menus, in ms. */
+  base: 200,
+  easing: 'ease-out',
 } as const;

@@ -20,6 +20,7 @@
     "build-version.ts",
     "global-stylesheet.ts",
     "dawn-stylesheet.ts",
-    "no-eval-entry.ts"
+    "no-eval-entry.ts",
+    "theme-bootstrap.ts"
   ]
 }
