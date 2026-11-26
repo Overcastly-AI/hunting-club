@@ -20,7 +20,7 @@ describe('domain enums', () => {
     expect(HARVEST_SEX_CODES).toEqual({ unknown: 0, male: 1, female: 2 });
   });
 
-  it('harvest sex covers exactly the database enum from @huntclub/shared', () => {
+  it('harvest sex covers exactly HARVEST_SEXES from @huntclub/shared', () => {
     expect(Object.keys(HARVEST_SEX_CODES).sort()).toEqual([...HARVEST_SEXES].sort());
     for (const key of HARVEST_SEXES) {
       expect(HARVEST_SEX_KEYS[HARVEST_SEX_CODES[key]]).toBe(key);
