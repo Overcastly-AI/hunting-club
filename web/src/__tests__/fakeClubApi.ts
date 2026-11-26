@@ -10,6 +10,7 @@ import {
   InviteCreateSchema,
   type Area,
   type Club,
+  type Harvest,
   type Member,
   type Plan,
   type Stand,
@@ -24,6 +25,7 @@ export interface FakeClubData {
   areas: Area[];
   subscription: Subscription | null;
   plans: Plan[];
+  harvests: Harvest[];
 }
 
 const CLUB = '0b9c4b6e-6a43-4c55-9a1e-2f6a8f0c1a01';
@@ -43,10 +45,35 @@ const square = {
   ],
 };
 
+const userId = (n: number) => `3c8e1f2a-4b5d-4e6f-8a9b-0c1d2e3f4a${String(n).padStart(2, '0')}`;
+const STAND_OAK = '4d9f2a3b-5c6e-4f7a-9b0c-1d2e3f4a5b02';
+
+function harvest(
+  n: number,
+  member: number,
+  species: string,
+  sex: Harvest['sex'],
+  harvestedAt: string,
+  standId?: string,
+): Harvest {
+  return {
+    id: `6a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c${String(n).padStart(2, '0')}`,
+    clubId: CLUB,
+    userId: userId(member),
+    species,
+    sex,
+    shared: true,
+    harvestedAt,
+    ...(standId ? { standId, areaId: AREA_NORTH } : {}),
+    ...(n === 1 ? { notes: '=8 point, "big" one' } : {}),
+    ...timestamps,
+  };
+}
+
 export function sampleData(): FakeClubData {
   const member = (n: number, displayName: string, initials: string, role: Member['role']) => ({
     clubId: CLUB,
-    userId: `3c8e1f2a-4b5d-4e6f-8a9b-0c1d2e3f4a${String(n).padStart(2, '0')}`,
+    userId: userId(n),
     displayName,
     initials,
     role,
@@ -102,6 +129,18 @@ export function sampleData(): FakeClubData {
       stand(1, 'Creek Stand', 'tree_stand', AREA_CREEK),
       stand(2, 'Big Oak Ladder', 'ladder', AREA_NORTH),
       stand(3, 'Field Blind', 'ground_blind', AREA_NORTH, false),
+    ],
+    harvests: [
+      harvest(1, 1, 'Deer', 'male', '2026-11-15T17:30:00.000Z', STAND_OAK),
+      harvest(2, 2, 'Deer', 'female', '2026-11-16T13:00:00.000Z'),
+      harvest(3, 2, 'deer ', 'female', '2026-11-24T22:10:00.000Z'),
+      harvest(4, 3, 'Turkey', 'male', '2026-10-03T12:00:00.000Z'),
+      // Not shared with the club: never in a report.
+      { ...harvest(5, 1, 'Deer', 'male', '2026-11-20T12:00:00.000Z'), shared: false },
+      // Out of the 2026 season.
+      harvest(6, 1, 'Hog', 'unknown', '2026-03-01T12:00:00.000Z'),
+      // A member who has since left the club.
+      harvest(7, 9, 'Deer', 'male', '2026-12-01T15:00:00.000Z'),
     ],
     plans: [
       { id: 'club_standard', name: 'Club', active: true, ...timestamps },
@@ -170,6 +209,7 @@ export function fakeClubClient(data: FakeClubData = sampleData()): ClubApiClient
     },
     listStands: async () => data.stands,
     listAreas: async () => data.areas,
+    listHarvests: async () => data.harvests,
     getEntitlement: async (clubId) => ({ clubId, status: 'active' }),
     async getSubscription() {
       if (!data.subscription) throw new ClubApiRequestError('not_found', 404);

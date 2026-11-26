@@ -79,6 +79,7 @@ export function fakeClubApi(options: { featuresUntil?: string; offline?: boolean
     listMembers: offline(() => [member]),
     listStands: offline(() => [stand(1, 'Creek Stand'), stand(2, 'Ridge Ladder')]),
     listAreas: offline(() => []),
+    listHarvests: offline(() => []),
     createInvite: offline(() => {
       throw new ClubApiRequestError('forbidden', 403);
     }),
