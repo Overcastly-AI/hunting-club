@@ -1,10 +1,5 @@
-import { PlaceholderScreen } from '../../components/PlaceholderScreen';
+import { MapScreen } from '../../map/MapScreen';
 
-export default function MapScreen() {
-  return (
-    <PlaceholderScreen
-      title="Map"
-      description="Your offline map, your party and the wind will show here."
-    />
-  );
+export default function MapTab() {
+  return <MapScreen />;
 }

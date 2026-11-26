@@ -1,5 +1,8 @@
 import type { TextStyle } from 'react-native';
 
+import { colors } from './colors';
+import { sizes } from './sizes';
+
 /**
  * Archivo variable font (axes `wght` and `wdth`), loaded once in the root
  * layout from `assets/fonts/Archivo-Variable.ttf` under this family name.
@@ -78,3 +81,10 @@ export const textStyles = {
     lineHeight: 30,
   },
 } as const satisfies Record<string, TextStyle>;
+
+/** Dark outline behind all text drawn on the map (map-halo token, 3 px). */
+export const mapTextHalo = {
+  textShadowColor: colors.mapHalo,
+  textShadowRadius: sizes.mapHaloWidth,
+  textShadowOffset: { width: 0, height: 0 },
+} as const satisfies TextStyle;

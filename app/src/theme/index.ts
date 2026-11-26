@@ -1,5 +1,5 @@
 import { boundary, colors } from './colors';
-import { sizes, radii, spacing } from './sizes';
+import { opacity, sizes, radii, spacing } from './sizes';
 import { fontSources } from './fonts';
 import {
   archivo,
@@ -8,6 +8,7 @@ import {
   fontSize,
   fontWeight,
   fontWidth,
+  mapTextHalo,
   textStyles,
 } from './typography';
 
@@ -21,6 +22,8 @@ export {
   fontSources,
   fontWeight,
   fontWidth,
+  mapTextHalo,
+  opacity,
   radii,
   sizes,
   spacing,
@@ -37,7 +40,9 @@ export const theme = {
   fontWidth,
   fontSize,
   textStyles,
+  mapTextHalo,
   sizes,
+  opacity,
   radii,
   spacing,
 } as const;
