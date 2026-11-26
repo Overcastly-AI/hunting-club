@@ -19,10 +19,17 @@ import { type MyProfile, loadProfile } from '../db/appState';
 import type { SqlDatabase } from '../db/types';
 import { ClubEntitlementContext, entitlementOf } from './entitlement';
 import type { ClubSession } from './session';
-import { type LocalClub, loadClubs } from './store';
+import type { RadioClub } from '../radio/RadioServices';
+import type { SecureStorage } from '../storage/secure';
+import { type LocalClub, loadClubs, loadRadioClub } from './store';
 import { joinClubFromLink, syncAllClubs } from './sync';
 
-export type ClubServices = { session: ClubSession; api: ClubApiClient | undefined };
+export type ClubServices = {
+  session: ClubSession;
+  api: ClubApiClient | undefined;
+  /** Where the Club QR link (with the channel key) is kept: the app's secure storage. */
+  secrets: SecureStorage;
+};
 
 export type ClubState = {
   clubs: LocalClub[];
@@ -32,6 +39,8 @@ export type ClubState = {
   /** False until the club API is deployed and configured. */
   cloudAvailable: boolean;
   session: ClubSession;
+  /** The club this phone hunts with on the radio (the first one joined), or null. */
+  radioClub: RadioClub | null;
   /** Saves a club from a Club QR code / invite link (offline), then syncs if possible. */
   join(url: string, profile: MemberJoin): Promise<string>;
   /** Redeems pending invites and refreshes every club. Needs sign-in and internet. */
@@ -77,21 +86,24 @@ export function ClubStateProvider({
   children: ReactNode;
   now?: () => number;
 }) {
-  const { session, api } = services;
+  const { session, api, secrets } = services;
   const [clubs, setClubs] = useState<LocalClub[]>([]);
   const [signedIn, setSignedIn] = useState(false);
   const [myProfile, setMyProfile] = useState<MyProfile | null>(null);
+  const [radioClub, setRadioClub] = useState<RadioClub | null>(null);
 
   const reload = useCallback(
     () =>
       Promise.all([loadClubs(db), session.isSignedIn(), loadProfile(db)]).then(
-        ([loaded, isSignedIn, profile]) => {
+        async ([loaded, isSignedIn, profile]) => {
+          const radio = loaded[0] ? await loadRadioClub(db, secrets, loaded[0]) : null;
           setClubs(loaded);
           setSignedIn(isSignedIn);
           setMyProfile(profile);
+          setRadioClub(radio);
         },
       ),
-    [db, session],
+    [db, secrets, session],
   );
 
   const sync = useCallback(async () => {
@@ -103,12 +115,12 @@ export function ClubStateProvider({
 
   const join = useCallback(
     async (url: string, profile: MemberJoin) => {
-      const clubId = await joinClubFromLink(db, url, profile, now());
+      const clubId = await joinClubFromLink(db, secrets, url, profile, now());
       await reload();
       await sync().catch(() => undefined); // offline is fine: it syncs later
       return clubId;
     },
-    [db, now, reload, sync],
+    [db, now, reload, secrets, sync],
   );
 
   // Load once, then sync when signed in (silently: offline is normal in the field).
@@ -121,13 +133,14 @@ export function ClubStateProvider({
       clubs,
       signedIn,
       myProfile,
+      radioClub,
       cloudAvailable: api !== undefined,
       session,
       join,
       sync,
       reload,
     }),
-    [api, clubs, join, myProfile, reload, session, signedIn, sync],
+    [api, clubs, join, myProfile, radioClub, reload, session, signedIn, sync],
   );
   const firstPaid = clubs.map(entitlementOf).find((e) => e !== null) ?? null;
 

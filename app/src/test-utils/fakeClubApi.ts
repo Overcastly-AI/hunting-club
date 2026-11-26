@@ -3,6 +3,7 @@ import { seededRandom } from '@huntclub/mesh/testing';
 import { ClubApiRequestError, type ClubApiClient, type Member, type Stand } from '@huntclub/shared';
 
 import type { ClubSession } from '../club/session';
+import type { SecureStorage } from '../storage/secure';
 
 export const CLUB_ID = '00000000-0000-4000-8000-00000000c1ab';
 export const USER_ID = '00000000-0000-4000-8000-0000000000aa';
@@ -100,4 +101,15 @@ export function fakeSession(signedIn: boolean): ClubSession {
     confirmCode: jest.fn(),
     signOut: jest.fn(async () => undefined),
   } as unknown as ClubSession;
+}
+
+/** An in-memory stand-in for the app's secure storage (keystore). */
+export function memorySecureStorage(): SecureStorage & { items: Map<string, string> } {
+  const items = new Map<string, string>();
+  return {
+    items,
+    get: async (key) => items.get(key) ?? null,
+    set: async (key, value) => void items.set(key, value),
+    delete: async (key) => void items.delete(key),
+  };
 }

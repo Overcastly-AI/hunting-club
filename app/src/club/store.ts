@@ -1,12 +1,16 @@
 /**
- * The phone's copy of its clubs (SQLite), so club features work offline:
+ * The phone's copy of its clubs (SQLite), so club features work offline. The club's
+ * channel key is not here: it lives in secure storage (the Club QR link, sync.ts).
  * the club row in `groups` (with this phone's membership, cached entitlement and any
  * invite still to redeem), and the club's stands and areas with their mesh ids.
  */
+import { decodeJoinUrl } from '@huntclub/mesh';
 import type { Area, Club, Entitlement, Member, MemberRole, Stand } from '@huntclub/shared';
 
 import type { ClubArea, ClubStand } from '../checkin/placement';
 import type { SqlDatabase } from '../db/types';
+import type { RadioClub } from '../radio/RadioServices';
+import { SECURE_KEYS, type SecureStorage } from '../storage/secure';
 
 /** A club as the Party/Club tab shows it. */
 export type LocalClub = {
@@ -18,6 +22,8 @@ export type LocalClub = {
   /** Joined on the mesh from a link, not yet added to the roster (needs sign-in + internet). */
   pendingInvite: boolean;
   syncedAt: number | null;
+  /** Overdue grace time the club admin set (minutes). */
+  graceMinutes: number;
 };
 
 /** What a sync downloads for one club. */
@@ -40,7 +46,6 @@ export async function saveJoinedClub(
   db: SqlDatabase,
   join: {
     clubId: string;
-    channelKey: Uint8Array | null;
     inviteToken: string;
     displayName: string;
     initials: string;
@@ -48,18 +53,16 @@ export async function saveJoinedClub(
   },
 ): Promise<void> {
   await db.runAsync(
-    `INSERT INTO groups (id, kind, name, channel_key, pending_invite, pending_display_name,
+    `INSERT INTO groups (id, kind, name, pending_invite, pending_display_name,
                          pending_initials, updated_at)
-     VALUES (?, 'club', ?, ?, ?, ?, ?, ?)
+     VALUES (?, 'club', ?, ?, ?, ?, ?)
      ON CONFLICT (id) DO UPDATE SET
-       channel_key = COALESCE(excluded.channel_key, channel_key),
        pending_invite = CASE WHEN my_user_id IS NULL THEN excluded.pending_invite END,
        pending_display_name = excluded.pending_display_name,
        pending_initials = excluded.pending_initials,
        updated_at = excluded.updated_at`,
     join.clubId,
     UNSYNCED_CLUB_NAME,
-    join.channelKey,
     join.inviteToken,
     join.displayName,
     join.initials,
@@ -164,11 +167,12 @@ type ClubRow = {
   features_until: number | null;
   pending_invite: string | null;
   synced_at: number | null;
+  overdue_grace_minutes: number;
 };
 
 export async function loadClubs(db: SqlDatabase): Promise<LocalClub[]> {
   const rows = await db.getAllAsync<ClubRow>(
-    `SELECT id, name, my_role, features_until, pending_invite, synced_at
+    `SELECT id, name, my_role, features_until, pending_invite, synced_at, overdue_grace_minutes
      FROM groups WHERE kind = 'club' ORDER BY name`,
   );
   return rows.map((r) => ({
@@ -178,6 +182,7 @@ export async function loadClubs(db: SqlDatabase): Promise<LocalClub[]> {
     featuresUntil: r.features_until,
     pendingInvite: r.pending_invite !== null,
     syncedAt: r.synced_at,
+    graceMinutes: r.overdue_grace_minutes,
   }));
 }
 
@@ -201,4 +206,29 @@ export async function loadClubAreas(db: SqlDatabase, clubId: string): Promise<Cl
      WHERE club_id = ? AND active = 1 AND mesh_id IS NOT NULL ORDER BY name`,
     clubId,
   );
+}
+
+/**
+ * What the radio services need for a club: stands and areas with mesh ids, the
+ * admin's grace time, and the club channels from the saved Club QR link.
+ */
+export async function loadRadioClub(
+  db: SqlDatabase,
+  secrets: Pick<SecureStorage, 'get'>,
+  club: LocalClub,
+): Promise<RadioClub> {
+  const [stands, areas, link] = await Promise.all([
+    loadClubStands(db, club.id),
+    loadClubAreas(db, club.id),
+    secrets.get(SECURE_KEYS.clubJoinLink),
+  ]);
+  const parsed = link ? decodeJoinUrl(link) : undefined;
+  const ours = parsed?.target.kind === 'club' && parsed.target.clubId === club.id;
+  return {
+    clubId: club.id,
+    graceMinutes: club.graceMinutes,
+    stands,
+    areas,
+    ...(ours ? { channelSet: parsed.channelSet } : {}),
+  };
 }

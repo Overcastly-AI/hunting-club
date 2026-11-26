@@ -10,6 +10,7 @@ import {
   type FetchLike,
 } from '@huntclub/shared';
 
+import { secureStorage } from '../storage/secure';
 import { ClubSession } from './session';
 import { secureTokenStore } from './secureTokenStore';
 
@@ -37,5 +38,5 @@ export function createAppClubServices() {
         refresh: () => session.refresh(),
       })
     : undefined;
-  return { session, api };
+  return { session, api, secrets: secureStorage };
 }
