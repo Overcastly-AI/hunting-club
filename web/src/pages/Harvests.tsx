@@ -59,7 +59,7 @@ export function Harvests(props: { api: ClubApi }) {
   return (
     <section aria-labelledby="harvests-title">
       <PageHeading id="harvests-title">Harvests</PageHeading>
-      <p className="muted">Harvests members shared with the club.</p>
+      <p className="muted">Harvests that members shared with the club.</p>
       <div className="row">
         <Field
           label="Season starts"

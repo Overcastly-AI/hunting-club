@@ -34,7 +34,7 @@ export function Root(props: WebClubServices & { location: Pick<Location, 'pathna
   if (!isAdminPath(path))
     return (
       <Page>
-        <NotFound />
+        <NotFound signedIn={false} />
       </Page>
     );
   return (

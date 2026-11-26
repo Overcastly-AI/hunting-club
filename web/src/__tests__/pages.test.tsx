@@ -7,6 +7,7 @@ import {
   CLUB_PRICING,
   type ClubApiClient,
   emailCodeRules,
+  INITIALS_MAX,
   LEGAL_PATHS,
   ClubApiRequestError,
   WEB_DOMAINS,
@@ -211,18 +212,60 @@ describe('club pages', () => {
     }
   });
 
-  it('offers to create a club when there is none', async () => {
+  it('offers to create a club when there is none, checking the form on submit', async () => {
     renderApp({ ...sampleData(), club: null });
     await signIn();
-    fireEvent.change(await screen.findByLabelText('Club name'), {
-      target: { value: 'Pine Hollow' },
-    });
+    const name = await screen.findByLabelText('Club name');
     const create = screen.getByRole('button', { name: 'Create club' }) as HTMLButtonElement;
-    expect(create.disabled).toBe(true); // your name and initials are needed too
+    expect(create.disabled).toBe(false);
+    expect(
+      screen.getByText(`Up to ${INITIALS_MAX} letters or numbers, shown on the map`),
+    ).toBeTruthy();
+    fireEvent.click(create);
+    expectFieldError(name, 'Enter the club name.');
+    expectFieldError(screen.getByLabelText('Your name'), 'Enter your name.');
+
+    fireEvent.change(name, { target: { value: 'Pine Hollow' } });
     fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Pat Lane' } });
     fireEvent.change(screen.getByLabelText('Your initials'), { target: { value: 'pl' } });
     fireEvent.click(create);
     expect(await screen.findByText('Pine Hollow')).toBeTruthy();
+    const created = screen.getByRole('status');
+    expect(created.textContent).toBe(
+      `Club created. Start your ${CLUB_PRICING.trialDays}-day free trial on Billing.`,
+    );
+    expect(within(created).getByRole('link', { name: 'Billing' }).getAttribute('href')).toBe(
+      '#/billing',
+    );
+  });
+
+  it('shows the plans before there is a club, with the way to start the trial', async () => {
+    renderApp({ ...sampleData(), club: null });
+    await signIn();
+    go('#/billing');
+    const plans = await screen.findByRole('list');
+    for (const { label, price } of Object.values(CLUB_PRICING.intervals)) {
+      expect(plans.textContent).toContain(`${label}: ${price}`);
+    }
+    expect(screen.getByText(CLUB_PRICING.terms)).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Create your club' }).getAttribute('href')).toBe(
+      '#/club',
+    );
+    expect(screen.getByText(/to start your free trial/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: CLUB_PRICING.cta })).toBeNull();
+  });
+
+  it('shows Page not found for an unknown page, with the way back to the app', async () => {
+    renderApp();
+    await signIn();
+    go('#/nope');
+    expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Back to the app' }).getAttribute('href')).toBe(
+      ADMIN_PATH,
+    );
+    await vi.waitFor(() =>
+      expect(document.title).toBe(`Page not found · Club admin · ${APP_NAME}`),
+    );
   });
 
   it('lists the roster and makes an invite QR carrying a club join link', async () => {
@@ -656,6 +699,10 @@ describe('errors, empty states and navigation', () => {
     expect(
       within(nav).getByRole('link', { name: 'Stands and areas' }).getAttribute('aria-current'),
     ).toBe('page');
+    const current = within(nav)
+      .getAllByRole('link')
+      .filter((link) => link.hasAttribute('aria-current'));
+    expect(current.map((link) => link.textContent)).toEqual(['Stands and areas']);
     expect(globalCss()).toMatch(/\.nav a\[aria-current='page'\] \{[^}]*text-decoration: underline/);
   });
 
@@ -666,7 +713,7 @@ describe('errors, empty states and navigation', () => {
       '#main',
     );
     expect(document.getElementById('main')?.tagName).toBe('MAIN');
-    // Scoped to this render: the admin may still show its own loading status.
+    // Its own container: the signed-in page may still be showing its own loading status.
     const { container } = render(<Loading />);
     expect(within(container).getByRole('status').textContent).toBe('Loading…');
   });

@@ -3,11 +3,18 @@ import { Loading } from './Loading';
 import { NoClub } from './NoClub';
 import type { AsyncResult } from './useAsync';
 
-/** Renders loading and error states the same way on every page. */
-export function Loadable<T>(props: { state: AsyncResult<T>; children: (value: T) => ReactNode }) {
+/**
+ * Renders loading and error states the same way on every page. `noClub` replaces the
+ * standard "Create your club first" for a page that has something to show before a club.
+ */
+export function Loadable<T>(props: {
+  state: AsyncResult<T>;
+  children: (value: T) => ReactNode;
+  noClub?: ReactNode;
+}) {
   const { state } = props;
   if (state.status === 'loading') return <Loading />;
-  if (state.status === 'noClub') return <NoClub />;
+  if (state.status === 'noClub') return props.noClub ?? <NoClub />;
   if (state.status === 'error') {
     return (
       <div role="alert" className="row">

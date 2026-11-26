@@ -122,7 +122,6 @@ describe('pages before there is a club', () => {
     ['#/roster', 'Roster'],
     ['#/stands', 'Stands and areas'],
     ['#/harvests', 'Harvests'],
-    ['#/billing', 'Billing'],
     ['#/maps', 'Map packs'],
   ])('%s asks to create the club first, not an error', async (hash, heading) => {
     const storage = memoryStorage();
