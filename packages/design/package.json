@@ -9,7 +9,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./colors": "./src/colors.ts",
-    "./fonts/*": "./fonts/*"
+    "./fonts/*": "./fonts/*",
+    "./png": "./scripts/png.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.scripts.json",

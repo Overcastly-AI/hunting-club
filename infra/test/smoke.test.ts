@@ -20,6 +20,8 @@ const HOME = [
   `<meta name="theme-color" content="${colors.surface}">`,
   '<link rel="icon" href="/favicon.ico" sizes="48x48">',
   '<link rel="icon" type="image/svg+xml" href="/favicon.svg">',
+  `<meta property="og:image" content="${SITE}/og/home.png"/>`,
+  '<script type="application/ld+json">{"@type":"SoftwareApplication"}</script>',
   '</head><body><h1>Hunt Club Mesh</h1></body>',
 ].join('');
 /** The admin's page (web/dist index.html under ADMIN_PATH). */
@@ -66,6 +68,7 @@ function fakeDev(override: Record<string, number> = {}): {
     }
     if (url === `${SITE}/favicon.svg`)
       return reply(200, '<svg/>', { 'content-type': 'image/svg+xml' });
+    if (url === `${SITE}/og/home.png`) return reply(200, 'png', { 'content-type': 'image/png' });
     if (url === `${SITE}/favicon.ico`) return reply(200, 'ico', { 'content-type': 'image/x-icon' });
     if (url === `${SITE}/robots.txt`) {
       return reply(200, robotsTxt(dev), { 'content-type': 'text/plain; charset=utf-8' });
@@ -170,6 +173,12 @@ describe('dev smoke check', () => {
     };
     const failed = (await runSmoke(dev, leaky)).filter((r) => !r.ok);
     expect(failed.map((r) => r.detail)).toEqual(['referrer-policy is missing']);
+  });
+
+  it('fails a missing share card', async () => {
+    const { fetch } = fakeDev({ [`${SITE}/og/home.png`]: 404 });
+    const failed = (await runSmoke(dev, fetch)).filter((r) => !r.ok);
+    expect(failed.map((r) => r.detail)).toEqual([`GET ${SITE}/og/home.png → 404`]);
   });
 
   it('fails when the sitemap is missing', async () => {

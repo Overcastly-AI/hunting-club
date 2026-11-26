@@ -5,8 +5,8 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { Resvg } from '@resvg/resvg-js';
 import { APP_ICONS, FAVICON_ICO, logoMarkSvg, type LogoMarkOptions } from '../src/logo';
+import { svgToPng } from './png';
 
 export type AppIcon = (typeof APP_ICONS)[number];
 
@@ -16,11 +16,8 @@ export const APP_ASSETS_DIR = join(process.cwd(), '..', '..', 'app', 'assets');
 /** site/public: the public site serves it from the root unchanged. */
 export const SITE_PUBLIC_DIR = join(process.cwd(), '..', '..', 'site', 'public');
 
-function renderPng(mark: LogoMarkOptions, size: number): Buffer {
-  return Buffer.from(
-    new Resvg(logoMarkSvg(mark), { fitTo: { mode: 'width', value: size } }).render().asPng(),
-  );
-}
+const renderPng = (mark: LogoMarkOptions, size: number) =>
+  svgToPng(logoMarkSvg(mark), { width: size });
 
 export function renderAppIcon(icon: AppIcon): Buffer {
   return renderPng(icon.mark, icon.size);

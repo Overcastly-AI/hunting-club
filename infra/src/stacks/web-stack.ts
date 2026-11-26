@@ -10,6 +10,7 @@ import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import type { Construct } from 'constructs';
 import { JOIN_PATH } from '@huntclub/shared/app';
 import { MAP_PACKS_PREFIX } from '@huntclub/shared/maps';
+import { OG_IMAGE } from '@huntclub/site/routes';
 import type { EnvConfig } from '../../config';
 import { LOG_RETENTION } from '../constructs/node-lambda';
 import {
@@ -34,6 +35,8 @@ export interface WebStackProps extends StackProps {
 /** Vite puts fingerprinted files here; they never change, so they cache for a year. */
 const HASHED_ASSETS = 'assets/*';
 const WELL_KNOWN = `${WELL_KNOWN_PREFIX}*`;
+/** The public site's Open Graph cards (stable URLs, rendered at build time). */
+const OG_IMAGES = `${OG_IMAGE.dir}/*`;
 /** Club map packs, written by the map-pack builder Lambda (never pruned by web deploys). */
 const MAP_PACKS = `${MAP_PACKS_PREFIX}*`;
 
@@ -161,13 +164,29 @@ export class WebStack extends Stack {
     new s3deploy.BucketDeployment(this, 'SitePages', {
       destinationBucket: this.bucket,
       sources: [site],
-      // Excluded keys are never pruned: hashed assets, the admin, universal-link files,
-      // robots.txt and map packs stay.
-      exclude: [HASHED_ASSETS, `${ADMIN_PREFIX}*`, WELL_KNOWN, ROBOTS_FILE, MAP_PACKS],
+      // Excluded keys are never pruned: hashed assets, Open Graph cards, the admin,
+      // universal-link files, robots.txt and map packs stay.
+      exclude: [HASHED_ASSETS, OG_IMAGES, `${ADMIN_PREFIX}*`, WELL_KNOWN, ROBOTS_FILE, MAP_PACKS],
       cacheControl: [s3deploy.CacheControl.noCache()],
       prune: true,
       distribution: this.distribution,
       distributionPaths: ['/*'],
+      logGroup: deployLogs,
+    });
+
+    // Open Graph cards keep stable URLs (shared links point at them): cached for a day.
+    new s3deploy.BucketDeployment(this, 'SiteOgImages', {
+      destinationBucket: this.bucket,
+      sources: [site],
+      exclude: ['*'],
+      include: [OG_IMAGES],
+      cacheControl: [
+        s3deploy.CacheControl.setPublic(),
+        s3deploy.CacheControl.maxAge(Duration.days(1)),
+      ],
+      prune: false,
+      distribution: this.distribution,
+      distributionPaths: [`/${OG_IMAGES}`],
       logGroup: deployLogs,
     });
 

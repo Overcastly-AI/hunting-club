@@ -127,6 +127,21 @@ export async function runSmoke(config: EnvConfig, fetch: SmokeFetch): Promise<Sm
     expect(/^image\//.test(res.headers.get('content-type') ?? ''), 'not an image');
     return `GET → 200 ${res.headers.get('content-type')}`;
   });
+  await check('home page shares a card and says what the app is (JSON-LD)', async () => {
+    const image = /<meta property="og:image" content="([^"]+)"/.exec(home)?.[1] ?? '';
+    expect(image.startsWith(`${site}/`), `og:image is ${image || 'missing'}`);
+    const res = await fetch(image);
+    expect(res.status === 200, `GET ${image} → ${res.status}`);
+    expect(res.headers.get('content-type') === 'image/png', 'card is not a PNG');
+    const types = [...home.matchAll(/<script type="application\/ld\+json">([^<]*)<\/script>/g)]
+      .map((m) => JSON.parse(m[1]!) as { '@type'?: string; aggregateRating?: unknown })
+      .map((d) => {
+        expect(d.aggregateRating === undefined, 'structured data claims a rating');
+        return d['@type'];
+      });
+    expect(types.includes('SoftwareApplication'), `JSON-LD types: ${types.join(', ') || 'none'}`);
+    return `og:image → 200 PNG; JSON-LD ${types.join(', ')}`;
+  });
   await check(`/${SITEMAP_FILE} lists the site`, async () => {
     const res = await fetch(`${site}/${SITEMAP_FILE}`);
     const body = await res.text();
