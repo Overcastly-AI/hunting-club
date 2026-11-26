@@ -1,3 +1,4 @@
+import { SECURE_KEYS, type SecureKey } from '@huntclub/shared';
 import * as SecureStore from 'expo-secure-store';
 
 /**
@@ -11,15 +12,8 @@ export type SecureStorage = {
   delete(key: SecureKey): Promise<void>;
 };
 
-/** Every secret's key, in one place (letters, digits, ".", "-" and "_" only). */
-export const SECURE_KEYS = {
-  partyJoinLink: 'party.joinLink',
-  /** Club sign-in tokens (Cognito access + refresh), JSON. */
-  clubAuthTokens: 'club.authTokens',
-  /** The Club QR code link of the club this phone hunts with (holds the club channel key). */
-  clubJoinLink: 'club.joinLink',
-} as const;
-export type SecureKey = (typeof SECURE_KEYS)[keyof typeof SECURE_KEYS];
+/** Every secret's key: one list in @huntclub/shared, used by the app and the web admin. */
+export { SECURE_KEYS, type SecureKey };
 
 /**
  * Readable after the first unlock since boot, so the radio link can restore

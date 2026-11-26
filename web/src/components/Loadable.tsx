@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react';
 import { Loading } from './Loading';
+import { NoClub } from './NoClub';
 import type { AsyncResult } from './useAsync';
 
 /** Renders loading and error states the same way on every page. */
 export function Loadable<T>(props: { state: AsyncResult<T>; children: (value: T) => ReactNode }) {
   const { state } = props;
   if (state.status === 'loading') return <Loading />;
+  if (state.status === 'noClub') return <NoClub />;
   if (state.status === 'error') {
     return (
       <div role="alert" className="row">

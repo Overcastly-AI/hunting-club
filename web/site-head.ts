@@ -1,6 +1,6 @@
 // The page head that Vite writes into index.html at build (and dev) time: title,
 // description, theme color and favicon, all from the shared sources.
-import { colors, logoMarkSvg } from '@huntclub/design';
+import { colors, FAVICON_ICO, logoMarkSvg } from '@huntclub/design';
 import { APP_DESCRIPTION, APP_NAME } from '@huntclub/shared/app';
 import type { Plugin } from 'vite';
 
@@ -13,6 +13,8 @@ export function siteHeadTags() {
     { tag: 'title', children: APP_NAME },
     { tag: 'meta', attrs: { name: 'description', content: APP_DESCRIPTION } },
     { tag: 'meta', attrs: { name: 'theme-color', content: colors.surface } },
+    // favicon.ico (web/public, from the design icons script) for browsers without SVG icons.
+    { tag: 'link', attrs: { rel: 'icon', href: `/${FAVICON_ICO.file}`, sizes: '48x48' } },
     { tag: 'link', attrs: { rel: 'icon', type: 'image/svg+xml', href: `/${FAVICON_FILE}` } },
   ];
 }

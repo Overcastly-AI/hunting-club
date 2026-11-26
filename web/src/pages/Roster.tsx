@@ -93,39 +93,48 @@ export function Roster(props: { api: ClubApi }) {
         )}
       </Loadable>
 
-      <h2>Invite a member</h2>
-      <p className="muted">
-        New members scan the invite with their phone camera. It joins the club radio channel even
-        with no cell service.
-      </p>
-      <button
-        className="button primary"
-        type="button"
-        disabled={invite.kind === 'busy'}
-        onClick={() => void makeInvite()}
-      >
-        {invite.kind === 'busy' ? 'Making invite…' : 'Make an invite'}
-      </button>
-      {invite.kind === 'error' ? (
-        <p className="error" role="alert">
-          {invite.message}
-        </p>
-      ) : null}
-      {invite.kind === 'ready' ? (
-        <div className="panel" aria-live="polite">
-          <QrCode value={invite.joinUrl} label="Club invite QR code" />
-          <p>Or send this link (valid until {formatDate(invite.expiresAt)}):</p>
-          <p className="code" data-testid="invite-link">
-            {invite.joinUrl}
+      {/* Invites need a club: only offered once the roster has loaded. */}
+      {members.status === 'ready' ? (
+        <>
+          <h2>Invite a member</h2>
+          <p className="muted">
+            New members scan the invite with their phone camera. It joins the club radio channel
+            even with no cell service.
           </p>
-          {copy === 'manual' ? (
-            <ManualCopy value={invite.joinUrl} />
-          ) : (
-            <button className="button" type="button" onClick={() => void copyLink(invite.joinUrl)}>
-              {copy === 'copied' ? 'Copied' : 'Copy link'}
-            </button>
-          )}
-        </div>
+          <button
+            className="button primary"
+            type="button"
+            disabled={invite.kind === 'busy'}
+            onClick={() => void makeInvite()}
+          >
+            {invite.kind === 'busy' ? 'Making invite…' : 'Make an invite'}
+          </button>
+          {invite.kind === 'error' ? (
+            <p className="error" role="alert">
+              {invite.message}
+            </p>
+          ) : null}
+          {invite.kind === 'ready' ? (
+            <div className="panel" aria-live="polite">
+              <QrCode value={invite.joinUrl} label="Club invite QR code" />
+              <p>Or send this link (valid until {formatDate(invite.expiresAt)}):</p>
+              <p className="code" data-testid="invite-link">
+                {invite.joinUrl}
+              </p>
+              {copy === 'manual' ? (
+                <ManualCopy value={invite.joinUrl} />
+              ) : (
+                <button
+                  className="button"
+                  type="button"
+                  onClick={() => void copyLink(invite.joinUrl)}
+                >
+                  {copy === 'copied' ? 'Copied' : 'Copy link'}
+                </button>
+              )}
+            </div>
+          ) : null}
+        </>
       ) : null}
     </section>
   );

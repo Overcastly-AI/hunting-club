@@ -16,6 +16,17 @@ import type {
 } from '@huntclub/shared';
 
 /**
+ * The signed-in person runs no club yet (GET /me/clubs lists none they administer), so
+ * there is nothing to ask the club API about. Pages show "Create your club first".
+ */
+export class NoClubError extends Error {
+  constructor() {
+    super('No club yet');
+    this.name = 'NoClubError';
+  }
+}
+
+/**
  * What the admin pages need from the club API. Every entity is the shared wire type from
  * @huntclub/shared (never a local copy). api/admin.ts implements it over the shared
  * typed client (createClubApiClient).

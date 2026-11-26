@@ -81,3 +81,17 @@ export const APP_ICONS = [
   { file: 'splash-icon.png', size: 1024, mark: { background: 'none', padding: 4 } },
   { file: 'favicon.png', size: 48, mark: {} },
 ] as const satisfies readonly { file: string; size: number; mark: LogoMarkOptions }[];
+
+/**
+ * The web page's /favicon.ico (web/public, served as is): the rounded mark at the sizes
+ * browsers and crawlers ask for, packed into one ICO by the same icons script.
+ */
+export const FAVICON_ICO = {
+  file: 'favicon.ico',
+  sizes: [16, 32, 48],
+  mark: {},
+} as const satisfies {
+  file: string;
+  sizes: readonly number[];
+  mark: LogoMarkOptions;
+};

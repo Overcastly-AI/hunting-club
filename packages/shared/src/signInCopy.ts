@@ -1,24 +1,42 @@
 // The words of the email-code sign-in, shared by the app and the web admin so both
 // say the same thing. Plain language; no passwords.
-import type { CognitoAuthErrorCode } from './cognito';
+import type { CodeChallenge, CognitoAuthErrorCode } from './cognito';
 
-/** Digits in the emailed one-time code (Cognito EMAIL_OTP and sign-up codes). */
-export const EMAIL_CODE_LENGTH = 6;
+/** Digits in the code Cognito emails to confirm a new account (sign-up). */
+export const SIGN_UP_CODE_LENGTH = 6;
+/** Digits in the code Cognito emails to sign in an existing account (EMAIL_OTP). */
+export const EMAIL_OTP_CODE_LENGTH = 8;
 
-/** How long an emailed sign-in code works: Cognito EMAIL_OTP codes expire after 3 minutes. */
-export const EMAIL_CODE_VALID_MINUTES = 3;
+/** The emailed code for a challenge: how many digits, and how long it works (in words). */
+export interface EmailCodeRules {
+  readonly length: number;
+  readonly validFor: string;
+}
+
+const CODE_RULES: Record<CodeChallenge['kind'], EmailCodeRules> = {
+  // Cognito: sign-up confirmation codes last 24 hours; EMAIL_OTP sign-in codes 3 minutes.
+  signUp: { length: SIGN_UP_CODE_LENGTH, validFor: '24 hours' },
+  signIn: { length: EMAIL_OTP_CODE_LENGTH, validFor: '3 minutes' },
+};
+
+/** The one place the expected code depends on the challenge kind. */
+export function emailCodeRules(kind: CodeChallenge['kind']): EmailCodeRules {
+  return CODE_RULES[kind];
+}
 
 export const signInCopy = {
   title: 'Sign in',
-  intro: `We email you a ${EMAIL_CODE_LENGTH}-digit code. No password to remember.`,
+  intro: 'We email you a code. No password to remember.',
   email: 'Email address',
   emailPlaceholder: 'you@example.com',
   sendCode: 'Email me a code',
   sending: 'Sending code…',
-  codeSent: (email: string) => `Enter the code we sent to ${email}.`,
-  codeHelp: `The code works for ${EMAIL_CODE_VALID_MINUTES} minutes. Not in your inbox? Check your spam folder.`,
-  code: `${EMAIL_CODE_LENGTH}-digit code`,
-  codeIncomplete: `Enter all ${EMAIL_CODE_LENGTH} digits of the code.`,
+  codeSent: (email: string) => `Enter the code from the email we sent to ${email}.`,
+  codeHelp: (kind: CodeChallenge['kind']) =>
+    `The code works for ${emailCodeRules(kind).validFor}. Not in your inbox? Check your spam folder.`,
+  code: 'Code from the email',
+  codeIncomplete: (kind: CodeChallenge['kind']) =>
+    `Enter all ${emailCodeRules(kind).length} digits of the code from the email.`,
   confirm: 'Sign in',
   signingIn: 'Signing in…',
   resend: 'Send a new code',
@@ -33,3 +51,6 @@ export const signInCopy = {
     unknown: 'Something went wrong. Try again.',
   } satisfies Record<CognitoAuthErrorCode, string>,
 } as const;
+
+/** What a typed or pasted code becomes: digits only, nothing cut off (checked on submit). */
+export const codeDigits = (input: string) => input.replace(/\D/g, '');

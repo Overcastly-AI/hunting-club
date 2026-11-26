@@ -14,3 +14,4 @@ export * from './session';
 export * from './signInCopy';
 export * from './maps';
 export * from './legal';
+export * from './secureKeys';

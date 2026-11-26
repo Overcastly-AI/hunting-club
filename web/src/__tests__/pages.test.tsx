@@ -10,6 +10,7 @@ import {
   APP_NAME,
   CHECKOUT_RETURN_PATHS,
   type ClubApiClient,
+  emailCodeRules,
   LEGAL_DRAFT_NOTICE,
   LEGAL_PATHS,
   privacyPolicy,
@@ -29,10 +30,10 @@ import { Root } from '../Root';
 import { globalCss } from '../theme/css';
 import { pageTitle } from '../title';
 import type { WebClubServices } from '../cloud';
-import { fakeClubClient, fakeCognitoAuth, sampleData, TEST_CODE } from './fakeClubApi';
+import { fakeClubClient, fakeCognitoAuth, sampleData, testCode } from './fakeClubApi';
 
 async function requestCode() {
-  fireEvent.change(screen.getByLabelText(signInCopy.email), {
+  fireEvent.change(await screen.findByLabelText(signInCopy.email), {
     target: { value: 'dale@example.com' },
   });
   fireEvent.click(screen.getByRole('button', { name: signInCopy.sendCode }));
@@ -40,7 +41,7 @@ async function requestCode() {
 }
 
 async function signIn() {
-  fireEvent.change(await requestCode(), { target: { value: TEST_CODE } });
+  fireEvent.change(await requestCode(), { target: { value: testCode() } });
   fireEvent.click(screen.getByRole('button', { name: signInCopy.confirm }));
   await screen.findByRole('navigation', { name: 'Club admin' });
 }
@@ -79,21 +80,64 @@ function renderApp(
 describe('sign in', () => {
   it('signs in with an email and the emailed code', async () => {
     renderApp();
-    expect(document.title).toBe(`Sign in · Club admin · ${APP_NAME}`);
+    await screen.findByLabelText(signInCopy.email);
+    await vi.waitFor(() => expect(document.title).toBe(`Sign in · ${APP_NAME}`));
     await signIn();
-    expect(document.title).toBe(`My club · Club admin · ${APP_NAME}`);
+    // The title is set in an effect after the signed-in render commits.
+    await vi.waitFor(() => expect(document.title).toBe(`My club · Club admin · ${APP_NAME}`));
     expect(screen.getByText('Signed in as dale@example.com')).toBeTruthy();
   });
 
   it('explains a wrong code and stays on the code step', async () => {
     renderApp();
-    fireEvent.change(await requestCode(), { target: { value: '999999' } });
+    window.location.hash = '#/roster';
+    fireEvent.change(await requestCode(), { target: { value: '99999999' } });
     fireEvent.click(screen.getByRole('button', { name: signInCopy.confirm }));
     expect((await screen.findByRole('alert')).textContent).toBe(signInCopy.errors.wrong_code);
     expect(screen.getByLabelText(signInCopy.code)).toBeTruthy();
+    // The route asked for stays put on the sign-in screen, then opens once signed in.
+    expect(window.location.hash).toBe('#/roster');
+    fireEvent.change(screen.getByLabelText(signInCopy.code), { target: { value: testCode() } });
+    fireEvent.click(screen.getByRole('button', { name: signInCopy.confirm }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Roster' })).toBeTruthy();
   });
 
-  it('keeps only digits, and asks for all six on submit next to the field', async () => {
+  it.each(['signUp', 'signIn'] as const)(
+    'expects the %s code length from the challenge, and never cuts a long paste',
+    async (kind) => {
+      const { length, validFor } = emailCodeRules(kind);
+      renderApp(sampleData(), {
+        session: new ClubSession(fakeCognitoAuth(kind), memoryTokenStore()),
+        api: adminApi(fakeClubClient(sampleData())),
+      });
+      const input = (await requestCode()) as HTMLInputElement;
+      expect(input.maxLength).toBe(-1);
+      expect(screen.getByText(signInCopy.codeHelp(kind)).textContent).toContain(validFor);
+      const tooLong = testCode(kind) + '9';
+      fireEvent.change(input, { target: { value: tooLong.split('').join(' ') } });
+      expect(input.value).toBe(tooLong);
+      fireEvent.click(screen.getByRole('button', { name: signInCopy.confirm }));
+      expectFieldError(input, signInCopy.codeIncomplete(kind));
+      expect(signInCopy.codeIncomplete(kind)).toContain(String(length));
+      fireEvent.change(input, { target: { value: testCode(kind) } });
+      fireEvent.click(screen.getByRole('button', { name: signInCopy.confirm }));
+      await screen.findByRole('navigation', { name: 'Club admin' });
+    },
+  );
+
+  it('shows one message at a time', async () => {
+    renderApp();
+    const input = await requestCode();
+    fireEvent.change(input, { target: { value: '99999999' } });
+    fireEvent.click(screen.getByRole('button', { name: signInCopy.confirm }));
+    await screen.findByRole('alert');
+    fireEvent.change(input, { target: { value: '12' } });
+    fireEvent.click(screen.getByRole('button', { name: signInCopy.confirm }));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByText(signInCopy.codeIncomplete('signIn'))).toBeTruthy();
+  });
+
+  it('keeps only digits, and asks for every digit on submit next to the field', async () => {
     renderApp();
     const input = (await requestCode()) as HTMLInputElement;
     fireEvent.change(input, { target: { value: '12a4' } });
@@ -101,9 +145,9 @@ describe('sign in', () => {
     const submit = screen.getByRole('button', { name: signInCopy.confirm }) as HTMLButtonElement;
     expect(submit.disabled).toBe(false);
     fireEvent.click(submit);
-    expectFieldError(input, signInCopy.codeIncomplete);
+    expectFieldError(input, signInCopy.codeIncomplete('signIn'));
     expect(input.getAttribute('aria-describedby')).toContain(
-      screen.getByText(signInCopy.codeHelp).id,
+      screen.getByText(signInCopy.codeHelp('signIn')).id,
     );
   });
 
@@ -111,7 +155,7 @@ describe('sign in', () => {
     const auth = fakeCognitoAuth();
     const start = vi.spyOn(auth, 'requestCode');
     renderApp(sampleData(), { session: new ClubSession(auth, memoryTokenStore()), api: undefined });
-    const email = screen.getByLabelText(signInCopy.email) as HTMLInputElement;
+    const email = (await screen.findByLabelText(signInCopy.email)) as HTMLInputElement;
     expect(email.getAttribute('inputmode')).toBe('email');
     expect(email.getAttribute('autocapitalize')).toBe('none');
     expect(email.getAttribute('spellcheck')).toBe('false');
@@ -124,7 +168,7 @@ describe('sign in', () => {
 
   it('says Sending code while the code is on its way', async () => {
     renderApp();
-    fireEvent.change(screen.getByLabelText(signInCopy.email), {
+    fireEvent.change(await screen.findByLabelText(signInCopy.email), {
       target: { value: 'dale@example.com' },
     });
     fireEvent.click(screen.getByRole('button', { name: signInCopy.sendCode }));
@@ -135,14 +179,15 @@ describe('sign in', () => {
   it('sends a new code on request, with the expiry and a spam hint', async () => {
     renderApp();
     await requestCode();
-    expect(screen.getByText(signInCopy.codeHelp).textContent).toMatch(/3 minutes.*spam/);
+    expect(screen.getByText(signInCopy.codeHelp('signIn')).textContent).toMatch(/3 minutes.*spam/);
     fireEvent.click(screen.getByRole('button', { name: signInCopy.resend }));
     expect((await screen.findByRole('status')).textContent).toBe(signInCopy.resent);
     expect(screen.getByLabelText(signInCopy.code)).toBeTruthy();
   });
 
-  it('shows the app name, logo, description and Privacy and Terms links', () => {
+  it('shows the app name, logo, description and Privacy and Terms links', async () => {
     renderApp();
+    await screen.findByLabelText(signInCopy.email);
     expect(screen.getByText(APP_NAME)).toBeTruthy();
     expect(screen.getByText(APP_DESCRIPTION)).toBeTruthy();
     expect(document.querySelector('.auth-brand img')?.getAttribute('src')).toMatch(

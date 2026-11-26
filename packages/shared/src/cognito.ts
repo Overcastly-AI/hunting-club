@@ -1,7 +1,8 @@
 // Sign-in with an emailed one-time code (Cognito USER_AUTH + EMAIL_OTP), over Cognito's
 // JSON API with an injected fetch. No AWS SDK: these calls are unsigned (public app
 // client, no secret), and React Native would need polyfills for the SDK. Shared by the
-// app and the web admin (docs/research/stripe-and-auth.md: email + 6-digit code).
+// app and the web admin (docs/research/stripe-and-auth.md: email + emailed code; the
+// code length depends on the challenge, see emailCodeRules).
 import { type FetchLike, readJson } from './http';
 
 export interface AuthTokens {

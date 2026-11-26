@@ -12,7 +12,7 @@ import {
   type MapPack,
 } from '@huntclub/shared';
 import { useState } from 'react';
-import type { ClubApi } from '../api/types';
+import { NoClubError, type ClubApi } from '../api/types';
 import { Loadable } from '../components/Loadable';
 import { DataTable } from '../components/DataTable';
 import { PageHeading } from '../components/PageHeading';
@@ -52,7 +52,8 @@ export function MapPacks(props: { api: ClubApi }) {
     async () => {
       // No club yet: nothing to list, and the page asks for a club first.
       const club = await props.api.getClub();
-      return [club, club ? await props.api.listMapPacks() : []] as const;
+      if (!club) throw new NoClubError();
+      return [club, await props.api.listMapPacks()] as const;
     },
     [props.api],
     { keepLastOn: isOffline },
@@ -66,33 +67,27 @@ export function MapPacks(props: { api: ClubApi }) {
         map works with no cell service.
       </p>
       <Loadable state={state}>
-        {([club, packs]) =>
-          !club ? (
-            <p>
-              Create your club first. <a href="#/club">Go to My club</a>
-            </p>
-          ) : (
-            <>
-              <BuildPack
-                api={props.api}
-                club={club}
-                building={packs.some((p) => p.status === 'building')}
-                onStarted={state.reload}
-              />
-              <h2>Map packs</h2>
-              {packs.length === 0 ? (
-                <p>No map packs yet.</p>
-              ) : (
-                <>
-                  <PackTable packs={packs} />
-                  <button className="button" type="button" onClick={state.reload}>
-                    Check again
-                  </button>
-                </>
-              )}
-            </>
-          )
-        }
+        {([club, packs]) => (
+          <>
+            <BuildPack
+              api={props.api}
+              club={club}
+              building={packs.some((p) => p.status === 'building')}
+              onStarted={state.reload}
+            />
+            <h2>Map packs</h2>
+            {packs.length === 0 ? (
+              <p>No map packs yet.</p>
+            ) : (
+              <>
+                <PackTable packs={packs} />
+                <button className="button" type="button" onClick={state.reload}>
+                  Check again
+                </button>
+              </>
+            )}
+          </>
+        )}
       </Loadable>
     </section>
   );
