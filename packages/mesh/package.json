@@ -12,6 +12,7 @@
     "lint": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@huntclub/shared": "*",
     "@bufbuild/protobuf": "^2.17.0",
     "@meshtastic/protobufs": "2.8.0"
   },
