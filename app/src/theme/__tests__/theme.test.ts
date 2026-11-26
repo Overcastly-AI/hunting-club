@@ -1,4 +1,19 @@
-import { boundary, colors, fontFamily, fontSize, radii, sizes, theme } from '..';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+import { readFontFile } from '../../test-utils/fontFile';
+import {
+  archivo,
+  boundary,
+  colors,
+  fontAxisLimits,
+  fontFamily,
+  fontSize,
+  fontWeight,
+  radii,
+  sizes,
+  theme,
+} from '..';
 
 describe('color tokens', () => {
   it('match the Design D values in docs/SPEC.md exactly', () => {
@@ -28,6 +43,8 @@ describe('color tokens', () => {
 });
 
 describe('type tokens', () => {
+  const styles = Object.entries(theme.textStyles);
+
   it('use the spec sizes', () => {
     expect(fontSize).toEqual({
       mapLabelMin: 13,
@@ -47,18 +64,55 @@ describe('type tokens', () => {
     expect(theme.textStyles.label.fontSize).toBeGreaterThanOrEqual(16);
   });
 
-  it('use only Archivo, weights 500 to 800', () => {
-    for (const family of Object.values(fontFamily)) {
-      expect(family).toMatch(/^Archivo_(500Medium|600SemiBold|700Bold|800ExtraBold)$/);
-    }
-    for (const style of Object.values(theme.textStyles)) {
-      expect(Object.values(fontFamily)).toContain(style.fontFamily);
-    }
+  it('use the spec axis limits: weight 500–800, width 75–100', () => {
+    expect(fontAxisLimits).toEqual({
+      weight: { min: 500, max: 800 },
+      width: { min: 75, max: 100 },
+    });
   });
 
-  it('marker names and the sheet title are extra bold', () => {
-    expect(theme.textStyles.markerName.fontFamily).toBe(fontFamily.extraBold);
-    expect(theme.textStyles.sheetTitle.fontFamily).toBe(fontFamily.extraBold);
+  it.each(styles)('%s uses Archivo with both axes inside the limits', (_name, style) => {
+    expect(style.fontFamily).toBe(fontFamily);
+    expect(style.fontWeight).toBe('normal');
+    const { wght, wdth } = style.fontVariationSettings;
+    expect(wght).toBeGreaterThanOrEqual(fontAxisLimits.weight.min);
+    expect(wght).toBeLessThanOrEqual(fontAxisLimits.weight.max);
+    expect(wdth).toBeGreaterThanOrEqual(fontAxisLimits.width.min);
+    expect(wdth).toBeLessThanOrEqual(fontAxisLimits.width.max);
+  });
+
+  it('draws marker names at 800 and the sheet title at 800 and 82% width', () => {
+    expect(theme.textStyles.markerName.fontVariationSettings).toEqual({ wght: 800, wdth: 100 });
+    expect(theme.textStyles.sheetTitle.fontVariationSettings).toEqual({ wght: 800, wdth: 82 });
+  });
+
+  it('archivo() defaults to normal width', () => {
+    expect(archivo(fontWeight.bold)).toEqual({
+      fontFamily,
+      fontWeight: 'normal',
+      fontVariationSettings: { wght: 700, wdth: 100 },
+    });
+  });
+});
+
+describe('bundled font file', () => {
+  const font = readFontFile(join(__dirname, '../../../assets/fonts/Archivo-Variable.ttf'));
+
+  it('is the Archivo family', () => {
+    expect(font.family).toBe(fontFamily);
+  });
+
+  it('has weight and width axes covering the design system limits', () => {
+    const axis = (tag: string) => font.axes.find((a) => a.tag === tag);
+    expect(axis('wght')?.min).toBeLessThanOrEqual(fontAxisLimits.weight.min);
+    expect(axis('wght')?.max).toBeGreaterThanOrEqual(fontAxisLimits.weight.max);
+    expect(axis('wdth')?.min).toBeLessThanOrEqual(fontAxisLimits.width.min);
+    expect(axis('wdth')?.max).toBeGreaterThanOrEqual(fontAxisLimits.width.max);
+  });
+
+  it('ships with its OFL license', () => {
+    const license = readFileSync(join(__dirname, '../../../assets/fonts/Archivo-OFL.txt'), 'utf8');
+    expect(license).toContain('SIL Open Font License, Version 1.1');
   });
 });
 
