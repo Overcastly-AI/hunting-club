@@ -1,3 +1,5 @@
+import { MAX_TEXT_CHARS } from '@huntclub/mesh';
+
 import { createMigratedTestDatabase, createTestDatabase } from '../../test-utils/nodeSqlite';
 import { assertMigrationsOrdered, getSchemaVersion, migrate } from '../migrate';
 import { migrations } from '../migrations';
@@ -6,13 +8,13 @@ import type { Migration } from '../types';
 const EXPECTED_TABLES = [
   'app_state',
   'areas',
+  'chat_messages',
   'check_ins',
   'groups',
   'harvests',
   'help_requests',
   'map_packs',
   'members',
-  'messages',
   'paired_radio',
   'party',
   'positions',
@@ -97,13 +99,15 @@ describe('initial schema constraints', () => {
     expect(() => insert.run('c3', null)).toThrow(/UNIQUE/);
   });
 
-  it('limits message bodies to 200 characters', async () => {
+  it('limits chat text bodies to the mesh text limit', async () => {
     const db = await createMigratedTestDatabase();
     const insert = db.raw.prepare(
-      `INSERT INTO messages (id, channel, sender, body, sent_at) VALUES (?, 'party', 's', ?, 1)`,
+      `INSERT INTO chat_messages (kind, sender, message_id, conversation, body, at)
+       VALUES ('text', 1, ?, 'group:party', ?, 1)`,
     );
-    insert.run('ok', 'a'.repeat(200));
-    expect(() => insert.run('too-long', 'a'.repeat(201))).toThrow(/CHECK/);
+    insert.run(1, 'a'.repeat(MAX_TEXT_CHARS));
+    expect(() => insert.run(2, 'a'.repeat(MAX_TEXT_CHARS + 1))).toThrow(/CHECK/);
+    expect(() => insert.run(1, 'again')).toThrow(/UNIQUE|PRIMARY/); // (sender, message id) de-dup
   });
 
   it('keeps harvests private by default', async () => {
