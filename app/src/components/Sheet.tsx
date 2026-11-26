@@ -13,8 +13,17 @@ export function Sheet({ visible, title, onClose, children }: Props) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
-        <Pressable style={styles.dismiss} accessibilityLabel="Close" onPress={onClose} />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.md }]}>
+        {/* Tapping above the sheet closes it; screen readers use the Close button instead. */}
+        <Pressable
+          style={styles.dismiss}
+          onPress={onClose}
+          importantForAccessibility="no"
+          accessibilityElementsHidden
+        />
+        <View
+          accessibilityViewIsModal
+          style={[styles.sheet, { paddingBottom: insets.bottom + spacing.md }]}
+        >
           <Text accessibilityRole="header" style={styles.title}>
             {title}
           </Text>
