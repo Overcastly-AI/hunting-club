@@ -1,6 +1,11 @@
 // Port of supabase/tests/database/30_billing_and_service_tables.test.sql: plans,
 // subscriptions, Stripe events and map packs (service-written data).
-import { type MapPackStart, type StripeEventApply, mapPackKey } from '@huntclub/shared';
+import {
+  CLUB_PRICING,
+  type MapPackStart,
+  type StripeEventApply,
+  mapPackKey,
+} from '@huntclub/shared';
 import { ANONYMOUS, SERVICE } from '../index';
 import { World, expectCode } from '../testing/world';
 
@@ -36,6 +41,32 @@ beforeAll(async () => {
 afterAll(() => w.destroy());
 
 describe('plans', () => {
+  it('seeds the club plan with its monthly and yearly prices and the placeholder member limit', async () => {
+    const [plan] = await w.data.listPlans(ANONYMOUS);
+    expect(plan).toMatchObject({
+      id: 'club_standard',
+      memberLimit: 50,
+      prices: {
+        month: CLUB_PRICING.intervals.month.amountCents,
+        year: CLUB_PRICING.intervals.year.amountCents,
+      },
+    });
+  });
+
+  it('updates a stored plan that predates pricing, and leaves an up-to-date one alone', async () => {
+    await w.data.putPlan(SERVICE, {
+      id: 'club_standard',
+      name: 'Club',
+      memberLimit: 50,
+      active: true,
+    });
+    await w.data.seedPlans(SERVICE);
+    const [updated] = await w.data.listPlans(ANONYMOUS);
+    expect(updated?.prices).toBeDefined();
+    await w.data.seedPlans(SERVICE);
+    expect((await w.data.listPlans(ANONYMOUS))[0]?.updatedAt).toBe(updated?.updatedAt);
+  });
+
   it('anyone can read active plans', async () => {
     expect((await w.data.listPlans(ANONYMOUS)).map((p) => p.id)).toEqual(['club_standard']);
     expect((await w.data.listPlans(SERVICE)).map((p) => p.id).sort()).toEqual([

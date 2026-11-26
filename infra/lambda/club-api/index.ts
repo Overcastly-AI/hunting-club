@@ -12,6 +12,7 @@ import {
   readSecureParameter,
   type FunctionUrlEvent,
 } from '@huntclub/api';
+import { StripePricesSchema } from '@huntclub/shared';
 import { CHECKOUT_RETURN_PATHS } from '@huntclub/shared/app';
 import { API_ENV, CLUB_API_SECRETS, secretParameterEnvVar } from '../../config/types';
 
@@ -42,7 +43,7 @@ const run = lazyHandler(async () => {
     stripe: async () =>
       (stripe ??= connectStripe(await readSecureParameter(env(STRIPE_KEY_PARAM)))).api,
     checkout: {
-      prices: JSON.parse(env(API_ENV.stripePrices)) as Record<string, string>,
+      prices: StripePricesSchema.parse(JSON.parse(env(API_ENV.stripePrices))),
       successUrl: `${webOrigin}${CHECKOUT_RETURN_PATHS.success}`,
       cancelUrl: `${webOrigin}${CHECKOUT_RETURN_PATHS.cancel}`,
     },

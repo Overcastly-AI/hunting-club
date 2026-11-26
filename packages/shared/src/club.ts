@@ -6,6 +6,7 @@
 // counters). Field groups are plain objects spread into each schema, so every rule
 // is written once.
 import { z } from 'zod';
+import { BILLING_INTERVALS } from './pricing';
 import {
   HarvestSexSchema,
   InviteRoleSchema,
@@ -40,11 +41,15 @@ const timestamps = { createdAt: timestampSchema, updatedAt: timestampSchema };
 
 // Plans ------------------------------------------------------------------------
 
+export const billingIntervalSchema = z.enum(BILLING_INTERVALS);
+
 export const PlanSchema = z.object({
   id: planIdSchema,
   name: trimmedText(60),
   /** Maximum admins + members (guests don't count). Absent = unlimited. */
   memberLimit: z.number().int().positive().optional(),
+  /** Price per billing interval, in USD cents (CLUB_PRICING). Absent on plans stored before pricing. */
+  prices: z.partialRecord(billingIntervalSchema, z.number().int().positive()).optional(),
   active: z.boolean(),
   ...timestamps,
 });

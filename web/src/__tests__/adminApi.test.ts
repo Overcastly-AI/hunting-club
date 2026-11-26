@@ -81,8 +81,8 @@ describe('admin API over the shared client', () => {
   it('offers only active plans and starts Checkout for its own club', async () => {
     const api = adminApi(fakeClubClient());
     expect((await api.listPlans()).map((p) => p.id)).toEqual(['club_standard']);
-    expect(await api.startCheckout('club_standard')).toBe(
-      'https://checkout.stripe.com/c/pay/cs_test_club_standard_true',
+    expect(await api.startCheckout('club_standard', 'month')).toBe(
+      'https://checkout.stripe.com/c/pay/cs_test_club_standard_month_true',
     );
   });
 

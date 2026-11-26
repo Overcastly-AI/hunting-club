@@ -3,7 +3,7 @@
 // check the HTTP contract (status codes, error shape, auth, body validation).
 import { POLYGON, World, keyOf } from '@huntclub/club-data/testing';
 import { SERVICE } from '@huntclub/club-data';
-import type { MapPack, MapPackRequestResponse } from '@huntclub/shared';
+import { CLUB_PRICING, type MapPack, type MapPackRequestResponse } from '@huntclub/shared';
 import { cognitoVerifier } from '../auth';
 import type { StripeApi } from '../billing';
 import { createClubApi } from '../clubApi';
@@ -28,7 +28,7 @@ beforeAll(async () => {
     startMapPackBuild,
     newId: () => `00000000-0000-4000-8000-${(++ids).toString(16).padStart(12, '0')}`,
     checkout: {
-      prices: { club_standard: 'price_test_123' },
+      prices: { club_standard: { year: 'price_test_year', month: 'price_test_month' } },
       successUrl: 'https://web.test/checkout/done',
       cancelUrl: 'https://web.test/checkout/cancel',
     },
@@ -269,25 +269,32 @@ describe('billing', () => {
     expect((await call('GET', `/clubs/${oak()}/entitlement`, { as: 'nora' })).status).toBe(403);
   });
 
-  it("starts Stripe Checkout for an admin's club with the club and plan in metadata", async () => {
-    const res = await call('POST', `/clubs/${oak()}/checkout`, {
-      as: 'ada',
-      body: { planId: 'club_standard' },
-    });
-    expect(res).toEqual({ status: 200, body: { url: 'https://checkout.stripe.test/s' } });
-    const metadata = { club_id: oak(), plan_id: 'club_standard' };
-    expect(createCheckoutSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        mode: 'subscription',
-        line_items: [{ price: 'price_test_123', quantity: 1 }],
-        client_reference_id: oak(),
-        metadata,
-        subscription_data: { metadata },
-      }),
-    );
-  });
+  it.each([
+    ['yearly by default', {}, 'price_test_year'],
+    ['monthly when chosen', { interval: 'month' }, 'price_test_month'],
+  ])(
+    'starts Stripe Checkout (%s) with the free trial and the club and plan in metadata',
+    async (_, choice, price) => {
+      createCheckoutSession.mockClear();
+      const res = await call('POST', `/clubs/${oak()}/checkout`, {
+        as: 'ada',
+        body: { planId: 'club_standard', ...choice },
+      });
+      expect(res).toEqual({ status: 200, body: { url: 'https://checkout.stripe.test/s' } });
+      const metadata = { club_id: oak(), plan_id: 'club_standard' };
+      expect(createCheckoutSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mode: 'subscription',
+          line_items: [{ price, quantity: 1 }],
+          client_reference_id: oak(),
+          metadata,
+          subscription_data: { metadata, trial_period_days: CLUB_PRICING.trialDays },
+        }),
+      );
+    },
+  );
 
-  it('refuses checkout for members, unknown plans and plans without a price', async () => {
+  it('refuses checkout for members, unknown plans or intervals, and plans without a price', async () => {
     const path = `/clubs/${oak()}/checkout`;
     expect(
       (await call('POST', path, { as: 'max', body: { planId: 'club_standard' } })).status,
@@ -295,6 +302,10 @@ describe('billing', () => {
     expect((await call('POST', path, { as: 'ada', body: { planId: 'no_such_plan' } })).status).toBe(
       400,
     );
+    expect(
+      (await call('POST', path, { as: 'ada', body: { planId: 'club_standard', interval: 'week' } }))
+        .status,
+    ).toBe(400);
     await w.data.putPlan(SERVICE, { id: 'unpriced', name: 'Unpriced', active: true });
     expect(await call('POST', path, { as: 'ada', body: { planId: 'unpriced' } })).toMatchObject({
       status: 503,

@@ -3,6 +3,7 @@
  * Lambda) writes them; admins read their club's subscription; anyone reads active
  * plans (the checkout page shows them before sign-in).
  */
+import { isDeepStrictEqual } from 'node:util';
 import {
   ClubSchema,
   type Entitlement,
@@ -62,9 +63,14 @@ export async function putPlan(
 /** Service only: writes PLACEHOLDER_PLANS that don't exist yet (safe to re-run). */
 export async function seedPlans(ctx: Ctx, actor: Actor): Promise<void> {
   authorizeService(actor, 'writeBilling');
-  const existing = new Set((await listPlans(ctx, actor)).map((p) => p.id));
+  const stored = new Map((await listPlans(ctx, actor)).map((p) => [p.id, p]));
   for (const plan of PLACEHOLDER_PLANS) {
-    if (!existing.has(plan.id)) await putPlan(ctx, actor, plan);
+    // New plans, and stored ones whose fields changed (e.g. prices added).
+    const current = stored.get(plan.id);
+    const { createdAt: _c, updatedAt: _u, ...fields } = current ?? { createdAt: '', updatedAt: '' };
+    if (!current || !isDeepStrictEqual(fields, validate(PlanPutSchema, plan))) {
+      await putPlan(ctx, actor, plan);
+    }
   }
 }
 

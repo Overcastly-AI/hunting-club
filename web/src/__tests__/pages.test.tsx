@@ -9,6 +9,7 @@ import {
   APP_DESCRIPTION,
   APP_NAME,
   CHECKOUT_RETURN_PATHS,
+  CLUB_PRICING,
   type ClubApiClient,
   emailCodeRules,
   LEGAL_DRAFT_NOTICE,
@@ -415,20 +416,63 @@ describe('club pages', () => {
     go('#/billing');
     expect(await screen.findByText('Active')).toBeTruthy();
     expect(screen.getByText('August 1, 2027')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /Continue to payment/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: CLUB_PRICING.cta })).toBeNull();
   });
 
-  it('sends a club with no subscription to Stripe Checkout for an active plan', async () => {
-    const goTo = vi.spyOn(navigate, 'navigateTo').mockImplementation(() => undefined);
-    renderApp({ ...sampleData(), subscription: null });
+  it('shows when a trial ends', async () => {
+    const data = sampleData();
+    renderApp({
+      ...data,
+      subscription: {
+        ...data.subscription!,
+        status: 'trialing',
+        paidThrough: '2026-12-10T00:00:00.000Z',
+      },
+    });
     await signIn();
     go('#/billing');
-    expect(await screen.findByText('No subscription yet.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /Old club plan/ })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to payment: Club' }));
+    expect(await screen.findByText('Trial ends')).toBeTruthy();
+    expect(screen.getByText('December 10, 2026')).toBeTruthy();
+    expect(screen.queryByText('Paid through')).toBeNull();
+  });
+
+  it('offers the free trial, yearly by default or monthly, and sends the choice to Checkout', async () => {
+    const goTo = vi.spyOn(navigate, 'navigateTo').mockImplementation(() => undefined);
+    const open = async () => {
+      const view = renderApp({ ...sampleData(), subscription: null });
+      await signIn();
+      go('#/billing');
+      expect(await screen.findByText('No subscription yet.')).toBeTruthy();
+      return view;
+    };
+    const first = await open();
+    const yearly = screen.getByRole('radio', { name: /Yearly: \$100\/year · 2 months free/ });
+    expect((yearly as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByRole('radio', { name: /Monthly: \$10\/month/ })).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Then $100/year or $10/month. Cancel anytime before day 14 and you won't be charged.",
+      ),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Start your 14-day free trial' }));
     await vi.waitFor(() => expect(goTo).toHaveBeenCalledTimes(1));
-    expect(goTo.mock.calls[0]![0]).toMatch(/^https:\/\/checkout\.stripe\.com\//);
+    expect(goTo.mock.calls[0]![0]).toMatch(/cs_test_club_standard_year_/);
+    first.unmount();
+
+    await open();
+    fireEvent.click(screen.getByRole('radio', { name: /Monthly/ }));
+    fireEvent.click(screen.getByRole('button', { name: CLUB_PRICING.cta }));
+    await vi.waitFor(() => expect(goTo).toHaveBeenCalledTimes(2));
+    expect(goTo.mock.calls[1]![0]).toMatch(/cs_test_club_standard_month_/);
     goTo.mockRestore();
+  });
+
+  it("says payments aren't set up while Stripe prices are unset", async () => {
+    renderApp({ ...sampleData(), subscription: null, paymentsConfigured: false });
+    await signIn();
+    go('#/billing');
+    fireEvent.click(await screen.findByRole('button', { name: CLUB_PRICING.cta }));
+    expect((await screen.findByRole('alert')).textContent).toMatch(/Payments aren't set up yet/);
   });
 });
 
@@ -659,11 +703,11 @@ describe('errors, empty states and navigation', () => {
     expect(screen.getByRole('status').textContent).toBe('Loading…');
   });
 
-  it('spaces the payment buttons apart', async () => {
+  it('lays out each billing choice as a row', async () => {
     renderApp({ ...sampleData(), subscription: null });
     await signIn();
     go('#/billing');
-    const pay = await screen.findByRole('button', { name: /Continue to payment/ });
-    expect(pay.parentElement?.classList.contains('row')).toBe(true);
+    const yearly = await screen.findByRole('radio', { name: /Yearly/ });
+    expect(yearly.parentElement?.classList.contains('row')).toBe(true);
   });
 });

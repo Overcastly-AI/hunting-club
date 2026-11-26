@@ -306,11 +306,13 @@ function routes(data: ClubData): Route<Ctx>[] {
       path: API_PATHS.checkout,
       handle: async (c, p) => {
         const club = await data.getBillableClub(c.actor, p.clubId!);
-        const { planId } = parse(CheckoutRequestSchema, c.body);
+        const { planId, interval } = parse(CheckoutRequestSchema, c.body);
         const plan = (await data.listPlans(ANONYMOUS)).find((pl) => pl.id === planId);
         if (!plan) throw new ClubDataError('invalid', 'unknown plan');
-        const priceId = c.deps.checkout.prices[planId];
-        if (!priceId) throw new ClubDataError('not_configured', 'no Stripe price for this plan');
+        const priceId = c.deps.checkout.prices[planId]?.[interval];
+        if (!priceId) {
+          throw new ClubDataError('not_configured', 'no Stripe price for this plan and interval');
+        }
         const url = await createCheckout(await c.deps.stripe(), {
           clubId: club.id,
           planId,
