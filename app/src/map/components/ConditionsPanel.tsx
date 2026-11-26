@@ -27,6 +27,17 @@ export function sunLine(place: LatLon | null, now: number): { sunrise: string; s
   return { sunrise: formatClockTime(times.sunrise), sunset: formatClockTime(times.sunset) };
 }
 
+/** Joins words with no-break spaces so a line never breaks inside one phrase ("7:03 AM"). */
+const keepTogether = (text: string) => text.replace(/ /g, '\u00A0');
+
+/**
+ * "Sunrise 7:03 AM" and "Sunset 4:26 PM" as two unbreakable phrases. The panel
+ * may wrap between them at large text sizes, but never truncates or splits a time.
+ */
+export function sunPhrases(sun: { sunrise: string; sunset: string }): [string, string] {
+  return [keepTogether(`Sunrise ${sun.sunrise}`), keepTogether(`Sunset ${sun.sunset}`)];
+}
+
 export function ConditionsPanel({
   place,
   now,
@@ -34,14 +45,17 @@ export function ConditionsPanel({
   temperature = UNKNOWN_VALUE,
 }: Props) {
   const { sunrise, sunset } = sunLine(place, now);
+  const [sunrisePhrase, sunsetPhrase] = sunPhrases({ sunrise, sunset });
   return (
     <View
       accessible
       accessibilityLabel={`Sunrise ${sunrise}, sunset ${sunset}. Wind ${wind === UNKNOWN_VALUE ? 'not known yet' : wind}. Temperature ${temperature === UNKNOWN_VALUE ? 'not known yet' : temperature}.`}
       style={styles.panel}
     >
-      <Text style={styles.primary} numberOfLines={1} adjustsFontSizeToFit>
-        Sunrise {sunrise} · Sunset {sunset}
+      <Text style={styles.primary}>
+        {sunrisePhrase}
+        {'\u00A0· '}
+        {sunsetPhrase}
       </Text>
       <View style={styles.row}>
         <Text style={styles.secondary}>
@@ -64,7 +78,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
-  primary: { ...textStyles.label, color: colors.text },
+  primary: { ...textStyles.labelNarrow, color: colors.text },
   secondary: { ...textStyles.body, color: colors.textSecondary },
   wind: { color: colors.wind },
 });

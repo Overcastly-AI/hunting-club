@@ -2,8 +2,11 @@ import { readFileSync } from 'node:fs';
 
 export type FontAxis = { tag: string; min: number; default: number; max: number };
 
-/** Reads the variation axes (`fvar` table) and typographic family name of a TrueType font. */
-export function readFontFile(path: string): { axes: FontAxis[]; family: string | undefined } {
+/** Natural line height of the font as a multiple of its font size (`hhea` ascender + descender + line gap). */
+export type FontFile = { axes: FontAxis[]; family: string | undefined; lineHeightEm: number };
+
+/** Reads the variation axes, typographic family name and line metrics of a TrueType font. */
+export function readFontFile(path: string): FontFile {
   const data = readFileSync(path);
   const tables = new Map<string, number>();
   const tableCount = data.readUInt16BE(4);
@@ -30,7 +33,19 @@ export function readFontFile(path: string): { axes: FontAxis[]; family: string |
     }
   }
 
-  return { axes, family: readName(data, tables.get('name'), 16) };
+  const head = tables.get('head');
+  const hhea = tables.get('hhea');
+  if (head === undefined || hhea === undefined) throw new Error(`${path} has no head/hhea table`);
+  const unitsPerEm = data.readUInt16BE(head + 18);
+  const ascender = data.readInt16BE(hhea + 4);
+  const descender = data.readInt16BE(hhea + 6);
+  const lineGap = data.readInt16BE(hhea + 8);
+
+  return {
+    axes,
+    family: readName(data, tables.get('name'), 16),
+    lineHeightEm: (ascender - descender + lineGap) / unitsPerEm,
+  };
 }
 
 /** Windows-platform (UTF-16BE) entry of the `name` table. */

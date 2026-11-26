@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import type { TextStyle } from 'react-native';
+
 import { readFontFile } from '../../test-utils/fontFile';
 import {
   archivo,
@@ -108,6 +110,14 @@ describe('bundled font file', () => {
     expect(axis('wght')?.max).toBeGreaterThanOrEqual(fontAxisLimits.weight.max);
     expect(axis('wdth')?.min).toBeLessThanOrEqual(fontAxisLimits.width.min);
     expect(axis('wdth')?.max).toBeGreaterThanOrEqual(fontAxisLimits.width.max);
+  });
+
+  it('fits in every line height a text style sets, so glyphs are never clipped', () => {
+    const tooTight = Object.entries(theme.textStyles as Record<string, TextStyle>)
+      .filter(([, style]) => style.lineHeight !== undefined)
+      .filter(([, style]) => style.lineHeight! < Math.ceil(font.lineHeightEm * style.fontSize!))
+      .map(([name]) => name);
+    expect(tooTight).toEqual([]);
   });
 
   it('ships with its OFL license', () => {
