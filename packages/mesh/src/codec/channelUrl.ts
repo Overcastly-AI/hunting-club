@@ -1,0 +1,223 @@
+/**
+ * Channel sharing:
+ * - the stock Meshtastic channel URL, `https://meshtastic.org/e/#<base64url(ChannelSet)>`
+ *   (`/e/?add=true#...` adds the channels as secondaries instead of replacing);
+ * - our `huntclub://join?cs=<base64url(ChannelSet)>&party=<id>` (or `club=` + `invite=`)
+ *   deep link, which wraps the same ChannelSet;
+ * - a generator for a new free-party channel.
+ *
+ * Channel keys are secrets: never log a ChannelSet, URL or PSK.
+ */
+import { create, fromBinary, toBinary } from '@bufbuild/protobuf';
+import { AppOnly, Channel, Config } from '../protobufs';
+import type { RandomSource } from '../random';
+import { base64UrlDecode, base64UrlEncode } from './base64url';
+import { encodeUtf8 } from '../runtime';
+import { DEFAULT_HOP_LIMIT } from './radio';
+
+export type ChannelSet = AppOnly.ChannelSet;
+export type ChannelSettings = Channel.ChannelSettings;
+export type LoRaConfig = Config.Config_LoRaConfig;
+
+export const MESHTASTIC_URL_PREFIX = 'https://meshtastic.org/e/';
+export const JOIN_URL_PREFIX = 'huntclub://join';
+/** Firmware: channel names must be under 12 bytes. */
+export const MAX_CHANNEL_NAME_BYTES = 11;
+/** A radio holds up to 8 channels (index 0 = PRIMARY, 1-7 = SECONDARY). */
+export const MAX_CHANNELS = 8;
+/** PSK lengths firmware accepts: none, 1-byte shorthand, AES-128, AES-256. */
+export const VALID_PSK_LENGTHS: readonly number[] = [0, 1, 16, 32];
+/** We always generate AES-256 keys. */
+export const PARTY_PSK_BYTES = 32;
+export const PARTY_CHANNEL_NAME = 'Party';
+/** Name firmware uses for an unnamed channel on the LongFast preset (channel hash, frequency slot). */
+export const DEFAULT_CHANNEL_NAME = 'LongFast';
+/** Our hunt channel shares full-precision positions. */
+export const HUNT_POSITION_PRECISION = 32;
+
+export function encodeChannelSet(cs: ChannelSet): Uint8Array {
+  return toBinary(AppOnly.ChannelSetSchema, cs);
+}
+
+export function decodeChannelSet(bytes: Uint8Array): ChannelSet {
+  return fromBinary(AppOnly.ChannelSetSchema, bytes);
+}
+
+export class ChannelUrlError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ChannelUrlError';
+  }
+}
+
+function decodeChannelSetParam(b64: string): ChannelSet {
+  let cs: ChannelSet;
+  try {
+    cs = decodeChannelSet(base64UrlDecode(b64));
+  } catch {
+    throw new ChannelUrlError('Channel data is not valid');
+  }
+  if (cs.settings.length === 0) throw new ChannelUrlError('Channel set has no channels');
+  if (cs.settings.length > MAX_CHANNELS) {
+    throw new ChannelUrlError(`Channel set has more than ${MAX_CHANNELS} channels`);
+  }
+  for (const s of cs.settings) {
+    if (!VALID_PSK_LENGTHS.includes(s.psk.length))
+      throw new ChannelUrlError('Channel key has an invalid length');
+  }
+  return cs;
+}
+
+/** `https://meshtastic.org/e/#...`, base64url without padding (same as the official apps). */
+export function encodeChannelSetUrl(cs: ChannelSet, opts: { add?: boolean } = {}): string {
+  return `${MESHTASTIC_URL_PREFIX}${opts.add ? '?add=true' : ''}#${base64UrlEncode(encodeChannelSet(cs))}`;
+}
+
+/** Parses a Meshtastic channel URL. Accepts padded or unpadded base64/base64url. */
+export function decodeChannelSetUrl(url: string): { channelSet: ChannelSet; add: boolean } {
+  const trimmed = url.trim();
+  const hash = trimmed.indexOf('#');
+  if (hash < 0) throw new ChannelUrlError('Not a Meshtastic channel link');
+  const base = trimmed.slice(0, hash).replace(/^http:\/\//i, 'https://');
+  if (!base.toLowerCase().startsWith(MESHTASTIC_URL_PREFIX)) {
+    throw new ChannelUrlError('Not a Meshtastic channel link');
+  }
+  const query = base.slice(MESHTASTIC_URL_PREFIX.length).replace(/^\?/, '');
+  const add = parseQuery(query).get('add') === 'true';
+  return { channelSet: decodeChannelSetParam(trimmed.slice(hash + 1)), add };
+}
+
+/** What a Hunt Club join QR code carries besides the channels. */
+export type JoinTarget =
+  { kind: 'party'; partyId: string } | { kind: 'club'; clubId: string; inviteToken: string };
+
+export interface JoinLink {
+  channelSet: ChannelSet;
+  target: JoinTarget;
+}
+
+/** `huntclub://join?cs=<base64url>&party=<id>` or `...&club=<id>&invite=<token>`. */
+export function encodeJoinUrl(link: JoinLink): string {
+  const params: [string, string][] = [['cs', base64UrlEncode(encodeChannelSet(link.channelSet))]];
+  if (link.target.kind === 'party') {
+    if (!link.target.partyId) throw new ChannelUrlError('Party id is required');
+    params.push(['party', link.target.partyId]);
+  } else {
+    if (!link.target.clubId || !link.target.inviteToken)
+      throw new ChannelUrlError('Club id and invite are required');
+    params.push(['club', link.target.clubId], ['invite', link.target.inviteToken]);
+  }
+  return `${JOIN_URL_PREFIX}?${params.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&')}`;
+}
+
+export function decodeJoinUrl(url: string): JoinLink {
+  const trimmed = url.trim();
+  const q = trimmed.indexOf('?');
+  const base = (q < 0 ? trimmed : trimmed.slice(0, q)).replace(/\/+$/, '').toLowerCase();
+  if (base !== JOIN_URL_PREFIX || q < 0) throw new ChannelUrlError('Not a Hunt Club join link');
+  const params = parseQuery(trimmed.slice(q + 1).split('#')[0]!);
+  const cs = params.get('cs');
+  if (!cs) throw new ChannelUrlError('Join link has no channel data');
+  const channelSet = decodeChannelSetParam(cs);
+  const party = params.get('party');
+  const club = params.get('club');
+  const invite = params.get('invite');
+  if (party) return { channelSet, target: { kind: 'party', partyId: party } };
+  if (club && invite)
+    return { channelSet, target: { kind: 'club', clubId: club, inviteToken: invite } };
+  throw new ChannelUrlError('Join link has no party or club');
+}
+
+/** Tiny query parser (React Native's URL/URLSearchParams support is incomplete). */
+function parseQuery(query: string): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const part of query.split('&')) {
+    if (!part) continue;
+    const eq = part.indexOf('=');
+    const k = eq < 0 ? part : part.slice(0, eq);
+    const v = eq < 0 ? '' : part.slice(eq + 1);
+    try {
+      out.set(decodeURIComponent(k), decodeURIComponent(v.replace(/\+/g, ' ')));
+    } catch {
+      throw new ChannelUrlError('Link is not correctly encoded');
+    }
+  }
+  return out;
+}
+
+export interface PartyChannelOptions {
+  random: RandomSource;
+  /** Shown only in Advanced settings / other Meshtastic apps. Under 12 bytes. */
+  name?: string;
+  region?: Config.Config_LoRaConfig_RegionCode;
+  modemPreset?: Config.Config_LoRaConfig_ModemPreset;
+}
+
+/**
+ * A new free-party primary channel: random 256-bit key, US region, LongFast,
+ * hop limit 3 and full-precision positions on this channel.
+ */
+export function generatePartyChannelSet(opts: PartyChannelOptions): ChannelSet {
+  const name = opts.name ?? PARTY_CHANNEL_NAME;
+  if (encodeUtf8(name).length > MAX_CHANNEL_NAME_BYTES) {
+    throw new ChannelUrlError(`Channel name must be at most ${MAX_CHANNEL_NAME_BYTES} bytes`);
+  }
+  const psk = opts.random(PARTY_PSK_BYTES);
+  if (psk.length !== PARTY_PSK_BYTES)
+    throw new Error('Random source returned the wrong number of bytes');
+  return create(AppOnly.ChannelSetSchema, {
+    settings: [
+      {
+        psk,
+        name,
+        moduleSettings: { positionPrecision: HUNT_POSITION_PRECISION },
+      },
+    ],
+    loraConfig: defaultLoRaConfig(opts.region, opts.modemPreset),
+  });
+}
+
+export function defaultLoRaConfig(
+  region: Config.Config_LoRaConfig_RegionCode = Config.Config_LoRaConfig_RegionCode.US,
+  modemPreset: Config.Config_LoRaConfig_ModemPreset = Config.Config_LoRaConfig_ModemPreset
+    .LONG_FAST,
+): LoRaConfig {
+  return create(Config.Config_LoRaConfigSchema, {
+    usePreset: true,
+    modemPreset,
+    region,
+    hopLimit: DEFAULT_HOP_LIMIT,
+    txEnabled: true,
+    txPower: 0,
+    channelNum: 0,
+  });
+}
+
+/**
+ * The 1-byte channel hash in the packet header: xor of the name bytes xor
+ * xor of the expanded key bytes. An empty name means the preset name.
+ */
+export function channelHash(
+  settings: Pick<ChannelSettings, 'name' | 'psk'>,
+  presetName = DEFAULT_CHANNEL_NAME,
+): number {
+  const name = settings.name || presetName;
+  let h = 0;
+  for (const b of encodeUtf8(name)) h ^= b;
+  for (const b of expandPsk(settings.psk)) h ^= b;
+  return h & 0xff;
+}
+
+const DEFAULT_PSK = Uint8Array.from([
+  0xd4, 0xf1, 0xbb, 0x3a, 0x20, 0x29, 0x07, 0x59, 0xf0, 0xbc, 0xff, 0xab, 0xcf, 0x4e, 0x69, 0x01,
+]);
+
+/** Expands the 1-byte PSK shorthand the way firmware does. */
+export function expandPsk(psk: Uint8Array): Uint8Array {
+  if (psk.length !== 1) return psk;
+  const n = psk[0]!;
+  if (n === 0) return new Uint8Array(0);
+  const out = DEFAULT_PSK.slice();
+  out[15] = (out[15]! + n - 1) & 0xff;
+  return out;
+}
