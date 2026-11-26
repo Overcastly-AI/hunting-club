@@ -33,6 +33,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 | # | Sent | Request | Status | Result |
 |---|---|---|---|---|
+| 8 | 2026-11-26 16:37 | UAT blocker: Cognito sign-in emails don't arrive. Diagnose; SES domain identity huntclub-dev.jaycobjones.com (DKIM, MAIL FROM, DMARC p=none), pool EmailConfiguration → SES DEVELOPER, verify test recipients (sandbox), AutoVerifiedAttributes email | Sent | Then seed dev test club for UI review |
 | 7 | 2026-11-26 16:12 | Fix OIDC trust: Deploy dev run 45855450992 (owner, 16:05) failed at AWS credentials with `Not authorized to perform sts:AssumeRoleWithWebIdentity` (env + variable OK; role ARN correct). Find the token's sub/aud in CloudTrail, match the trust policy (still this repo + dev env only) | **Done** 16:09 UTC: GitHub uses a customised OIDC sub with IDs; trust sub now `repo:Overcastly-AI@282247350/hunting-club@1472690296:environment:dev`, aud sts.amazonaws.com | **Deploy dev works:** run 45855450992 attempt 2 succeeded 16:12 UTC (OIDC ok). Future deploys: Actions → Deploy dev |
 | 6 | 2026-11-26 15:37 | Redeploy dev from CloudShell at main c5685ed (#46 club API init fix, #41 map pack builder, #44, #45) | **Done** 15:54 UTC (code = main 09d833c): both stacks UPDATE_COMPLETE; MapPackBuilder Lambda added (no reserved/provisioned concurrency, 900 s, logs 14 d); GET ClubApiUrl 404 (was 502) — club API healthy. Note: repo default branch is `claude/amazing-newton-q7bbpo`, should be `main` (owner to change). | Expect GET ClubApiUrl no longer 502 |
 | 5 | 2026-11-26 14:47 | GitHub: `dev` environment (main only), repo var `AWS_DEPLOY_ROLE_ARN`, run Actions → Deploy dev (skip the run if the CloudShell deploy already went). Owner requested | **Blocked** 15:06 UTC: Grok Bot's GitHub tools can't create environments or variables; step 3 skipped (CloudShell deploy done). Owner created `dev` env + `AWS_DEPLOY_ROLE_ARN` (15:45 UTC, unverified). Workflow not yet run: coordinator's GitHub token gets 403 on workflow dispatch; owner couldn't start it either. | Expect run URL + ClubApiUrl, StripeWebhookUrl |
@@ -104,6 +105,14 @@ Owner rule (2026-11-26): Grok Bot runs UAT and reviews UI decisions by email. Ev
 
 | Date | Thread / subject | Finding | Decision | PR |
 |---|---|---|---|---|
+| 2026-11-26 | UAT feedback | BLOCKER: sign-in code email never arrives | Accepted: Grok Bot Request #8 (Cognito → SES, verify test inboxes) | — |
+| 2026-11-26 | UAT feedback | MAJOR: deep links/unknown paths → raw 403 XML | Accepted: SPA fallback + styled 404 + robots.txt | web PR A |
+| 2026-11-26 | UAT feedback | MINOR: no email validation message; first-load 403 | Accepted | web PR A/B |
+| 2026-11-26 | UAT feedback | POLISH: no branding; no resend/expiry/spam hint | Accepted | web PR B |
+| 2026-11-26 | UI feedback | MUST 1–5: 404 page; silent create-club/invite errors; false "Copied"; input border 1.2:1 | Accepted | web PR A/B |
+| 2026-11-26 | UI feedback | SHOULD 6–16: sign-in card/branding/validation, tables at phone width, retry, empty states, route a11y, nav cue, WOFF2 font, offline data, billing gap | Accepted | web PR B |
+| 2026-11-26 | UI feedback | Light/high-contrast theme | Deferred to after field test (touches shared tokens) | — |
+| 2026-11-26 | UI feedback | Request: dev test account + club for +uitest | Accepted after Request #8; seed test club next | — |
 
 ## Rotate later (secrets that travelled by email)
 

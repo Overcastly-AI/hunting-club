@@ -8,6 +8,12 @@ import { colors } from '@huntclub/design/colors';
 import { APP_ID, URL_SCHEME } from '@huntclub/shared/app';
 
 /**
+ * EAS project id: the one place it lives. The owner runs `eas init` once (docs/IOS_BUILD.md)
+ * and pastes the id it prints here. Until then EAS builds stop and ask for it.
+ */
+const EAS_PROJECT_ID: string | undefined = undefined;
+
+/**
  * Android 8.0 (API 26): the lowest version that applies font variation axes
  * (weight and width of the Archivo variable font).
  */
@@ -61,6 +67,8 @@ const config: ExpoConfig = {
     bundleIdentifier: APP_ID,
     infoPlist: {
       NSLocationWhenInUseUsageDescription: LOCATION_USAGE,
+      // Export compliance (App Store Connect): only standard encryption (Meshtastic AES, HTTPS).
+      ITSAppUsesNonExemptEncryption: false,
       UIBackgroundModes: RADIO_IOS_BACKGROUND_MODES,
     },
   },
@@ -81,6 +89,7 @@ const config: ExpoConfig = {
   web: {
     favicon: './assets/favicon.png',
   },
+  ...(EAS_PROJECT_ID ? { extra: { eas: { projectId: EAS_PROJECT_ID } } } : {}),
   plugins: [
     'expo-router',
     'expo-sqlite',
