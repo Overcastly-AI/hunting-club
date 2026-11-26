@@ -35,3 +35,6 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: CDK synth (no AWS credentials needed)
+        run: npm run synth

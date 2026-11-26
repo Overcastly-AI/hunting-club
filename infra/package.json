@@ -1,0 +1,25 @@
+{
+  "name": "@huntclub/infra",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AWS CDK code for Hunt Club Mesh (S3 + CloudFront web, Lambda Function URLs, EventBridge Scheduler). Code only: deploys are done by the owner's operator.",
+  "scripts": {
+    "synth": "cdk synth --quiet",
+    "typecheck": "tsc --noEmit",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@huntclub/shared": "*",
+    "aws-cdk-lib": "2.278.0",
+    "constructs": "10.8.1"
+  },
+  "devDependencies": {
+    "@types/jest": "30.0.0",
+    "@types/node": "^26.6.11",
+    "aws-cdk": "2.1149.0",
+    "esbuild": "0.28.2",
+    "jest": "~30.5.2",
+    "ts-jest": "^29.4.15",
+    "typescript": "~6.0.3"
+  }
+}

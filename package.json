@@ -4,14 +4,16 @@
   "private": true,
   "workspaces": [
     "app",
-    "packages/*"
+    "packages/*",
+    "infra"
   ],
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || true",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present && prettier --check .",
     "format": "prettier --write .",
-    "test": "npm test --workspaces --if-present"
+    "test": "npm test --workspaces --if-present",
+    "synth": "npm run synth -w @huntclub/infra"
   },
   "devDependencies": {
     "prettier": "^3.10.1"
