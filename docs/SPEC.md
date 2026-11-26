@@ -95,7 +95,7 @@ Everything that matters in the field travels over the LoRa mesh, with no server 
 - **Hunter phone app** (iOS and Android). Talks to its paired radio over Bluetooth LE, stores everything locally first, and renders offline maps.
 - **Personal radio.** Any Meshtastic-compatible LoRa device **with GPS**. Positions come from the radio's GPS, so the phone doesn't need to stay awake in a pocket. Recommended test hardware: a RAK WisBlock or Heltec board with GPS.
 - **Solar repeater.** A Meshtastic node set to the ROUTER role, placed on high ground to cover the property.
-- **Clubhouse board.** A wall tablet connected to its own radio. *Open decision:* Board mode in the app, or a separate web page using Web Serial (see Open decisions).
+- **Clubhouse board.** A wall tablet running the app in Board mode, connected to its own radio over Bluetooth.
 - **DynamoDB + Cognito (AWS).** Club data (clubs, members, stands, areas, invites, subscriptions, club radio keys, shared harvests) in one on-demand DynamoDB table; sign-in with a Cognito user pool (email one-time code). All access goes through our Lambda API, which enforces club permissions. Never required in the field.
 - **AWS.** Static web admin page, Stripe webhook and other Lambda functions, map-pack hosting, scheduled jobs. Defined as code with AWS CDK (TypeScript). An AWS budget alarm at $5/month.
 
@@ -355,7 +355,7 @@ The app is free to download and free to use for individual hunters and parties o
 
 1. **Club pricing model:** flat price per club, or tiers by member count? Per season or per year?
 2. **Club member limits** per plan, and whether hunting parties inside a club are capped.
-3. **Clubhouse board:** Board mode in the app, or a separate web page using Web Serial.
+3. ~~Clubhouse board~~ **Decided (2026-11-26):** Board mode inside the app on a tablet, connected by Bluetooth, reusing the app's components and core logic.
 4. **Lapsed clubs:** how many days to keep club data after cancellation ([N]).
 5. **Open or closed source.** Research found the Meshtastic `.proto` files and every Meshtastic JS package are GPL-3.0 with no app exception. A closed-source app bundling them conflicts with the license; the cloud can stay proprietary either way. **Must be decided before the app ships** (development continues meanwhile).
 
