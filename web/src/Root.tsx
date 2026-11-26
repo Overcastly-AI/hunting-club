@@ -1,20 +1,12 @@
-import {
-  ADMIN_PATH,
-  CHECKOUT_RETURN_PATHS,
-  JOIN_PATH,
-  LEGAL_DOCS,
-  LEGAL_PATHS,
-} from '@huntclub/shared';
+import { ADMIN_PATH, CHECKOUT_RETURN_PATHS, JOIN_PATH } from '@huntclub/shared';
 import { lazy, Suspense, type ReactNode } from 'react';
 import type { WebClubServices } from './cloud';
-import { useHasSession } from './components/BackToApp';
 import { Loading } from './components/Loading';
 
 // Each entry path loads only its own code: the join page doesn't pull in the admin,
 // and the admin doesn't pull in the mesh codec until an invite is made.
 const App = lazy(() => import('./App').then((m) => ({ default: m.App })));
 const Join = lazy(() => import('./pages/Join').then((m) => ({ default: m.Join })));
-const Legal = lazy(() => import('./pages/Legal').then((m) => ({ default: m.Legal })));
 const NotFound = lazy(() => import('./pages/NotFound').then((m) => ({ default: m.NotFound })));
 const CheckoutReturn = lazy(() =>
   import('./pages/CheckoutReturn').then((m) => ({ default: m.CheckoutReturn })),
@@ -27,7 +19,6 @@ const CheckoutReturn = lazy(() =>
  */
 export function Root(props: WebClubServices & { location: Pick<Location, 'pathname' | 'href'> }) {
   const { location, ...services } = props;
-  const signedIn = useHasSession(services.session);
   const path = location.pathname.length > 1 ? location.pathname.replace(/\/+$/, '') : '/';
   if (path === JOIN_PATH)
     return (
@@ -47,19 +38,10 @@ export function Root(props: WebClubServices & { location: Pick<Location, 'pathna
         <CheckoutReturn outcome="cancel" />
       </Page>
     );
-  const legal = (Object.keys(LEGAL_PATHS) as (keyof typeof LEGAL_PATHS)[]).find(
-    (id) => LEGAL_PATHS[id] === path,
-  );
-  if (legal)
-    return (
-      <Page>
-        <Legal doc={LEGAL_DOCS[legal]} signedIn={signedIn} />
-      </Page>
-    );
   if (!isAdminPath(path))
     return (
       <Page>
-        <NotFound signedIn={signedIn} />
+        <NotFound signedIn={false} />
       </Page>
     );
   return (

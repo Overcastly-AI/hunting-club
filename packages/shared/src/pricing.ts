@@ -3,6 +3,13 @@
  * marketing site, the web Billing page, the plan records and Checkout's trial.
  * Amounts are USD cents; display strings are derived, never retyped.
  */
+/**
+ * Maximum people in a free hunting party, including the person who started it (docs/SPEC.md
+ * "Free vs Club"). The app enforces it (@huntclub/core party rules); the site and the
+ * legal copy state it.
+ */
+export const FREE_PARTY_MAX_MEMBERS = 3;
+
 export const BILLING_INTERVALS = ['year', 'month'] as const;
 export type BillingInterval = (typeof BILLING_INTERVALS)[number];
 

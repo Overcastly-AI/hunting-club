@@ -5,7 +5,8 @@ import {
   MIN_TEXT_CONTRAST,
   MIN_UI_CONTRAST,
 } from '@huntclub/design';
-import { SAFETY_NOTE } from '@huntclub/shared';
+import { CLUB_PRICING, LEGAL_DOCS, LEGAL_DRAFT_NOTICE, SAFETY_NOTE } from '@huntclub/shared';
+import { ADMIN_PATH, SUPPORT_EMAIL } from '@huntclub/shared/app';
 import { renderNotFound, renderPage } from '../render';
 import {
   canonicalUrl,
@@ -16,11 +17,13 @@ import {
   NOINDEX_PATHS,
   NOT_FOUND_PAGE,
   outputFile,
+  PAGE_PATHS,
   REDIRECTS,
   ROUTES,
   SIGN_IN,
   SITE_ORIGIN,
   sitemapXml,
+  START_A_CLUB,
 } from '../routes';
 import { MESHTASTIC_ATTRIBUTION } from '../Shell';
 import { siteCss } from '../styles';
@@ -37,7 +40,12 @@ const allPages = [
 const count = (html: string, pattern: RegExp) => (html.match(pattern) ?? []).length;
 /** Visible text only (no tags or inline CSS). */
 const textOf = (html: string) =>
-  html.replace(/<style[\s\S]*?<\/style>/g, '').replace(/<[^>]+>/g, ' ');
+  html
+    .replace(/<style[\s\S]*?<\/style>/g, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&#x27;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&');
 
 describe('route registry', () => {
   it('has unique, well-formed paths', () => {
@@ -89,16 +97,22 @@ describe.each(allPages)('$name', ({ html }) => {
     expect(count(html, /<h1[\s>]/g)).toBe(1);
   });
 
-  it('says 911 only in the footer safety note, and credits Meshtastic', () => {
+  it('says 911 only in the safety note (footer, and Terms), and credits Meshtastic', () => {
     const footer = html.slice(html.indexOf('<footer'));
-    expect(count(textOf(html), /911/g)).toBe(1);
+    const text = textOf(html);
+    expect(count(text, /911/g)).toBe(text.split(SAFETY_NOTE).length - 1);
     expect(footer).toContain(SAFETY_NOTE);
     expect(footer).toContain(MESHTASTIC_ATTRIBUTION);
   });
 
   it('makes no claims the product cannot back', () => {
     const text = textOf(html);
-    expect(text).not.toMatch(/shooting hours|night mode|SOS|★|stars?\b|rating|review/i);
+    expect(text).not.toMatch(/shooting hours|night mode|SOS|★|stars?\b|rating|\breviews\b/i);
+    // No placeholder prices or unfinished copy, and no store badges before the listings.
+    expect(text).not.toMatch(
+      /\bTBD\b|\$TBD|App Store badge|Download on the App Store|Get it on Google Play/i,
+    );
+    expect(html).not.toMatch(/apps\.apple\.com|play\.google\.com|testflight\.apple\.com/);
     // No range numbers (distances): they depend on terrain and radio.
     expect(text).not.toMatch(/\d+(\.\d+)?\s?(mi|mile|miles|km|kilometers?)\b/i);
   });
@@ -147,13 +161,9 @@ describe('hosting data', () => {
 describe('links', () => {
   const home = pages.find((p) => p.route.path === '/')!.html;
 
-  it('point only at registered pages, sections that exist, or the admin and legal pages', () => {
-    const allowed = new Set<string>([
-      ...ROUTES.map((r) => r.path),
-      SIGN_IN.href,
-      ...FOOTER_LINKS.map((l) => l.href),
-    ]);
-    for (const link of [...NAV_LINKS, GET_THE_APP, SIGN_IN, ...FOOTER_LINKS]) {
+  it('point only at registered pages, sections that exist, or the admin', () => {
+    const allowed = new Set<string>([...ROUTES.map((r) => r.path), ADMIN_PATH]);
+    for (const link of [...NAV_LINKS, GET_THE_APP, SIGN_IN, START_A_CLUB, ...FOOTER_LINKS]) {
       const [path, id] = link.href.split('#');
       if (id) {
         expect(path).toBe('/');
@@ -165,8 +175,9 @@ describe('links', () => {
   });
 
   it('show the nav in the header, and again in a "Menu" disclosure for phones', () => {
+    const header = home.slice(home.indexOf('<header'), home.indexOf('</header>'));
     for (const link of [...NAV_LINKS, SIGN_IN]) {
-      expect(count(home, new RegExp(`<a href="${link.href}">${link.label}</a>`, 'g'))).toBe(2);
+      expect(count(header, new RegExp(`<a href="${link.href}">${link.label}</a>`, 'g'))).toBe(2);
     }
     expect(home).toContain('<details class="menu"><summary>Menu</summary>');
   });
@@ -190,5 +201,71 @@ describe('light sections', () => {
     const css = siteCss(FONT);
     const rules = css.slice(css.indexOf('* {'));
     expect(rules).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+  });
+});
+
+describe('page content', () => {
+  const page = (path: string) => pages.find((p) => p.route.path === path)!.html;
+  /** Every href on a page, in its body (not the head's canonical and icons). */
+  const hrefs = (html: string) =>
+    [...html.slice(html.indexOf('<body')).matchAll(/href="([^"]*)"/g)].map((m) => m[1]!);
+
+  it('links within the site only to registered pages, home sections, the admin or mail', () => {
+    const allowed = new Set<string>([...ROUTES.map((r) => r.path), ADMIN_PATH]);
+    const home = page('/');
+    for (const { html } of pages) {
+      for (const href of hrefs(html)) {
+        if (href.startsWith('mailto:')) continue;
+        const [path, id] = href.split('#');
+        if (id && path === '/') expect(home).toContain(`id="${id}"`);
+        else if (id) expect(path).toBe('');
+        else expect(allowed.has(href)).toBe(true);
+      }
+    }
+  });
+
+  it('shows the club price, trial and terms from CLUB_PRICING on Pricing and Clubs', () => {
+    const { intervals } = CLUB_PRICING;
+    const pricing = textOf(page(PAGE_PATHS.pricing));
+    expect(pricing).toContain(intervals.year.price);
+    expect(pricing).toContain(`(${intervals.year.badge})`);
+    expect(pricing).toContain(`or ${intervals.month.price}`);
+    expect(pricing).toContain(CLUB_PRICING.terms);
+    expect(pricing).toContain('$0');
+    const clubs = textOf(page(PAGE_PATHS.clubs));
+    expect(clubs).toContain(`${intervals.year.price} or ${intervals.month.price}`);
+    expect(clubs).toContain(CLUB_PRICING.terms);
+    for (const path of [PAGE_PATHS.pricing, PAGE_PATHS.clubs]) {
+      expect(page(path)).toContain(
+        `<a class="button primary" href="${ADMIN_PATH}">${CLUB_PRICING.cta}</a>`,
+      );
+    }
+  });
+
+  it('says the app is in testing on Download, with no store links', () => {
+    const download = textOf(page(PAGE_PATHS.download));
+    expect(download).toMatch(/not in the App Store or Google Play yet/);
+    expect(download).toMatch(/Meshtastic radio with GPS/);
+  });
+
+  it('shows Privacy and Terms from the shared copy, marked as drafts', () => {
+    for (const [path, doc] of [
+      [PAGE_PATHS.privacy, LEGAL_DOCS.privacy],
+      [PAGE_PATHS.terms, LEGAL_DOCS.terms],
+    ] as const) {
+      const html = page(path);
+      expect(html).toContain(`<h1>${doc.title}</h1>`);
+      expect(html).toContain(`<p class="notice" role="note">${LEGAL_DRAFT_NOTICE}</p>`);
+      for (const section of doc.sections) expect(html).toContain(`<h2>${section.heading}</h2>`);
+    }
+  });
+
+  it('gives the support email on Contact once there is one, and says it is coming until then', () => {
+    const contact = page(PAGE_PATHS.contact);
+    if (SUPPORT_EMAIL) expect(contact).toContain(`href="mailto:${SUPPORT_EMAIL}"`);
+    else {
+      expect(textOf(contact)).toMatch(/support email address is coming soon/);
+      expect(contact).not.toContain('mailto:');
+    }
   });
 });

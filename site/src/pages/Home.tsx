@@ -1,6 +1,5 @@
-import { APP_NAME } from '@huntclub/shared';
-import { ADMIN_PATH } from '@huntclub/shared/app';
-import { GET_THE_APP, HOME_SECTIONS } from '../routes';
+import { APP_NAME, FREE_PARTY_MAX_MEMBERS } from '@huntclub/shared';
+import { GET_THE_APP, HOME_SECTIONS, PAGE_PATHS } from '../routes';
 
 const FEATURES = [
   {
@@ -40,7 +39,7 @@ const STEPS = [
   },
   {
     title: 'Start or join a party',
-    text: 'Scan a Party QR code. A free party has up to 3 people.',
+    text: `Scan a Party QR code. A free party has up to ${FREE_PARTY_MAX_MEMBERS} people.`,
   },
 ] as const;
 
@@ -75,13 +74,14 @@ export function Home() {
           <h1>Keep track of your hunting party with no cell service</h1>
           <p className="lead">
             {APP_NAME} pairs your phone with a Meshtastic radio. Your party shares a live map, chat
-            and check-ins over the radio mesh. Free for hunting parties of up to 3, with no account.
+            and check-ins over the radio mesh. Free for hunting parties of up to{' '}
+            {FREE_PARTY_MAX_MEMBERS}, with no account.
           </p>
           <div className="actions">
             <a className="button primary" href={GET_THE_APP.href}>
               {GET_THE_APP.label}
             </a>
-            <a className="button" href={`#${HOME_SECTIONS.forClubs}`}>
+            <a className="button" href={PAGE_PATHS.clubs}>
               For hunting clubs
             </a>
           </div>
@@ -128,20 +128,13 @@ export function Home() {
             Club admins set it up on the web. Everything that works over the radio mesh stays free.
           </p>
           <div className="actions">
-            <a className="button" href={ADMIN_PATH}>
-              Sign in to the club admin
+            <a className="button" href={PAGE_PATHS.clubs}>
+              See how clubs use it
+            </a>
+            <a className="button" href={PAGE_PATHS.pricing}>
+              See club pricing
             </a>
           </div>
-        </div>
-      </section>
-
-      <section id={HOME_SECTIONS.getTheApp}>
-        <div className="wrap">
-          <h2>Get the app</h2>
-          <p className="lead">
-            {APP_NAME} is not in the App Store or Google Play yet. It is being tested on iPhone and
-            Android before release.
-          </p>
         </div>
       </section>
 

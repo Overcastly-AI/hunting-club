@@ -14,10 +14,7 @@ import {
   type ClubApiClient,
   emailCodeRules,
   INITIALS_MAX,
-  LEGAL_DRAFT_NOTICE,
   LEGAL_PATHS,
-  privacyPolicy,
-  termsOfUse,
   ClubApiRequestError,
   JOIN_PATH,
   WEB_DOMAINS,
@@ -570,22 +567,6 @@ describe('pages on their own paths (no sign-in)', () => {
     }
   });
 
-  it('shows Privacy and Terms from the shared copy, marked as drafts', async () => {
-    for (const [path, doc] of [
-      [LEGAL_PATHS.privacy, privacyPolicy],
-      [LEGAL_PATHS.terms, termsOfUse],
-    ] as const) {
-      const { unmount } = render(<Root {...services} location={at(path)} />);
-      expect(await screen.findByRole('heading', { level: 1, name: doc.title })).toBeTruthy();
-      expect(screen.getByRole('note').textContent).toBe(LEGAL_DRAFT_NOTICE);
-      for (const section of doc.sections) {
-        expect(screen.getByRole('heading', { level: 2, name: section.heading })).toBeTruthy();
-      }
-      expect(document.title).toBe(pageTitle(doc.title));
-      unmount();
-    }
-  });
-
   it('shows Page not found on any other path, with a way back to sign in', async () => {
     render(<Root {...services} location={at('/nope/deeper')} />);
     expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeTruthy();
@@ -593,20 +574,6 @@ describe('pages on their own paths (no sign-in)', () => {
       ADMIN_PATH,
     );
     expect(document.title).toBe(pageTitle('Page not found'));
-  });
-
-  it('offers Back to the app on Page not found, Privacy and Terms when signed in', async () => {
-    const signedIn = {
-      session: { isSignedIn: async () => true } as unknown as ClubSession,
-      api: undefined,
-    };
-    for (const path of ['/nope', LEGAL_PATHS.privacy, LEGAL_PATHS.terms]) {
-      const { unmount } = render(<Root {...signedIn} location={at(path)} />);
-      const back = await screen.findByRole('link', { name: 'Back to the app' });
-      expect(back.getAttribute('href')).toBe(ADMIN_PATH);
-      expect(screen.queryByRole('link', { name: 'Back to sign in' })).toBeNull();
-      unmount();
-    }
   });
 });
 
