@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { App } from './App';
+import { Root } from './Root';
 import { createWebClubServices } from './cloud';
 import { globalCss } from './theme/css';
 
@@ -10,6 +10,6 @@ document.head.append(style);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App {...createWebClubServices()} />
+    <Root {...createWebClubServices()} location={window.location} />
   </StrictMode>,
 );

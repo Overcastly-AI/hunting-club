@@ -123,6 +123,23 @@ describe('club API client', () => {
     expect(calls[0]!.body).toMatchObject(request);
   });
 
+  it('starts Checkout and returns only an https Stripe URL', async () => {
+    const url = 'https://checkout.stripe.com/c/pay/cs_test_1';
+    const { api, calls } = client([
+      { status: 200, body: { url } },
+      { status: 200, body: { url: 'javascript:alert(1)' } },
+    ]);
+    expect(await api.startCheckout(CLUB, { planId: 'club_standard' })).toEqual({ url });
+    expect(calls[0]).toMatchObject({
+      method: 'POST',
+      url: `https://api.test/clubs/${CLUB}/checkout`,
+      body: { planId: 'club_standard' },
+    });
+    await expect(api.startCheckout(CLUB, { planId: 'club_standard' })).rejects.toMatchObject({
+      code: 'bad_response',
+    });
+  });
+
   it('validates the redeem request before sending it', async () => {
     const { api, calls } = client([]);
     await expect(

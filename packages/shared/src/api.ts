@@ -55,10 +55,11 @@ export type ClubSecretResponse = z.infer<typeof ClubSecretResponseSchema>;
 /** POST /clubs/:clubId/checkout: which plan the admin is buying. */
 export const CheckoutRequestSchema = z.strictObject({ planId: planIdSchema });
 export type CheckoutRequest = z.input<typeof CheckoutRequestSchema>;
-export interface CheckoutResponse {
+export const CheckoutResponseSchema = z.object({
   /** Stripe-hosted Checkout page to redirect to. */
-  url: string;
-}
+  url: z.url({ protocol: /^https$/ }),
+});
+export type CheckoutResponse = z.infer<typeof CheckoutResponseSchema>;
 
 /** Every error response body. */
 export interface ApiErrorBody {

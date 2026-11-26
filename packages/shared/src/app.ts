@@ -30,3 +30,10 @@ export const CHECKOUT_RETURN_PATHS = {
   success: '/checkout/done',
   cancel: '/checkout/cancel',
 } as const;
+
+/**
+ * Real (non-hash) paths the web page answers on its own domain: the join fallback and
+ * the Checkout return pages. CloudFront serves index.html for exactly these; the
+ * admin pages use hash routes and need no rewrite.
+ */
+export const WEB_PAGE_PATHS = [JOIN_PATH, ...Object.values(CHECKOUT_RETURN_PATHS)] as const;

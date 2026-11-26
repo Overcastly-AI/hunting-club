@@ -5,6 +5,9 @@ import { z } from 'zod';
 import { API_PATHS, type ApiPath, apiPath } from './apiPaths';
 import {
   type ApiErrorBody,
+  type CheckoutRequest,
+  CheckoutRequestSchema,
+  CheckoutResponseSchema,
   type ClubCreateRequest,
   ClubCreateRequestSchema,
   ClubSecretResponseSchema,
@@ -123,6 +126,15 @@ export function createClubApiClient(options: ClubApiClientOptions) {
       call('GET', API_PATHS.entitlement, club(clubId), EntitlementSchema),
     getSubscription: (clubId: string) =>
       call('GET', API_PATHS.subscription, club(clubId), SubscriptionSchema),
+    /** Stripe Checkout for the club's subscription; redirect the browser to `url`. */
+    startCheckout: async (clubId: string, request: CheckoutRequest) =>
+      call(
+        'POST',
+        API_PATHS.checkout,
+        club(clubId),
+        CheckoutResponseSchema,
+        CheckoutRequestSchema.parse(request),
+      ),
     getClubSecret: (clubId: string) =>
       call('GET', API_PATHS.secret, club(clubId), ClubSecretResponseSchema),
     redeemInvite: async (request: RedeemInviteRequest) =>

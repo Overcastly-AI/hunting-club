@@ -1,5 +1,6 @@
 // RadioServices in a club: club check-in places, the board's stands, whole-club chat
 // and the club channels put on the radio (over the mesh FakeRadio, no Bluetooth).
+import { CLUB_PARTY_CHANNEL } from '@huntclub/core';
 import { party } from '@huntclub/core/testing';
 import { generatePartyChannelSet } from '@huntclub/mesh';
 import { connectedMesh, seededRandom } from '@huntclub/mesh/testing';
@@ -42,6 +43,11 @@ it('switches every screen to the club: audience, grace time, places, board, chat
   expect(s.safetyRadio.audience).toBe('club');
   expect(s.boardRadio.stands).toEqual(club().stands);
   expect(s.chatRadio.segmentOfChannel(0)).toBe('club');
+  // A party inside the club is the secondary channel, for chat and harvest shares.
+  expect(s.chatRadio.channelOf('club')).toBe(0);
+  expect(s.chatRadio.channelOf('party')).toBe(CLUB_PARTY_CHANNEL);
+  expect(s.chatRadio.segmentOfChannel(CLUB_PARTY_CHANNEL)).toBe('party');
+  expect(s.harvestRadio.channelOf('party')).toBe(CLUB_PARTY_CHANNEL);
   expect(s.harvestRadio.audience).toBe('club');
 });
 
@@ -67,5 +73,6 @@ it('stays a free party without a club', async () => {
   expect(s.checkInRadio.audience).toBe('party');
   expect(s.checkInRadio.club).toBeUndefined();
   expect(s.chatRadio.segmentOfChannel(0)).toBe('party');
+  expect(s.chatRadio.channelOf('party')).toBe(0);
   expect(await s.clubChannel).toBe('already');
 });
