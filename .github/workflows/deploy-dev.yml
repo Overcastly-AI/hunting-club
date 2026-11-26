@@ -1,0 +1,71 @@
+name: Deploy dev
+
+# Manual only: deploys the Web and Api stacks to the dev account from main.
+# Credentials come from GitHub OIDC (no stored AWS keys). The role ARN is the repo
+# variable AWS_DEPLOY_ROLE_ARN; that role trusts only this repo's "dev" environment
+# and may only assume the CDK bootstrap roles (cdk-hnb659fds-*). See README "Deploying dev".
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write # OIDC token for AWS
+  contents: read
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false # never stop a CloudFormation update half way
+
+jobs:
+  deploy:
+    name: Deploy HuntClub-dev-Web and HuntClub-dev-Api
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: dev
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Builds the web page and synthesizes the cloud assembly (infra/cdk.out).
+      - name: Build and synth
+        run: npm run synth
+
+      - name: AWS credentials (OIDC)
+        # v6.3.0, pinned to its commit.
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: huntclub-deploy-dev-${{ github.run_id }}
+          aws-region: us-east-1
+
+      # Deploys exactly the assembly synthesized above.
+      - name: Deploy
+        working-directory: infra
+        run: >-
+          npx cdk deploy HuntClub-dev-Web HuntClub-dev-Api
+          --app cdk.out
+          --require-approval never
+          --outputs-file cdk-outputs.json
+
+      - name: Stack outputs
+        if: always()
+        working-directory: infra
+        run: |
+          if [ ! -f cdk-outputs.json ]; then
+            echo "No stack outputs (the deploy did not finish)." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          {
+            echo "### Stack outputs"
+            echo
+            echo "| Stack | Output | Value |"
+            echo "| --- | --- | --- |"
+            jq -r 'to_entries[] | .key as $s | .value | to_entries[] | "| \($s) | \(.key) | \(.value) |"' cdk-outputs.json
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -43,3 +43,4 @@ coverage/
 .idea/
 .vscode/
 cdk.out/
+cdk-outputs.json
