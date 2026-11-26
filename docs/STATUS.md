@@ -33,7 +33,8 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 | # | Sent | Request | Status | Result |
 |---|---|---|---|---|
-| 5 | 2026-11-26 14:47 | GitHub: `dev` environment (main only), repo var `AWS_DEPLOY_ROLE_ARN`, run Actions → Deploy dev (skip the run if the CloudShell deploy already went). Owner requested | Step 3 skipped (CloudShell deploy done); env + variable in progress | Expect run URL + ClubApiUrl, StripeWebhookUrl |
+| 6 | 2026-11-26 15:37 | Redeploy dev from CloudShell at main c5685ed (#46 club API init fix, #41 map pack builder, #44, #45) | Sent | Expect GET ClubApiUrl no longer 502 |
+| 5 | 2026-11-26 14:47 | GitHub: `dev` environment (main only), repo var `AWS_DEPLOY_ROLE_ARN`, run Actions → Deploy dev (skip the run if the CloudShell deploy already went). Owner requested | **Blocked** 15:06 UTC: Grok Bot's GitHub tools can't create environments or variables; step 3 skipped (CloudShell deploy done). **Owner to-do:** create `dev` env (main only) + repo var `AWS_DEPLOY_ROLE_ARN` | Expect run URL + ClubApiUrl, StripeWebhookUrl |
 | 4 | 2026-11-26 14:45 | GitHub OIDC provider + role `hunt-club-mesh-github-deploy-dev` (trust repo:Overcastly-AI/hunting-club:environment:dev; may only assume the 4 cdk-hnb659fds roles). **Owner approved ("Yes GitHub")** | **Done** 14:45 UTC: role `arn:aws:iam::054825383623:role/hunt-club-mesh-github-deploy-dev`, OIDC provider `arn:aws:iam::054825383623:oidc-provider/token.actions.githubusercontent.com`, inline policy AssumeCdkBootstrapRoles, 1 h session. Grok Bot also trying the Request #3 deploy from CloudShell at the owner's request (result pending in #3 thread). | Then owner: GitHub `dev` environment + repo var `AWS_DEPLOY_ROLE_ARN`, run Actions → Deploy dev |
 | 3 | 2026-11-26 | First CDK deploy: bootstrap + HuntClub-dev-Web + HuntClub-dev-Api (no Stripe yet) | **Done** 14:59 UTC from CloudShell (commit a404fd8). Site https://huntclub-dev.jaycobjones.com 200. ClubApiUrl `https://cmiavlwk3hqfou64bhxdbinhvm0rkxuj.lambda-url.us-east-1.on.aws/` (was 502: ESM bundle `Dynamic require of fs`; fix PR #46), StripeWebhookUrl `https://ehbje6gqn4puhaukhpcke7drja0rajrt.lambda-url.us-east-1.on.aws/`, CloudFront E3BU22QW9C8JW8 (d1be7otts0728y.cloudfront.net). Logs 14 d, tags ok, no provisioned concurrency. | Redeploy after #46 merges |
 | 2 | 2026-11-26 | Enable TTL `expiresAt` on the table; add web app client to the user pool | **Done** 06:37 UTC | TTL enabled; web client `6mpfpr6nrdqddim7trfqckegu5` |
@@ -85,6 +86,8 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 - Done: #42 sim CI fixed (firmware 2 s text limit; app now spaces texts), #16 closed. Screenshots skipped (needs react-native-web; not approved).
 - Done: #41 map packs backend (global + per-club TTL locks instead of reserved concurrency, which new accounts can't spare), #43 harvest reports (M13).
 - Active (2-worker cap): onboarding worker = M12 app side; web worker = map-packs admin PR. Paused: club-data, mesh, map, CI/board, weather.
+- Done: #44 web map-packs admin, #45 app club map packs (M12 complete in code; device check of pmtiles://file:// in field-test plan), #46 Lambda ESM require fix + dev clubApiUrl.
+- All workers paused 15:15 UTC (remaining work waits on owner: GitHub dev env/variable, Stripe, Apple Team ID/Android fingerprints, field test).
 - Was in progress: M12 app side (onboarding worker); map packs #41 backend → app (club-data); #41 review then web Map packs admin (web).
 
 - After #4 and #5: HarvestSex single source = SQL enum → @huntclub/shared → mesh derives wire codes (assigned to the schema worker).
