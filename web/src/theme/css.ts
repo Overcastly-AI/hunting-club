@@ -84,6 +84,12 @@ a { color: var(--color-text); }
   border-color: var(--color-accent); color: var(--color-surface); }
 .button:disabled { opacity: 0.5; cursor: not-allowed; }
 .row { display: flex; flex-wrap: wrap; gap: var(--space-md); }
+fieldset.choices { border: 0; padding: 0; margin: 0 0 var(--space-md); display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+fieldset.choices legend { ${textStyleCss(textScale.label)}; margin-bottom: var(--space-xs); }
+.choice { ${textStyleCss(textScale.body)}; display: inline-flex; align-items: center; gap: var(--space-sm);
+  min-height: var(--tap-min); padding: 0 var(--space-md); border: 1px solid var(--color-border);
+  border-radius: var(--radius-control); cursor: pointer; }
+.choice input { width: 20px; height: 20px; accent-color: var(--color-accent); }
 a.button { display: inline-flex; align-items: center; text-decoration: none; }
 .field { display: grid; gap: var(--space-xs); margin-bottom: var(--space-md); }
 .field input { ${textStyleCss(textScale.bodyLarge)}; min-height: var(--tap-min); padding: 0 var(--space-md);

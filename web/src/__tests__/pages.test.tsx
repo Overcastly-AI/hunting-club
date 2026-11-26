@@ -87,7 +87,8 @@ describe('club pages', () => {
     await signIn();
     expect(await screen.findByText('Oak Ridge Hunt Club')).toBeTruthy();
     const nav = screen.getByRole('navigation', { name: 'Club admin' });
-    for (const label of ['My club', 'Roster', 'Stands and areas', 'Harvests', 'Billing']) {
+    const labels = ['My club', 'Roster', 'Stands and areas', 'Harvests', 'Map packs', 'Billing'];
+    for (const label of labels) {
       expect(within(nav).getByRole('link', { name: label })).toBeTruthy();
     }
   });
@@ -205,6 +206,80 @@ describe('club pages', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
       expect((await screen.findByRole('status')).textContent).toMatch(/No connection/);
       expect(rows('By species')[0]).toEqual(['Deer', '4']);
+    });
+  });
+
+  describe('map packs', () => {
+    async function openMaps(data = sampleData(), services?: WebClubServices) {
+      renderApp(data, services);
+      await signIn();
+      go('#/maps');
+    }
+    const packRows = async () =>
+      within(await screen.findByRole('table'))
+        .getAllByRole('row')
+        .slice(1)
+        .map((r) => [...r.querySelectorAll('td')].map((td) => td.textContent));
+    const buildButton = () =>
+      screen.getByRole('button', { name: 'Build map pack' }) as HTMLButtonElement;
+
+    it('lists packs with their status, size and reason', async () => {
+      await openMaps();
+      expect(await packRows()).toEqual([
+        ['Aerial', 'Failed: USGS did not answer', '—', 'November 12, 2026'],
+        ['Topo', 'Ready', '12 MB', 'November 20, 2026'],
+      ]);
+    });
+
+    it('shows the estimate, starts a build, and then shows it building', async () => {
+      await openMaps();
+      fireEvent.click(await screen.findByRole('radio', { name: 'Aerial' }));
+      expect(screen.getByTestId('pack-estimate').textContent).toMatch(/^About [\d,]+ map tiles/);
+      fireEvent.click(buildButton());
+      await screen.findByText(/A map pack is being built/);
+      expect((await packRows())[0]).toEqual(['Aerial', 'Being built', '—', 'November 13, 2026']);
+      expect(buildButton().disabled).toBe(true); // one build at a time
+    });
+
+    it('explains a build refused because another one is running', async () => {
+      const client = fakeClubClient(sampleData());
+      vi.spyOn(client, 'requestMapPack').mockRejectedValue(
+        new ClubApiRequestError('conflict', 409),
+      );
+      await openMaps(sampleData(), {
+        session: new ClubSession(fakeCognitoAuth(), memoryTokenStore()),
+        api: adminApi(client),
+      });
+      fireEvent.click(await screen.findByRole('button', { name: 'Build map pack' }));
+      expect((await screen.findByRole('alert')).textContent).toMatch(
+        /already being built.*up to 15 minutes/,
+      );
+    });
+
+    it('refuses a property too big for one pack before asking the club service', async () => {
+      const data = sampleData();
+      const huge = {
+        type: 'Polygon' as const,
+        coordinates: [
+          [
+            [-91, 40],
+            [-91, 41],
+            [-90, 41],
+            [-91, 40],
+          ],
+        ],
+      };
+      await openMaps({ ...data, club: { ...data.club!, boundary: huge } });
+      expect((await screen.findByRole('alert')).textContent).toMatch(/too big for one map pack/);
+      expect(buildButton().disabled).toBe(true);
+    });
+
+    it('asks for the property line first', async () => {
+      const data = sampleData();
+      const { boundary: _none, ...club } = data.club!;
+      await openMaps({ ...data, club });
+      expect(await screen.findByText(/Set the club's property line first/)).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Build map pack' })).toBeNull();
     });
   });
 

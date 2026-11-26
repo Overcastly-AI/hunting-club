@@ -230,3 +230,25 @@ export function estimatePack(
   const overLimit = tiles > limits.maxTiles ? 'tiles' : bytes > limits.maxBytes ? 'bytes' : null;
   return { tiles, bytes, overLimit };
 }
+
+/**
+ * The size check for a club map pack of a property line, with MAP_PACK_LIMITS: one rule
+ * for the API (which refuses over-limit packs) and the web admin (which says so first).
+ */
+export function estimateClubPack(
+  boundary: { coordinates: unknown },
+  request: { basemap: BasemapId; minZoom?: number; maxZoom?: number },
+): ReturnType<typeof estimatePack> & { bounds: Bounds } {
+  const bounds = polygonBounds(boundary);
+  const minZoom = request.minZoom ?? MAP_PACK_LIMITS.minZoom;
+  const maxZoom = request.maxZoom ?? MAP_PACK_LIMITS.maxZoom;
+  return { bounds, ...estimatePack(bounds, minZoom, maxZoom, request.basemap, MAP_PACK_LIMITS) };
+}
+
+/** Size such as "12 MB" or "800 KB" (downloads and map packs, app and web admin). */
+export function formatBytes(bytes: number): string {
+  const mb = bytes / (1024 * 1024);
+  if (mb >= 10) return `${Math.round(mb)} MB`;
+  if (mb >= 1) return `${mb.toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}

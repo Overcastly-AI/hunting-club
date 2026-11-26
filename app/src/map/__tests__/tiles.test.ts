@@ -4,7 +4,6 @@ import {
   DOWNLOAD_LIMITS,
   countTiles,
   estimateDownload,
-  formatBytes,
   tileXY,
   type Bounds,
 } from '../tiles';
@@ -66,16 +65,5 @@ describe('estimateDownload', () => {
       expect(level.maxZoom).toBeLessThanOrEqual(DOWNLOAD_LIMITS.maxZoom);
       expect(level.minZoom).toBeGreaterThanOrEqual(DOWNLOAD_LIMITS.minZoom);
     }
-  });
-});
-
-describe('formatBytes', () => {
-  it.each([
-    [500, '1 KB'],
-    [800 * 1024, '800 KB'],
-    [2.5 * 1024 * 1024, '2.5 MB'],
-    [42.4 * 1024 * 1024, '42 MB'],
-  ])('formats %d', (bytes, text) => {
-    expect(formatBytes(bytes)).toBe(text);
   });
 });

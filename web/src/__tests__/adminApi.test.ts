@@ -5,6 +5,7 @@ import {
   ClubSchema,
   ClubSecretResponseSchema,
   InviteSchema,
+  MapPackSchema,
   MemberSchema,
   PlanSchema,
   StandSchema,
@@ -20,6 +21,7 @@ describe('fake club API data', () => {
     expect(() => ClubSchema.parse(data.club)).not.toThrow();
     for (const m of data.members) expect(() => MemberSchema.parse(m)).not.toThrow();
     for (const s of data.stands) expect(() => StandSchema.parse(s)).not.toThrow();
+    for (const m of data.mapPacks) expect(() => MapPackSchema.parse(m)).not.toThrow();
     for (const p of data.plans) expect(() => PlanSchema.parse(p)).not.toThrow();
     for (const a of data.areas) expect(() => AreaSchema.parse(a)).not.toThrow();
     expect(() => SubscriptionSchema.parse(data.subscription)).not.toThrow();
@@ -81,6 +83,16 @@ describe('admin API over the shared client', () => {
     expect(await api.startCheckout('club_standard')).toBe(
       'https://checkout.stripe.com/c/pay/cs_test_club_standard_true',
     );
+  });
+
+  it('lists and requests map packs for its own club', async () => {
+    const data = sampleData();
+    const client = fakeClubClient(data);
+    const request = vi.spyOn(client, 'requestMapPack');
+    const api = adminApi(client);
+    expect(await api.listMapPacks()).toHaveLength(2);
+    expect((await api.requestMapPack('aerial')).tiles).toBeGreaterThan(0);
+    expect(request).toHaveBeenCalledWith(data.club!.id, { basemap: 'aerial' });
   });
 
   it('passes other errors through', async () => {

@@ -21,13 +21,11 @@ import {
   type ClubSecretResponse,
   ClubSecretPutRequestSchema,
   BASEMAPS,
-  MAP_PACK_LIMITS,
   type MapPackBuild,
   MapPackRequestSchema,
   type MapPackRequestResponse,
-  estimatePack,
+  estimateClubPack,
   hasClubFeatures,
-  polygonBounds,
   RedeemInviteRequestSchema,
 } from '@huntclub/shared';
 import { randomUUID } from 'node:crypto';
@@ -247,14 +245,7 @@ function routes(data: ClubData): Route<Ctx>[] {
         }
         const request = parse(MapPackRequestSchema, c.body ?? {});
         if (!club.boundary) throw new ClubDataError('invalid', 'draw the property line first');
-        const bounds = polygonBounds(club.boundary);
-        const estimate = estimatePack(
-          bounds,
-          request.minZoom,
-          request.maxZoom,
-          request.basemap,
-          MAP_PACK_LIMITS,
-        );
+        const { bounds, ...estimate } = estimateClubPack(club.boundary, request);
         if (estimate.overLimit) {
           throw new ClubDataError(
             'invalid',

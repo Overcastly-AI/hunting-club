@@ -6,7 +6,9 @@ import {
   TILE_FETCH_POLICY,
   type Bounds,
   countTiles,
+  estimateClubPack,
   estimatePack,
+  formatBytes,
   mapPackKey,
   polygonBounds,
   tileUrl,
@@ -69,5 +71,57 @@ describe('shared map maths', () => {
     expect(
       estimatePack(bounds, 8, 13, 'topo', { maxTiles: tiles - 1, maxBytes: 1e12 }).overLimit,
     ).toBe('tiles');
+  });
+});
+
+describe('formatBytes', () => {
+  it.each([
+    [500, '1 KB'],
+    [800 * 1024, '800 KB'],
+    [2.5 * 1024 * 1024, '2.5 MB'],
+    [42.4 * 1024 * 1024, '42 MB'],
+  ])('formats %d', (bytes, text) => {
+    expect(formatBytes(bytes)).toBe(text);
+  });
+});
+
+describe('estimateClubPack', () => {
+  const property = {
+    coordinates: [
+      [
+        [-90.01, 39.99],
+        [-90.01, 40.01],
+        [-89.99, 40.01],
+        [-90.01, 39.99],
+      ],
+    ],
+  };
+
+  it('estimates the property box with the map-pack limits and default zooms', () => {
+    const club = estimateClubPack(property, { basemap: 'topo' });
+    expect(club.bounds).toEqual(SMALL);
+    expect(club).toMatchObject(
+      estimatePack(
+        SMALL,
+        MAP_PACK_LIMITS.minZoom,
+        MAP_PACK_LIMITS.maxZoom,
+        'topo',
+        MAP_PACK_LIMITS,
+      ),
+    );
+  });
+
+  it('flags a property over the pack tile cap', () => {
+    const huge = {
+      coordinates: [
+        [
+          [-92, 39],
+          [-92, 42],
+          [-89, 42],
+          [-92, 39],
+        ],
+      ],
+    };
+    expect(estimateClubPack(huge, { basemap: 'aerial' }).overLimit).toBe('tiles');
   });
 });
