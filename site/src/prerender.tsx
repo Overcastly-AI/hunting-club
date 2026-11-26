@@ -8,8 +8,9 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FAVICON_SVG, logoMarkSvg } from '@huntclub/design';
+import { dawnSceneCss } from '@huntclub/design/dawnScene';
 import { ogImageSvg, OG_FONT_FILE, renderPng } from './og';
-import { JOIN_SCRIPT_ENTRY } from '../vite.config';
+import { DAWN_SCRIPT_ENTRY, JOIN_SCRIPT_ENTRY } from '../vite.config';
 import { renderJoin, renderNotFound, renderPage } from './render';
 import {
   JOIN_PAGE,
@@ -27,11 +28,28 @@ import { siteCss } from './styles';
 /** dist/, the parent of dist/.server where this file runs from. */
 const DIST = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-// The stylesheet as a content-hashed file beside the font (cached for a year like it).
-const css = siteCss(fontUrl);
-const cssFile = `assets/site-${createHash('sha256').update(css).digest('hex').slice(0, 10)}.css`;
-writeFileSync(join(DIST, cssFile), css);
-const assets = { fontUrl, cssUrl: `/${cssFile}` };
+/** Writes a stylesheet as a content-hashed file beside the font (cached for a year like it). */
+function hashedCss(name: string, css: string): string {
+  const file = `assets/${name}-${createHash('sha256').update(css).digest('hex').slice(0, 10)}.css`;
+  writeFileSync(join(DIST, file), css);
+  return `/${file}`;
+}
+
+// The browser scripts, from the client build's manifest (`vite build --mode client`).
+const MANIFEST = join(DIST, '.vite', 'manifest.json');
+const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8')) as Record<string, { file: string }>;
+const clientScript = (entry: string) => {
+  const file = manifest[entry]?.file;
+  if (!file) throw new Error(`No ${entry} in ${MANIFEST}`);
+  return `/${file}`;
+};
+
+const assets = {
+  fontUrl,
+  cssUrl: hashedCss('site', siteCss(fontUrl)),
+  // The home hero's dawn scene: its CSS in its own file (only the home page links it).
+  dawn: { cssUrl: hashedCss('dawn', dawnSceneCss()), scriptUrl: clientScript(DAWN_SCRIPT_ENTRY) },
+};
 for (const route of ROUTES) {
   const file = join(DIST, outputFile(route.path));
   mkdirSync(dirname(file), { recursive: true });
@@ -40,13 +58,10 @@ for (const route of ROUTES) {
 }
 writeFileSync(join(DIST, NOT_FOUND_PAGE.file), renderNotFound(assets));
 
-// The /join script, from the client build's manifest (`vite build --mode client`).
-const MANIFEST = join(DIST, '.vite', 'manifest.json');
-const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8')) as Record<string, { file: string }>;
-const joinScript = manifest[JOIN_SCRIPT_ENTRY]?.file;
-if (!joinScript) throw new Error(`No ${JOIN_SCRIPT_ENTRY} in ${MANIFEST}`);
+// The /join page with its script.
+const joinScript = clientScript(JOIN_SCRIPT_ENTRY);
 mkdirSync(dirname(join(DIST, JOIN_PAGE.file)), { recursive: true });
-writeFileSync(join(DIST, JOIN_PAGE.file), renderJoin(assets, `/${joinScript}`));
+writeFileSync(join(DIST, JOIN_PAGE.file), renderJoin(assets, joinScript));
 console.log(`${JOIN_PAGE.path} → ${JOIN_PAGE.file} (${joinScript})`);
 writeFileSync(join(DIST, SITEMAP_FILE), sitemapXml(new Date().toISOString().slice(0, 10)));
 // The SVG favicon from the logo mark (favicon.ico is in public/, from the icons script).

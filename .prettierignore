@@ -7,3 +7,5 @@ dist/
 coverage/
 docs/
 CLAUDE.md
+# Written by design/background/trace.py
+packages/design/src/dawnSprites.generated.ts

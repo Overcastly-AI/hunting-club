@@ -61,3 +61,12 @@ export const signInCopy = {
 
 /** What a typed or pasted code becomes: digits only, nothing cut off (checked on submit). */
 export const codeDigits = (input: string) => input.replace(/\D/g, '');
+
+/**
+ * The dawn scene's pause button (the home page hero and the web sign-in page): the label says
+ * what a press does. @huntclub/design's bindDawnPause swaps them.
+ */
+export const dawnPauseCopy = {
+  pause: 'Pause background',
+  play: 'Play background',
+} as const;

@@ -11,9 +11,15 @@ import {
   LEGAL_PATHS,
   signInCopy as copy,
 } from '@huntclub/shared';
-import { useState, type FormEvent } from 'react';
+import { lazy, Suspense, useState, type FormEvent } from 'react';
 import { Field } from '../components/Field';
 import { PageHeading } from '../components/PageHeading';
+
+/**
+ * The dawn scene behind the card: its own lazy chunk (sprites and CSS), so the form never waits
+ * for it and signed-in pages never download it.
+ */
+const DawnBackground = lazy(() => import('../components/DawnBackground'));
 
 /** The logo mark as an image source (decorative: the app name is written next to it). */
 const LOGO_SRC = `data:image/svg+xml,${encodeURIComponent(logoMarkSvg())}`;
@@ -102,6 +108,9 @@ export function SignIn(props: {
 
   return (
     <div className="auth">
+      <Suspense fallback={null}>
+        <DawnBackground />
+      </Suspense>
       <section className="auth-card" aria-labelledby="sign-in-title">
         <div className="auth-brand">
           <img src={LOGO_SRC} alt="" width={48} height={48} />
