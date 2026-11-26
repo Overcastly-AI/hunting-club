@@ -2,9 +2,9 @@ import {
   CHECK_IN_MODE_BY_KEY,
   CHECK_IN_MODE_KEYS,
   CheckInMode,
-  HARVEST_SEX_BY_KEY,
+  HARVEST_SEXES,
+  HARVEST_SEX_CODES,
   HARVEST_SEX_KEYS,
-  HarvestSex,
   enumValues,
 } from '../domain';
 
@@ -16,9 +16,14 @@ describe('domain enums', () => {
     }
   });
 
-  it('harvest sex keys round-trip', () => {
-    for (const s of enumValues(HarvestSex)) {
-      expect(HARVEST_SEX_BY_KEY[HARVEST_SEX_KEYS[s as HarvestSex]]).toBe(s);
+  it('harvest sex wire codes are frozen (changing one breaks deployed radios)', () => {
+    expect(HARVEST_SEX_CODES).toEqual({ unknown: 0, male: 1, female: 2 });
+  });
+
+  it('harvest sex covers exactly the database enum from @huntclub/shared', () => {
+    expect(Object.keys(HARVEST_SEX_CODES).sort()).toEqual([...HARVEST_SEXES].sort());
+    for (const key of HARVEST_SEXES) {
+      expect(HARVEST_SEX_KEYS[HARVEST_SEX_CODES[key]]).toBe(key);
     }
   });
 
