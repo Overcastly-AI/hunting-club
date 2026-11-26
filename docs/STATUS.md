@@ -33,7 +33,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 | # | Sent | Request | Status | Result |
 |---|---|---|---|---|
-| 11 | 2026-11-26 19:10 | Cognito AuthSessionValidity 3 → 10 min on both clients (codes arrive in 8–11 s; hunters on weak signal) | Sent | Then update EMAIL_OTP lifetime in emailCodeRules |
+| 11 | 2026-11-26 19:10 | Cognito AuthSessionValidity 3 → 10 min on both clients (codes arrive in 8–11 s; hunters on weak signal) | **Done** 19:41 UTC: AuthSessionValidity 3 → 10 min on both clients = EMAIL_OTP code lifetime (API flow). Template updated | Copy update in club-data PR A |
 | 10 | 2026-11-26 18:10 | Owner rule: long-lived sign-in for hunters out of service. App client refresh token 365 d, web client 30 d (access 60 min unchanged, revocation on) | **Done** 18:36 UTC: app client refresh 365 d, web 30 d, access/ID 1 h, revocation on; Grok Bot's HuntClubMeshDataDev template updated. Existing tokens keep 30 d until next sign-in | |
 | 9 | 2026-11-26 17:08 | Seed dev "UAT Test Club" (seed:dev) for jonesjaycob+uitest@gmail.com once that user exists | BLOCKED 18:09 UTC: +uitest CONFIRMED but seed failed `Invalid UUID` (z.uuid rejects Cognito subs without RFC variant bits) — fix PR #59 merged; **Done 19:04 UTC**: UAT Test Club 04f40d22-a9c5-4c23-864b-13c69df41aef (admin +uitest), area North Timber, stands Creek Bottom / South Field Blind / Ridge Ladder, entitlement to 2027-02-24. Earlier: WAITING: +uitest not yet signed up (UAT signed up +huntclubuat at 17:39 UTC; returning sign-in blocked by 8-digit code bug) | |
 | 8 | 2026-11-26 16:37 | UAT blocker: Cognito sign-in emails don't arrive. Diagnose; SES domain identity huntclub-dev.jaycobjones.com (DKIM, MAIL FROM, DMARC p=none), pool EmailConfiguration → SES DEVELOPER, verify test recipients (sandbox), AutoVerifiedAttributes email | **NEEDS OWNER APPROVAL** 16:40 UTC (SES not yet an approved service). Diagnosis: pool has 0 users; client never called SignUp because PreventUserExistenceErrors hides unknown users (fix PR #51); pool on COGNITO_DEFAULT, which can't deliver EMAIL_OTP; Essentials plan (free ≤10k MAU) | **Owner approved 16:49 UTC** (SES now an approved service for dev; stay in sandbox). Client fix #51 merged. **Done 17:00 UTC (partly):** SES domain identity huntclub-dev.jaycobjones.com DKIM SUCCESS, MAIL FROM mail.huntclub-dev…, DMARC p=none; pool EmailConfiguration → DEVELOPER from no-reply@huntclub-dev.jaycobjones.com; test email delivered. Both SES test recipients verified 17:04 UTC. |
@@ -114,6 +114,10 @@ Owner rule (2026-11-26): Grok Bot runs UAT and reviews UI decisions by email. Ev
 
 | Date | Thread / subject | Finding | Decision | PR |
 |---|---|---|---|---|
+| 2026-11-26 | UI review 19:41 (signed-in, seeded club) | Roster copy, Signed in as, focus ring, nav <640px, Stands headings, Harvests export hint | Accepted | club-data PR A |
+| 2026-11-26 | UI review 19:41 | Billing plan/price/dates/grace + Manage subscription (portal); My club summary; map-pack estimate without property line; wider tables; email until display name | Accepted | club-data PR B |
+| 2026-11-26 | UI review 19:41 | Unknown hash routes; aria-current | Already fixed | #66 |
+| 2026-11-26 | UI review 19:41 | Stands-per-area view; display-name prompt | Deferred (backlog) | — |
 | 2026-11-26 | UI review 18:38 (run 2) | Reload logout; no-club errors | Already fixed | #58 |
 | 2026-11-26 | UI review 18:38 | Billing no-club plans; Create club validation; unknown hash → 404; Back to the app; aria-current; Harvests copy; sending hint | Accepted | club-data PR (queued) |
 | 2026-11-26 | UI review 18:38 | Real 404 status | In PR | #63 |
