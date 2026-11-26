@@ -18,6 +18,9 @@ export function createTestDatabase(): SqlDatabase & { raw: DatabaseSync } {
       const row = raw.prepare(source).get(...(params as SQLInputValue[]));
       return (row as T | undefined) ?? null;
     },
+    async runAsync(source: string, ...params: SqlValue[]) {
+      return raw.prepare(source).run(...(params as SQLInputValue[]));
+    },
     async withTransactionAsync(task) {
       raw.exec('BEGIN');
       try {

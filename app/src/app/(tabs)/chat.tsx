@@ -1,10 +1,10 @@
-import { PlaceholderScreen } from '../../components/PlaceholderScreen';
+import { Screen } from '../../components/Screen';
+import { RadioTestPanel } from '../../radio/ui/RadioTestPanel';
 
 export default function ChatScreen() {
   return (
-    <PlaceholderScreen
-      title="Chat"
-      description="Text your party over the radio, with no cell service."
-    />
+    <Screen title="Chat" description="Text your party over the radio, with no cell service.">
+      <RadioTestPanel />
+    </Screen>
   );
 }

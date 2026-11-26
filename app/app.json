@@ -10,7 +10,10 @@
     "backgroundColor": "#121416",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.overcastly.huntclub"
+      "bundleIdentifier": "com.overcastly.huntclub",
+      "infoPlist": {
+        "UIBackgroundModes": ["bluetooth-central"]
+      }
     },
     "android": {
       "package": "com.overcastly.huntclub",
@@ -36,7 +39,15 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 200
         }
-      ]
+      ],
+      [
+        "react-native-ble-manager",
+        {
+          "neverForLocation": true,
+          "bluetoothAlwaysPermission": "Hunt Club Mesh uses Bluetooth to talk to your radio, so you can text and share your location with your party without cell service."
+        }
+      ],
+      "./plugins/withRadioPermissions"
     ]
   }
 }

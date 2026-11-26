@@ -12,6 +12,7 @@ const EXPECTED_TABLES = [
   'map_packs',
   'members',
   'messages',
+  'paired_radio',
   'positions',
   'radios',
   'stands',

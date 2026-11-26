@@ -12,6 +12,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { DATABASE_NAME, initDatabase } from '../db';
+import { AppRadioProvider } from '../radio/AppRadioProvider';
 import { colors } from '../theme';
 
 void SplashScreen.preventAutoHideAsync();
@@ -37,13 +38,15 @@ export default function RootLayout() {
 
   return (
     <SQLiteProvider databaseName={DATABASE_NAME} onInit={initDatabase}>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.surface },
-        }}
-      />
+      <AppRadioProvider>
+        <StatusBar style="light" />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: colors.surface },
+          }}
+        />
+      </AppRadioProvider>
     </SQLiteProvider>
   );
 }
