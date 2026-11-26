@@ -13,7 +13,7 @@
  * Never logs message bodies or channel keys: the optional logger only gets
  * ids, port numbers, sizes and states.
  */
-import { fromBinary, type MessageInitShape } from '@bufbuild/protobuf';
+import { fromBinary, toBinary, type MessageInitShape } from '@bufbuild/protobuf';
 import { Admin, Channel, Config, Mesh, ModuleConfig, Portnums, Telemetry } from './protobufs';
 import {
   BROADCAST_ADDR,
@@ -84,6 +84,10 @@ export interface NodeInfoEvent {
   node: NodeRecord;
 }
 
+export interface HeardEvent extends RxMeta {
+  portnum: number;
+}
+
 export interface AppMessageEvent extends RxMeta {
   message: AppMessage;
 }
@@ -111,6 +115,12 @@ export interface MeshClientEvents {
   text: TextEvent;
   position: PositionEvent;
   nodeinfo: NodeInfoEvent;
+  /**
+   * Any live packet from another node (first copy only), on any port. Lets
+   * the app see who is on a channel; a config-dump node DB entry is not
+   * proof that a node is around now.
+   */
+  heard: HeardEvent;
   /** First copy of an app-port message. */
   appMessage: AppMessageEvent;
   /** Same app message id again under a new packet (a sender retry). Lets the app re-send a receipt. */
@@ -334,6 +344,8 @@ export class MeshClient extends Emitter<MeshClientEvents> {
       to: opts.to ?? this._myNodeNum,
       wantAck: false,
       wantResponse: true,
+      // The radio answers an admin request with a Routing reply; wait for it like an ack.
+      awaitRouting: true,
     });
   }
 
@@ -355,17 +367,23 @@ export class MeshClient extends Emitter<MeshClientEvents> {
   }
 
   /** Low-level send. A random packet id is chosen unless one is given. */
-  sendPacket(init: Omit<DataPacketInit, 'id'> & { id?: number }): SendHandle {
+  sendPacket(
+    init: Omit<DataPacketInit, 'id'> & {
+      id?: number;
+      /** Settle on a Routing reply even without want_ack (local admin requests answer with one). */
+      awaitRouting?: boolean;
+    },
+  ): SendHandle {
+    const { awaitRouting, ...packetInit } = init;
     const id = init.id ?? randomUint32(this.random);
-    const packet = buildDataPacket({ ...init, id, to: init.to ?? BROADCAST_ADDR });
+    const packet = buildDataPacket({ ...packetInit, id, to: init.to ?? BROADCAST_ADDR });
     const bytes = encodeToRadio({ payloadVariant: { case: 'packet', value: packet } });
     let resolve!: (r: DeliveryResult) => void;
     const result = new Promise<DeliveryResult>((r) => (resolve = r));
     const item: Outgoing = {
       id,
       bytes,
-      // Admin requests with want_response are answered with a Routing reply; wait for it like an ack.
-      wantAck: (init.wantAck ?? false) || (init.wantResponse ?? false),
+      wantAck: (init.wantAck ?? false) || (awaitRouting ?? false),
       portnum: Number(init.portnum),
       resolve,
     };
@@ -378,6 +396,23 @@ export class MeshClient extends Emitter<MeshClientEvents> {
     });
     this.pump();
     return { id, result };
+  }
+
+  /**
+   * Broadcasts our radio's node info on a channel. With `wantResponse`,
+   * every node that hears it answers with its own node info (stock firmware
+   * behaviour): a quick way to learn who is on a channel. Costs one reply
+   * per node, so use it once when joining, not periodically.
+   */
+  sendNodeInfo(opts: { channel?: number; wantResponse?: boolean } = {}): SendHandle {
+    const user = this.nodes.get(this._myNodeNum)?.user;
+    if (!user) throw new Error('Our node info is not known yet (handshake not complete)');
+    return this.sendPacket({
+      portnum: Portnums.PortNum.NODEINFO_APP,
+      payload: toBinary(Mesh.UserSchema, user),
+      channel: opts.channel ?? 0,
+      wantResponse: opts.wantResponse ?? false,
+    });
   }
 
   /** Keeps the BLE link alive. Bypasses the send queue. */
@@ -568,6 +603,10 @@ export class MeshClient extends Emitter<MeshClientEvents> {
         if (meta.hopsAway !== undefined) rec.hopsAway = meta.hopsAway;
         this.nodes.set(p.from, rec);
       }
+    }
+
+    if (p.from !== this._myNodeNum && p.from !== 0) {
+      this.emit('heard', { ...meta, portnum: data.portnum });
     }
 
     switch (data.portnum as number) {
