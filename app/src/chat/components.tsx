@@ -1,12 +1,13 @@
 import { MAX_TEXT_CHARS } from '@huntclub/mesh';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '../components/Button';
+import { OptionButtons } from '../components/OptionButtons';
 import { TextField } from '../components/TextField';
 import { formatClockTime } from '../conditions/clock';
 import { QUICK_REPLIES } from '../domain/quickReplies';
 import { placeLabel } from '../map/labels';
-import { colors, opacity, radii, sizes, spacing, textStyles } from '../theme';
+import { colors, radii, spacing, textStyles } from '../theme';
 import type { ChatItem } from './model';
 import { bubbleLabel, charactersLeft, deliveryText } from './wording';
 
@@ -59,24 +60,12 @@ export function QuickReplies({
   disabled: boolean;
 }) {
   return (
-    <View style={styles.quickRow}>
-      {Object.values(QUICK_REPLIES).map((reply) => (
-        <Pressable
-          key={reply}
-          accessibilityRole="button"
-          accessibilityLabel={`Send: ${reply}`}
-          accessibilityState={{ disabled }}
-          disabled={disabled}
-          onPress={() => onSend(reply)}
-          style={({ pressed }) => [
-            styles.quick,
-            (pressed || disabled) && { opacity: opacity.pressed },
-          ]}
-        >
-          <Text style={styles.quickText}>{reply}</Text>
-        </Pressable>
-      ))}
-    </View>
+    <OptionButtons
+      options={Object.values(QUICK_REPLIES)}
+      onPress={onSend}
+      accessibilityLabelFor={(reply) => `Send: ${reply}`}
+      disabled={disabled}
+    />
   );
 }
 
@@ -148,15 +137,6 @@ const styles = StyleSheet.create({
   helpCard: { borderColor: colors.help },
   cardText: { ...textStyles.label, color: colors.text, textAlign: 'center' },
   helpText: { color: colors.help },
-  quickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  quick: {
-    minHeight: sizes.minTapTarget,
-    borderRadius: radii.primaryButton,
-    backgroundColor: colors.surfaceRaised,
-    paddingHorizontal: spacing.md,
-    justifyContent: 'center',
-  },
-  quickText: { ...textStyles.label, color: colors.text },
   composer: { gap: spacing.sm },
   field: { paddingVertical: spacing.sm },
   composerRow: {

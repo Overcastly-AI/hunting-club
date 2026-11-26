@@ -1,3 +1,5 @@
+import { CHECK_IN_MODE_KEYS } from '@huntclub/mesh';
+
 import type { Migration } from './types';
 
 /**
@@ -168,8 +170,24 @@ CREATE TABLE paired_radio (
 );
 `;
 
+/**
+ * Harvest log (Milestone 7). Where a harvest happened is kept as the check-in
+ * at the time: mode and the stand/area mesh ids (so it can be shared later)
+ * and the place label shown in the list. `shared_at` is when it was last sent.
+ */
+const sqlList = (values: readonly string[]) => values.map((v) => `'${v}'`).join(', ');
+
+const harvestPlaces = `
+ALTER TABLE harvests ADD COLUMN place_mode TEXT CHECK (place_mode IN (${sqlList(Object.values(CHECK_IN_MODE_KEYS))}));
+ALTER TABLE harvests ADD COLUMN place_label TEXT;
+ALTER TABLE harvests ADD COLUMN stand_mesh_id INTEGER;
+ALTER TABLE harvests ADD COLUMN area_mesh_id INTEGER;
+ALTER TABLE harvests ADD COLUMN shared_at INTEGER;
+`;
+
 export const migrations: readonly Migration[] = [
   { version: 1, name: 'initial local schema', sql: initialSchema },
   { version: 2, name: 'map pack downloads', sql: mapPackDownloads },
   { version: 3, name: 'paired radio', sql: pairedRadio },
+  { version: 4, name: 'harvest places', sql: harvestPlaces },
 ];

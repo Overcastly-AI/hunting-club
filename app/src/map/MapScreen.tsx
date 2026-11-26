@@ -11,6 +11,7 @@ import { StyleSheet, View, type NativeSyntheticEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useCheckInState } from '../checkin/CheckInRadio';
+import { HarvestSheet } from '../harvest/HarvestSheet';
 import { CheckOutSheet } from '../checkin/CheckOutSheet';
 import { AskForHandSheet } from '../safety/components/AskForHandSheet';
 import { useIncomingAlerts } from '../safety/hooks';
@@ -42,7 +43,7 @@ const CENTER_ON_ME_ZOOM = 15.5;
 const CONDITIONS_MIN_ZOOM = 8;
 
 type MapView = { center: LatLon; zoom: number };
-type Panel = 'layers' | 'download' | 'checkOut' | 'askForHand' | null;
+type Panel = 'layers' | 'download' | 'checkOut' | 'askForHand' | 'harvest' | null;
 
 type Props = {
   /** Hunters, open stands and mesh status; defaults to the app store the radio will feed. */
@@ -140,7 +141,7 @@ export function MapScreen({ dataSource }: Props) {
             onAskForHand={() => setPanel('askForHand')}
             onCheckOut={() => setPanel('checkOut')}
             onChangeMode={() => router.navigate('/check-in')}
-            onLogHarvest={() => undefined /* Milestone 7 */}
+            onLogHarvest={() => setPanel('harvest')}
           />
         ) : (
           <MapBottomSheet state="notCheckedIn" onCheckIn={() => router.navigate('/check-in')} />
@@ -159,6 +160,7 @@ export function MapScreen({ dataSource }: Props) {
       />
       <CheckOutSheet radio={radio} visible={panel === 'checkOut'} onClose={() => setPanel(null)} />
       <AskForHandSheet visible={panel === 'askForHand'} onClose={() => setPanel(null)} />
+      <HarvestSheet visible={panel === 'harvest'} onClose={() => setPanel(null)} />
       <DownloadAreaSheet
         visible={panel === 'download'}
         bounds={downloadBounds}
