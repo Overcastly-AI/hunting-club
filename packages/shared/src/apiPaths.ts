@@ -23,6 +23,7 @@ export const API_PATHS = {
   subscription: '/clubs/:clubId/subscription',
   entitlement: '/clubs/:clubId/entitlement',
   checkout: '/clubs/:clubId/checkout',
+  billingPortal: '/clubs/:clubId/billing-portal',
 } as const;
 
 export type ApiPath = (typeof API_PATHS)[keyof typeof API_PATHS];

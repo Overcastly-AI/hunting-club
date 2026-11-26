@@ -163,6 +163,10 @@ const subscriptionFields = {
   planId: planIdSchema,
   status: SubscriptionStatusSchema,
   paidThrough: timestampSchema.optional(),
+  /** How often it bills (the Stripe price's interval). Absent on records synced before. */
+  interval: billingIntervalSchema.optional(),
+  /** Set to end at paidThrough instead of renewing (canceled in the portal). */
+  cancelAtPeriodEnd: z.boolean().optional(),
 };
 
 export const SubscriptionSchema = z.object({ ...subscriptionFields, ...timestamps });

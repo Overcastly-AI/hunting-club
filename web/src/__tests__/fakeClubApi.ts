@@ -272,6 +272,11 @@ export function fakeClubClient(data: FakeClubData = sampleData()): ClubApiClient
     listHarvests: async () => data.harvests,
     getEntitlement: async (clubId) => ({ clubId, status: 'active' }),
     getSubscription: async () => ({ subscription: data.subscription ?? null }),
+    async openBillingPortal() {
+      if (data.paymentsConfigured === false) throw new ClubApiRequestError('not_configured', 503);
+      if (!data.subscription) throw new ClubApiRequestError('not_found', 404);
+      return { url: `https://billing.stripe.com/p/session/${data.subscription.stripeCustomerId}` };
+    },
     async startCheckout(clubId, request) {
       const { planId, interval } = CheckoutRequestSchema.parse(request);
       if (data.paymentsConfigured === false) {

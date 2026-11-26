@@ -56,6 +56,21 @@ describe('subscriptionState', () => {
     );
   });
 
+  it('records the billing interval and whether it is set to end, not renew', () => {
+    expect(state({})).toMatchObject({ cancelAtPeriodEnd: false });
+    expect(state({}) ?? {}).not.toHaveProperty('interval');
+    const yearly = {
+      data: [{ current_period_end: 200, price: { recurring: { interval: 'year' } } }],
+    };
+    expect(state({ items: yearly })).toMatchObject({ interval: 'year' });
+    const weekly = {
+      data: [{ current_period_end: 200, price: { recurring: { interval: 'week' } } }],
+    };
+    expect(state({ items: weekly }) ?? {}).not.toHaveProperty('interval');
+    expect(state({ cancel_at_period_end: true })).toMatchObject({ cancelAtPeriodEnd: true });
+    expect(state({ cancel_at: 200 })).toMatchObject({ cancelAtPeriodEnd: true });
+  });
+
   it('ignores subscriptions without our club metadata', () => {
     expect(state({ metadata: {} })).toBeUndefined();
   });

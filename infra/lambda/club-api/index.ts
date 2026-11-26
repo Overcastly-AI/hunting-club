@@ -13,7 +13,7 @@ import {
   type FunctionUrlEvent,
 } from '@huntclub/api';
 import { StripePricesSchema } from '@huntclub/shared';
-import { CHECKOUT_RETURN_PATHS } from '@huntclub/shared/app';
+import { ADMIN_PATH, CHECKOUT_RETURN_PATHS } from '@huntclub/shared/app';
 import { API_ENV, CLUB_API_SECRETS, secretParameterEnvVar } from '../../config/types';
 
 const STRIPE_KEY_PARAM = secretParameterEnvVar('stripeApiKey');
@@ -46,6 +46,7 @@ const run = lazyHandler(async () => {
       prices: StripePricesSchema.parse(JSON.parse(env(API_ENV.stripePrices))),
       successUrl: `${webOrigin}${CHECKOUT_RETURN_PATHS.success}`,
       cancelUrl: `${webOrigin}${CHECKOUT_RETURN_PATHS.cancel}`,
+      portalReturnUrl: `${webOrigin}${ADMIN_PATH}#/billing`,
     },
     startMapPackBuild: mapPackStarter(env(API_ENV.mapPackBuilder)),
   });

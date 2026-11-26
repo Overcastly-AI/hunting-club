@@ -11,6 +11,7 @@ import { Field } from '../components/Field';
 import { Loadable } from '../components/Loadable';
 import { PageHeading } from '../components/PageHeading';
 import { isOffline, useAsync } from '../components/useAsync';
+import { SUBSCRIPTION_STATUS_LABELS } from '../format';
 
 /** Your club, or a form to start one. Payment is on the Billing page. */
 export function MyClub(props: { api: ClubApi }) {
@@ -23,7 +24,7 @@ export function MyClub(props: { api: ClubApi }) {
       <Loadable state={state}>
         {(club) =>
           club ? (
-            <ClubSummary club={club} created={created} />
+            <ClubSummary api={props.api} club={club} created={created} />
           ) : (
             <CreateClub
               api={props.api}
@@ -39,7 +40,7 @@ export function MyClub(props: { api: ClubApi }) {
   );
 }
 
-function ClubSummary({ club, created }: { club: Club; created: boolean }) {
+function ClubSummary({ api, club, created }: { api: ClubApi; club: Club; created: boolean }) {
   return (
     <div className="panel">
       {created ? (
@@ -49,15 +50,45 @@ function ClubSummary({ club, created }: { club: Club; created: boolean }) {
         </p>
       ) : null}
       <h2>{club.name}</h2>
-      <p className="muted">
-        {club.acreage === undefined
-          ? 'Acreage not set'
-          : `${club.acreage.toLocaleString('en-US')} acres`}
-      </p>
-      <a className="button" href="#/billing">
-        Billing and payment
-      </a>
+      {/* No "Acreage not set": the property line is drawn in the app, not on the web. */}
+      {club.acreage === undefined ? null : (
+        <p className="muted">{club.acreage.toLocaleString('en-US')} acres</p>
+      )}
+      <ClubCounts api={api} />
     </div>
+  );
+}
+
+/** Members, stands, areas and subscription at a glance, each linking to its page. */
+function ClubCounts({ api }: { api: ClubApi }) {
+  const counts = useAsync(
+    () =>
+      Promise.all([api.listMembers(), api.listStands(), api.listAreas(), api.getSubscription()]),
+    [api],
+    { keepLastOn: isOffline },
+  );
+  if (counts.status !== 'ready') return null;
+  const [members, stands, areas, subscription] = counts.value;
+  const items = [
+    { href: '#/roster', label: 'Members', value: members.length },
+    { href: '#/stands', label: 'Stands', value: stands.length },
+    { href: '#/stands', label: 'Areas', value: areas.length },
+    {
+      href: '#/billing',
+      label: 'Subscription',
+      value: subscription ? SUBSCRIPTION_STATUS_LABELS[subscription.status] : 'Not started',
+    },
+  ];
+  return (
+    <ul className="summary-row" aria-label="Club summary">
+      {items.map((item) => (
+        <li key={item.label}>
+          <a href={item.href}>
+            <span className="muted">{item.label}</span> <strong>{item.value}</strong>
+          </a>
+        </li>
+      ))}
+    </ul>
   );
 }
 

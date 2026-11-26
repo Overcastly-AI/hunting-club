@@ -160,6 +160,9 @@ Owner rule (2026-11-26): Grok Bot runs UAT and reviews UI decisions by email. Ev
 
 ## Owner to-dos (non-blocking)
 
+- When Stripe is set up: create monthly ($10) and yearly ($100) prices with the 14-day trial handled by Checkout, enable the Customer Portal (Settings → Billing → Customer portal), and give Grok Bot the keys for SSM `/hunt-club-mesh/dev/stripe-*`.
+- Supply a support email (SUPPORT_EMAIL), production domain, member limit, refund/retention terms, and approve Privacy/Terms drafts.
+
 - **Approve the deploy path (blocking the first deploy):** let Grok Bot create a GitHub Actions OIDC deploy role `hunt-club-mesh-github-deploy-dev` (trust: repo Overcastly-AI/hunting-club, GitHub environment `dev` only; may only assume the four CDK bootstrap roles). Alternatives: run `cdk deploy` from your own machine or AWS CloudShell, or allow the CDK assets bucket in Grok Bot's VPC endpoint policy.
 
 - **Stripe account (needed to take club payments, Milestone 9):** create a Stripe account in test mode. Then Grok Bot (via a numbered request) creates the test price, the SSM parameters `/hunt-club-mesh/dev/stripe-api-key` and `/hunt-club-mesh/dev/stripe-webhook-secret`, and a thin-event webhook destination pointing at the `StripeWebhookUrl` stack output.

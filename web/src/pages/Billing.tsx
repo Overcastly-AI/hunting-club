@@ -3,6 +3,8 @@ import {
   type BillingInterval,
   CLUB_PRICING,
   ClubApiRequestError,
+  ENTITLEMENT_GRACE_DAYS,
+  entitlementFor,
   isEntitledStatus,
   type Plan,
   type Subscription,
@@ -29,6 +31,7 @@ export function Billing(props: { api: ClubApi }) {
         {([subscription, plans]) => (
           <>
             <Status subscription={subscription} />
+            {subscription ? <ManageSubscription api={props.api} /> : null}
             {subscription && isEntitledStatus(subscription.status) ? null : (
               <Pay api={props.api} plans={plans} />
             )}
@@ -72,40 +75,59 @@ function PriceLabel({ interval }: { interval: BillingInterval }) {
   );
 }
 
+/** What the date means: the trial's end, the last paid day of an ending plan, or renewal. */
+function dateLabel(sub: Subscription): string {
+  if (sub.status === 'trialing') return 'Free trial ends';
+  return sub.cancelAtPeriodEnd || sub.status === 'canceled' ? 'Ends on' : 'Renews on';
+}
+
 function Status({ subscription }: { subscription: Subscription | null }) {
   if (!subscription) return <p>No subscription yet.</p>;
-  // While trialing, the subscription is paid through the trial's end.
-  const trial = subscription.status === 'trialing';
+  // While trialing, paidThrough is the trial's end.
+  const pricing = subscription.interval ? CLUB_PRICING.intervals[subscription.interval] : undefined;
+  const { featuresUntil } = entitlementFor(subscription.clubId, subscription);
   return (
-    <dl className="panel">
-      <dt className="muted">Status</dt>
-      <dd>{SUBSCRIPTION_STATUS_LABELS[subscription.status]}</dd>
-      <dt className="muted">{trial ? 'Trial ends' : 'Paid through'}</dt>
-      <dd>{subscription.paidThrough ? formatDate(subscription.paidThrough) : 'Not paid yet'}</dd>
-    </dl>
+    <>
+      <dl className="panel">
+        {pricing ? (
+          <>
+            <dt className="muted">Plan</dt>
+            <dd>
+              {pricing.label} · {pricing.price}
+            </dd>
+          </>
+        ) : null}
+        <dt className="muted">Status</dt>
+        <dd>{SUBSCRIPTION_STATUS_LABELS[subscription.status]}</dd>
+        <dt className="muted">{dateLabel(subscription)}</dt>
+        <dd>{subscription.paidThrough ? formatDate(subscription.paidThrough) : 'Not paid yet'}</dd>
+      </dl>
+      {subscription.paidThrough && featuresUntil ? (
+        <p className="muted">
+          If a payment fails or the plan ends, club features stay on for {ENTITLEMENT_GRACE_DAYS}{' '}
+          days after {formatDate(subscription.paidThrough)}, until {formatDate(featuresUntil)}.
+        </p>
+      ) : null}
+    </>
   );
 }
 
-type PayError = 'not_configured' | 'failed';
+type RedirectError = 'not_configured' | 'failed';
 
-const PAY_ERRORS: Record<PayError, string> = {
+const REDIRECT_ERRORS: Record<RedirectError, string> = {
   not_configured: "Payments aren't set up yet. Check back soon.",
   failed: 'Could not open the payment page. Try again.',
 };
 
-function Pay(props: { api: ClubApi; plans: readonly Plan[] }) {
-  const [interval, setChosenInterval] = useState<BillingInterval>(CLUB_PRICING.defaultInterval);
+/** Sends the browser to a Stripe page (Checkout or the portal), with the shared error copy. */
+function useStripeRedirect() {
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<PayError | null>(null);
-  const plan = props.plans[0];
-
-  if (!plan) return <p>Payments are not open yet. Check back soon.</p>;
-
-  const startTrial = async () => {
+  const [error, setError] = useState<RedirectError | null>(null);
+  const go = async (open: () => Promise<string>) => {
     setBusy(true);
     setError(null);
     try {
-      navigateTo(await props.api.startCheckout(plan.id, interval));
+      navigateTo(await open());
     } catch (e) {
       setError(
         e instanceof ClubApiRequestError && e.code === 'not_configured'
@@ -115,6 +137,38 @@ function Pay(props: { api: ClubApi; plans: readonly Plan[] }) {
       setBusy(false);
     }
   };
+  const alert = error ? (
+    <p className="error" role="alert">
+      {REDIRECT_ERRORS[error]}
+    </p>
+  ) : null;
+  return { busy, go, alert };
+}
+
+/** Change the plan or card, or cancel: Stripe's customer portal. */
+function ManageSubscription(props: { api: ClubApi }) {
+  const portal = useStripeRedirect();
+  return (
+    <div>
+      <button
+        className="button"
+        type="button"
+        disabled={portal.busy}
+        onClick={() => void portal.go(() => props.api.openBillingPortal())}
+      >
+        Manage subscription
+      </button>
+      {portal.alert}
+    </div>
+  );
+}
+
+function Pay(props: { api: ClubApi; plans: readonly Plan[] }) {
+  const [interval, setChosenInterval] = useState<BillingInterval>(CLUB_PRICING.defaultInterval);
+  const checkout = useStripeRedirect();
+  const plan = props.plans[0];
+
+  if (!plan) return <p>Payments are not open yet. Check back soon.</p>;
 
   return (
     <div>
@@ -137,18 +191,14 @@ function Pay(props: { api: ClubApi; plans: readonly Plan[] }) {
       <button
         className="button primary"
         type="button"
-        disabled={busy}
-        onClick={() => void startTrial()}
+        disabled={checkout.busy}
+        onClick={() => void checkout.go(() => props.api.startCheckout(plan.id, interval))}
       >
         {CLUB_PRICING.cta}
       </button>
       <p className="muted">{CLUB_PRICING.terms}</p>
       <p className="muted">Payment is handled by Stripe. You come back here when it is done.</p>
-      {error ? (
-        <p className="error" role="alert">
-          {PAY_ERRORS[error]}
-        </p>
-      ) : null}
+      {checkout.alert}
     </div>
   );
 }

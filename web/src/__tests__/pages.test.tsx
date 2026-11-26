@@ -7,6 +7,7 @@ import {
   CLUB_PRICING,
   type ClubApiClient,
   emailCodeRules,
+  ENTITLEMENT_GRACE_DAYS,
   INITIALS_MAX,
   LEGAL_PATHS,
   ClubApiRequestError,
@@ -239,6 +240,23 @@ describe('club pages', () => {
     );
   });
 
+  it('sums up the club: members, stands, areas and subscription, each linking to its page', async () => {
+    const data = sampleData();
+    renderApp({ ...data, club: { ...data.club!, acreage: undefined } });
+    await signIn();
+    const summary = await screen.findByRole('list', { name: 'Club summary' });
+    const links = within(summary)
+      .getAllByRole('link')
+      .map((a) => [a.textContent, a.getAttribute('href')]);
+    expect(links).toEqual([
+      [`Members ${data.members.length}`, '#/roster'],
+      [`Stands ${data.stands.length}`, '#/stands'],
+      [`Areas ${data.areas.length}`, '#/stands'],
+      ['Subscription Active', '#/billing'],
+    ]);
+    expect(screen.queryByText(/Acreage/)).toBeNull();
+  });
+
   it('shows the plans before there is a club, with the way to start the trial', async () => {
     renderApp({ ...sampleData(), club: null });
     await signIn();
@@ -452,35 +470,56 @@ describe('club pages', () => {
       const data = sampleData();
       const { boundary: _none, ...club } = data.club!;
       await openMaps({ ...data, club });
-      expect(await screen.findByText(/Set the club's property line first/)).toBeTruthy();
+      expect(await screen.findByText(/Draw the property line in the app first/)).toBeTruthy();
       expect(screen.queryByRole('button', { name: 'Build map pack' })).toBeNull();
     });
   });
 
-  it('shows billing status and paid-through date, with no payment button while active', async () => {
-    renderApp();
+  it('shows the plan, price and renewal date, the grace period, and no payment button', async () => {
+    const data = sampleData();
+    renderApp({ ...data, subscription: { ...data.subscription!, interval: 'year' } });
     await signIn();
     go('#/billing');
     expect(await screen.findByText('Active')).toBeTruthy();
+    const yearly = CLUB_PRICING.intervals.year;
+    expect(screen.getByText(`${yearly.label} · ${yearly.price}`)).toBeTruthy();
+    expect(screen.getByText('Renews on')).toBeTruthy();
     expect(screen.getByText('August 1, 2027')).toBeTruthy();
+    expect(
+      screen.getByText(
+        `If a payment fails or the plan ends, club features stay on for ${ENTITLEMENT_GRACE_DAYS} days after August 1, 2027, until August 15, 2027.`,
+      ),
+    ).toBeTruthy();
     expect(screen.queryByRole('button', { name: CLUB_PRICING.cta })).toBeNull();
   });
 
-  it('shows when a trial ends', async () => {
+  it.each([
+    ['a free trial', { status: 'trialing' as const }, 'Free trial ends'],
+    ['a plan set to end', { cancelAtPeriodEnd: true }, 'Ends on'],
+  ])('dates %s', async (_name, change, label) => {
     const data = sampleData();
-    renderApp({
-      ...data,
-      subscription: {
-        ...data.subscription!,
-        status: 'trialing',
-        paidThrough: '2026-12-10T00:00:00.000Z',
-      },
-    });
+    renderApp({ ...data, subscription: { ...data.subscription!, ...change } });
     await signIn();
     go('#/billing');
-    expect(await screen.findByText('Trial ends')).toBeTruthy();
-    expect(screen.getByText('December 10, 2026')).toBeTruthy();
-    expect(screen.queryByText('Paid through')).toBeNull();
+    expect(await screen.findByText(label)).toBeTruthy();
+    expect(screen.queryByText('Renews on')).toBeNull();
+  });
+
+  it("opens Stripe's portal from Manage subscription, or says payments aren't set up", async () => {
+    const navigateTo = vi.spyOn(navigate, 'navigateTo').mockImplementation(() => undefined);
+    const { unmount } = renderApp();
+    await signIn();
+    go('#/billing');
+    fireEvent.click(await screen.findByRole('button', { name: 'Manage subscription' }));
+    await vi.waitFor(() =>
+      expect(navigateTo).toHaveBeenCalledWith('https://billing.stripe.com/p/session/cus_sample'),
+    );
+    unmount();
+    renderApp({ ...sampleData(), paymentsConfigured: false });
+    await signIn();
+    go('#/billing');
+    fireEvent.click(await screen.findByRole('button', { name: 'Manage subscription' }));
+    expect((await screen.findByRole('alert')).textContent).toMatch(/Payments aren't set up yet/);
   });
 
   it('offers the free trial, yearly by default or monthly, and sends the choice to Checkout', async () => {
@@ -646,9 +685,11 @@ describe('errors, empty states and navigation', () => {
 
   it('offers Try again when a page cannot load, and loads on the retry', async () => {
     const client = fakeClubClient(sampleData());
-    const list = vi.spyOn(client, 'listStands').mockRejectedValueOnce(offline());
     renderApp(undefined, servicesFor(client));
     await signIn();
+    // My club's summary loads the stands too: fail only the Stands page's first load.
+    await screen.findByRole('list', { name: 'Club summary' });
+    const list = vi.spyOn(client, 'listStands').mockRejectedValueOnce(offline());
     go('#/stands');
     fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
     expect(await screen.findByText('Big Oak Ladder')).toBeTruthy();

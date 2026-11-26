@@ -7,6 +7,8 @@
 import type Stripe from 'stripe';
 import type { ThinEvent } from './stripeWebhook';
 import {
+  BILLING_INTERVALS,
+  type BillingInterval,
   CLUB_PRICING,
   SubscriptionStatusSchema,
   type StripeEventApply,
@@ -23,6 +25,9 @@ export interface StripeApi {
   createCheckoutSession(
     params: Stripe.Checkout.SessionCreateParams,
   ): Promise<Stripe.Checkout.Session>;
+  createPortalSession(
+    params: Stripe.BillingPortal.SessionCreateParams,
+  ): Promise<Stripe.BillingPortal.Session>;
 }
 
 export function stripeApi(stripe: Stripe): StripeApi {
@@ -31,6 +36,7 @@ export function stripeApi(stripe: Stripe): StripeApi {
     retrieveCheckoutSession: (id) => stripe.checkout.sessions.retrieve(id),
     retrieveInvoice: (id) => stripe.invoices.retrieve(id),
     createCheckoutSession: (params) => stripe.checkout.sessions.create(params),
+    createPortalSession: (params) => stripe.billingPortal.sessions.create(params),
   };
 }
 
@@ -81,6 +87,7 @@ export function subscriptionState(
   const periodEnds = sub.items.data.map((item) => item.current_period_end);
   const paidThrough =
     sub.status === 'trialing' && sub.trial_end ? sub.trial_end : Math.max(0, ...periodEnds);
+  const interval = sub.items.data[0]?.price?.recurring?.interval;
   return {
     clubId,
     planId,
@@ -88,14 +95,34 @@ export function subscriptionState(
     stripeSubscriptionId: sub.id,
     status: SubscriptionStatusSchema.parse(sub.status),
     ...(paidThrough > 0 ? { paidThrough: new Date(paidThrough * 1000).toISOString() } : {}),
+    ...(isBillingInterval(interval) ? { interval } : {}),
+    // The portal cancels at period end with cancel_at (API 2025+) or the older flag.
+    cancelAtPeriodEnd: sub.cancel_at_period_end === true || sub.cancel_at != null,
   };
 }
+
+const isBillingInterval = (value: string | undefined): value is BillingInterval =>
+  (BILLING_INTERVALS as readonly (string | undefined)[]).includes(value);
 
 export interface CheckoutConfig {
   /** Stripe Price id per plan and billing interval (test mode in dev). */
   prices: StripePrices;
   successUrl: string;
   cancelUrl: string;
+  /** Where Stripe's customer portal sends the admin back to (the Billing page). */
+  portalReturnUrl: string;
+}
+
+/** Stripe's customer portal for a club's Stripe customer (change plan, card, or cancel). */
+export async function createBillingPortal(
+  api: StripeApi,
+  input: { customerId: string; returnUrl: string },
+): Promise<string> {
+  const session = await api.createPortalSession({
+    customer: input.customerId,
+    return_url: input.returnUrl,
+  });
+  return session.url;
 }
 
 /**
