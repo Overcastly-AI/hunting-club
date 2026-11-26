@@ -1,6 +1,7 @@
 {
   "cli": {
-    "appVersionSource": "remote"
+    "appVersionSource": "remote",
+    "version": ">= 27.11.0"
   },
   "build": {
     "development": {
@@ -23,7 +24,11 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      },
+      }
+    },
+    "testflight": {
+      "distribution": "store",
+      "autoIncrement": true,
       "ios": {
         "simulator": false
       }
@@ -37,6 +42,16 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "SET_ASC_APP_ID",
+        "ascApiKeyPath": "$ASC_KEY_PATH",
+        "ascApiKeyId": "$ASC_KEY_ID",
+        "ascApiKeyIssuerId": "$ASC_ISSUER_ID"
+      }
+    },
+    "testflight": {
+      "extends": "production"
+    }
   }
 }

@@ -1,0 +1,64 @@
+name: Build iOS for TestFlight
+
+# Manual only: builds the iOS app on EAS (testflight profile, App Store signing) and
+# submits it to App Store Connect, where it appears in TestFlight. See docs/IOS_BUILD.md.
+# Secrets (repo settings, never in the repo): EXPO_TOKEN, ASC_KEY_ID, ASC_ISSUER_ID,
+# ASC_KEY_P8 (the App Store Connect API key's .p8 contents). Variable: APPLE_TEAM_ID.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-ios-testflight
+  cancel-in-progress: false
+
+env:
+  # Pinned; app/eas.json "cli.version" requires at least this.
+  EAS_CLI_VERSION: 27.11.0
+
+jobs:
+  build:
+    name: Build and submit to TestFlight
+    runs-on: ubuntu-latest
+    # --auto-submit waits for the EAS build, then submits it.
+    timeout-minutes: 120
+    env:
+      # Read by app/eas.json's submit profile (ascApiKeyPath/Id/IssuerId) and by EAS
+      # build for App Store credentials. The key file never enters the checkout.
+      ASC_KEY_PATH: ${{ runner.temp }}/asc-api-key.p8
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: App Store Connect API key
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          umask 077
+          printf '%s\n' "$ASC_KEY_P8" > "$ASC_KEY_PATH"
+          chmod 600 "$ASC_KEY_PATH"
+
+      - name: Build and submit
+        working-directory: app
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_ASC_API_KEY_PATH: ${{ env.ASC_KEY_PATH }}
+          EXPO_ASC_KEY_ID: ${{ env.ASC_KEY_ID }}
+          EXPO_ASC_ISSUER_ID: ${{ env.ASC_ISSUER_ID }}
+          EXPO_APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+        run: npx --yes "eas-cli@${EAS_CLI_VERSION}" build -p ios --profile testflight --non-interactive --auto-submit
+
+      - name: Remove API key
+        if: always()
+        run: rm -f "$ASC_KEY_PATH"
