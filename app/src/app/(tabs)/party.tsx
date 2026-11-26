@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { AboutSection } from '../../about/AboutSection';
 import { ClubSection } from '../../club/ClubSection';
 import { Button } from '../../components/Button';
 import { Screen } from '../../components/Screen';
@@ -26,6 +27,7 @@ export default function PartyScreen() {
         <RadioStatus />
         <Button label={radioCopy.pair.title} onPress={() => router.push(PAIR_RADIO_ROUTE)} />
       </View>
+      <AboutSection />
     </Screen>
   );
 }

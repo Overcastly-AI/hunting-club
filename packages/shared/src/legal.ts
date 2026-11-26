@@ -6,6 +6,12 @@ import { CLOUD_ENVIRONMENTS } from './cloud';
 
 export const LEGAL_DRAFT_NOTICE = 'Draft, pending owner review';
 
+/**
+ * The plain safety note (docs/SPEC.md "Safety"): the app's settings and the Terms say it
+ * word for word. The only wording anywhere that mentions 911.
+ */
+export const SAFETY_NOTE = 'For emergencies, call 911 from your phone if you have service.';
+
 export interface LegalSection {
   readonly heading: string;
   readonly paragraphs: readonly string[];
@@ -85,7 +91,7 @@ export const termsOfUse: LegalDoc = {
       heading: 'Not an emergency service',
       paragraphs: [
         `${APP_NAME} helps hunters look out for each other over radios. It is not an emergency service.`,
-        'In an emergency, call 911 from your phone if you have service.',
+        SAFETY_NOTE,
       ],
     },
     {
@@ -111,3 +117,11 @@ export const termsOfUse: LegalDoc = {
     QUESTIONS,
   ],
 };
+
+/** Privacy and Terms by id: the web paths (LEGAL_PATHS) and the app routes use these ids. */
+export const LEGAL_DOCS = { privacy: privacyPolicy, terms: termsOfUse } as const;
+export type LegalDocId = keyof typeof LEGAL_DOCS;
+
+export function isLegalDocId(value: unknown): value is LegalDocId {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(LEGAL_DOCS, value);
+}

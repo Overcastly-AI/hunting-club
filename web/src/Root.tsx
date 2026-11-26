@@ -1,10 +1,4 @@
-import {
-  CHECKOUT_RETURN_PATHS,
-  JOIN_PATH,
-  LEGAL_PATHS,
-  privacyPolicy,
-  termsOfUse,
-} from '@huntclub/shared';
+import { CHECKOUT_RETURN_PATHS, JOIN_PATH, LEGAL_DOCS, LEGAL_PATHS } from '@huntclub/shared';
 import { lazy, Suspense, type ReactNode } from 'react';
 import type { WebClubServices } from './cloud';
 import { Loading } from './components/Loading';
@@ -45,10 +39,13 @@ export function Root(props: WebClubServices & { location: Pick<Location, 'pathna
         <CheckoutReturn outcome="cancel" />
       </Page>
     );
-  if (path === LEGAL_PATHS.privacy || path === LEGAL_PATHS.terms)
+  const legal = (Object.keys(LEGAL_PATHS) as (keyof typeof LEGAL_PATHS)[]).find(
+    (id) => LEGAL_PATHS[id] === path,
+  );
+  if (legal)
     return (
       <Page>
-        <Legal doc={path === LEGAL_PATHS.privacy ? privacyPolicy : termsOfUse} />
+        <Legal doc={LEGAL_DOCS[legal]} />
       </Page>
     );
   if (path !== '/' && path !== ADMIN_INDEX)
