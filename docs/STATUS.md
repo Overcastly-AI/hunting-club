@@ -53,10 +53,10 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 | Task | Session | Branch / PR | Status |
 |---|---|---|---|
-| Merged | — | #1–#9, #11–#15, #17–#25 | Free version functionally complete except onboarding; club backend (data, API, webhook, infra) done |
-| Onboarding (name ✓ #26, permissions, party/QR, map download) | session_01QS5dr7YPxgw1iqGybujET3 | agent/m2-ble-transport | Active |
-| App club layer (Cognito sign-in, API client, join club, entitlement) | session_01QS5dr3GmkJjvaYfcNrAN3b | agent/club-data | Active |
-| Weather #10, then setOwner + camera/notification permission modules | session_01QS5dr7o9U9xBRJaR86iMuW | agent/weather | Active (small) |
+| Merged | — | #1–#15, #17–#28, #30 | Free version wired end to end; onboarding welcome/pair/party/name/map download done; club backend done |
+| Onboarding (remaining: scan-to-join, permissions screen, setOwner from name) | session_01QS5dr7YPxgw1iqGybujET3 | agent/m2-ble-transport | Active |
+| App club layer #29 (sign-in, API client, join, entitlement); then club stands/areas/channel into RadioServices | session_01QS5dr3GmkJjvaYfcNrAN3b | agent/club-data | Active |
+| Weather worker | session_01QS5dr7o9U9xBRJaR86iMuW | agent/weather | Paused (#10, #27 merged) |
 | Map worker | session_01QS5dr3kB1sf3Bt86wVb3qW | agent/m4-offline-map | Paused (usage cap) |
 | CI/font/board worker | session_01QS5dr4qFtLFfyf7oVjMNAj | agent/m1-scaffold | Paused |
 | Web admin page + packages/design | session_01QS5dr5ia6B5X5renWEXyAe | agent/m2-research | Paused (usage limit hit mid-task) |
