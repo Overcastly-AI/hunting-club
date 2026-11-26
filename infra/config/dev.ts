@@ -1,5 +1,5 @@
+import { WEB_DOMAINS } from '@huntclub/shared/app';
 import { CLOUD_ENVIRONMENTS } from '@huntclub/shared/cloud';
-
 import type { EnvConfig } from './types';
 
 /**
@@ -10,7 +10,7 @@ export const dev: EnvConfig = {
   name: 'dev',
   account: '054825383623',
   region: 'us-east-1',
-  domainName: 'huntclub-dev.jaycobjones.com',
+  domainName: WEB_DOMAINS.dev,
   hostedZoneId: 'Z041480814OY68TGPM84F',
   certificateArn:
     'arn:aws:acm:us-east-1:054825383623:certificate/ece3d63e-c299-4106-b448-88b7bb3dcb48',
@@ -28,5 +28,6 @@ export const dev: EnvConfig = {
   cognito: {
     userPoolId: CLOUD_ENVIRONMENTS.dev.userPoolId,
     appClientId: CLOUD_ENVIRONMENTS.dev.appClientId,
+    webClientId: CLOUD_ENVIRONMENTS.dev.webClientId,
   },
 };

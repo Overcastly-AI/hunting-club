@@ -1,4 +1,4 @@
-import type { CognitoAuthErrorCode, MemberRole } from '@huntclub/shared';
+import { type MemberRole, signInCopy } from '@huntclub/shared';
 
 /** Every word the club screens show. Plain language; never channels or keys (CLAUDE.md). */
 export const clubCopy = {
@@ -18,25 +18,7 @@ export const clubCopy = {
     syncFailed: 'Could not reach the club service. Your club still works on the radio.',
     unavailable: 'Club sign-in is not available yet.',
   },
-  signIn: {
-    title: 'Sign in',
-    intro: 'We email you a 6-digit code. No password to remember.',
-    email: 'Email address',
-    sendCode: 'Email me a code',
-    sending: 'Sending…',
-    codeSent: (email: string) => `Enter the code we sent to ${email}.`,
-    code: '6-digit code',
-    confirm: 'Sign in',
-    useOtherEmail: 'Use a different email',
-    errors: {
-      wrong_code: 'That code is not right. Check the email and try again.',
-      code_expired: 'That code has expired. Ask for a new one.',
-      too_many_attempts: 'Too many tries. Wait a few minutes, then try again.',
-      invalid_email: 'Check the email address.',
-      network: 'No connection. Try again when you have signal.',
-      unknown: 'Something went wrong. Try again.',
-    } satisfies Record<CognitoAuthErrorCode, string>,
-  },
+  signIn: signInCopy,
   join: {
     title: 'Join club',
     intro: 'Tell your club who you are. This shows on the club roster.',

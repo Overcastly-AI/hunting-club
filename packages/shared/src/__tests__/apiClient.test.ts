@@ -84,6 +84,45 @@ describe('club API client', () => {
     ).rejects.toBeInstanceOf(ClubApiRequestError);
   });
 
+  it('creates a club and an invite with POSTs to the shared paths', async () => {
+    const club = {
+      id: CLUB,
+      name: 'Pine Hollow',
+      region: 'US',
+      overdueGraceMinutes: 30,
+      createdAt: ISO,
+      updatedAt: ISO,
+    };
+    const invite = {
+      id: '00000000-0000-4000-8000-000000000003',
+      clubId: CLUB,
+      token: 'ab'.repeat(32),
+      role: 'member',
+      maxUses: 1,
+      uses: 0,
+      expiresAt: ISO,
+      createdAt: ISO,
+      updatedAt: ISO,
+    };
+    const { api, calls } = client([
+      { status: 201, body: club },
+      { status: 201, body: invite },
+    ]);
+    const request = {
+      club: { name: 'Pine Hollow' },
+      admin: { displayName: 'Pat Lane', initials: 'PL' },
+    };
+    expect(await api.createClub(request)).toEqual(club);
+    expect(
+      await api.createInvite(CLUB, { role: 'member', maxUses: 1, expiresAt: ISO }),
+    ).toMatchObject({ token: invite.token });
+    expect(calls.map((c) => [c.method, c.url])).toEqual([
+      ['POST', 'https://api.test/clubs'],
+      ['POST', `https://api.test/clubs/${CLUB}/invites`],
+    ]);
+    expect(calls[0]!.body).toMatchObject(request);
+  });
+
   it('validates the redeem request before sending it', async () => {
     const { api, calls } = client([]);
     await expect(

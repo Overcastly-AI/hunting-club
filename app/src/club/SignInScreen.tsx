@@ -1,4 +1,4 @@
-import { CognitoAuthError, type CodeChallenge } from '@huntclub/shared';
+import { CognitoAuthError, EMAIL_CODE_LENGTH, type CodeChallenge } from '@huntclub/shared';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
@@ -76,7 +76,7 @@ export function SignInScreen({ onDone }: { onDone: () => void }) {
           <Button
             variant="primary"
             label={copy.confirm}
-            disabled={busy || code.trim().length < 6}
+            disabled={busy || code.trim().length < EMAIL_CODE_LENGTH}
             onPress={() => void confirm()}
           />
           <Button label={copy.useOtherEmail} onPress={() => setChallenge(null)} />

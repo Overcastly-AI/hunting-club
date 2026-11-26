@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { API_PATHS, type ApiPath, apiPath } from './apiPaths';
 import {
   type ApiErrorBody,
+  type ClubCreateRequest,
+  ClubCreateRequestSchema,
   ClubSecretResponseSchema,
   EntitlementSchema,
   MyClubSchema,
@@ -14,6 +16,9 @@ import {
 import {
   AreaSchema,
   ClubSchema,
+  type InviteCreate,
+  InviteCreateSchema,
+  InviteSchema,
   MemberSchema,
   PlanSchema,
   StandSchema,
@@ -97,9 +102,20 @@ export function createClubApiClient(options: ClubApiClientOptions) {
   return {
     listPlans: () => call('GET', API_PATHS.plans, {}, z.array(PlanSchema)),
     listMyClubs: () => call('GET', API_PATHS.myClubs, {}, z.array(MyClubSchema)),
+    /** Starts a club; the caller becomes its first admin. */
+    createClub: async (request: ClubCreateRequest) =>
+      call('POST', API_PATHS.clubs, {}, ClubSchema, ClubCreateRequestSchema.parse(request)),
     getClub: (clubId: string) => call('GET', API_PATHS.club, club(clubId), ClubSchema),
     listMembers: (clubId: string) =>
       call('GET', API_PATHS.members, club(clubId), z.array(MemberSchema)),
+    createInvite: async (clubId: string, request: InviteCreate) =>
+      call(
+        'POST',
+        API_PATHS.invites,
+        club(clubId),
+        InviteSchema,
+        InviteCreateSchema.parse(request),
+      ),
     listStands: (clubId: string) =>
       call('GET', API_PATHS.stands, club(clubId), z.array(StandSchema)),
     listAreas: (clubId: string) => call('GET', API_PATHS.areas, club(clubId), z.array(AreaSchema)),

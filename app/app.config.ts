@@ -2,7 +2,8 @@ import type { ExpoConfig } from 'expo/config';
 
 // Expo's config loader needs the explicit .ts extension.
 import { radioCopy } from './src/radio/copy.ts';
-import { colors } from './src/theme/colors.ts';
+// Constants-only subpath of the shared design tokens (Expo's config loader reads it).
+import { colors } from '@huntclub/design/colors';
 // App identifiers, shared with infra (universal-link files): one source of truth.
 import { APP_ID, URL_SCHEME } from '@huntclub/shared/app';
 

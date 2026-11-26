@@ -9,3 +9,5 @@ export * from './cloud';
 export * from './cognito';
 export * from './http';
 export * from './qr';
+export * from './session';
+export * from './signInCopy';
