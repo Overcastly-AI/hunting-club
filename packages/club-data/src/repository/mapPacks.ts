@@ -1,13 +1,21 @@
-/** High-res offline map packs: members read; only the map-pack Lambda (service) writes. */
+/**
+ * Club map packs. An admin starts a build (one at a time per club); the map-pack
+ * Lambda (service) marks it ready or failed. Members read them.
+ */
 import {
   type Club,
   ClubSchema,
   idSchema,
+  MAP_PACK_BUILD,
+  MAP_PACK_REASON_MAX,
   type MapPack,
-  MapPackCreateSchema,
+  type MapPackReady,
+  MapPackReadySchema,
   MapPackSchema,
+  type MapPackStart,
+  MapPackStartSchema,
+  mapPackKey,
 } from '@huntclub/shared';
-import type { z } from 'zod';
 import type { Actor } from '../actor';
 import {
   ConditionFailed,
@@ -16,36 +24,15 @@ import {
   NOT_EXISTS,
   queryAll,
   remove,
+  setFields,
   transact,
   TransactionFailed,
+  update,
 } from '../db';
-import { ATTR, CLUB_COLLECTIONS, keys } from '../items';
+import { ClubDataError } from '../errors';
+import { ATTR, CLUB_COLLECTIONS, epochSeconds, keys, readExpiry, withExpiry } from '../items';
+import { TTL_ATTRIBUTE } from '../table';
 import { authorizeClub, fromItem, getEntity, notFound, validate } from './common';
-
-export async function createMapPack(
-  ctx: Ctx,
-  actor: Actor,
-  clubId: string,
-  input: z.input<typeof MapPackCreateSchema>,
-  /** The map-pack Lambda picks the id up front (it names the S3 object). */
-  options: { id?: string } = {},
-): Promise<MapPack> {
-  await authorizeClub(ctx, actor, clubId, 'writeMapPacks');
-  const fields = validate(MapPackCreateSchema, input);
-  const id = options.id === undefined ? ctx.newId() : validate(idSchema, options.id);
-  const now = ctx.nowIso();
-  const pack: MapPack = { id, clubId, ...fields, createdAt: now, updatedAt: now };
-  try {
-    await transact(ctx, [
-      { check: keys.club(clubId), condition: EXISTS },
-      { put: { ...keys.inClub(clubId, 'mapPack', pack.id), ...pack }, condition: NOT_EXISTS },
-    ]);
-  } catch (e) {
-    if (e instanceof TransactionFailed) throw notFound();
-    throw e;
-  }
-  return pack;
-}
 
 /** Admin: the club to build a map pack for (its property line gives the bounds). */
 export async function getClubForMapPack(ctx: Ctx, actor: Actor, clubId: string): Promise<Club> {
@@ -54,6 +41,127 @@ export async function getClubForMapPack(ctx: Ctx, actor: Actor, clubId: string):
   if (!club) throw notFound();
   return club;
 }
+
+/**
+ * Admin: records a pack as `building` and takes the club's build lock. Both expire
+ * after MAP_PACK_BUILD.lockSeconds, so a builder that dies never blocks the club.
+ * `conflict` while another build is pending.
+ */
+export async function startMapPackBuild(
+  ctx: Ctx,
+  actor: Actor,
+  clubId: string,
+  input: MapPackStart,
+  /** The API picks the id up front (it names the S3 object and the Lambda's job). */
+  options: { id?: string } = {},
+): Promise<MapPack> {
+  await authorizeClub(ctx, actor, clubId, 'requestMapPack');
+  const fields = validate(MapPackStartSchema, input);
+  const id = options.id === undefined ? ctx.newId() : validate(idSchema, options.id);
+  const now = ctx.now();
+  const nowIso = now.toISOString();
+  const expiresAt = new Date(now.getTime() + MAP_PACK_BUILD.lockSeconds * 1000).toISOString();
+  const pack: MapPack = {
+    id,
+    clubId,
+    ...fields,
+    s3Key: mapPackKey(clubId, id),
+    status: 'building',
+    expiresAt,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  };
+  try {
+    await transact(ctx, [
+      { check: keys.club(clubId), condition: EXISTS },
+      {
+        put: withExpiry({ ...keys.mapPackBuild(clubId), packId: id, expiresAt }),
+        // Free, or held by a build whose time is up.
+        condition: `${NOT_EXISTS} OR #exp <= :nowSec`,
+        names: { '#exp': TTL_ATTRIBUTE },
+        values: { ':nowSec': epochSeconds(now) },
+      },
+      {
+        put: withExpiry({ ...keys.inClub(clubId, 'mapPack', id), ...pack }),
+        condition: NOT_EXISTS,
+      },
+    ]);
+  } catch (e) {
+    if (e instanceof TransactionFailed && e.failed.has(1)) {
+      throw new ClubDataError('conflict', 'a map pack is already being built for this club');
+    }
+    if (e instanceof TransactionFailed) throw notFound();
+    throw e;
+  }
+  return pack;
+}
+
+/** Service: a building pack is now ready to download. */
+export function finishMapPack(
+  ctx: Ctx,
+  actor: Actor,
+  clubId: string,
+  id: string,
+  input: MapPackReady,
+): Promise<MapPack> {
+  return settle(ctx, actor, clubId, id, () => ({
+    status: 'ready',
+    ...validate(MapPackReadySchema, input),
+  }));
+}
+
+/** Service: a build failed; `reason` is a short sentence for admins (no stack traces). */
+export function failMapPack(
+  ctx: Ctx,
+  actor: Actor,
+  clubId: string,
+  id: string,
+  reason: string,
+): Promise<MapPack> {
+  return settle(ctx, actor, clubId, id, () => ({
+    status: 'failed',
+    reason: reason.trim().slice(0, MAP_PACK_REASON_MAX) || 'build failed',
+  }));
+}
+
+/**
+ * Ends a build: sets the outcome (built after the authorization check, so unauthorized
+ * callers never reach validation), drops the expiry, releases the club's lock.
+ */
+async function settle(
+  ctx: Ctx,
+  actor: Actor,
+  clubId: string,
+  id: string,
+  outcome: () => Record<string, unknown>,
+): Promise<MapPack> {
+  await authorizeClub(ctx, actor, clubId, 'writeMapPacks');
+  const set = setFields(outcome(), ctx.nowIso());
+  let item;
+  try {
+    item = await update(ctx, keys.inClub(clubId, 'mapPack', id), `${set.expression} REMOVE #exp`, {
+      condition: `${EXISTS} AND #status = :building`,
+      names: { ...set.names, '#status': 'status', '#exp': TTL_ATTRIBUTE },
+      values: { ...set.values, ':building': 'building' },
+    });
+  } catch (e) {
+    if (e instanceof ConditionFailed) throw notFound();
+    throw e;
+  }
+  try {
+    // Only this build's lock: a newer build may hold it once ours timed out.
+    await remove(ctx, keys.mapPackBuild(clubId), {
+      condition: 'packId = :id',
+      values: { ':id': id },
+    });
+  } catch (e) {
+    if (!(e instanceof ConditionFailed)) throw e;
+  }
+  return fromItem(MapPackSchema, item);
+}
+
+/** A pack still `building` after its expiry: its builder died (DynamoDB TTL removes it later). */
+const TIMED_OUT = 'the build did not finish in time';
 
 export async function listMapPacks(ctx: Ctx, actor: Actor, clubId: string): Promise<MapPack[]> {
   await authorizeClub(ctx, actor, clubId, 'readMapPacks');
@@ -65,7 +173,13 @@ export async function listMapPacks(ctx: Ctx, actor: Actor, clubId: string): Prom
       ':prefix': CLUB_COLLECTIONS.mapPack,
     },
   });
-  return items.map((i) => fromItem(MapPackSchema, i));
+  const now = ctx.now().getTime();
+  return items.map((i) => {
+    const pack = fromItem(MapPackSchema, readExpiry(i));
+    if (pack.status !== 'building' || Date.parse(pack.expiresAt) > now) return pack;
+    const { expiresAt: _expired, ...rest } = pack;
+    return { ...rest, status: 'failed', reason: TIMED_OUT };
+  });
 }
 
 export async function deleteMapPack(

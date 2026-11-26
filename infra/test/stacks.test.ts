@@ -3,7 +3,7 @@ import { App } from 'aws-cdk-lib';
 import { Match } from 'aws-cdk-lib/assertions';
 import { GSIS, PARTITION_PREFIXES, TABLE_KEYS, TTL_ATTRIBUTE } from '@huntclub/club-data';
 import { APP_ID } from '@huntclub/shared';
-import { MAP_PACKS_PREFIX } from '@huntclub/shared/maps';
+import { MAP_PACK_BUILD, MAP_PACKS_PREFIX } from '@huntclub/shared/maps';
 import {
   API_ENV,
   CLUB_API_SECRETS,
@@ -15,11 +15,7 @@ import {
   userPoolClientIds,
 } from '../config';
 import { dev } from '../config/dev';
-import {
-  CLUB_API_TABLE_ACTIONS,
-  MAP_PACK_BUILDER_TABLE_ACTIONS,
-  MAP_PACK_BUILD_TIMEOUT,
-} from '../src/stacks/api-stack';
+import { CLUB_API_TABLE_ACTIONS, MAP_PACK_BUILDER_TABLE_ACTIONS } from '../src/stacks/api-stack';
 import { buildApp } from '../src/app';
 import { webPageRewriteSource } from '../src/web-pages';
 import { synthTemplates } from './helpers';
@@ -338,7 +334,7 @@ describe('api stack', () => {
   describe('map-pack builder', () => {
     const builder = () => {
       const fns = t.findResources('AWS::Lambda::Function', {
-        Properties: { Timeout: MAP_PACK_BUILD_TIMEOUT.toSeconds() },
+        Properties: { Timeout: MAP_PACK_BUILD.timeoutSeconds },
       });
       expect(Object.keys(fns)).toHaveLength(1);
       return Object.entries(fns)[0]!;
@@ -356,9 +352,13 @@ describe('api stack', () => {
       });
       t.resourceCountIs('AWS::Lambda::Url', 2);
       t.resourceCountIs('AWS::Events::Rule', 0);
+      // The shared tile cap (MAP_PACK_LIMITS) assumes exactly this timeout.
+      expect(fn.Properties.Timeout).toBe(MAP_PACK_BUILD.timeoutSeconds);
+      // One build at a time, never retried.
+      expect(fn.Properties.ReservedConcurrentExecutions).toBe(1);
       t.hasResourceProperties('AWS::Lambda::EventInvokeConfig', {
-        MaximumRetryAttempts: 1,
-        MaximumEventAgeInSeconds: 3600,
+        MaximumRetryAttempts: 0,
+        MaximumEventAgeInSeconds: MAP_PACK_BUILD.lockSeconds,
       });
     });
 

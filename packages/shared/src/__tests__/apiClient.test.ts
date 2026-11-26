@@ -1,6 +1,6 @@
 import { createClubApiClient, ClubApiRequestError } from '../apiClient';
 import { apiPath, API_PATHS } from '../apiPaths';
-import { entitlementFor, ENTITLEMENT_GRACE_DAYS } from '../api';
+import { entitlementFor, ENTITLEMENT_GRACE_DAYS, hasClubFeatures } from '../api';
 import { DOWNLOAD_LIMITS } from '../maps';
 import { scriptedFetch } from './fakeFetch';
 
@@ -163,6 +163,22 @@ describe('entitlementFor', () => {
       entitlementFor(CLUB, { status: 'canceled', paidThrough: ISO }).featuresUntil,
     ).toBeUndefined();
     expect(entitlementFor(CLUB, undefined)).toEqual({ clubId: CLUB });
+  });
+});
+
+describe('hasClubFeatures', () => {
+  it('is closed without an entitlement or a featuresUntil date', () => {
+    expect(hasClubFeatures(null, 0)).toBe(false);
+    expect(hasClubFeatures({}, 0)).toBe(false);
+    expect(hasClubFeatures(entitlementFor(CLUB, undefined), 0)).toBe(false);
+  });
+
+  it('is open until featuresUntil (ISO from the API or epoch ms on a phone), then freezes', () => {
+    const until = Date.parse(ISO);
+    for (const featuresUntil of [ISO, until]) {
+      expect(hasClubFeatures({ featuresUntil }, until - 1)).toBe(true);
+      expect(hasClubFeatures({ featuresUntil }, new Date(until))).toBe(false);
+    }
   });
 });
 

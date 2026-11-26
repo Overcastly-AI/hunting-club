@@ -2,12 +2,39 @@
 // club's map_pack item on DynamoDB Local. No network.
 import { SERVICE } from '@huntclub/club-data';
 import { World } from '@huntclub/club-data/testing';
-import { MAP_PACKS_PREFIX, countTiles, type Bounds } from '@huntclub/shared';
-import { TILE_FETCH_POLICY, buildMapPack, politeTileFetcher } from '../mapPackBuilder';
+import {
+  type Bounds,
+  MAP_PACKS_PREFIX,
+  MAP_PACK_BUILD,
+  type MapPackBuild,
+  TILE_FETCH_POLICY,
+  countTiles,
+} from '@huntclub/shared';
+import { type MapPackBuilderDeps, buildMapPack, politeTileFetcher } from '../mapPackBuilder';
 
 const BOUNDS: Bounds = [-90.01, 40.0, -89.99, 40.02];
-const PACK_ID = '00000000-0000-4000-8000-0000000000b1';
 let w: World;
+const oak = () => w.club('Oak Ridge');
+
+/** Starts a pack as the API does (admin, building + lock) and returns its build job. */
+async function startBuild(job: Omit<MapPackBuild, 'clubId' | 'packId'>): Promise<MapPackBuild> {
+  const { bounds, minZoom, maxZoom } = job;
+  const pack = await w.data.startMapPackBuild(w.as('ada'), oak(), {
+    bounds,
+    minZoom,
+    maxZoom,
+    source: 'usgs',
+  });
+  return { ...job, clubId: oak(), packId: pack.id };
+}
+const deps = (over: Partial<MapPackBuilderDeps> = {}): MapPackBuilderDeps => ({
+  data: w.data,
+  fetchTile: async () => Buffer.from('jpeg'),
+  putObject: async () => undefined,
+  ...over,
+});
+const packStatus = async (id: string) =>
+  (await w.data.listMapPacks(SERVICE, oak())).find((p) => p.id === id);
 
 beforeAll(async () => {
   w = await World.seedTwoClubs();
@@ -22,32 +49,25 @@ const header = (archive: Buffer) => ({
   tileType: archive.readUInt8(99),
 });
 
-it('fetches every tile of the property, writes a PMTiles archive and records the pack', async () => {
+it('fetches every tile of the property, writes a PMTiles archive and marks the pack ready', async () => {
   const urls: string[] = [];
   const stored = new Map<string, Buffer>();
+  const job = await startBuild({ basemap: 'topo', bounds: BOUNDS, minZoom: 12, maxZoom: 13 });
   const pack = await buildMapPack(
-    {
-      clubId: w.club('Oak Ridge'),
-      packId: PACK_ID,
-      basemap: 'topo',
-      bounds: BOUNDS,
-      minZoom: 12,
-      maxZoom: 13,
-    },
-    {
-      data: w.data,
+    job,
+    deps({
       fetchTile: async (url) => {
         urls.push(url);
         return url.endsWith('/0/0') ? null : Buffer.from(`jpeg ${url}`);
       },
       putObject: async (key, body) => void stored.set(key, body),
-    },
+    }),
   );
   expect(urls).toHaveLength(countTiles(BOUNDS, 12, 13));
   expect(urls[0]).toMatch(
     /^https:\/\/basemap\.nationalmap\.gov\/.+\/USGSTopo\/MapServer\/tile\/13\/\d+\/\d+$/,
   );
-  const key = `${MAP_PACKS_PREFIX}${w.club('Oak Ridge')}/${PACK_ID}.pmtiles`;
+  const key = `${MAP_PACKS_PREFIX}${oak()}/${job.packId}.pmtiles`;
   const archive = stored.get(key)!;
   expect(header(archive)).toEqual({
     magic: 'PMTiles',
@@ -56,32 +76,62 @@ it('fetches every tile of the property, writes a PMTiles archive and records the
     tileType: 3,
   });
   expect(pack).toMatchObject({
-    id: PACK_ID,
+    id: job.packId,
+    status: 'ready',
     s3Key: key,
-    source: 'usgs-topo',
     sizeBytes: archive.length,
     minZoom: 12,
     maxZoom: 13,
   });
-  expect(await w.data.listMapPacks(w.as('max'), w.club('Oak Ridge'))).toEqual([pack]);
+  expect(await w.data.listMapPacks(w.as('max'), oak())).toEqual([pack]);
 });
 
-it('refuses a build over the size caps without fetching anything', async () => {
+it('refuses a build over the club pack caps without fetching, and records why', async () => {
   const fetchTile = jest.fn();
-  await expect(
-    buildMapPack(
-      {
-        clubId: w.club('Oak Ridge'),
-        packId: PACK_ID,
-        basemap: 'aerial',
-        bounds: [-91, 39, -89, 41],
-        minZoom: 8,
-        maxZoom: 15,
-      },
-      { data: w.data, fetchTile, putObject: jest.fn() },
-    ),
-  ).rejects.toThrow('over the tiles limit');
+  const job = await startBuild({
+    basemap: 'aerial',
+    bounds: [-91, 39, -89, 41],
+    minZoom: 8,
+    maxZoom: 15,
+  });
+  await expect(buildMapPack(job, deps({ fetchTile }))).rejects.toThrow(
+    'too big for one pack (tiles)',
+  );
   expect(fetchTile).not.toHaveBeenCalled();
+  expect(await packStatus(job.packId)).toMatchObject({
+    status: 'failed',
+    reason: 'the property is too big for one pack (tiles)',
+  });
+});
+
+it('records a USGS outage as the reason, and frees the club for the next build', async () => {
+  const job = await startBuild({ basemap: 'topo', bounds: BOUNDS, minZoom: 12, maxZoom: 12 });
+  const outage = politeTileFetcher({
+    fetch: async () => ({ status: 503, arrayBuffer: async () => new ArrayBuffer(0) }),
+    userAgent: 'test',
+    sleep: async () => undefined,
+  });
+  await expect(buildMapPack(job, deps({ fetchTile: outage }))).rejects.toThrow();
+  expect(await packStatus(job.packId)).toMatchObject({
+    status: 'failed',
+    reason: 'USGS tiles could not be fetched (503)',
+  });
+  await expect(
+    startBuild({ basemap: 'topo', bounds: BOUNDS, minZoom: 12, maxZoom: 12 }),
+  ).resolves.toBeDefined();
+});
+
+it('never shows admins the details of an unexpected error', async () => {
+  // The previous test left a build pending; time it out so a new one can start.
+  w.clock.advance(MAP_PACK_BUILD.lockSeconds * 1000 + 1000);
+  const job = await startBuild({ basemap: 'topo', bounds: BOUNDS, minZoom: 12, maxZoom: 12 });
+  const putObject = async () => {
+    throw new Error('AccessDenied arn:aws:s3:::secret-bucket');
+  };
+  await expect(buildMapPack(job, deps({ putObject }))).rejects.toThrow('AccessDenied');
+  const failed = await packStatus(job.packId);
+  expect(failed).toMatchObject({ status: 'failed' });
+  expect(JSON.stringify(failed)).not.toMatch(/AccessDenied|arn:/);
 });
 
 describe('politeTileFetcher', () => {
@@ -105,7 +155,7 @@ describe('politeTileFetcher', () => {
       TILE_FETCH_POLICY.backoffMs * 2,
     ]);
     expect(await fetchTile('b')).toBeNull();
-    await expect(fetchTile('c')).rejects.toThrow('tile fetch failed (400)');
+    await expect(fetchTile('c')).rejects.toThrow('USGS tiles could not be fetched (400)');
   });
 
   it(`starts at most ${TILE_FETCH_POLICY.perSecond} requests per second and sends its user agent`, async () => {

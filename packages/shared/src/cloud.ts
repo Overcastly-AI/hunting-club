@@ -12,7 +12,6 @@ export interface CloudEnvironment {
   /** Club API Function URL (no trailing slash); set once deployed. */
   readonly clubApiUrl?: string;
   /** Web admin page and club map packs (CloudFront), e.g. `huntclub-dev.example.com`. */
-  readonly webDomain: string;
 }
 
 export const CLOUD_ENVIRONMENTS = {
@@ -21,7 +20,6 @@ export const CLOUD_ENVIRONMENTS = {
     userPoolId: 'us-east-1_0W2YbjVht',
     appClientId: '5dn1jcrnef1v6cfv6da0i7qtne',
     webClientId: '6mpfpr6nrdqddim7trfqckegu5',
-    webDomain: 'huntclub-dev.jaycobjones.com',
     // Pending from the operator: the deployed club API URL.
   },
 } as const satisfies Record<string, CloudEnvironment>;

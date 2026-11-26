@@ -177,16 +177,56 @@ export function polygonBounds(polygon: { coordinates: unknown }): Bounds {
   return [Math.min(...lons), Math.min(...lats), Math.max(...lons), Math.max(...lats)];
 }
 
+/** How politely the map-pack builder fetches USGS tiles (no published bulk policy). */
+export const TILE_FETCH_POLICY = {
+  /** Requests in flight at once. */
+  concurrency: 4,
+  /** At most this many requests start per second. */
+  perSecond: 8,
+  /** Retries for 429, 5xx and network errors, with doubling backoff. */
+  retries: 3,
+  backoffMs: 500,
+} as const;
+
+/** Lambda's maximum run time; the builder uses all of it. */
+const BUILD_TIMEOUT_SECONDS = 900;
+
+/** The map-pack builder Lambda's time budget. */
+export const MAP_PACK_BUILD = {
+  timeoutSeconds: BUILD_TIMEOUT_SECONDS,
+  /**
+   * Left over after fetching at the full rate: USGS latency, retries and backoff,
+   * writing the archive and uploading it. A build that would not fit is refused.
+   */
+  marginSeconds: 300,
+  /** A pending build blocks the next one for this long, even if its Lambda died. */
+  lockSeconds: BUILD_TIMEOUT_SECONDS + 60,
+} as const;
+
+/**
+ * Caps for a club map pack: the phone-download caps, with the tile count derived from
+ * the fetch rate and the builder's time budget so every accepted pack can finish.
+ */
+export const MAP_PACK_LIMITS = {
+  ...DOWNLOAD_LIMITS,
+  maxTiles: Math.min(
+    DOWNLOAD_LIMITS.maxTiles,
+    TILE_FETCH_POLICY.perSecond * (MAP_PACK_BUILD.timeoutSeconds - MAP_PACK_BUILD.marginSeconds),
+  ),
+} as const;
+
+export type DownloadLimits = { readonly maxTiles: number; readonly maxBytes: number };
+
 /** Size check for one basemap layer over bounds and a map-zoom range. */
 export function estimatePack(
   bounds: Readonly<Bounds>,
   minZoom: number,
   maxZoom: number,
   basemap: BasemapId,
+  limits: DownloadLimits = DOWNLOAD_LIMITS,
 ): { tiles: number; bytes: number; overLimit: 'tiles' | 'bytes' | null } {
   const tiles = countTiles(bounds, minZoom, maxZoom);
   const bytes = tiles * BASEMAPS[basemap].averageTileBytes;
-  const overLimit =
-    tiles > DOWNLOAD_LIMITS.maxTiles ? 'tiles' : bytes > DOWNLOAD_LIMITS.maxBytes ? 'bytes' : null;
+  const overLimit = tiles > limits.maxTiles ? 'tiles' : bytes > limits.maxBytes ? 'bytes' : null;
   return { tiles, bytes, overLimit };
 }

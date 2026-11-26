@@ -14,7 +14,7 @@ export { readSecureParameter } from './secrets';
 export { createStripeWebhook, type StripeWebhookDeps, type ThinEvent } from './stripeWebhook';
 export { clubDataForTable, connectStripe, mapPackStarter, mapPackUploader } from './clients';
 export {
-  TILE_FETCH_POLICY,
+  MapPackBuildError,
   buildMapPack,
   politeTileFetcher,
   type MapPackBuilderDeps,

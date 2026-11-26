@@ -6,7 +6,8 @@ import { Button } from '../components/Button';
 import { colors, spacing, textStyles } from '../theme';
 import { useClub } from './ClubProvider';
 import { clubCopy } from './copy';
-import { clubFeaturesOpen, entitlementOf } from './entitlement';
+import { hasClubFeatures } from '@huntclub/shared';
+import { entitlementOf } from './entitlement';
 import { SIGN_IN_ROUTE } from './routes';
 
 const copy = clubCopy.section;
@@ -42,7 +43,7 @@ export function ClubSection({ now = Date.now }: { now?: () => number }) {
           {club.pendingInvite ? <Text style={styles.body}>{copy.pending}</Text> : null}
           {club.syncedAt !== null ? (
             <Text style={styles.body}>
-              {clubFeaturesOpen(entitlementOf(club), now())
+              {hasClubFeatures(entitlementOf(club), now())
                 ? copy.featuresOpen
                 : copy.featuresClosed}
             </Text>

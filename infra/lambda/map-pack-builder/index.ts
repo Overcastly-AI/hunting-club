@@ -26,6 +26,6 @@ export const handler = async (event: unknown) => {
     fetchTile: politeTileFetcher({ fetch, userAgent: userAgent(env(API_ENV.webOrigin)) }),
     putObject: mapPackUploader(env(API_ENV.mapPackBucket)),
   });
-  console.log(`map pack ${pack.id} built for club ${pack.clubId}: ${pack.sizeBytes} bytes`);
+  console.log(`map pack ${pack.id} for club ${pack.clubId}: ${pack.status}`);
   return { packId: pack.id };
 };

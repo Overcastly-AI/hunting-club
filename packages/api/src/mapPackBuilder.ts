@@ -8,7 +8,8 @@ import { type ClubData, SERVICE } from '@huntclub/club-data';
 import { TILE_TYPE, type Tile, writePmtiles } from '@huntclub/pmtiles';
 import {
   BASEMAPS,
-  DOWNLOAD_LIMITS,
+  MAP_PACK_LIMITS,
+  TILE_FETCH_POLICY,
   type MapPack,
   type MapPackBuild,
   MapPackBuildSchema,
@@ -18,16 +19,11 @@ import {
   tilesInBounds,
 } from '@huntclub/shared';
 
-/** How politely tiles are fetched from USGS (no published bulk policy: stay gentle). */
-export const TILE_FETCH_POLICY = {
-  /** Requests in flight at once. */
-  concurrency: 4,
-  /** At most this many requests start per second. */
-  perSecond: 8,
-  /** Retries for 429, 5xx and network errors, with doubling backoff. */
-  retries: 3,
-  backoffMs: 500,
-} as const;
+/** A failure whose message is safe to show admins as the pack's reason. */
+export class MapPackBuildError extends Error {}
+
+/** Shown when a build fails for a reason we did not anticipate (details stay in logs). */
+const UNEXPECTED = 'the build failed; try again later';
 
 /** Fetches one tile; null when the service has no tile there (404). */
 export type TileFetcher = (url: string) => Promise<Uint8Array | null>;
@@ -71,7 +67,7 @@ export function politeTileFetcher(options: PoliteFetchOptions): TileFetcher {
       }
       const transient = status === 0 || status === 429 || status >= 500;
       if (!transient || attempt >= TILE_FETCH_POLICY.retries) {
-        throw new Error(`tile fetch failed (${status || 'network'})`);
+        throw new MapPackBuildError(`USGS tiles could not be fetched (${status || 'network'})`);
       }
       await sleep(TILE_FETCH_POLICY.backoffMs * 2 ** attempt);
     }
@@ -102,14 +98,34 @@ export interface MapPackBuilderDeps {
   now?: () => Date;
 }
 
-/** Builds, uploads and records one club map pack. */
+/**
+ * Builds, uploads and records one club map pack. Any failure marks the pack failed
+ * (which frees the club for the next build) and is rethrown for the Lambda's logs.
+ */
 export async function buildMapPack(input: unknown, deps: MapPackBuilderDeps): Promise<MapPack> {
   const build: MapPackBuild = MapPackBuildSchema.parse(input);
+  try {
+    const sizeBytes = await buildArchive(build, deps);
+    const builtAt = (deps.now?.() ?? new Date()).toISOString();
+    return await deps.data.finishMapPack(SERVICE, build.clubId, build.packId, {
+      sizeBytes,
+      builtAt,
+    });
+  } catch (error) {
+    const reason = error instanceof MapPackBuildError ? error.message : UNEXPECTED;
+    await deps.data.failMapPack(SERVICE, build.clubId, build.packId, reason);
+    throw error;
+  }
+}
+
+/** Fetches the tiles, writes the PMTiles archive and uploads it; returns its size. */
+async function buildArchive(build: MapPackBuild, deps: MapPackBuilderDeps): Promise<number> {
   const { clubId, packId, basemap, bounds, minZoom, maxZoom } = build;
   // The API checked these; check again, the Lambda must never exceed the caps.
-  const estimate = estimatePack(bounds, minZoom, maxZoom, basemap);
-  if (estimate.overLimit) throw new Error(`map pack over the ${estimate.overLimit} limit`);
-
+  const estimate = estimatePack(bounds, minZoom, maxZoom, basemap, MAP_PACK_LIMITS);
+  if (estimate.overLimit) {
+    throw new MapPackBuildError(`the property is too big for one pack (${estimate.overLimit})`);
+  }
   const fetched = await pool(
     tilesInBounds(bounds, minZoom, maxZoom),
     TILE_FETCH_POLICY.concurrency,
@@ -129,22 +145,9 @@ export async function buildMapPack(input: unknown, deps: MapPackBuilderDeps): Pr
       source: base.source,
     },
   });
-  if (archive.length > DOWNLOAD_LIMITS.maxBytes) throw new Error('map pack over the bytes limit');
-
-  const key = mapPackKey(clubId, packId);
-  await deps.putObject(key, archive);
-  return deps.data.createMapPack(
-    SERVICE,
-    clubId,
-    {
-      bounds: [...bounds],
-      minZoom,
-      maxZoom,
-      source: base.source,
-      s3Key: key,
-      sizeBytes: archive.length,
-      builtAt: (deps.now?.() ?? new Date()).toISOString(),
-    },
-    { id: packId },
-  );
+  if (archive.length > MAP_PACK_LIMITS.maxBytes) {
+    throw new MapPackBuildError('the property is too big for one pack (bytes)');
+  }
+  await deps.putObject(mapPackKey(clubId, packId), archive);
+  return archive.length;
 }

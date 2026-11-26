@@ -1,21 +1,19 @@
 // Port of supabase/tests/database/30_billing_and_service_tables.test.sql: plans,
 // subscriptions, Stripe events and map packs (service-written data).
-import type { MapPackCreate, StripeEventApply } from '@huntclub/shared';
+import { type MapPackStart, type StripeEventApply, mapPackKey } from '@huntclub/shared';
 import { ANONYMOUS, SERVICE } from '../index';
 import { World, expectCode } from '../testing/world';
 
 let w: World;
 const oak = () => w.club('Oak Ridge');
 
-const PACK: MapPackCreate = {
+const PACK: MapPackStart = {
   bounds: [-90, 40, -89.9, 40.1],
   minZoom: 10,
   maxZoom: 16,
   source: 'usgs',
-  s3Key: 'packs/oak.pmtiles',
-  sizeBytes: 1024,
-  builtAt: new Date().toISOString(),
 };
+let packId: string;
 const syncOak = (eventId: string, overrides: Partial<StripeEventApply> = {}): StripeEventApply => ({
   eventId,
   clubId: oak(),
@@ -28,7 +26,11 @@ const syncOak = (eventId: string, overrides: Partial<StripeEventApply> = {}): St
 
 beforeAll(async () => {
   w = await World.seedTwoClubs();
-  await w.data.createMapPack(SERVICE, oak(), PACK);
+  packId = (await w.data.startMapPackBuild(w.as('ada'), oak(), PACK)).id;
+  await w.data.finishMapPack(SERVICE, oak(), packId, {
+    sizeBytes: 1024,
+    builtAt: w.clock.inDays(0),
+  });
   await w.data.putPlan(SERVICE, { id: 'retired_plan', name: 'Old', memberLimit: 5, active: false });
 });
 afterAll(() => w.destroy());
@@ -143,13 +145,17 @@ describe('Stripe events', () => {
 describe('map packs', () => {
   it("a member reads their club's map packs", async () => {
     expect((await w.data.listMapPacks(w.as('max'), oak())).map((p) => p.s3Key)).toEqual([
-      'packs/oak.pmtiles',
+      mapPackKey(oak(), packId),
     ]);
   });
 
-  it('members cannot create map packs', async () => {
+  it('members cannot start or finish map packs', async () => {
+    await expectCode(w.data.startMapPackBuild(w.as('max'), oak(), PACK), 'forbidden');
     await expectCode(
-      w.data.createMapPack(w.as('max'), oak(), { ...PACK, s3Key: 'x' }),
+      w.data.finishMapPack(w.as('ada'), oak(), packId, {
+        sizeBytes: 1,
+        builtAt: w.clock.inDays(0),
+      }),
       'forbidden',
     );
   });

@@ -7,7 +7,7 @@ import type * as s3 from 'aws-cdk-lib/aws-s3';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import type { Construct } from 'constructs';
 import { PARTITION_PREFIXES } from '@huntclub/club-data';
-import { MAP_PACKS_PREFIX } from '@huntclub/shared/maps';
+import { MAP_PACK_BUILD, MAP_PACKS_PREFIX } from '@huntclub/shared/maps';
 import {
   API_ENV,
   CLUB_API_SECRETS,
@@ -26,15 +26,12 @@ export interface ApiStackProps extends StackProps {
   readonly packBucket: s3.IBucket;
 }
 
-/** Item actions the map-pack builder needs to record a pack (club ConditionCheck + Put). */
+/** Item actions the map-pack builder needs to settle a pack and release the club's lock. */
 export const MAP_PACK_BUILDER_TABLE_ACTIONS = [
   'dynamodb:GetItem',
-  'dynamodb:PutItem',
-  'dynamodb:ConditionCheckItem',
+  'dynamodb:UpdateItem',
+  'dynamodb:DeleteItem',
 ];
-
-/** A pack build is bounded by the tile cap and the polite fetch rate; Lambda's maximum. */
-export const MAP_PACK_BUILD_TIMEOUT = Duration.minutes(15);
 
 /** ARN of the externally owned club table, in the stack's (explicit) account and region. */
 export function clubTableArn(stack: Stack, config: EnvConfig): string {
@@ -127,8 +124,10 @@ export class ApiStack extends Stack {
     // ---- Map-pack builder (on demand: the club API invokes it asynchronously) -----------
     this.mapPackBuilder = new NodeLambda(this, 'MapPackBuilder', {
       entry: 'map-pack-builder',
-      timeout: MAP_PACK_BUILD_TIMEOUT,
+      // The shared tile cap is derived from this budget (MAP_PACK_LIMITS).
+      timeout: Duration.seconds(MAP_PACK_BUILD.timeoutSeconds),
       memorySize: 1024,
+      reservedConcurrentExecutions: 1,
       environment: {
         [API_ENV.envName]: config.name,
         [API_ENV.tableName]: table.tableName,
@@ -136,10 +135,11 @@ export class ApiStack extends Stack {
         [API_ENV.webOrigin]: `https://${config.domainName}`,
       },
     });
-    // One retry for a failed build; old requests are dropped rather than built late.
+    // No retries (a failed build is recorded on the pack; the admin can start another);
+    // one build at a time account-wide caps cost and USGS load.
     this.mapPackBuilder.function.configureAsyncInvoke({
-      retryAttempts: 1,
-      maxEventAge: Duration.hours(1),
+      retryAttempts: 0,
+      maxEventAge: Duration.seconds(MAP_PACK_BUILD.lockSeconds),
     });
     props.packBucket.grantPut(this.mapPackBuilder.function, `${MAP_PACKS_PREFIX}*`);
     table.grant(this.mapPackBuilder.function, ...MAP_PACK_BUILDER_TABLE_ACTIONS);

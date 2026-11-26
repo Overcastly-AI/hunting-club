@@ -20,10 +20,13 @@ import {
   type ClubSecret,
   type ClubSecretResponse,
   ClubSecretPutRequestSchema,
+  BASEMAPS,
+  MAP_PACK_LIMITS,
   type MapPackBuild,
   MapPackRequestSchema,
   type MapPackRequestResponse,
   estimatePack,
+  hasClubFeatures,
   polygonBounds,
   RedeemInviteRequestSchema,
 } from '@huntclub/shared';
@@ -236,8 +239,7 @@ function routes(data: ClubData): Route<Ctx>[] {
       handle: async (c, p): Promise<MapPackRequestResponse> => {
         const club = await data.getClubForMapPack(c.actor, p.clubId!);
         const now = c.deps.now?.() ?? new Date();
-        const { featuresUntil } = await data.getEntitlement(c.actor, club.id);
-        if (!featuresUntil || Date.parse(featuresUntil) <= now.getTime()) {
+        if (!hasClubFeatures(await data.getEntitlement(c.actor, club.id), now)) {
           throw new ClubDataError(
             'club_inactive',
             'new map packs need an active club subscription',
@@ -246,7 +248,13 @@ function routes(data: ClubData): Route<Ctx>[] {
         const request = parse(MapPackRequestSchema, c.body ?? {});
         if (!club.boundary) throw new ClubDataError('invalid', 'draw the property line first');
         const bounds = polygonBounds(club.boundary);
-        const estimate = estimatePack(bounds, request.minZoom, request.maxZoom, request.basemap);
+        const estimate = estimatePack(
+          bounds,
+          request.minZoom,
+          request.maxZoom,
+          request.basemap,
+          MAP_PACK_LIMITS,
+        );
         if (estimate.overLimit) {
           throw new ClubDataError(
             'invalid',
@@ -256,9 +264,22 @@ function routes(data: ClubData): Route<Ctx>[] {
         if (!c.deps.startMapPackBuild) {
           throw new ClubDataError('not_configured', 'map packs are not set up yet');
         }
-        const packId = (c.deps.newId ?? randomUUID)();
-        await c.deps.startMapPackBuild({ clubId: club.id, packId, bounds, ...request });
-        return { packId, tiles: estimate.tiles, bytes: estimate.bytes };
+        // Records the pack as building and takes the club's build lock (409 if busy).
+        const { minZoom, maxZoom, basemap } = request;
+        const pack = await data.startMapPackBuild(
+          c.actor,
+          club.id,
+          { bounds, minZoom, maxZoom, source: BASEMAPS[basemap].source },
+          { id: (c.deps.newId ?? randomUUID)() },
+        );
+        try {
+          await c.deps.startMapPackBuild({ clubId: club.id, packId: pack.id, bounds, ...request });
+        } catch (error) {
+          // Free the club again; the pack shows why.
+          await data.failMapPack(SERVICE, club.id, pack.id, 'the build could not be started');
+          throw error;
+        }
+        return { packId: pack.id, tiles: estimate.tiles, bytes: estimate.bytes };
       },
     },
 

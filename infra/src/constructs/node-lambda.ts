@@ -14,6 +14,8 @@ export interface NodeLambdaProps {
   readonly environment?: Record<string, string>;
   readonly timeout?: Duration;
   readonly memorySize?: number;
+  /** Caps concurrent runs (free; not provisioned concurrency). */
+  readonly reservedConcurrentExecutions?: number;
 }
 
 /**
@@ -38,6 +40,7 @@ export class NodeLambda extends Construct {
       architecture: lambda.Architecture.ARM_64,
       memorySize: props.memorySize ?? 256,
       timeout: props.timeout ?? Duration.seconds(10),
+      reservedConcurrentExecutions: props.reservedConcurrentExecutions,
       logGroup: this.logGroup,
       environment: props.environment ?? {},
       bundling: {
