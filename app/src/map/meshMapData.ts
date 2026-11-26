@@ -5,7 +5,6 @@ import {
   type MemberCheckIn,
 } from '@huntclub/core';
 import {
-  CHECK_IN_MODE_KEYS,
   type ClientState,
   type LatLon,
   type MeshClient,
@@ -14,8 +13,8 @@ import {
 } from '@huntclub/mesh';
 
 import type { MapDataSource } from './dataSource';
-import { UNNAMED_AREA, UNNAMED_STAND } from './labels';
-import type { HunterOnMap, HunterPlace, MapData, MeshStatus } from './types';
+import { placeOf, type PlaceNames } from './place';
+import type { HunterOnMap, MapData, MeshStatus } from './types';
 
 /**
  * Turns what the radio knows (node DB, positions, everyone's open check-ins)
@@ -33,10 +32,8 @@ export type MapNode = Pick<NodeRecord, 'num' | 'lastHeard'> & {
 };
 
 /** Names this phone knows for members, stands and areas (local DB). All optional. */
-export type MapNames = {
+export type MapNames = PlaceNames & {
   member?: (node: number) => { displayName: string; initials: string } | undefined;
-  stand?: (meshId: number) => string | undefined;
-  area?: (meshId: number) => string | undefined;
 };
 
 export type MeshSnapshot = {
@@ -59,27 +56,6 @@ function nodePosition(node: MapNode): (LatLon & { heardAt: number }) | undefined
   const seconds = p.time || node.lastHeard;
   if (!seconds) return undefined;
   return { lat: p.latitudeI / 1e7, lon: p.longitudeI / 1e7, heardAt: seconds * SECOND_MS };
-}
-
-function placeOf(checkIn: MemberCheckIn, names: MapNames): HunterPlace {
-  switch (CHECK_IN_MODE_KEYS[checkIn.mode]) {
-    case 'stand':
-      return {
-        kind: 'stand',
-        name: (checkIn.standId && names.stand?.(checkIn.standId)) || UNNAMED_STAND,
-      };
-    case 'area':
-      return {
-        kind: 'area',
-        name: (checkIn.areaId && names.area?.(checkIn.areaId)) || UNNAMED_AREA,
-      };
-    case 'spot':
-      return { kind: 'spot' };
-    case 'moving': {
-      const areaName = checkIn.areaId ? names.area?.(checkIn.areaId) : undefined;
-      return areaName ? { kind: 'moving', areaName } : { kind: 'moving' };
-    }
-  }
 }
 
 function identity(node: MapNode | undefined, num: number, names: MapNames) {
