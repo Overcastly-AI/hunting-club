@@ -77,3 +77,29 @@ jobs:
       - name: Assemble debug APK
         run: ./gradlew assembleDebug --no-daemon --build-cache -PreactNativeArchitectures=x86_64
         working-directory: app/android
+
+  club-data:
+    # packages/club-data repository and authorization tests against DynamoDB Local.
+    name: Club data (DynamoDB Local)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      dynamodb:
+        image: amazon/dynamodb-local:3.3.2
+        ports:
+          - 8000:8000
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: DynamoDB Local tests
+        run: npm run test:db -w @huntclub/club-data
+        env:
+          DYNAMODB_ENDPOINT: http://localhost:8000
