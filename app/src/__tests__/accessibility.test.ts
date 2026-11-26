@@ -68,4 +68,10 @@ describe('accessibility rules from docs/SPEC.md', () => {
       });
     }
   });
+
+  it('sets clubhouse board text at 24 px or more, readable from across a room', () => {
+    for (const size of [fontSize.boardDetail, fontSize.boardName, fontSize.boardTitle]) {
+      expect(size).toBeGreaterThanOrEqual(24);
+    }
+  });
 });

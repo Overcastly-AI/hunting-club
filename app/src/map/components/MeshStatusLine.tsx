@@ -1,16 +1,10 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, opacity, radii, sizes, spacing, textStyles } from '../../theme';
-import { MESH_QUIET_DETAIL, describeMeshStatus, type MeshTone } from '../meshStatus';
+import { MESH_QUIET_DETAIL, MESH_TONE_COLOR, describeMeshStatus } from '../meshStatus';
 import type { MeshStatus } from '../types';
 
 type Props = { status: MeshStatus; now: number; onPress: () => void };
-
-const DOT_COLOR: Record<MeshTone, string> = {
-  ok: colors.fresh,
-  quiet: colors.help,
-  none: colors.textSecondary,
-};
 
 /** "Mesh: 3 radios · heard 12s ago". Tapping it opens radio details. */
 export function MeshStatusLine({ status, now, onPress }: Props) {
@@ -29,7 +23,7 @@ export function MeshStatusLine({ status, now, onPress }: Props) {
         pressed && { opacity: opacity.pressed },
       ]}
     >
-      <View style={[styles.dot, { backgroundColor: DOT_COLOR[tone] }]} />
+      <View style={[styles.dot, { backgroundColor: MESH_TONE_COLOR[tone] }]} />
       <View style={styles.texts}>
         <Text style={styles.text} numberOfLines={1}>
           {text}
