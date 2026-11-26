@@ -45,6 +45,7 @@ export function adminApi(client: ClubApiClient): ClubApi {
     },
     listStands: async () => client.listStands(await requireClub()),
     listAreas: async () => client.listAreas(await requireClub()),
+    listHarvests: async () => client.listHarvests(await requireClub()),
     listPlans: async () => (await client.listPlans()).filter((plan) => plan.active),
     startCheckout: async (planId) =>
       (await client.startCheckout(await requireClub(), { planId })).url,

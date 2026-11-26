@@ -1,4 +1,5 @@
 import {
+  HARVEST_SEX_LABELS,
   NOTES_MAX,
   SPECIES_MAX,
   notesSchema,
@@ -15,11 +16,8 @@ import type { LocalHarvest, NewHarvest, SharedWith } from './harvests';
 /** Quick picks above the species field; any species can be typed. */
 export const COMMON_SPECIES = ['Deer', 'Turkey', 'Elk', 'Bear', 'Hog'] as const;
 
-export const SEX_LABELS: Record<HarvestSex, string> = {
-  male: 'Male',
-  female: 'Female',
-  unknown: 'Not sure',
-};
+/** Harvest sex in plain words (one source with the web admin). */
+export const SEX_LABELS = HARVEST_SEX_LABELS;
 
 export const SHARE_LABELS: Record<SharedWith, string> = {
   none: 'Private',
