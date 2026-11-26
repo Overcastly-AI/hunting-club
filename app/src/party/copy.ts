@@ -19,8 +19,6 @@ export const partyCopy = {
     joining: 'Joining the party…',
     full: (max: number) => `That party is full. A party has room for ${max} hunters.`,
     notACode: 'That isn’t a Hunt Club Party QR code. Try scanning again.',
-    clubCode:
-      'That is a Club QR code. Joining a club in the app isn’t ready yet, so start or join a party for now.',
     failed: 'Could not join the party. Check your radio is connected and try again.',
   },
   qr: {

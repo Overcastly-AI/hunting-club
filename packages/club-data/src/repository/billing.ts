@@ -5,6 +5,8 @@
  */
 import {
   ClubSchema,
+  type Entitlement,
+  entitlementFor,
   type Plan,
   PlanPutSchema,
   PlanSchema,
@@ -75,6 +77,15 @@ export async function getSubscription(
   const sub = await getEntity(ctx, SubscriptionSchema, keys.subscription(clubId));
   if (!sub) throw notFound();
   return sub;
+}
+
+/** Any member: whether club features are open (cached by phones for offline use). */
+export async function getEntitlement(ctx: Ctx, actor: Actor, clubId: string): Promise<Entitlement> {
+  await authorizeClub(ctx, actor, clubId, 'readEntitlement');
+  return entitlementFor(
+    clubId,
+    await getEntity(ctx, SubscriptionSchema, keys.subscription(clubId)),
+  );
 }
 
 /** The club an admin may buy a subscription for (Stripe Checkout). */

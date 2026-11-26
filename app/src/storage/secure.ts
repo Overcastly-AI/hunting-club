@@ -14,6 +14,8 @@ export type SecureStorage = {
 /** Every secret's key, in one place (letters, digits, ".", "-" and "_" only). */
 export const SECURE_KEYS = {
   partyJoinLink: 'party.joinLink',
+  /** Club sign-in tokens (Cognito access + refresh), JSON. */
+  clubAuthTokens: 'club.authTokens',
 } as const;
 export type SecureKey = (typeof SECURE_KEYS)[keyof typeof SECURE_KEYS];
 

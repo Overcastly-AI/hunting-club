@@ -24,7 +24,12 @@ describe('OnboardingScreen', () => {
     const onProfile = jest.fn().mockResolvedValue(undefined);
     const onDownloadMap = jest.fn();
     await renderWithRadio(
-      <OnboardingScreen onFinish={onFinish} onProfile={onProfile} onDownloadMap={onDownloadMap} />,
+      <OnboardingScreen
+        onFinish={onFinish}
+        onProfile={onProfile}
+        onClubCode={jest.fn()}
+        onDownloadMap={onDownloadMap}
+      />,
     );
 
     expect(screen.getByText(onboardingCopy.welcome.title)).toBeTruthy();

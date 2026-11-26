@@ -1,7 +1,4 @@
 /** Shared fixtures for radio tests (RadioController and RadioProvider). */
-import { encodeJoinUrl, generatePartyChannelSet, type JoinTarget } from '@huntclub/mesh';
-import { seededRandom } from '@huntclub/mesh/testing';
-
 import type { PairedRadio } from '../db/pairedRadio';
 import type { BackgroundLink, PairedRadioStore } from '../radio/RadioController';
 import type { FoundRadio } from '../radio/scan';
@@ -44,12 +41,4 @@ export function backgroundSpy(): BackgroundLink & { running: boolean } {
       this.running = false;
     },
   };
-}
-
-/** A join link a friend's Party (or Club) QR code would carry. */
-export function testJoinLink(target: JoinTarget, seed = 9): string {
-  return encodeJoinUrl({
-    channelSet: generatePartyChannelSet({ random: seededRandom(seed) }),
-    target,
-  });
 }

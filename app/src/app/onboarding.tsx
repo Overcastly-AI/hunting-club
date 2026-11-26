@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 
+import { JOIN_ROUTE } from '../club/routes';
 import { markOnboarded } from '../db/appState';
 import { useMapPacks } from '../map/useMapPacks';
 import { OnboardingScreen } from '../onboarding/OnboardingScreen';
@@ -19,6 +20,8 @@ export default function OnboardingRoute() {
       profile={profile}
       onProfile={save}
       onDownloadMap={downloadMap}
+      // Club sign-in and join, then back here to carry on.
+      onClubCode={(link) => router.push({ pathname: JOIN_ROUTE, params: { link } })}
       onFinish={() => {
         void markOnboarded(db, Date.now()).then(() => router.replace('/'));
       }}

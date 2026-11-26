@@ -13,7 +13,7 @@ describe('PartyQr', () => {
   it('shows nothing until there is a party, then the Party QR code', async () => {
     await renderWithRadio(
       <>
-        <PartyStep onNext={jest.fn()} />
+        <PartyStep onNext={jest.fn()} onClubCode={jest.fn()} />
         <PartyQr />
       </>,
       { remembered: REMEMBERED },

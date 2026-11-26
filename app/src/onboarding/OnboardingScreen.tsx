@@ -32,11 +32,19 @@ type Props = {
   /** Profile saved before, e.g. if onboarding was interrupted. */
   profile?: MyProfile | null;
   onProfile: (profile: MyProfile) => Promise<void>;
+  /** A Club QR code was scanned in the party step (the app opens club join). */
+  onClubCode: (link: string) => void;
   /** Starts an offline map download for the map step. */
   onDownloadMap: (request: DownloadRequest) => Promise<void>;
 };
 
-export function OnboardingScreen({ onFinish, profile, onProfile, onDownloadMap }: Props) {
+export function OnboardingScreen({
+  onFinish,
+  profile,
+  onProfile,
+  onClubCode,
+  onDownloadMap,
+}: Props) {
   const [index, setIndex] = useState(0);
   const step = ONBOARDING_STEPS[index];
   const next = () => (index + 1 < ONBOARDING_STEPS.length ? setIndex(index + 1) : onFinish());
@@ -51,7 +59,7 @@ export function OnboardingScreen({ onFinish, profile, onProfile, onDownloadMap }
     return <NameStep initial={profile} onNext={(p) => void onProfile(p).then(next)} />;
   }
   if (step === 'party') {
-    return <PartyStep onNext={next} />;
+    return <PartyStep onNext={next} onClubCode={onClubCode} />;
   }
   if (step === 'pairRadio') {
     // "Set up later" skips pairing; the Party tab offers it again.

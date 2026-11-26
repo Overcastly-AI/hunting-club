@@ -1,3 +1,4 @@
+import { PartyError } from '@huntclub/core';
 import { useContext, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
@@ -15,6 +16,8 @@ import { usePartyView } from './usePartyView';
 
 type Props = {
   onNext: () => void;
+  /** A Club QR code was scanned: hand it to the club join screen (sign-in + join). */
+  onClubCode: (link: string) => void;
 };
 
 type Busy = 'starting' | 'joining' | null;
@@ -23,7 +26,7 @@ type Busy = 'starting' | 'joining' | null;
  * Onboarding step 2 (spec: Screens → 5. Onboarding): start a party, or join
  * one by scanning a friend's Party QR code.
  */
-export function PartyStep({ onNext }: Props) {
+export function PartyStep({ onNext, onClubCode }: Props) {
   const copy = partyCopy.step;
   const service = useContext(PartyRadioContext);
   const party = usePartyView(service);
@@ -31,13 +34,17 @@ export function PartyStep({ onNext }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
 
-  const run = async (kind: Exclude<Busy, null>, action: () => Promise<unknown>) => {
+  const run = async (
+    kind: Exclude<Busy, null>,
+    action: () => Promise<unknown>,
+    onError: (e: unknown) => void,
+  ) => {
     setBusy(kind);
     setError(null);
     try {
       await action();
     } catch (e) {
-      setError(kind === 'joining' ? joinErrorText(e) : copy.failed);
+      onError(e);
     } finally {
       setBusy(null);
     }
@@ -50,7 +57,15 @@ export function PartyStep({ onNext }: Props) {
 
   const join = (link: string) => {
     setScanning(false);
-    if (service) void run('joining', () => service.join(link));
+    if (!service) return;
+    void run(
+      'joining',
+      () => service.join(link),
+      (e) =>
+        e instanceof PartyError && e.code === 'club-link'
+          ? onClubCode(link)
+          : setError(joinErrorText(e)),
+    );
   };
 
   return (
@@ -69,7 +84,13 @@ export function PartyStep({ onNext }: Props) {
             variant="primary"
             label={busy === 'starting' ? copy.starting : copy.start}
             disabled={!service || busy !== null}
-            onPress={() => void run('starting', () => service!.create())}
+            onPress={() =>
+              void run(
+                'starting',
+                () => service!.create(),
+                () => setError(copy.failed),
+              )
+            }
           />
           <Button
             label={copy.scan}

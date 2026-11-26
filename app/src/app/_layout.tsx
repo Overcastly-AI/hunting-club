@@ -5,12 +5,17 @@ import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, type ReactNode } from 'react';
 
+import { ClubProvider } from '../club/ClubProvider';
+import { createAppClubServices } from '../club/cloud';
 import { DATABASE_NAME, initDatabase } from '../db';
 import { ProfileProvider } from '../profile/ProfileProvider';
 import { AppRadioProvider } from '../radio/AppRadioProvider';
 import { colors, fontSources } from '../theme';
 
 void SplashScreen.preventAutoHideAsync();
+
+/** Club sign-in and API clients (inert for free users: nothing is called until they join). */
+const clubServices = createAppClubServices();
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts(fontSources);
@@ -45,12 +50,14 @@ export default function RootLayout() {
   );
 }
 
-/** App-wide state that needs the database: the hunter's profile, then the radio. */
+/** App-wide state that needs the database: the hunter's profile, their clubs, then the radio. */
 function AppProviders({ children }: { children: ReactNode }) {
   const db = useSQLiteContext();
   return (
     <ProfileProvider db={db}>
-      <AppRadioProvider>{children}</AppRadioProvider>
+      <ClubProvider services={clubServices}>
+        <AppRadioProvider>{children}</AppRadioProvider>
+      </ClubProvider>
     </ProfileProvider>
   );
 }
