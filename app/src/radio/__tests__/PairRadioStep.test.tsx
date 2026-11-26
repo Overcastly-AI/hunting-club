@@ -1,11 +1,10 @@
 import { fireEvent, screen } from '@testing-library/react-native';
 
-import { radioCopy } from '../../radio/copy';
 import { fakeBle } from '../../test-utils/fakeBleManager';
 import { renderWithRadio } from '../../test-utils/renderWithRadio';
 import { resetBluetoothForTests } from '../../test-utils/resetBluetooth';
-import { onboardingCopy } from '../copy';
-import { OnboardingScreen } from '../OnboardingScreen';
+import { radioCopy } from '../copy';
+import { PairRadioStep } from '../ui/PairRadioStep';
 
 jest.mock(
   'react-native-ble-manager',
@@ -14,19 +13,17 @@ jest.mock(
 
 beforeEach(resetBluetoothForTests);
 
-async function start() {
-  const onFinish = jest.fn();
-  await renderWithRadio(<OnboardingScreen onFinish={onFinish} />);
-  expect(screen.getByText(onboardingCopy.welcome.title)).toBeTruthy();
-  await fireEvent.press(screen.getByRole('button', { name: onboardingCopy.welcome.start }));
-  expect(screen.getByText(radioCopy.pair.title)).toBeTruthy();
-  return onFinish;
+async function renderStep() {
+  const onNext = jest.fn();
+  const onSkip = jest.fn();
+  await renderWithRadio(<PairRadioStep onNext={onNext} onSkip={onSkip} />);
+  return { onNext, onSkip };
 }
 
-describe('OnboardingScreen', () => {
-  it('welcomes, then pairs a radio as step 1 and finishes on Done', async () => {
+describe('PairRadioStep (onboarding step 1)', () => {
+  it('moves on after pairing a radio and tapping Done', async () => {
     fakeBle.scanResults = [{ id: 'NEAR', rssi: -55, advertising: { localName: 'Near radio' } }];
-    const onFinish = await start();
+    const { onNext, onSkip } = await renderStep();
 
     await fireEvent.press(screen.getByRole('button', { name: radioCopy.pair.findRadios }));
     await fireEvent.press(
@@ -36,12 +33,14 @@ describe('OnboardingScreen', () => {
     );
     await fireEvent.press(await screen.findByRole('button', { name: radioCopy.pair.done }));
 
-    expect(onFinish).toHaveBeenCalledTimes(1);
+    expect(onNext).toHaveBeenCalledTimes(1);
+    expect(onSkip).not.toHaveBeenCalled();
   });
 
   it('lets the hunter set up the radio later', async () => {
-    const onFinish = await start();
+    const { onNext, onSkip } = await renderStep();
     await fireEvent.press(screen.getByRole('button', { name: radioCopy.pair.setUpLater }));
-    expect(onFinish).toHaveBeenCalledTimes(1);
+    expect(onSkip).toHaveBeenCalledTimes(1);
+    expect(onNext).not.toHaveBeenCalled();
   });
 });
