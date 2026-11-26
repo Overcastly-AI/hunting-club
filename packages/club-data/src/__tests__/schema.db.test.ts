@@ -247,6 +247,7 @@ describe('cascade', () => {
     await expectCode(w.data.listMembers(w.as('pat'), pine()), 'forbidden');
     expect(await w.data.listMembers(SERVICE, pine())).toEqual([]);
     expect(await w.data.listStands(SERVICE, pine())).toEqual([]);
-    await expectCode(w.data.getSubscription(SERVICE, pine()), 'not_found');
+    expect(await w.data.getSubscription(SERVICE, pine())).toBeNull();
+    await expectCode(w.data.getClubSecret(SERVICE, pine()), 'not_found');
   });
 });

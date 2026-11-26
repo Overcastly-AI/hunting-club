@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import type { ClubApi } from './api/types';
+import { bundleBuildId, newerBuildIsLive } from './buildVersion';
 import type { WebClubServices } from './cloud';
 import { Loading } from './components/Loading';
 import { SignIn } from './pages/SignIn';
@@ -67,7 +68,11 @@ export function App(props: WebClubServices) {
   const [path, setPath] = useState<PagePath>(currentPath);
 
   useEffect(() => {
-    const onHash = () => setPath(currentPath());
+    const onHash = () => {
+      setPath(currentPath());
+      // Reload into the new build (same hash route) so an old tab never shows an old page.
+      void newerBuildIsLive(bundleBuildId()).then((stale) => stale && window.location.reload());
+    };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);

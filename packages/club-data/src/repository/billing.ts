@@ -78,11 +78,9 @@ export async function getSubscription(
   ctx: Ctx,
   actor: Actor,
   clubId: string,
-): Promise<Subscription> {
+): Promise<Subscription | null> {
   await authorizeClub(ctx, actor, clubId, 'readSubscription');
-  const sub = await getEntity(ctx, SubscriptionSchema, keys.subscription(clubId));
-  if (!sub) throw notFound();
-  return sub;
+  return (await getEntity(ctx, SubscriptionSchema, keys.subscription(clubId))) ?? null;
 }
 
 /** Any member: whether club features are open (cached by phones for offline use). */

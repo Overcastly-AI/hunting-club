@@ -104,7 +104,7 @@ describe('plans', () => {
 
 describe('subscriptions', () => {
   it("an admin reads their own club's subscription only", async () => {
-    expect((await w.data.getSubscription(w.as('ada'), oak())).status).toBe('active');
+    expect((await w.data.getSubscription(w.as('ada'), oak()))?.status).toBe('active');
     await expectCode(w.data.getSubscription(w.as('ada'), w.club('Pine Hollow')), 'forbidden');
   });
 
@@ -136,7 +136,7 @@ describe('subscriptions', () => {
     expect(
       await w.data.applyStripeEvent(SERVICE, syncOak('evt_pastdue', { status: 'past_due' })),
     ).toBe('applied');
-    expect((await w.data.getSubscription(SERVICE, oak())).status).toBe('past_due');
+    expect((await w.data.getSubscription(SERVICE, oak()))?.status).toBe('past_due');
   });
 });
 
@@ -150,7 +150,7 @@ describe('Stripe events', () => {
     expect(await w.data.applyStripeEvent(SERVICE, syncOak('evt_123', { status: 'canceled' }))).toBe(
       'duplicate',
     );
-    expect((await w.data.getSubscription(SERVICE, oak())).status).toBe('active');
+    expect((await w.data.getSubscription(SERVICE, oak()))?.status).toBe('active');
   });
 
   it('signed-in users cannot read Stripe events', async () => {

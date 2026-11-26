@@ -18,7 +18,7 @@ import {
   type TransactWriteCommandInput,
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { INVITE_TOKEN_BYTES } from '@huntclub/shared';
+import { CHANNEL_KEY_BYTES, INVITE_TOKEN_BYTES } from '@huntclub/shared';
 import { ATTR, type Key } from './items';
 
 export interface ClubDataOptions {
@@ -29,6 +29,8 @@ export interface ClubDataOptions {
   now?: () => Date;
   newId?: () => string;
   newInviteToken?: () => string;
+  /** A new 256-bit radio channel key (CSPRNG). Never log it. */
+  newChannelKey?: () => Uint8Array<ArrayBuffer>;
 }
 
 /** Marshalling options club-data relies on (optional fields are left out, never null). */
@@ -43,6 +45,7 @@ export interface Ctx {
   nowIso(): string;
   newId(): string;
   newInviteToken(): string;
+  newChannelKey(): Uint8Array<ArrayBuffer>;
 }
 
 export function createCtx(options: ClubDataOptions): Ctx {
@@ -55,6 +58,7 @@ export function createCtx(options: ClubDataOptions): Ctx {
     newId: options.newId ?? randomUUID,
     newInviteToken:
       options.newInviteToken ?? (() => randomBytes(INVITE_TOKEN_BYTES).toString('hex')),
+    newChannelKey: options.newChannelKey ?? (() => Uint8Array.from(randomBytes(CHANNEL_KEY_BYTES))),
   };
 }
 

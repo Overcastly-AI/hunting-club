@@ -1,4 +1,4 @@
-import { ClubApiRequestError, type ClubApiClient } from '@huntclub/shared';
+import type { ClubApiClient } from '@huntclub/shared';
 import { NoClubError, type ClubApi } from './types';
 
 /**
@@ -51,13 +51,6 @@ export function adminApi(client: ClubApiClient): ClubApi {
     listPlans: async () => (await client.listPlans()).filter((plan) => plan.active),
     startCheckout: async (planId, interval) =>
       (await client.startCheckout(await requireClub(), { planId, interval })).url,
-    async getSubscription() {
-      try {
-        return await client.getSubscription(await requireClub());
-      } catch (error) {
-        if (error instanceof ClubApiRequestError && error.code === 'not_found') return null;
-        throw error;
-      }
-    },
+    getSubscription: async () => (await client.getSubscription(await requireClub())).subscription,
   };
 }

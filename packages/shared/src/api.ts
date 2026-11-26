@@ -10,6 +10,7 @@ import {
   MemberJoinSchema,
   MemberSchema,
   type Subscription,
+  SubscriptionSchema,
   ZOOM_RANGE_ORDERED,
   billingIntervalSchema,
   boundsSchema,
@@ -167,3 +168,9 @@ export const MapPackRequestResponseSchema = z.object({
   bytes: z.number().int().min(0),
 });
 export type MapPackRequestResponse = z.infer<typeof MapPackRequestResponseSchema>;
+
+/** GET /clubs/{id}/subscription: null until the club's first Checkout. */
+export const SubscriptionResponseSchema = z.strictObject({
+  subscription: SubscriptionSchema.nullable(),
+});
+export type SubscriptionResponse = z.infer<typeof SubscriptionResponseSchema>;
