@@ -1,6 +1,6 @@
 import { CfnOutput, Stack, type StackProps } from 'aws-cdk-lib';
-import type * as cognito from 'aws-cdk-lib/aws-cognito';
-import type * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
@@ -17,9 +17,15 @@ import { NodeLambda } from '../constructs/node-lambda';
 
 export interface ApiStackProps extends StackProps {
   readonly config: EnvConfig;
-  readonly table: dynamodb.ITableV2;
-  readonly userPool: cognito.IUserPool;
-  readonly clients: readonly cognito.IUserPoolClient[];
+}
+
+/** ARN of the externally owned club table, in the stack's (explicit) account and region. */
+export function clubTableArn(stack: Stack, config: EnvConfig): string {
+  return stack.formatArn({
+    service: 'dynamodb',
+    resource: 'table',
+    resourceName: config.clubTableName,
+  });
 }
 
 /** Data actions the club API needs (no Scan, no streams, no table management). */
@@ -56,7 +62,17 @@ export class ApiStack extends Stack {
 
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
-    const { config, table, userPool, clients } = props;
+    const { config } = props;
+
+    // Referenced, not created: the table and user pool belong to config.dataStackName.
+    const table = dynamodb.Table.fromTableAttributes(this, 'ClubTable', {
+      tableArn: clubTableArn(this, config),
+      grantIndexPermissions: true,
+    });
+    const userPool = cognito.UserPool.fromUserPoolId(this, 'Users', config.cognito.userPoolId);
+    const clientIds = [config.cognito.appClientId, config.cognito.webClientId].filter(
+      (id): id is string => Boolean(id),
+    );
 
     // ---- Club API ----------------------------------------------------------------
     this.clubApi = new NodeLambda(this, 'ClubApi', {
@@ -65,7 +81,7 @@ export class ApiStack extends Stack {
         [API_ENV.envName]: config.name,
         [API_ENV.tableName]: table.tableName,
         [API_ENV.userPoolId]: userPool.userPoolId,
-        [API_ENV.userPoolClientIds]: clients.map((c) => c.userPoolClientId).join(','),
+        [API_ENV.userPoolClientIds]: clientIds.join(','),
       },
     });
     // Table and its indexes; permissions per club are enforced in the API (tested in M9).

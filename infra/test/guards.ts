@@ -1,6 +1,8 @@
 /**
- * Cost guard: the project may only use pay-per-use AWS services (CLAUDE.md "No always-on
- * compute"). These rules run over synthesized CloudFormation templates in the tests.
+ * Guards over synthesized CloudFormation, run by the tests:
+ * - cost: only pay-per-use services (CLAUDE.md "No always-on compute"), bounded logs,
+ *   and secrets in SSM Parameter Store (free) rather than Secrets Manager;
+ * - ownership: the club table and Cognito pool belong to the external data stack.
  */
 
 /** Resource types that bill by the hour whether or not anyone uses them. */
@@ -30,6 +32,19 @@ export const FORBIDDEN_RESOURCE_TYPES: readonly string[] = [
   'AWS::SageMaker::Endpoint',
 ];
 
+/**
+ * Resources that belong to the CloudFormation stack built outside this repo
+ * (EnvConfig.dataStackName). CDK may reference them but must never define them:
+ * a second definition would fork ownership of live data.
+ */
+export const EXTERNALLY_OWNED_TYPES: readonly string[] = [
+  'AWS::DynamoDB::Table',
+  'AWS::DynamoDB::GlobalTable',
+  'AWS::Cognito::UserPool',
+  'AWS::Cognito::UserPoolClient',
+  'AWS::Cognito::UserPoolDomain',
+];
+
 interface CfnResource {
   readonly Type: string;
   readonly Properties?: Record<string, unknown>;
@@ -39,20 +54,17 @@ export interface CfnTemplate {
   readonly Resources?: Record<string, CfnResource>;
 }
 
-export interface CostGuardOptions {
-  /** DynamoDB point-in-time recovery is billed; only environments that opt in may use it. */
-  readonly allowPointInTimeRecovery: boolean;
+interface PolicyStatement {
+  readonly Action?: string | string[];
 }
 
-interface PitrSpec {
-  readonly PointInTimeRecoveryEnabled?: unknown;
+function policyActions(props: Record<string, unknown>): string[] {
+  const doc = props.PolicyDocument as { Statement?: PolicyStatement[] } | undefined;
+  return (doc?.Statement ?? []).flatMap((st) => [st.Action ?? []].flat());
 }
 
-const pitrOn = (spec: unknown) =>
-  (spec as PitrSpec | undefined)?.PointInTimeRecoveryEnabled === true;
-
-/** Returns one message per violation; an empty list means the template is allowed. */
-export function findCostViolations(template: CfnTemplate, options: CostGuardOptions): string[] {
+/** Returns one message per cost violation; an empty list means the template is allowed. */
+export function findCostViolations(template: CfnTemplate): string[] {
   const violations: string[] = [];
   for (const [id, resource] of Object.entries(template.Resources ?? {})) {
     const props = resource.Properties ?? {};
@@ -68,40 +80,17 @@ export function findCostViolations(template: CfnTemplate, options: CostGuardOpti
     if (resource.Type === 'AWS::Logs::LogGroup' && props.RetentionInDays === undefined) {
       violations.push(`${id}: log group without retention`);
     }
-    if (
-      resource.Type === 'AWS::DynamoDB::Table' ||
-      resource.Type === 'AWS::DynamoDB::GlobalTable'
-    ) {
-      if (props.BillingMode !== 'PAY_PER_REQUEST') {
-        violations.push(`${id}: DynamoDB table is not on-demand (provisioned capacity)`);
-      }
-      const replicas = (props.Replicas as { PointInTimeRecoverySpecification?: unknown }[]) ?? [];
-      const pitr = [
-        props.PointInTimeRecoverySpecification,
-        ...replicas.map((r) => r.PointInTimeRecoverySpecification),
-      ];
-      if (!options.allowPointInTimeRecovery && pitr.some(pitrOn)) {
-        violations.push(
-          `${id}: DynamoDB point-in-time recovery is not allowed in this environment`,
-        );
-      }
-    }
     // Owner cost rule: secrets live in SSM Parameter Store (free), never Secrets Manager.
     if (resource.Type.startsWith('AWS::SecretsManager::')) {
       violations.push(`${id}: ${resource.Type} (use SSM Parameter Store SecureString)`);
     }
-    if (resource.Type === 'AWS::IAM::Policy' || resource.Type === 'AWS::IAM::ManagedPolicy') {
-      const statements =
-        (props.PolicyDocument as { Statement?: { Action?: string | string[] }[] })?.Statement ?? [];
-      if (
-        statements.some((st) =>
-          [st.Action ?? []].flat().some((a) => a.startsWith('secretsmanager:')),
-        )
-      ) {
-        violations.push(
-          `${id}: grants secretsmanager actions (use SSM Parameter Store SecureString)`,
-        );
-      }
+    if (
+      (resource.Type === 'AWS::IAM::Policy' || resource.Type === 'AWS::IAM::ManagedPolicy') &&
+      policyActions(props).some((a) => a.startsWith('secretsmanager:'))
+    ) {
+      violations.push(
+        `${id}: grants secretsmanager actions (use SSM Parameter Store SecureString)`,
+      );
     }
     if (resource.Type === 'AWS::Lambda::Function') {
       const logging = props.LoggingConfig as { LogGroup?: unknown } | undefined;
@@ -111,4 +100,11 @@ export function findCostViolations(template: CfnTemplate, options: CostGuardOpti
     }
   }
   return violations;
+}
+
+/** Returns one message per externally owned resource the template defines. */
+export function findOwnershipViolations(template: CfnTemplate): string[] {
+  return Object.entries(template.Resources ?? {})
+    .filter(([, r]) => EXTERNALLY_OWNED_TYPES.includes(r.Type))
+    .map(([id, r]) => `${id}: ${r.Type} is owned by the external data stack; reference it instead`);
 }

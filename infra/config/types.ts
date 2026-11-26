@@ -46,10 +46,19 @@ export interface EnvConfig {
   /** ACM certificate in us-east-1 covering `domainName` (CloudFront requires us-east-1). */
   readonly certificateArn: string;
   /**
-   * DynamoDB point-in-time recovery. Off in dev to stay in the free tier; the cost guard
-   * fails a dev synth that turns it on.
+   * The club table and Cognito user pool. They are owned by a CloudFormation stack built
+   * outside this repo (`dataStackName`); CDK only references them by these identifiers.
    */
-  readonly pointInTimeRecovery: boolean;
+  readonly dataStackName: string;
+  /** Name of the club table; its ARN is derived from the env's account and region. */
+  readonly clubTableName: string;
+  readonly cognito: {
+    readonly userPoolId: string;
+    /** Expo app client (USER_AUTH). */
+    readonly appClientId: string;
+    /** Web admin page client; set once it exists. */
+    readonly webClientId?: string;
+  };
   /**
    * Universal / app link verification. Files are only published once these are known:
    * Apple needs the developer Team ID; Android needs the signing certificates' SHA-256

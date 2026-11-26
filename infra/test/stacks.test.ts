@@ -1,6 +1,6 @@
 import { Match } from 'aws-cdk-lib/assertions';
 import { GSIS, PARTITION_PREFIXES, TABLE_KEYS, TTL_ATTRIBUTE } from '@huntclub/club-data';
-import { APP_ID, AUTH_CALLBACK_PATH, URL_SCHEME } from '@huntclub/shared';
+import { APP_ID } from '@huntclub/shared';
 import {
   API_ENV,
   PROJECT,
@@ -13,6 +13,17 @@ import { CLUB_API_TABLE_ACTIONS } from '../src/stacks/api-stack';
 import { synthTemplates } from './helpers';
 
 const templates = synthTemplates();
+/** The club table ARN as CDK synthesizes it (partition token, explicit account/region). */
+const clubTableArn = (suffix = '') => ({
+  'Fn::Join': [
+    '',
+    [
+      'arn:',
+      { Ref: 'AWS::Partition' },
+      `:dynamodb:${dev.region}:${dev.account}:table/${dev.clubTableName}${suffix}`,
+    ],
+  ],
+});
 
 describe('every stack', () => {
   it.each(Object.entries(templates))(
@@ -39,20 +50,6 @@ describe('every stack', () => {
     for (const type of taggable) {
       for (const resource of Object.values(t.findResources(type))) {
         expect(resource.Properties.Tags).toEqual(
-          expect.arrayContaining([
-            { Key: 'Project', Value: PROJECT },
-            { Key: 'Env', Value: dev.name },
-          ]),
-        );
-      }
-    }
-    const projectTags = { Project: PROJECT, Env: dev.name };
-    for (const pool of Object.values(t.findResources('AWS::Cognito::UserPool'))) {
-      expect(pool.Properties.UserPoolTags).toEqual(expect.objectContaining(projectTags));
-    }
-    for (const table of Object.values(t.findResources('AWS::DynamoDB::GlobalTable'))) {
-      for (const replica of table.Properties.Replicas) {
-        expect(replica.Tags).toEqual(
           expect.arrayContaining([
             { Key: 'Project', Value: PROJECT },
             { Key: 'Env', Value: dev.name },
@@ -129,71 +126,14 @@ describe('web stack', () => {
   });
 });
 
-describe('data stack', () => {
-  const t = templates.data;
-
-  it('is one on-demand table keyed from @huntclub/club-data', () => {
-    t.resourceCountIs('AWS::DynamoDB::GlobalTable', 1);
-    t.resourceCountIs('AWS::DynamoDB::Table', 0);
-    t.hasResourceProperties('AWS::DynamoDB::GlobalTable', {
-      BillingMode: 'PAY_PER_REQUEST',
-      KeySchema: [
-        { AttributeName: TABLE_KEYS.partitionKey, KeyType: 'HASH' },
-        { AttributeName: TABLE_KEYS.sortKey, KeyType: 'RANGE' },
-      ],
-      GlobalSecondaryIndexes: Object.values(GSIS).map((gsi) =>
-        Match.objectLike({
-          IndexName: gsi.indexName,
-          KeySchema: [
-            { AttributeName: gsi.partitionKey, KeyType: 'HASH' },
-            { AttributeName: gsi.sortKey, KeyType: 'RANGE' },
-          ],
-        }),
-      ),
-      TimeToLiveSpecification: { AttributeName: TTL_ATTRIBUTE, Enabled: true },
-      Replicas: [
-        Match.objectLike({
-          Region: dev.region,
-          DeletionProtectionEnabled: true,
-          PointInTimeRecoverySpecification: { PointInTimeRecoveryEnabled: false },
-        }),
-      ],
+describe('club table keys (@huntclub/club-data)', () => {
+  // The live table's key schema is immutable: these strings must never change.
+  it('match the live table hunt-club-mesh-dev exactly', () => {
+    expect(TABLE_KEYS).toEqual({ partitionKey: 'PK', sortKey: 'SK' });
+    expect(GSIS).toEqual({
+      gsi1: { indexName: 'GSI1', partitionKey: 'GSI1PK', sortKey: 'GSI1SK' },
     });
-    t.hasResource('AWS::DynamoDB::GlobalTable', { DeletionPolicy: 'Retain' });
-  });
-});
-
-describe('auth stack', () => {
-  const t = templates.auth;
-
-  it('is a passwordless email-code user pool on the Essentials plan', () => {
-    t.hasResourceProperties('AWS::Cognito::UserPool', {
-      UserPoolTier: 'ESSENTIALS',
-      UsernameAttributes: ['email'],
-      AutoVerifiedAttributes: ['email'],
-      Policies: Match.objectLike({
-        SignInPolicy: { AllowedFirstAuthFactors: Match.arrayWith(['EMAIL_OTP']) },
-      }),
-      DeletionProtection: 'ACTIVE',
-      MfaConfiguration: 'OFF',
-    });
-    t.resourceCountIs('AWS::Cognito::UserPoolDomain', 0);
-  });
-
-  it('has public app and web clients with USER_AUTH and the shared callback URLs', () => {
-    t.resourceCountIs('AWS::Cognito::UserPoolClient', 2);
-    const expected = [
-      `${URL_SCHEME}://${AUTH_CALLBACK_PATH}`,
-      `https://${dev.domainName}/${AUTH_CALLBACK_PATH}`,
-    ];
-    for (const url of expected) {
-      t.hasResourceProperties('AWS::Cognito::UserPoolClient', {
-        GenerateSecret: false,
-        ExplicitAuthFlows: Match.arrayWith(['ALLOW_USER_AUTH']),
-        PreventUserExistenceErrors: 'ENABLED',
-        CallbackURLs: [url],
-      });
-    }
+    expect(TTL_ATTRIBUTE).toBe('expiresAt');
   });
 });
 
@@ -221,14 +161,27 @@ describe('api stack', () => {
     t.resourceCountIs('AWS::ApiGatewayV2::Api', 0);
   });
 
-  it('gives the club API its table and Cognito configuration', () => {
+  it('gives the club API the existing table and Cognito pool from config', () => {
     t.hasResourceProperties('AWS::Lambda::Function', {
       Environment: {
-        Variables: Match.objectLike({
+        Variables: {
           [API_ENV.envName]: dev.name,
-          [API_ENV.tableName]: Match.anyValue(),
-          [API_ENV.userPoolId]: Match.anyValue(),
-          [API_ENV.userPoolClientIds]: Match.anyValue(),
+          [API_ENV.tableName]: dev.clubTableName,
+          [API_ENV.userPoolId]: dev.cognito.userPoolId,
+          [API_ENV.userPoolClientIds]: dev.cognito.appClientId,
+        },
+      },
+    });
+  });
+
+  it('accepts the web client once it is configured', () => {
+    const withWeb = synthTemplates({
+      cognito: { ...dev.cognito, webClientId: 'webclient123' },
+    }).api;
+    withWeb.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: {
+        Variables: Match.objectLike({
+          [API_ENV.userPoolClientIds]: `${dev.cognito.appClientId},webclient123`,
         }),
       },
     });
@@ -237,7 +190,7 @@ describe('api stack', () => {
   it('passes the webhook secret NAMES, never values', () => {
     const variables: Record<string, unknown> = {
       [API_ENV.envName]: dev.name,
-      [API_ENV.tableName]: Match.anyValue(),
+      [API_ENV.tableName]: dev.clubTableName,
     };
     for (const key of STRIPE_WEBHOOK_SECRETS) {
       variables[secretParameterEnvVar(key)] = secretParameterName(dev.name, key);
@@ -292,6 +245,7 @@ describe('api stack', () => {
       },
     });
     expect(actionsOf(conditioned[0]!).every((a) => !/Scan|Query|Delete|Batch/.test(a))).toBe(true);
+    expect(conditioned[0]!.Resource).toEqual(clubTableArn());
   });
 
   it('gives the club API item and query access only: no Scan, no streams, no table admin', () => {
@@ -300,7 +254,7 @@ describe('api stack', () => {
     );
     expect(clubApi).toHaveLength(1);
     expect(actionsOf(clubApi[0]!).sort()).toEqual([...CLUB_API_TABLE_ACTIONS].sort());
-    expect(JSON.stringify(clubApi[0]!.Resource)).toContain('/index/*');
+    expect(clubApi[0]!.Resource).toEqual([clubTableArn(), clubTableArn('/index/*')]);
   });
 });
 

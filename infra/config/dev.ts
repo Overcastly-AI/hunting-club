@@ -17,5 +17,12 @@ export const dev: EnvConfig = {
     appleTeamId: undefined,
     androidSha256CertFingerprints: [],
   },
-  pointInTimeRecovery: false,
+  // Built by the owner's operator as CloudFormation stack HuntClubMeshDataDev (Retain).
+  dataStackName: 'HuntClubMeshDataDev',
+  clubTableName: 'hunt-club-mesh-dev',
+  cognito: {
+    userPoolId: 'us-east-1_0W2YbjVht',
+    appClientId: '5dn1jcrnef1v6cfv6da0i7qtne',
+    webClientId: undefined, // pending from the operator
+  },
 };
