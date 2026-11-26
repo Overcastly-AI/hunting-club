@@ -3,8 +3,22 @@
 // all import these, so a field is named once. Entity bodies (stands, members, …) use
 // the Create/Update schemas in club.ts directly.
 import { z } from 'zod';
-import { ClubCreateSchema, ClubSecretSchema, MemberJoinSchema } from './club';
-import { CHANNEL_KEY_BYTES, inviteTokenSchema, planIdSchema } from './fields';
+import {
+  ClubCreateSchema,
+  ClubSchema,
+  ClubSecretSchema,
+  MemberJoinSchema,
+  MemberSchema,
+  type Subscription,
+} from './club';
+import { SubscriptionStatusSchema, isEntitledStatus } from './enums';
+import {
+  CHANNEL_KEY_BYTES,
+  idSchema,
+  inviteTokenSchema,
+  planIdSchema,
+  timestampSchema,
+} from './fields';
 import type { ClubApiError } from './enums';
 
 /** POST /clubs: a new club with the caller as its first admin. */
@@ -49,4 +63,40 @@ export interface CheckoutResponse {
 /** Every error response body. */
 export interface ApiErrorBody {
   error: { code: ClubApiError; message: string };
+}
+
+/** GET /me/clubs: each club the caller belongs to, with their membership. */
+export const MyClubSchema = z.object({ club: ClubSchema, membership: MemberSchema });
+export type MyClub = z.infer<typeof MyClubSchema>;
+
+/**
+ * Days club features stay open after the paid-through date (SPEC "When a
+ * subscription lapses"). PLACEHOLDER until the owner picks the grace period.
+ */
+export const ENTITLEMENT_GRACE_DAYS = 14;
+
+/**
+ * GET /clubs/:clubId/entitlement (any member): whether club features are open and
+ * until when. Phones cache it so club features keep working offline.
+ */
+export const EntitlementSchema = z.object({
+  clubId: idSchema,
+  status: SubscriptionStatusSchema.optional(),
+  paidThrough: timestampSchema.optional(),
+  /** Club features are open until this moment; absent = closed. */
+  featuresUntil: timestampSchema.optional(),
+});
+export type Entitlement = z.infer<typeof EntitlementSchema>;
+
+/** The one rule turning a subscription into an entitlement (used by the API). */
+export function entitlementFor(
+  clubId: string,
+  subscription: Pick<Subscription, 'status' | 'paidThrough'> | undefined,
+): Entitlement {
+  if (!subscription) return { clubId };
+  const { status, paidThrough } = subscription;
+  const base = { clubId, status, ...(paidThrough ? { paidThrough } : {}) };
+  if (!paidThrough || !isEntitledStatus(status)) return base;
+  const until = Date.parse(paidThrough) + ENTITLEMENT_GRACE_DAYS * 24 * 60 * 60 * 1000;
+  return { ...base, featuresUntil: new Date(until).toISOString() };
 }
