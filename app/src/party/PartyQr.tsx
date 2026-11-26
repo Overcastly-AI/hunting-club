@@ -1,9 +1,9 @@
 import { FREE_PARTY_MAX_MEMBERS } from '@huntclub/core';
 import { useContext } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { QrCode } from '../components/QrCode';
-import { colors, spacing, textStyles } from '../theme';
+import { makeStyles, spacing, textStyles } from '../theme';
 import { partyCopy } from './copy';
 import { PartyRadioContext } from './PartyRadio';
 import { usePartyView } from './usePartyView';
@@ -17,6 +17,7 @@ export const PARTY_QR_SIZE = 240;
  * The link holds the channel key: never log it.
  */
 export function PartyQr() {
+  const styles = useStyles();
   const copy = partyCopy.qr;
   const service = useContext(PartyRadioContext);
   const party = usePartyView(service);
@@ -42,9 +43,9 @@ export function PartyQr() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   section: { gap: spacing.sm },
-  heading: { ...textStyles.label, color: colors.text },
-  body: { ...textStyles.body, color: colors.textSecondary },
+  heading: { ...textStyles.label, color: theme.colors.text },
+  body: { ...textStyles.body, color: theme.colors.textSecondary },
   code: { alignItems: 'center' },
-});
+}));

@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { Button } from '../components/Button';
-import { colors, spacing, textStyles } from '../theme';
+import { makeStyles, spacing, textStyles } from '../theme';
 import { useClub } from './ClubProvider';
 import { clubCopy } from './copy';
 import { hasClubFeatures } from '@huntclub/shared';
@@ -14,6 +14,7 @@ const copy = clubCopy.section;
 
 /** Club mode on the Party/Club tab: the clubs on this phone, sign-in and sync. */
 export function ClubSection({ now = Date.now }: { now?: () => number }) {
+  const styles = useStyles();
   const { clubs, signedIn, cloudAvailable, sync, session, reload } = useClub();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -73,10 +74,10 @@ export function ClubSection({ now = Date.now }: { now?: () => number }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   section: { gap: spacing.sm },
   club: { gap: spacing.xs },
-  heading: { ...textStyles.label, color: colors.text },
-  name: { ...textStyles.bodyLarge, color: colors.text },
-  body: { ...textStyles.body, color: colors.textSecondary },
-});
+  heading: { ...textStyles.label, color: theme.colors.text },
+  name: { ...textStyles.bodyLarge, color: theme.colors.text },
+  body: { ...textStyles.body, color: theme.colors.textSecondary },
+}));

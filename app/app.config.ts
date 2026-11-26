@@ -60,7 +60,9 @@ const config: ExpoConfig = {
   // Each screen locks its own orientation (src/app/_layout.tsx): portrait, and landscape for /board.
   orientation: 'default',
   icon: './assets/icon.png',
-  userInterfaceStyle: 'dark',
+  // Theme choice System / Dark / Light (src/theme/ThemeProvider): 'automatic' lets
+  // iOS and Android report the phone's appearance for System.
+  userInterfaceStyle: 'automatic',
   backgroundColor: colors.surface,
   ios: {
     supportsTablet: true,

@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { colors, opacity, radii, sizes, spacing, textStyles } from '../../theme';
+import { makeStyles, useTheme, opacity, radii, sizes, spacing, textStyles } from '../../theme';
 import { MESH_QUIET_DETAIL, MESH_TONE_COLOR, describeMeshStatus } from '../meshStatus';
 import type { MeshStatus } from '../types';
 
@@ -8,6 +8,8 @@ type Props = { status: MeshStatus; now: number; onPress: () => void };
 
 /** "Mesh: 3 radios · heard 12s ago". Tapping it opens radio details. */
 export function MeshStatusLine({ status, now, onPress }: Props) {
+  const theme = useTheme();
+  const styles = useStyles();
   const { text, tone } = describeMeshStatus(status, now);
   const quiet = tone === 'quiet' && status.lastHeardAt !== null;
   return (
@@ -23,7 +25,7 @@ export function MeshStatusLine({ status, now, onPress }: Props) {
         pressed && { opacity: opacity.pressed },
       ]}
     >
-      <View style={[styles.dot, { backgroundColor: MESH_TONE_COLOR[tone] }]} />
+      <View style={[styles.dot, { backgroundColor: theme.colors[MESH_TONE_COLOR[tone]] }]} />
       <View style={styles.texts}>
         <Text style={styles.text} numberOfLines={1}>
           {text}
@@ -36,14 +38,14 @@ export function MeshStatusLine({ status, now, onPress }: Props) {
 
 const DOT = 10;
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   line: {
     alignSelf: 'flex-start',
     minHeight: sizes.minTapTarget,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.surface,
+    backgroundColor: theme.colors.surface0,
     borderRadius: radii.control,
     paddingHorizontal: spacing.md,
   },
@@ -51,11 +53,11 @@ const styles = StyleSheet.create({
   banner: {
     alignSelf: 'stretch',
     borderWidth: sizes.hairline,
-    borderColor: colors.help,
+    borderColor: theme.colors.warning,
     paddingVertical: spacing.sm,
   },
   texts: { flexShrink: 1 },
   dot: { width: DOT, height: DOT, borderRadius: DOT / 2 },
-  detail: { ...textStyles.body, color: colors.textSecondary },
-  text: { ...textStyles.body, color: colors.text },
-});
+  detail: { ...textStyles.body, color: theme.colors.textSecondary },
+  text: { ...textStyles.body, color: theme.colors.text },
+}));

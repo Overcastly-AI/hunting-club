@@ -1,8 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { Button } from '../../components/Button';
 import { HELP_AUDIENCE_TEXT, type Audience } from '../../domain/audience';
-import { colors, opacity, radii, sizes, spacing, textStyles } from '../../theme';
+import { makeStyles, opacity, radii, sizes, spacing, textStyles } from '../../theme';
 import { positionAge } from '@huntclub/core';
 
 import { describeAge } from '../age';
@@ -30,6 +30,7 @@ export type MapBottomSheetProps =
 
 /** The bottom sheet's two states from the spec: checked in, and not checked in. */
 export function MapBottomSheet(props: MapBottomSheetProps) {
+  const styles = useStyles();
   return (
     <View style={styles.sheet}>
       {props.state === 'checkedIn' ? <CheckedIn {...props} /> : <NotCheckedIn {...props} />}
@@ -52,6 +53,7 @@ function NotCheckedIn({
 }
 
 function CheckedIn(props: Extract<MapBottomSheetProps, { state: 'checkedIn' }>) {
+  const styles = useStyles();
   const since = describeAge(positionAge(props.checkedInAt, props.now)).short;
   return (
     <>
@@ -91,17 +93,17 @@ function CheckedIn(props: Extract<MapBottomSheetProps, { state: 'checkedIn' }>) 
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   sheet: {
-    backgroundColor: colors.surface,
+    backgroundColor: theme.colors.surface0,
     borderTopLeftRadius: radii.sheetTop,
     borderTopRightRadius: radii.sheetTop,
     padding: spacing.md,
     gap: spacing.sm,
   },
-  overline: { ...textStyles.body, color: colors.textSecondary },
-  title: { ...textStyles.sheetTitle, color: colors.text },
-  since: { ...textStyles.body, color: colors.textSecondary },
+  overline: { ...textStyles.body, color: theme.colors.textSecondary },
+  title: { ...textStyles.sheetTitle, color: theme.colors.text },
+  since: { ...textStyles.body, color: theme.colors.textSecondary },
   row: { flexDirection: 'row', gap: spacing.sm },
   flex: { flex: 1 },
   harvestRow: {
@@ -110,8 +112,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderTopWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.colors.borderSubtle,
   },
-  harvestText: { ...textStyles.label, color: colors.text },
-  harvestDetail: { ...textStyles.body, color: colors.textSecondary },
-});
+  harvestText: { ...textStyles.label, color: theme.colors.text },
+  harvestDetail: { ...textStyles.body, color: theme.colors.textSecondary },
+}));

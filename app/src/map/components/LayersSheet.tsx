@@ -1,7 +1,7 @@
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 
 import { Button } from '../../components/Button';
-import { colors, spacing, textStyles } from '../../theme';
+import { makeStyles, spacing, textStyles } from '../../theme';
 import { BASEMAP_IDS, BASEMAPS, basemapBySource, type BasemapId } from '../basemaps';
 import type { LocalClubMapPack } from '../../club/mapPacks';
 import { formatShortDate } from '../../conditions/clock';
@@ -47,6 +47,7 @@ export function LayersSheet({
   onDelete,
   onClose,
 }: Props) {
+  const styles = useStyles();
   const confirmDelete = (pack: MapPack) =>
     Alert.alert('Delete this area?', `${pack.name} will no longer work without internet.`, [
       { text: 'Keep', style: 'cancel' },
@@ -94,11 +95,11 @@ export function LayersSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   group: { gap: spacing.sm },
-  heading: { ...textStyles.label, color: colors.text },
-  credit: { ...textStyles.body, color: colors.textSecondary },
+  heading: { ...textStyles.label, color: theme.colors.text },
+  credit: { ...textStyles.body, color: theme.colors.textSecondary },
   packRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   packText: { flex: 1 },
-  packName: { ...textStyles.label, color: colors.text },
-});
+  packName: { ...textStyles.label, color: theme.colors.text },
+}));

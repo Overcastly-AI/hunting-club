@@ -16,7 +16,7 @@ import { HarvestSheet } from '../harvest/HarvestSheet';
 import { CheckOutSheet } from '../checkin/CheckOutSheet';
 import { AskForHandSheet } from '../safety/components/AskForHandSheet';
 import { useIncomingAlerts } from '../safety/hooks';
-import { colors, spacing } from '../theme';
+import { makeStyles, spacing } from '../theme';
 import { BASEMAPS, DEFAULT_BASEMAP, basemapStyle, type BasemapId } from './basemaps';
 import { DownloadAreaSheet } from './components/DownloadAreaSheet';
 import { HaloText } from './components/HaloText';
@@ -53,6 +53,7 @@ type Props = {
 };
 
 export function MapScreen({ dataSource }: Props) {
+  const styles = useStyles();
   const data = useMapData(dataSource);
   const { radio, current } = useCheckInState();
   const alerts = useIncomingAlerts();
@@ -178,8 +179,8 @@ export function MapScreen({ dataSource }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.surface },
+const useStyles = makeStyles((theme) => ({
+  root: { flex: 1, backgroundColor: theme.colors.surface0 },
   map: { flex: 1 },
   overlay: { ...StyleSheet.absoluteFill, justifyContent: 'space-between' },
   top: { paddingHorizontal: spacing.md, paddingTop: spacing.sm, gap: spacing.sm },
@@ -195,4 +196,4 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     alignSelf: 'flex-start',
   },
-});
+}));

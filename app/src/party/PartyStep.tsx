@@ -1,6 +1,6 @@
 import { PartyError } from '@huntclub/core';
 import { useContext, useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { Text } from 'react-native';
 
 import { Button } from '../components/Button';
 import { QrScanner } from '../components/QrScanner';
@@ -8,7 +8,7 @@ import { Screen } from '../components/Screen';
 import { Sheet } from '../components/Sheet';
 import { ensureCameraPermission } from '../permissions/camera';
 import { radioCopy } from '../radio/copy';
-import { colors, textStyles } from '../theme';
+import { makeStyles, textStyles } from '../theme';
 import { partyCopy } from './copy';
 import { joinErrorText } from './joinError';
 import { PartyRadioContext } from './PartyRadio';
@@ -27,6 +27,7 @@ type Busy = 'starting' | 'joining' | null;
  * one by scanning a friend's Party QR code.
  */
 export function PartyStep({ onNext, onClubCode }: Props) {
+  const styles = useStyles();
   const copy = partyCopy.step;
   const service = useContext(PartyRadioContext);
   const party = usePartyView(service);
@@ -110,6 +111,6 @@ export function PartyStep({ onNext, onClubCode }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  body: { ...textStyles.bodyLarge, color: colors.textSecondary },
-});
+const useStyles = makeStyles((theme) => ({
+  body: { ...textStyles.bodyLarge, color: theme.colors.textSecondary },
+}));

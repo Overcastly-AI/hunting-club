@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { colors, opacity, radii, sizes, spacing, textStyles } from '../../theme';
+import { makeStyles, opacity, radii, sizes, spacing, textStyles } from '../../theme';
 import type { LatLon } from '@huntclub/mesh';
 import type { WeatherDisplay } from '../../weather/display';
 import { ConditionsPanel } from './ConditionsPanel';
@@ -16,6 +16,7 @@ type Props = {
 
 /** Party or club button beside the conditions panel. */
 export function TopBar({ groupLabel, onGroupPress, conditionsPlace, now, weather }: Props) {
+  const styles = useStyles();
   return (
     <View style={styles.bar}>
       <Pressable
@@ -34,16 +35,16 @@ export function TopBar({ groupLabel, onGroupPress, conditionsPlace, now, weather
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   bar: { flexDirection: 'row', gap: spacing.sm, alignItems: 'stretch' },
   group: {
     minWidth: sizes.control + spacing.lg,
     minHeight: sizes.control,
-    backgroundColor: colors.surface,
+    backgroundColor: theme.colors.surface0,
     borderRadius: radii.control,
     paddingHorizontal: spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  groupText: { ...textStyles.label, color: colors.text },
-});
+  groupText: { ...textStyles.label, color: theme.colors.text },
+}));

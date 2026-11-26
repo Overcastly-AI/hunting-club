@@ -1,10 +1,10 @@
 import { useContext, useMemo, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../components/Button';
 import { SegmentedControl } from '../components/SegmentedControl';
-import { colors, spacing, textStyles } from '../theme';
+import { makeStyles, spacing, textStyles } from '../theme';
 import { ChatRadioContext, ChatSendError, nameOf, sendChat } from './ChatRadio';
 import { chatStore, useChatItems } from './chatStore';
 import { Composer, MessageBubble, QuickReplies, SystemCard } from './components';
@@ -24,6 +24,7 @@ const NO_RADIO =
 
 /** Chat tab: Party (or Whole Club / Hunting Party) and Direct. */
 export function ChatScreen() {
+  const styles = useStyles();
   const radio = useContext(ChatRadioContext);
   const items = useChatItems();
   const segments = chatSegments(radio?.audience === 'club');
@@ -147,13 +148,18 @@ export function ChatScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.surface },
+const useStyles = makeStyles((theme) => ({
+  safe: { flex: 1, backgroundColor: theme.colors.surface0 },
   flex: { flex: 1 },
   header: { paddingHorizontal: spacing.md, paddingTop: spacing.sm, gap: spacing.sm },
-  title: { ...textStyles.sheetTitle, color: colors.text },
+  title: { ...textStyles.sheetTitle, color: theme.colors.text },
   list: { padding: spacing.md, gap: spacing.sm },
-  footer: { padding: spacing.md, gap: spacing.sm, borderTopWidth: 1, borderColor: colors.border },
-  note: { ...textStyles.body, color: colors.textSecondary },
-  problem: { color: colors.help },
-});
+  footer: {
+    padding: spacing.md,
+    gap: spacing.sm,
+    borderTopWidth: 1,
+    borderColor: theme.colors.borderSubtle,
+  },
+  note: { ...textStyles.body, color: theme.colors.textSecondary },
+  problem: { color: theme.colors.warning },
+}));

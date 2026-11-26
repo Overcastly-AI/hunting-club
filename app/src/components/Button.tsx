@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { colors, opacity, radii, sizes, spacing, textStyles } from '../theme';
+import { makeStyles, opacity, radii, sizes, spacing, textStyles } from '../theme';
 
 /**
  * - primary: orange, for the one main action on a screen.
@@ -30,6 +30,7 @@ export function Button({
   accessibilityHint,
   icon,
 }: Props) {
+  const styles = useStyles();
   const variantStyle = styles[variant];
   const textColor =
     variant === 'primary'
@@ -60,7 +61,7 @@ export function Button({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   base: {
     minHeight: sizes.primaryButtonMinHeight,
     borderRadius: radii.primaryButton,
@@ -71,12 +72,16 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   texts: { alignItems: 'center' },
-  primary: { backgroundColor: colors.accent },
-  secondary: { backgroundColor: colors.surfaceRaised },
-  help: { borderWidth: sizes.hairline, borderColor: colors.help, backgroundColor: colors.surface },
+  primary: { backgroundColor: theme.colors.accent },
+  secondary: { backgroundColor: theme.colors.surface2 },
+  help: {
+    borderWidth: sizes.hairline,
+    borderColor: theme.colors.warning,
+    backgroundColor: theme.colors.surface0,
+  },
   label: { ...textStyles.label, fontSize: textStyles.bodyLarge.fontSize },
   detail: { ...textStyles.body },
-  primaryText: { color: colors.surface },
-  secondaryText: { color: colors.text },
-  helpText: { color: colors.help },
-});
+  primaryText: { color: theme.colors.onAccent },
+  secondaryText: { color: theme.colors.text },
+  helpText: { color: theme.colors.warning },
+}));

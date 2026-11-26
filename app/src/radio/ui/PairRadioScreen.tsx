@@ -1,11 +1,11 @@
 import { MESHTASTIC_BLE } from '@huntclub/mesh';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, Pressable, Text, View } from 'react-native';
 
 import { Button } from '../../components/Button';
 import { ensureBluetoothPermission, type BluetoothReadiness } from '../../permissions/bluetooth';
 import { Screen } from '../../components/Screen';
-import { colors, opacity, radii, sizes, spacing, textStyles } from '../../theme';
+import { makeStyles, opacity, radii, sizes, spacing, textStyles } from '../../theme';
 import { radioCopy } from '../copy';
 import { useRadio } from '../RadioProvider';
 import { scanForRadios, type FoundRadio } from '../scan';
@@ -31,6 +31,7 @@ type Props = {
 
 /** Onboarding step 1 and Party/Club settings: find, pair and connect a radio. */
 export function PairRadioScreen({ onDone, onSkip }: Props) {
+  const styles = useStyles();
   const { link, pairedRadio, repairNeeded, pair, forget } = useRadio();
   const [found, setFound] = useState<FoundRadio[]>([]);
   const [scanning, setScanning] = useState(false);
@@ -178,18 +179,18 @@ export function PairRadioScreen({ onDone, onSkip }: Props) {
 
 const RADIO_ROW_HEIGHT = 64;
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   card: {
     gap: spacing.sm,
     padding: spacing.md,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.colors.borderSubtle,
   },
-  cardTitle: { ...textStyles.label, color: colors.text },
-  body: { ...textStyles.body, color: colors.textSecondary },
-  detail: { ...textStyles.body, color: colors.textSecondary },
-  pin: { ...textStyles.label, color: colors.text },
+  cardTitle: { ...textStyles.label, color: theme.colors.text },
+  body: { ...textStyles.body, color: theme.colors.textSecondary },
+  detail: { ...textStyles.body, color: theme.colors.textSecondary },
+  pin: { ...textStyles.label, color: theme.colors.text },
   list: { gap: spacing.sm },
   radioRow: {
     minHeight: Math.max(RADIO_ROW_HEIGHT, sizes.minTapTarget),
@@ -198,10 +199,10 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingHorizontal: spacing.md,
     borderRadius: radii.control,
-    backgroundColor: colors.surfaceRaised,
+    backgroundColor: theme.colors.surface2,
   },
   pressed: { opacity: opacity.pressed },
   radioText: { flex: 1, gap: spacing.xs },
-  radioName: { ...textStyles.label, color: colors.text },
-  action: { ...textStyles.label, color: colors.text },
-});
+  radioName: { ...textStyles.label, color: theme.colors.text },
+  action: { ...textStyles.label, color: theme.colors.text },
+}));

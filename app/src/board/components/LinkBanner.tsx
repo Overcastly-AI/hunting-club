@@ -1,10 +1,12 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { MESH_TONE_COLOR, type MeshTone } from '../../map/meshStatus';
-import { colors, radii, sizes, spacing, textStyles } from '../../theme';
+import { makeStyles, useTheme, radii, sizes, spacing, textStyles } from '../../theme';
 
 /** The board radio's link, big enough to read from across the room. */
 export function LinkBanner({ text, tone }: { text: string; tone: MeshTone }) {
+  const theme = useTheme();
+  const styles = useStyles();
   return (
     <View
       accessible
@@ -12,7 +14,7 @@ export function LinkBanner({ text, tone }: { text: string; tone: MeshTone }) {
       accessibilityLiveRegion={tone === 'ok' ? 'none' : 'polite'}
       style={[styles.banner, tone !== 'ok' && styles.warning]}
     >
-      <View style={[styles.dot, { backgroundColor: MESH_TONE_COLOR[tone] }]} />
+      <View style={[styles.dot, { backgroundColor: theme.colors[MESH_TONE_COLOR[tone]] }]} />
       <Text style={styles.text}>{text}</Text>
     </View>
   );
@@ -20,7 +22,7 @@ export function LinkBanner({ text, tone }: { text: string; tone: MeshTone }) {
 
 const DOT_SIZE = 20;
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -28,10 +30,10 @@ const styles = StyleSheet.create({
     minHeight: sizes.control,
     paddingHorizontal: spacing.md,
     borderRadius: radii.control,
-    backgroundColor: colors.surfaceRaised,
+    backgroundColor: theme.colors.surface2,
   },
   /** Link down or mesh quiet: gold outline, never red. */
-  warning: { borderWidth: sizes.hairline, borderColor: colors.help },
+  warning: { borderWidth: sizes.hairline, borderColor: theme.colors.warning },
   dot: { width: DOT_SIZE, height: DOT_SIZE, borderRadius: DOT_SIZE / 2 },
-  text: { ...textStyles.boardDetail, color: colors.text, flexShrink: 1 },
-});
+  text: { ...textStyles.boardDetail, color: theme.colors.text, flexShrink: 1 },
+}));

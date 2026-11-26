@@ -1,5 +1,12 @@
 import { createTestDatabase } from '../../test-utils/nodeSqlite';
-import { loadOnboardedAt, loadProfile, markOnboarded, saveProfile } from '../appState';
+import {
+  loadOnboardedAt,
+  loadProfile,
+  loadThemePreference,
+  markOnboarded,
+  saveProfile,
+  saveThemePreference,
+} from '../appState';
 import { migrate } from '../migrate';
 import { migrations } from '../migrations';
 
@@ -20,5 +27,22 @@ describe('app state', () => {
 
     await saveProfile(db, { displayName: 'Jake Smith', initials: 'JS' });
     expect(await loadProfile(db)).toEqual({ displayName: 'Jake Smith', initials: 'JS' });
+  });
+
+  it('starts on the System theme and remembers the hunter’s choice', async () => {
+    const db = createTestDatabase();
+    await migrate(db, migrations);
+    expect(await loadThemePreference(db)).toBe('system');
+
+    await saveThemePreference(db, 'light');
+    expect(await loadThemePreference(db)).toBe('light');
+  });
+
+  it('refuses a theme that is not System, Dark or Light', async () => {
+    const db = createTestDatabase();
+    await migrate(db, migrations);
+    await expect(db.runAsync("UPDATE app_state SET theme_preference = 'sepia'")).rejects.toThrow(
+      /CHECK/,
+    );
   });
 });
