@@ -5,13 +5,21 @@ import {
   MIN_TEXT_CONTRAST,
   MIN_UI_CONTRAST,
 } from '@huntclub/design';
-import { CLUB_PRICING, LEGAL_DOCS, LEGAL_DRAFT_NOTICE, SAFETY_NOTE } from '@huntclub/shared';
+import { DAWN_CLASS, DAWN_PAUSE_BUTTON_CLASS } from '@huntclub/design/dawnControl';
+import { dawnSceneSvg } from '@huntclub/design/dawnScene';
+import {
+  CLUB_PRICING,
+  dawnPauseCopy,
+  LEGAL_DOCS,
+  LEGAL_DRAFT_NOTICE,
+  SAFETY_NOTE,
+} from '@huntclub/shared';
 import { ADMIN_PATH, SUPPORT_EMAIL } from '@huntclub/shared/app';
 import { renderJoin, renderNotFound, renderPage } from '../render';
 import { FAQ, FAQ_PREVIEW } from '../faq';
 import { FEATURE_GROUPS } from '../features';
 import { HERO_ART_SLOT } from '../pages/Home';
-import { assets, CSS, FONT } from './fixtures';
+import { assets, CSS, DAWN, FONT } from './fixtures';
 import {
   canonicalUrl,
   FOOTER_LINKS,
@@ -86,13 +94,16 @@ describe.each(pages)('page $route.path', ({ route, html }) => {
     }
   });
 
-  it('ships no JavaScript except the old-bookmark forward on the home page (no analytics)', () => {
+  it('ships no JavaScript except the home page forward and pause script (no analytics)', () => {
+    const home = route.path === '/';
     const scripts = (html.match(/<script>[\s\S]*?<\/script>/g) ?? []).length;
     const data = (html.match(/<script type="application\/ld\+json">/g) ?? []).length;
+    const files = html.match(/<script type="module" src="[^"]*">/g) ?? [];
     expect(html.match(/<script>[\s\S]*?<\/script>/g) ?? []).toEqual(
-      route.path === '/' ? [`<script>${HASH_FORWARD_SCRIPT}</script>`] : [],
+      home ? [`<script>${HASH_FORWARD_SCRIPT}</script>`] : [],
     );
-    expect(count(html, /<script/gi)).toBe(scripts + data);
+    expect(files).toEqual(home ? [`<script type="module" src="${DAWN.scriptUrl}">`] : []);
+    expect(count(html, /<script/gi)).toBe(scripts + data + files.length);
   });
 
   it('shares a large card at its own absolute URL', () => {
@@ -312,7 +323,22 @@ describe('features and FAQ', () => {
     for (const item of FAQ_PREVIEW) expect(home).toContain(item.q);
   });
 
-  it('leaves an empty, decorative slot behind the home hero for its background', () => {
-    expect(page('/')).toContain(`<div class="${HERO_ART_SLOT}" aria-hidden="true"></div>`);
+  it('puts the dawn scene behind the home hero only, with its stylesheet and pause button', () => {
+    const home = page('/');
+    const hero = home.slice(home.indexOf('<section class="hero">'), home.indexOf('</section>'));
+    expect(hero).toContain(
+      `<div class="${HERO_ART_SLOT}" aria-hidden="true">${dawnSceneSvg()}</div>`,
+    );
+    expect(hero).toContain(
+      `<button class="button ${DAWN_PAUSE_BUTTON_CLASS}" type="button" aria-pressed="false" hidden="">${dawnPauseCopy.pause}</button>`,
+    );
+    expect(home).toContain(`<link rel="stylesheet" href="${DAWN.cssUrl}"/>`);
+    // The headline stays the largest content (LCP): the scene is decorative SVG, not an image.
+    expect(hero).not.toMatch(/<img|<image|<video|fetchpriority/);
+    for (const { route, html } of pages.filter((p) => p.route.path !== '/')) {
+      expect([route.path, html.includes(`class="${DAWN_CLASS}"`)]).toEqual([route.path, false]);
+      expect(html).not.toContain(DAWN.cssUrl);
+      expect(html).not.toContain(DAWN_PAUSE_BUTTON_CLASS);
+    }
   });
 });

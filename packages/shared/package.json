@@ -14,7 +14,8 @@
     "./maps": "./src/maps.ts",
     "./pricing": "./src/pricing.ts",
     "./testing": "./src/testing.ts",
-    "./schema-runtime": "./src/schemaRuntime.ts"
+    "./schema-runtime": "./src/schemaRuntime.ts",
+    "./signInCopy": "./src/signInCopy.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

@@ -20,6 +20,8 @@ export interface PageAssets {
   readonly fontUrl: string;
   /** The site stylesheet's URL (a content-hashed file in assets/, so the CSP needs no inline styles). */
   readonly cssUrl: string;
+  /** The home hero's dawn scene: its stylesheet and pause script (content-hashed files in assets/). */
+  readonly dawn: { readonly cssUrl: string; readonly scriptUrl: string };
 }
 
 /** What a page's head says about it (from the route registry). */
@@ -36,8 +38,10 @@ export interface PageMeta {
   readonly structuredData?: readonly object[];
   /** The page's one inline script, if any (HASH_FORWARD_SCRIPT on the home page). */
   readonly script?: string;
-  /** A self-hosted module script (the /join page's), loaded after the page is parsed. */
+  /** A self-hosted module script (/join's, or the home hero's), loaded after the page is parsed. */
   readonly scriptSrc?: string;
+  /** A second, page-only stylesheet after the site's (the home hero's dawn scene). */
+  readonly pageCssUrl?: string;
   /** Send no Referer from this page (/join: its URL holds an invite). */
   readonly noReferrer?: boolean;
 }
@@ -80,6 +84,7 @@ export function Document(props: { meta: PageMeta; assets: PageAssets; children: 
         <link rel="icon" type="image/svg+xml" href={`/${FAVICON_SVG}`} />
         <link rel="preload" as="font" type="font/woff2" href={assets.fontUrl} crossOrigin="" />
         <link rel="stylesheet" href={assets.cssUrl} />
+        {meta.pageCssUrl ? <link rel="stylesheet" href={meta.pageCssUrl} /> : null}
         {meta.script ? <script dangerouslySetInnerHTML={{ __html: meta.script }} /> : null}
         {meta.scriptSrc ? <script type="module" src={meta.scriptSrc} /> : null}
         {(meta.structuredData ?? []).map((data, i) => (

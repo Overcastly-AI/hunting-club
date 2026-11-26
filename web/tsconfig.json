@@ -19,6 +19,7 @@
     "site-head.ts",
     "build-version.ts",
     "global-stylesheet.ts",
+    "dawn-stylesheet.ts",
     "no-eval-entry.ts"
   ]
 }
