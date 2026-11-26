@@ -1,6 +1,7 @@
-import { CHECK_IN_MODE_KEYS } from '@huntclub/mesh';
+import { CHECK_IN_MODE_KEYS, MAX_TEXT_CHARS } from '@huntclub/mesh';
 import { MEMBER_ROLES } from '@huntclub/shared';
 
+import { CHAT_ITEM_KINDS, SEND_STATES } from '../chat/model';
 import type { Migration } from './types';
 
 /**
@@ -236,6 +237,34 @@ CREATE UNIQUE INDEX stands_club_mesh_id ON stands (club_id, mesh_id);
 CREATE UNIQUE INDEX areas_club_mesh_id ON areas (club_id, mesh_id);
 `;
 
+/**
+ * Chat history (texts and system cards), kept across app restarts. Replaces
+ * the unused `messages` table from version 1. One row per (kind, sender,
+ * message id): the mesh's de-duplication key (packet id for texts, app
+ * message id for system cards). `extra` is JSON for display only (sender
+ * name, place, system event). Bodies are stored, never logged.
+ */
+const chatHistory = `
+DROP INDEX messages_channel_sent_at;
+DROP TABLE messages;
+
+CREATE TABLE chat_messages (
+  kind TEXT NOT NULL CHECK (kind IN (${sqlList(CHAT_ITEM_KINDS)})),
+  sender INTEGER NOT NULL,
+  message_id INTEGER NOT NULL,
+  conversation TEXT NOT NULL,
+  body TEXT NOT NULL CHECK (kind <> 'text' OR length(body) <= ${MAX_TEXT_CHARS}),
+  at INTEGER NOT NULL,
+  mine INTEGER NOT NULL DEFAULT 0,
+  send_state TEXT CHECK (send_state IN (${sqlList(SEND_STATES)})),
+  delivered_to INTEGER,
+  delivered_of INTEGER,
+  extra TEXT NOT NULL DEFAULT '{}',
+  PRIMARY KEY (kind, sender, message_id)
+);
+CREATE INDEX chat_messages_conversation_at ON chat_messages (conversation, at);
+`;
+
 export const migrations: readonly Migration[] = [
   { version: 1, name: 'initial local schema', sql: initialSchema },
   { version: 2, name: 'map pack downloads', sql: mapPackDownloads },
@@ -245,4 +274,5 @@ export const migrations: readonly Migration[] = [
   { version: 6, name: 'my profile', sql: myProfile },
   { version: 7, name: 'free party', sql: freeParty },
   { version: 8, name: 'club membership and mesh ids', sql: clubMembership },
+  { version: 9, name: 'chat history', sql: chatHistory },
 ];

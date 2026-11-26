@@ -41,6 +41,7 @@ const text = (
 ): Extract<ChatItem, { kind: 'text' }> => ({
   kind: 'text',
   id: 't1',
+  messageId: 1,
   conversation: party,
   from: DALE,
   fromName: 'Dale',
@@ -177,7 +178,7 @@ describe('connectChat', () => {
     });
     client.fire('text', { ...meta, packetId: 9, from: ME, text: 'echo', isDirect: false });
     expect(conversationItems(store.getSnapshot(), party)).toEqual([
-      text({ id: `text:${DALE}:7`, place: { kind: 'stand', name: 'Creek Stand' } }),
+      text({ id: `text:${DALE}:7`, messageId: 7, place: { kind: 'stand', name: 'Creek Stand' } }),
     ]);
     expect(
       conversationItems(store.getSnapshot(), directConversation(DALE)).map(
