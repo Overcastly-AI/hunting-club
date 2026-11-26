@@ -24,7 +24,7 @@ describe('dawn scene', () => {
   });
 
   it('has no gradients, images, scripts or outside requests', () => {
-    expect(svg).not.toMatch(/Gradient|<image|<script|<use|href|url\((?!#dawn-window-)/);
+    expect(svg).not.toMatch(/Gradient|<image|<script|<use|href|url\((?!#dawn-)/);
   });
 
   it('keeps both text tokens readable on everything text can sit on', () => {
@@ -42,6 +42,21 @@ describe('dawn scene', () => {
     const accentPaints = Object.entries(DAWN_PAINTS).filter(([, p]) => p.token === 'accent');
     expect(accentPaints.map(([name]) => name).sort()).toEqual(['glow', 'sun']);
     expect(svg.match(new RegExp(`fill="${colors.accent}"`, 'g'))).toHaveLength(4);
+  });
+
+  it('keeps the sun behind the far ridge, drifting with it', () => {
+    const layer = svg.indexOf('<g class="dawn-layer-far">');
+    const clip = svg.indexOf('<g clip-path="url(#dawn-sky)">');
+    const ridge = svg.indexOf('class="dawn-ridge-far"');
+    expect(layer).toBeGreaterThan(-1);
+    expect(clip).toBeGreaterThan(layer);
+    expect(ridge).toBeGreaterThan(clip);
+    expect(svg.slice(layer, ridge)).not.toMatch(/dawn-layer-(?!far)/);
+    for (const match of svg.matchAll(new RegExp(`fill="${colors.accent}"`, 'g'))) {
+      expect(match.index).toBeGreaterThan(clip);
+      expect(match.index).toBeLessThan(ridge);
+    }
+    expect(svg).toMatch(/<clipPath id="dawn-sky"><path d="M[^"]+L-?\d+ 0Z"\/><\/clipPath>/);
   });
 
   it('is decorative, stops for reduced motion and can be paused', () => {

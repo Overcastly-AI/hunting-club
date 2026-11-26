@@ -64,11 +64,15 @@ export const DAWN_TEXT_BACKDROPS: readonly { base: ColorToken; over: readonly Pa
   },
 ];
 
-const SUN = { x: 930, y: 700, r: 46, rings: [140, 240, 360] } as const;
+const SUN = { x: 815, y: 688, r: 46, rings: [140, 240, 360] } as const;
 /** The line the doe and the turkeys stand on. */
 const GROUND_Y = 800;
 const MID_Y = 734;
 const FAR_Y = 684;
+/** The far ridge's skyline: seed, height, roll and step for ridge(). */
+const FAR_RIDGE = [11, FAR_Y, 34, 40] as const;
+/** Clip path: the sky above the far ridge. The sun and its light are drawn inside it. */
+const SKY_CLIP = 'dawn-sky';
 /** Extra drawing beyond both sides, so the slow sideways drift never shows an edge. */
 const BLEED = 80;
 
@@ -89,8 +93,11 @@ function random(seed: number): () => number {
   };
 }
 
-/** A rolling skyline from left to right, closed along the bottom of the picture. */
-function ridge(seed: number, y: number, roll: number, step: number): string {
+/**
+ * A rolling skyline from left to right, closed along the bottom of the picture (the ridge) or, with
+ * `closeY` 0, along the top (the sky above it, to clip things that rise from behind the ridge).
+ */
+function ridge(seed: number, y: number, roll: number, step: number, closeY: number = DAWN_VIEW.height): string {
   const rnd = random(seed);
   const pts: string[] = [];
   let level = y;
@@ -100,7 +107,7 @@ function ridge(seed: number, y: number, roll: number, step: number): string {
     pts.push(`${n(x)} ${n(level)}`);
   }
   const [first, ...rest] = pts;
-  return `M${first} ${rest.map((p, i) => (i % 2 ? p : `Q${p}`)).join(' ')} L${DAWN_VIEW.width + BLEED} ${DAWN_VIEW.height} L${-BLEED} ${DAWN_VIEW.height}Z`;
+  return `M${first} ${rest.map((p, i) => (i % 2 ? p : `Q${p}`)).join(' ')} L${DAWN_VIEW.width + BLEED} ${closeY} L${-BLEED} ${closeY}Z`;
 }
 
 /**
@@ -178,12 +185,12 @@ interface Placement {
   faceLeft?: boolean;
   /** Start this far into the loop (seconds), so animals of one kind are out of step. */
   offset?: number;
-  /** The frame shown when motion is off. */
+  /** When motion is off, the animal shows its pose at this time into the loop (seconds). */
   still: number;
   paint: Paint;
 }
 
-const cellOf = (s: DawnSprite, frame: number) => s.frames[frame % s.frames.length] ?? 0;
+const cellAt = (s: DawnSprite, seconds: number) => s.frames[Math.round(seconds * s.fps) % s.frames.length] ?? 0;
 
 /**
  * One animal: its distinct frames side by side behind a one-frame window, and a stepped
@@ -206,7 +213,7 @@ function animal(p: Placement): { svg: string; css: string } {
       .map((d, i) => `<path${i ? ` transform="translate(${i * s.width})"` : ''} d="${d}"/>`)
       .join('')}</g></g></g>`;
   const css =
-    `.dawn-${p.id}{transform:translateX(${-cellOf(s, p.still) * s.width}px);animation:dawn-${p.id} ${seconds}s step-end ${-(p.offset ?? 0)}s infinite}` +
+    `.dawn-${p.id}{transform:translateX(${-cellAt(s, p.still) * s.width}px);animation:dawn-${p.id} ${seconds}s step-end ${-(p.offset ?? 0)}s infinite}` +
     `@keyframes dawn-${p.id}{${steps.join('')}}`;
   return { svg, css };
 }
@@ -224,11 +231,11 @@ const WALK_SECONDS = 84;
 
 export function dawnSceneSvg(): string {
   const { width, height } = DAWN_VIEW;
-  const doe: Placement = { id: 'doe', sprite: sprite('doe'), x: 850, y: GROUND_Y + 3, scale: NEAR_SCALE, faceLeft: true, still: 78, paint: DAWN_PAINTS.foreground };
+  const doe: Placement = { id: 'doe', sprite: sprite('doe'), x: 850, y: GROUND_Y + 3, scale: NEAR_SCALE, faceLeft: true, still: 5.9, paint: DAWN_PAINTS.foreground };
   const buck: Placement = { id: 'buck', sprite: sprite('buck'), x: 540, y: MID_Y + 4, scale: 0.4, still: 0, paint: DAWN_PAINTS.nearGround };
   const feeders: Placement[] = [
-    { id: 'hen-a', sprite: sprite('turkeyFeed'), x: 610, y: GROUND_Y + 14, scale: 0.6, still: 50, paint: DAWN_PAINTS.foreground },
-    { id: 'hen-b', sprite: sprite('turkeyFeed'), x: 1130, y: GROUND_Y + 10, scale: 0.56, faceLeft: true, offset: 3.4, still: 12, paint: DAWN_PAINTS.foreground },
+    { id: 'hen-a', sprite: sprite('turkeyFeed'), x: 610, y: GROUND_Y + 14, scale: 0.6, still: 4.4, paint: DAWN_PAINTS.foreground },
+    { id: 'hen-b', sprite: sprite('turkeyFeed'), x: 1130, y: GROUND_Y + 10, scale: 0.56, faceLeft: true, offset: 3.4, still: 1.72, paint: DAWN_PAINTS.foreground },
   ];
   const walk = sprite('turkeyWalk');
   const walkScale = 0.6;
@@ -236,8 +243,8 @@ export function dawnSceneSvg(): string {
   const walkDistance = (scale: number) =>
     (walk.stride ?? 0) * scale * (WALK_SECONDS / (walk.frames.length / walk.fps));
   const walkers: (Placement & { delay: number; rest: number })[] = [
-    { id: 'jake-a', sprite: walk, x: 0, y: GROUND_Y + 22, scale: walkScale, still: 2, paint: DAWN_PAINTS.foreground, delay: 0.2, rest: 440 },
-    { id: 'jake-b', sprite: walk, x: 0, y: GROUND_Y + 18, scale: walkScale * 0.94, offset: 0.4, still: 8, paint: DAWN_PAINTS.foreground, delay: 0.56, rest: 1010 },
+    { id: 'jake-a', sprite: walk, x: 0, y: GROUND_Y + 22, scale: walkScale, still: 0.17, paint: DAWN_PAINTS.foreground, delay: 0.2, rest: 440 },
+    { id: 'jake-b', sprite: walk, x: 0, y: GROUND_Y + 18, scale: walkScale * 0.94, offset: 0.4, still: 0.67, paint: DAWN_PAINTS.foreground, delay: 0.56, rest: 1010 },
   ];
   const crow = sprite('crow');
   const crows = [
@@ -250,7 +257,7 @@ export function dawnSceneSvg(): string {
   const walkParts = walkers.map((w) => ({ w, a: animal(w) }));
   const crowParts = crows.map((c, i) => ({
     c,
-    a: animal({ id: c.id, sprite: crow, x: 0, y: 0, scale: c.scale, faceLeft: true, offset: i * 0.17, still: 1 + i, paint: DAWN_PAINTS.foreground }),
+    a: animal({ id: c.id, sprite: crow, x: 0, y: 0, scale: c.scale, faceLeft: true, offset: i * 0.17, still: (1 + i) / 12, paint: DAWN_PAINTS.foreground }),
   }));
   const startX = -260;
 
@@ -303,14 +310,16 @@ export function dawnSceneSvg(): string {
   return [
     `<svg class="dawn" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMax slice" aria-hidden="true" focusable="false">`,
     `<style>${css}</style>`,
-    `<defs>${[doe, buck, ...feeders, ...walkers].map((p) => window_(p.id, p.sprite)).join('')}${crows.map((c) => window_(c.id, crow)).join('')}</defs>`,
+    `<defs>${[doe, buck, ...feeders, ...walkers].map((p) => window_(p.id, p.sprite)).join('')}${crows.map((c) => window_(c.id, crow)).join('')}` +
+      `<clipPath id="${SKY_CLIP}"><path d="${ridge(...FAR_RIDGE, 0)}"/></clipPath></defs>`,
     `<rect width="${width}" height="${height}" ${fill(DAWN_PAINTS.skyBase)}/><rect width="${width}" height="${height}" ${fill(DAWN_PAINTS.skyLight)}/>`,
-    // light: flat rings, then the sun
+    // far ridge, with the sun just cresting it: the light (flat rings, then the sun) is clipped to the sky
+    // above the ridge and drifts with it, so the ridgeline always cuts across the sun
+    `<g class="dawn-layer-far"><g clip-path="url(#${SKY_CLIP})">`,
     `<g class="dawn-glow" style="transform-origin:${SUN.x}px ${SUN.y}px">${[...SUN.rings].reverse().map((r) => `<circle cx="${SUN.x}" cy="${SUN.y}" r="${r}" ${fill(DAWN_PAINTS.glow)}/>`).join('')}</g>`,
-    `<circle cx="${SUN.x}" cy="${SUN.y}" r="${SUN.r}" ${fill(DAWN_PAINTS.sun)}/>`,
+    `<circle cx="${SUN.x}" cy="${SUN.y}" r="${SUN.r}" ${fill(DAWN_PAINTS.sun)}/></g>`,
+    `<path class="dawn-ridge-far" ${fill(DAWN_PAINTS.farRidge)} d="${ridge(...FAR_RIDGE)}"/></g>`,
     ...crowParts.map(({ c, a }) => `<g class="dawn-go-${c.id}">${a.svg}</g>`),
-    // far ridge
-    `<g class="dawn-layer-far" opacity="${DAWN_PAINTS.farRidge.opacity}"><path fill="${colors.surface}" d="${ridge(11, FAR_Y, 34, 40)}"/></g>`,
     fogBank(5, FAR_Y + 34, 30, 'a'),
     // middle ridge with its trees and the buck
     `<g class="dawn-layer-mid" opacity="${DAWN_PAINTS.midRidge.opacity}"><path fill="${colors.surface}" d="${ridge(23, MID_Y, 18, 60)}"/>${grove(300, { token: 'surface', opacity: 1 }, midTrees, MID_Y, 3)}${placed[1]!.svg}</g>`,

@@ -26,13 +26,14 @@ import config as C  # noqa: E402
 import poses as P  # noqa: E402
 
 CLOSE_M = 0.012            # gaps narrower than about twice this are filled
+CLOSE_M_CLIP = {"buck": 0.005}   # less for the buck, or the gaps between his tines fill and the rack is a blob
 # Douglas-Peucker tolerance in path units. Animals drawn small in the scene get a coarser outline.
-TOLERANCE = {"doe": 1.5, "buck": 2.2, "turkeyWalk": 1.3, "turkeyFeed": 1.3, "crow": 2.0}
+TOLERANCE = {"doe": 1.5, "buck": 3.2, "turkeyWalk": 1.5, "turkeyFeed": 1.5, "crow": 2.0}
 MIN_LOOP_AREA_PX = 60      # specks and pinholes are dropped
 
 
-def clean(mask: Image.Image) -> np.ndarray:
-    k = round(CLOSE_M * C.MASK_PX_PER_M) * 2 + 1
+def clean(mask: Image.Image, close_m: float = CLOSE_M) -> np.ndarray:
+    k = round(close_m * C.MASK_PX_PER_M) * 2 + 1
     m = mask.convert("L").filter(ImageFilter.MaxFilter(k)).filter(ImageFilter.MinFilter(k))
     m = m.filter(ImageFilter.GaussianBlur(2.0))
     return np.asarray(m) >= 128
@@ -119,10 +120,10 @@ def to_path(pts: np.ndarray) -> str:
     return "".join(d).replace(" -", "-") + "z"
 
 
-def trace(mask: Image.Image, tol: float) -> str:
+def trace(mask: Image.Image, tol: float, close_m: float = CLOSE_M) -> str:
     scale = C.PATH_UNITS_PER_M / C.MASK_PX_PER_M
     parts = []
-    for loop in loops(clean(mask)):
+    for loop in loops(clean(mask, close_m)):
         if area(loop) < MIN_LOOP_AREA_PX:
             continue
         parts.append(to_path(simplify(loop * scale, tol)))
@@ -136,7 +137,7 @@ def main():
         idx = json.loads((work / name / "index.json").read_text())
         cells, remap = [], {}
         for i in range(idx["unique"]):
-            d = trace(Image.open(work / name / f"{i:04d}.png"), TOLERANCE[name])
+            d = trace(Image.open(work / name / f"{i:04d}.png"), TOLERANCE[name], CLOSE_M_CLIP.get(name, CLOSE_M))
             if d not in cells:
                 cells.append(d)
             remap[i] = cells.index(d)
@@ -145,7 +146,7 @@ def main():
         out[name] = {
             "width": round((x1 - x0) * u), "height": round((z1 - z0) * u),
             "originX": round(-x0 * u), "groundY": round(z1 * u),     # the animal's reference point, on the ground
-            "unitsPerMetre": u, "fps": P.FPS, "cells": cells, "frames": [remap[i] for i in idx["frames"]],
+            "unitsPerMetre": u, "fps": P.fps(name), "cells": cells, "frames": [remap[i] for i in idx["frames"]],
             **({"stride": round(clip["stride"] * u)} if "stride" in clip else {}),
         }
         size = sum(len(c) for c in cells)

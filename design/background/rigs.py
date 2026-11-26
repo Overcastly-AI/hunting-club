@@ -151,7 +151,7 @@ def render_clip(name: str, out: Path) -> dict:
         old.unlink()
     seen, order = {}, []
     for f in range(P.frames(name)):
-        pose = clip["pose"](f / P.FPS)
+        pose = P.frame_pose(name, f)
         k = key(pose)
         if k not in seen:
             seen[k] = len(seen)

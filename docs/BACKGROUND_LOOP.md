@@ -1,7 +1,9 @@
 # Background scene: wildlife at dawn (design and pipeline)
 
-Status: second version, 2026-11-26. Not integrated into `site/` or `web/` yet.
-Review files: `design/background/out/review/` (three stills and a 30 s screen capture).
+Status: third version, 2026-11-26 (smoother turkey necks, white-tailed deer proportions, sun behind the ridge).
+Not integrated into `site/` or `web/` yet.
+Review files: `design/background/out/review/`: stills for desktop, phone and reduced motion, a deer close-up still,
+a 30 s screen capture and a 10 s close-up capture of the turkeys.
 
 ## 1. What changed and why
 
@@ -26,10 +28,10 @@ Viewbox 1600 x 900, scaled to cover the hero and anchored at the bottom (`preser
 | Layer, back to front | Paint (token at opacity) | Moves |
 |---|---|---|
 | Sky | `surface`, washed with `controlBorder` at 30% | no |
-| Light: three flat rings round the sun | `accent` at 6% each (they stack) | breathes slowly |
-| Sun, half behind the far ridge | `accent` at 85% | no |
-| Crows | `mapHalo` | cross the sky, wings beating |
+| Light: three flat rings round the sun, clipped to the sky above the far ridge | `accent` at 6% each (they stack) | breathes slowly; drifts with the far ridge |
+| Sun, just cresting the far ridge (clipped to the sky above it) | `accent` at 85% | drifts with the far ridge |
 | Far ridge | `surface` at 45% | drifts 5 units |
+| Crows | `mapHalo` | cross the sky, wings beating |
 | Fog bank | `textSecondary` at 9% | drifts left |
 | Middle ridge, ten bare hardwoods, the buck | `surface` at 80% | drifts 10 units |
 | Fog bank | `textSecondary` at 9% | drifts right |
@@ -40,6 +42,10 @@ Viewbox 1600 x 900, scaled to cover the hero and anchored at the bottom (`preser
 The different drift per layer is the parallax: it reads as a camera breathing, 46 s each way.
 
 Where things sit:
+- The sun sits behind the far ridge: the light is drawn inside a clip path that is the sky above the far
+  ridge's skyline (the same `ridge()` outline, closed along the top), and both are in the far layer, so the
+  parallax moves them together and the ridgeline always cuts across the sun. The doe stands in front of it, her
+  neck and head silhouetted against the visible part. A test checks the accent appears only inside that clip.
 - The doe and the sun are in the middle of the picture, low. A phone shows only the middle strip, so they stay in
   view at every width (`review/dawn-phone.jpg`).
 - Text goes in the upper left on desktop and the upper half on a phone. The left half has fewer trees for that
@@ -86,6 +92,29 @@ fetlock; two neck segments; ears; tail). Legs are placed by inverse kinematics f
 cleaned by a small grow-then-shrink before tracing, which fills the notches where two solids meet, so each outline
 reads as one animal.
 
+### Deer proportions
+
+The doe and buck follow adult white-tailed deer, measured, not judged by eye: `design/background/proportions.py`
+rasterises the rig straight from `poses.py` and prints each ratio against its reference range (exit code 1 if one
+is out). Shoulder height H is about 0.99 m.
+
+| Ratio | Reference | Before | Now (doe / buck) |
+|---|---|---|---|
+| Chest depth / H | 0.46-0.53 | 0.35 | 0.48 / 0.47 |
+| Leg length (ground to brisket) / chest depth | 0.90-1.12 | 1.74 | 1.02 / 1.04 |
+| Body length / H | 1.05-1.25 | about 1.0 | 1.11 / 1.10 |
+| Flank depth / chest depth | 0.70-0.85 | | 0.73 / 0.75 |
+| Head length / H | 0.27-0.33 | 0.25 | 0.29 / 0.28 |
+| Ear length / head length | 0.55-0.66 | 0.73 | 0.58 |
+| Rump above withers / H | -0.02-0.06 | | 0.02 |
+
+Also: the neck is broad where it meets the shoulders and tapers to the head; the hind leg has a high hock
+(about 0.42 H) pointing back with a near-vertical cannon; lower legs are slender; ears stand up and apart at rest.
+The buck's rack is a mature 8-pointer: the main beam leaves the skull back and up and sweeps forward over the
+face, the brow tine is short, G2 the longest, tines near vertical. In profile the far antler (its beam and G2)
+shows just ahead of the near one, which is how a 0.45 m spread reads from the side. The tracer closes smaller
+gaps on the buck so the tines stay separate.
+
 ### Format chosen: a vector frame strip
 
 All distinct frames of an animal sit side by side as SVG paths behind a one-frame window. A stepped CSS animation
@@ -103,34 +132,49 @@ the animals: the generated path file is committed, so a normal build needs neith
 
 ### Sizes
 
-| Clip | Loop | Frames at 12 fps | Distinct paths stored | Path data |
-|---|---|---|---|---|
-| Doe | 16 s | 192 | 83 | 89,066 bytes |
-| Buck | 18 s | 216 | 103 | 115,345 bytes |
-| Walking turkey | 1 s | 12 | 12 | 8,738 bytes |
-| Feeding turkey | 8 s | 96 | 72 | 43,581 bytes |
-| Crow | 0.5 s | 6 | 6 | 1,916 bytes |
+| Clip | Loop | Frame rate | Frames | Distinct paths stored | Path data |
+|---|---|---|---|---|---|
+| Doe | 16 s | 12 fps | 192 | 81 | 91,740 bytes |
+| Buck | 18 s | 12 fps | 216 | 101 | 92,616 bytes |
+| Walking turkey | 1 s | 24 fps | 24 | 24 | 16,500 bytes |
+| Feeding turkey | 8 s | 24 fps (on twos where slow) | 192 | 138 | 79,891 bytes |
+| Crow | 0.5 s | 24 fps | 12 | 12 | 3,846 bytes |
 
-Whole scene, as inlined in the page: **373,251 bytes, 73,179 bytes gzipped** (test budget: 90,000 gzipped). It
-replaces the first version's 1.5 MB mobile video, 3 MB desktop video and poster images.
+Whole scene, as inlined in the page: **460,840 bytes, 88,622 bytes gzipped** (test budget: 90,000 gzipped; the
+second version was 73,179). It replaces the first version's 1.5 MB mobile video, 3 MB desktop video and poster
+images. The committed generator input `dawnSprites.generated.ts` is 288,734 bytes.
 
-The committed generator input `dawnSprites.generated.ts` is 262,145 bytes.
-
-If it must be smaller: the buck is 45% of the path data and is the smallest animal on screen. Halving his
-frame rate or coarsening his outline (`TOLERANCE` in `trace.py`) would take roughly 10 KB gzipped off.
+Room was made for the birds' doubled frame rate by tracing the buck coarser (`TOLERANCE` 2.2 to 3.2 path units,
+about 1 px at his size on a desktop) and the turkeys a little coarser (1.3 to 1.5), and by holding the feeding
+turkey's slow stretches on twos. The budget has about 1.4 KB left. If more is needed: the buck at 8 fps, or the
+doe's outline at `TOLERANCE` 1.8.
 
 ### Motion
 
-Drawn on twos (12 frames a second), the usual cadence for hand-drawn animal animation. What was done so it does not
-read stiff:
+The deer are drawn on twos (12 frames a second), the usual cadence for hand-drawn animal animation. The birds are
+drawn on ones (24 a second): a bird's head and wings move too quickly for twos, and at 12 fps a turkey's head dart
+or peck was over in one or two frames, which read as a snap. Where the feeding turkey moves slowly (no point
+travels 4 cm over two frames) its frames are held on twos, as hand animators mix ones and twos; that is
+`frame_pose()` in `poses.py`. What was done so it does not read stiff:
 
 - **Easing with anticipation and settle.** A head lift starts with a small dip, travels on a smooth curve and
-  rings out for three quarters of a second after it arrives. Flicks go out fast and come back slower.
+  rings out for three quarters of a second after it arrives. Flicks go out quicker than they come back, but start and end at rest.
 - **Weight shifts.** Feet are planted by inverse kinematics. The doe's body moves back about 2 cm over her feet as
   her head comes up and forward again as it goes down; a stamp drops the body a little.
 - **Holds.** Animals stand still between moves, as real ones do.
-- **Bird head stabilisation.** A walking turkey's head stays fixed in the world while the body walks under it, then
-  darts forward to the next hold, twice per cycle. This is what makes a walking bird read as a bird.
+- **Bird head stabilisation.** A walking turkey's head stays nearly fixed in the world while the body walks under
+  it, then thrusts forward to the next hold, twice per cycle. This is what makes a walking bird read as a bird.
+  The head's speed in the world rises and falls on a smooth bell during the thrust (0.23 s, six frames), so it
+  never starts or stops in a single frame.
+- **Follow-through and overlap in the necks.** `follow()` in `poses.py` is a spring and damper chasing a motion.
+  The turkey's head leads; the bend of its neck follows the head on a softer spring, so the neck trails the head
+  a little and settles after it; the head nods into each thrust and lifts out of it; the walking head itself
+  overshoots a touch at the end of a thrust and settles. On a feeding turkey, the head's tilt and the body's
+  forward pitch follow the head the same way, so the body tips after the head goes down and comes back after it
+  comes up.
+- **Feeding like a turkey.** Between pecks the head stays low over the ground and pecks from there (each peck: a
+  small draw back, the strike, a moment at the ground, back up), instead of going from fully upright to the ground
+  and back every time. It comes fully up only to look round.
 - **No foot slide.** The page moves each walking turkey exactly one stride per walk cycle, at that bird's own
   scale. A test checks it (and caught a 6% slide in the first build).
 - **Offset timing.** Loop lengths are 16 s (doe), 18 s (buck), 8 s (feeding turkeys, the second one 3.4 s out of
@@ -141,7 +185,7 @@ read stiff:
 |---|---|
 | Doe | Browses with small nibbles; lifts her head; ear flicks; two tail flicks; lowers her head; one foreleg stamp. |
 | Buck | Stands alert; drops his head to scent the ground; raises it; ear flick; stamp; tail flick; tests the air. |
-| Two feeding turkeys | Three pecks of different depth; head up to look round; a shuffle of one foot; another peck. |
+| Two feeding turkeys | Head low, three pecks of different depth; head up to look round; a shuffle of one foot; head down, another peck. |
 | Two walking turkeys | Cross left to right in 84 s, one behind the other, with head darts and body bob. |
 | Three crows | Cross the sky right to left in 52 s, two together and one later. |
 
@@ -163,7 +207,7 @@ Small PRs, in this order.
 
 | Piece | Where | State |
 |---|---|---|
-| The scene | `@huntclub/design/dawnScene`: `dawnSceneSvg()`, `DAWN_PAUSED_CLASS`, `DAWN_VIEW`, `DAWN_PAINTS` | Done. A subpath export on purpose: the main entry of `@huntclub/design` does not re-export it, so the mobile app's bundle does not carry 260 KB of paths. |
+| The scene | `@huntclub/design/dawnScene`: `dawnSceneSvg()`, `DAWN_PAUSED_CLASS`, `DAWN_VIEW`, `DAWN_PAINTS` | Done. A subpath export on purpose: the main entry of `@huntclub/design` does not re-export it, so the mobile app's bundle does not carry 290 KB of paths. |
 | Button labels "Pause background" / "Play background" | `packages/shared`, next to `signInCopy` | To do. The review page has them as sample strings only. |
 | The pause behaviour | One small framework-free function in `packages/design` (suggest `dawnControl.ts`): given the `<svg>` and the `<button>`, toggle the class, swap the label, set `aria-pressed`, remember the choice in `sessionStorage`. `site/` inlines it, `web/` calls it from an effect. | To do, about 15 lines. |
 | CSS for placement | `.dawn { position: absolute; inset: 0; width: 100%; height: 100% }` inside a `position: relative; overflow: hidden` hero. | In the review page; move to the shared stylesheet. |
@@ -182,7 +226,7 @@ Small PRs, in this order.
   is the headline text. CLS stays 0 because the hero has a fixed minimum height and the SVG is absolutely placed.
 - With JavaScript off the scene still animates and still honours reduced motion; only the pause button needs the
   script, so render the button from the script (or with `hidden` until the script runs).
-- Budget: 73 KB gzipped of the home page's 600 KB, in the HTML document. No exception to the brief's budget is
+- Budget: 89 KB gzipped of the home page's 600 KB, in the HTML document. No exception to the brief's budget is
   needed now. JS added: the pause function only.
 - The brief's "No autoplay video" (section 6) and "no autoplay" (section 9) stand: this is not video. Section 6
   says "Motion: none required; if used, respect prefers-reduced-motion", which this does. Section 6 also says "no
@@ -206,7 +250,7 @@ Small PRs, in this order.
 
 - Lighthouse CI on `/`: Performance >= 90, LCP < 2.5 s, CLS < 0.1 with the scene in place.
 - axe on `/` and the sign-in page.
-- A low-end phone check of scroll smoothness while the scene runs (about 20 animated groups, 12 fps frame swaps).
+- A low-end phone check of scroll smoothness while the scene runs (about 20 animated groups; 12 fps frame swaps for the deer, 24 fps for the birds).
   If it janks, the first lever is to pause the scene when the hero is scrolled out of view.
 
 ## 6. Rebuilding
@@ -214,8 +258,9 @@ Small PRs, in this order.
 ```
 # only when the animals change (needs Blender):
 python3.13 -m venv $SCRATCH/bpyenv && $SCRATCH/bpyenv/bin/pip install bpy       # about 1 GB, outside the repo
-$SCRATCH/bpyenv/bin/python design/background/rigs.py                           # masks, 47 s on 4 CPU cores
+$SCRATCH/bpyenv/bin/python design/background/rigs.py                           # masks, about 2 min on 4 CPU cores
 python3 design/background/trace.py                                             # rewrites dawnSprites.generated.ts
+python3 design/background/proportions.py                                       # deer against white-tailed deer ratios
 
 # review page, stills and screen capture:
 npm run dawn:preview -w @huntclub/design
