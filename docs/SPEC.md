@@ -24,7 +24,8 @@ Build a phone app that pairs over Bluetooth with low-cost Meshtastic LoRa radios
 4. **Safety is never behind a paywall.** If a club's subscription lapses, Ask for a Hand, overdue alerts and the mesh keep working; only the club's shared setup and admin tools freeze.
 5. If you can scan a QR code, you can use it. No channels, keys or radio settings in the normal UI.
 6. Large text, large buttons and a word label on every control.
-7. Location is shared only while checked in (or while a hunt is started, for free users).
+7. Location is shared only while you're checked in (at a stand, at a spot or on the move).
+11. Stands are optional. Many hunters walk the woods; every feature must work for a hunter who never sits in a stand.
 8. "Ask for a Hand" pings your party or club. Nothing in the app may look like it calls 911.
 9. No legal shooting hours. Show sunrise and sunset only, since rules vary by state.
 10. Compatible with stock Meshtastic radios and firmware.
@@ -37,20 +38,37 @@ Build a phone app that pairs over Bluetooth with low-cost Meshtastic LoRa radios
 | Live map with free USGS topo and aerial (downloaded on device) | Yes | Yes |
 | Wind, sunrise and sunset, scent cone | Yes | Yes |
 | Hunting party by QR code: map, chat, quick replies, direct messages | Yes, **max 3 people** | Yes; whole-club chat plus parties |
-| Check in | "I'm here" pin on your own spot; your party sees it | Pick from the club's shared stand list; open/occupied stands |
+| Check in (see Ways to hunt) | At a spot or On the move; your party sees it | Also at a club stand or club area; open/occupied stands |
 | Ask for a Hand | To your party | To the whole club |
 | Overdue alert (sunset + grace time) | To your party | To the whole club and the board |
-| Club property line and shared stand list | No | Yes |
+| Club property line, shared stands and areas | No | Yes |
 | Roster, roles, invites, guest passes, reset club key | No | Yes |
 | Clubhouse board | No | Yes |
 | High-res offline map pack for the property | No | Yes |
-| Shooting-lane and safety-zone warnings near occupied stands | No | Later |
+| Log a harvest (private by default, optional share) | Yes; share with your party | Yes; share with the club |
+| Harvest reports and season summaries | No | Yes |
+| Club areas (named zones such as "North 40" or "Creek Bottom") | No | Yes |
+| Safety warnings near occupied stands and hunters on the move | No | Later |
 
-**MVP:** the full free version, plus club setup, stand list, check-in, the clubhouse board and Stripe checkout. Safety-zone warnings come after the field test.
+**MVP:** the full free version, plus club setup, stands and areas, check-in, the clubhouse board and Stripe checkout. Harvest reports and safety warnings come after the field test.
 
 **Party limit:** the 3-person cap is enforced by the app (party QR codes stop being shown and the app refuses to join a full party). It is a soft limit: someone with a stock Meshtastic client and the key could still listen on the channel. That's acceptable.
 
-**Out of scope for v1:** harvest logging, legal shooting hours, 911 or SOS calling over the mesh, trail-camera integration, marketplaces or social feeds, and custom radio firmware (stock Meshtastic firmware only).
+**Out of scope for v1:** legal shooting hours, 911 or SOS calling over the mesh, trail-camera integration, marketplaces or social feeds, and custom radio firmware (stock Meshtastic firmware only).
+
+## Ways to hunt
+
+Check-in describes where you are hunting, not just which stand you're in. Every mode gets the same map, chat, Ask for a Hand and overdue alert.
+
+| Mode | For | What others see | Positions |
+|---|---|---|---|
+| **At a stand** (club) | Tree stands, ladders, ground blinds on the club's stand list | Stand name; stand shows as occupied | Every 5 min, plus smart position on movement |
+| **At a spot** | Sitting anywhere: a log, a field edge, a portable stand | "My spot" or a name you give it, pinned where you are | Every 5 min, plus smart position on movement |
+| **On the move** | Still-hunting, stalking, walking the woods, drives | "On the move" on your live position; club area name if you're inside one | Every 2 min while moving, smart position |
+| **In an area** (club) | Hunting a named club zone without a fixed spot | Area name; area shows how many hunters are in it | As On the move |
+
+- A hunter can switch modes without checking out (for example, from a stand to On the move to track a deer).
+- Club areas are optional polygons the admin draws; stands can sit inside areas.
 
 ## System architecture
 
@@ -138,7 +156,9 @@ Everything that matters in the field travels over the LoRa mesh, with no server 
 | club_members | club id, user id, display name, initials, role (admin, member, guest), node ID, expires at | Guests expire |
 | subscriptions | club id, Stripe customer ID, Stripe subscription ID, plan, status, paid through | Written only by the webhook Lambda |
 | invites | id, club id, token, created by, expires at, uses | Enforces member limit |
-| stands | id, club id, name, type, lat, lon, notes, active, updated at | |
+| stands | id, club id, area id, name, type, lat, lon, notes, active, updated at | |
+| areas | id, club id, name, boundary (GeoJSON), notes, active, updated at | Optional named zones |
+| harvests | id, club id, member id, species, sex, lat, lon, stand or area id, notes, harvested at | Only harvests a member chose to share with the club; feeds reports |
 | map_packs | id, club id, bounds, zoom range, source, S3 key, size, built at | |
 | stripe_events | event ID, processed at | Webhook idempotency |
 
@@ -158,17 +178,18 @@ Use stock Meshtastic channels, positions and text messages. Put the hunting-spec
 
 | Type | Meshtastic port | Sent when | Budget |
 |---|---|---|---|
-| Position | Position (stock, from radio GPS) | Every 2–5 min while checked in; smart position on movement | Stock size |
+| Position | Position (stock, from radio GPS) | While checked in: every 5 min sitting, every 2 min on the move; smart position on movement | Stock size |
 | Text | Text message (stock) | User sends | 200 characters max, enforced in UI |
-| CheckIn | Private app port | Check in at a stand or "I'm here" pin | Under 40 bytes, request ack |
+| CheckIn | Private app port | Check in or change mode (stand, area, spot, on the move) | Under 40 bytes, request ack |
 | CheckOut | Private app port | Check out | Under 40 bytes, request ack |
 | HelpRequest | Private app port | Ask for a Hand | Under 60 bytes, request ack, retry until acked |
-| StandListVersion | Private app port | Admin edits stands (club) | Version number only; full list syncs via cloud |
+| HarvestShare | Private app port | Hunter chooses to share | Under 80 bytes |
+| StandListVersion | Private app port | Admin edits stands or areas (club) | Version number only; full list syncs via cloud |
 | OverdueAlert | Private app port | Board or phone detects overdue | Under 40 bytes |
 
 **Rules**
 
-- Encode app messages as small protobufs with: message ID, sender node ID, timestamp, stand ID (or pin location) and payload. De-duplicate on message ID.
+- Encode app messages as small protobufs with: message ID, sender node ID, timestamp, mode, stand or area ID or pin location, and payload. De-duplicate on message ID.
 - Show delivery state in the UI (for example, "Delivered to 5 of 6") using Meshtastic acks.
 - Mark positions as stale in the UI: solid ring under 2 min, dashed between 2 and 10 min, faded after that.
 - Keep the hop limit at the Meshtastic default (3) and avoid chatty updates. Airtime is shared by everyone in range.
@@ -183,11 +204,13 @@ The phone's SQLite database is the source of truth in the field. For club users,
 | Group | id, kind (party or club), name, channel key, region, overdue grace minutes, entitlement token | Key never logged |
 | Member | id, group id, display name, initials, role, node ID | From the party QR or club sync |
 | Radio | node ID, member id, hardware model, battery, last heard, last SNR | Filled from Meshtastic node info |
-| Stand | id, club id, name, type (tree stand, ladder, ground blind), lat, lon, notes, active | Club only; names, not coordinates, in the UI |
-| CheckIn | id, member id, stand id or pin lat/lon, checked in at, checked out at, overdue alert sent at | One open check-in per member |
+| Stand | id, club id, area id, name, type (tree stand, ladder, ground blind), lat, lon, notes, active | Club only; names, not coordinates, in the UI |
+| Area | id, club id, name, boundary, notes, active | Club only |
+| CheckIn | id, member id, mode (stand, area, spot, moving), stand id, area id, pin lat/lon, pin name, checked in at, checked out at, overdue alert sent at | One open check-in per member; mode can change |
 | Position | node ID, lat, lon, accuracy, received at | Last known only |
 | Message | id, channel (club, party, direct), sender, body, sent at, delivered count | 200-character limit |
 | HelpRequest | id, member id, lat, lon, created at, acknowledged by, resolved at | |
+| Harvest | id, member id, species, sex, lat, lon, stand or area id, notes, photo (local), shared with (none, party, club), harvested at | Private unless shared |
 | MapPack | id, bounds, zoom range, source, size, downloaded at | Free: USGS region; Club: the property pack |
 
 ## Design system (from Design D)
@@ -224,34 +247,35 @@ The app has four tabs (Map, Chat, Check In, Party/Club) plus onboarding and the 
 
 **1. Map (approved: Design D)**
 
-- Full-screen offline basemap; for clubs, the club boundary and acreage label. Water and road labels and a 500 ft scale bar.
+- Full-screen offline basemap; for clubs, the club boundary, acreage label and club areas. Water and road labels and a 500 ft scale bar.
 - Top bar: party or club button beside one conditions panel showing Sunrise · Sunset, wind direction and speed with a "blowing toward" arrow, and temperature.
 - Mesh status line: "Mesh: 3 radios · heard 12s ago". Tapping it opens radio details.
 - Right-side controls: map layers, north-up, center on me.
-- Hunter markers: initials in a circle with a freshness ring, plus the stand or pin name and "2 min ago". Club open stands: icon by stand type plus "Open".
+- Hunter markers: initials in a circle with a freshness ring, plus the stand, spot or area name (or "On the move") and "2 min ago". Club open stands: icon by stand type plus "Open".
 - Your marker: an orange dot with a pulse and a scent cone pointing downwind, labeled "Your scent".
-- Bottom sheet when checked in: "Checked in at" plus the stand name (or "My spot") and time since check-in; **Ask for a Hand** (gold outline, "Pings your party" / "Pings club members"); **Check Out** (orange).
-- Bottom sheet when not checked in: one large "Check In" button (club: nearest open stand suggested; free: "I'm here").
+- Bottom sheet when checked in: "Checked in at" plus the stand, spot or area name (or "On the move") and time since check-in; **Ask for a Hand** (gold outline, "Pings your party" / "Pings club members"); **Check Out** (orange); a "Change mode" control; a "Log a harvest · Private" row.
+- Bottom sheet when not checked in: one large "Check In" button (club: nearest open stand suggested).
 - No search bar on the map.
 
 **2. Chat**
 
 - Segmented control: Party and Direct (free); Whole Club, Hunting Party and Direct (club).
-- Message bubbles with sender, stand and time; system cards for check-ins and help requests.
+- Message bubbles with sender, stand/spot/area or "On the move", and time; system cards for check-ins, help requests and shared harvests.
 - Quick replies: Coming to you, Seeing deer, All quiet, On my way out.
 - Text field with a live 200-character limit and delivery status ("Delivered to 5 of 6").
 
 **3. Check In**
 
-- Free: one large "I'm here" control that pins your current spot, with an optional name.
-- Club: the nearest open stand by GPS highlighted at the top; full stand list where open stands are tappable and occupied ones show who is there.
+- First choice, as large buttons: **Right here** (spot, with an optional name), **On the move**, and for clubs **At a stand** and **In an area**.
+- Club stands: the nearest open stand by GPS highlighted at the top; full stand list where open stands are tappable and occupied ones show who is there.
+- Club areas: list with how many hunters are in each; the area you're standing in is suggested.
 - Note explaining the overdue alert: sunset plus the grace time.
 - A large "Slide to check in" control to prevent pocket taps. Same pattern for Check Out.
 
 **4. Party / Club**
 
 - Free: party members (max 3) with radio status and battery; Party QR code; "Start a club" card linking to the web admin page.
-- Club: search for stands, members and pins (search lives here, not on the map); member list with radio status and battery; Club QR code to invite members (admins only).
+- Club: search for stands, areas, members and pins (search lives here, not on the map); member list with radio status and battery; Club QR code to invite members (admins only).
 - Settings: location sharing, text size, red-light night mode, Advanced radio settings.
 
 **5. Onboarding**
@@ -265,14 +289,14 @@ The app has four tabs (Map, Chat, Check In, Party/Club) plus onboarding and the 
 
 **6. Clubhouse board (Club)**
 
-- A landscape tablet showing the map and a large list of every stand: who is in it and since when.
+- A landscape tablet showing the map and a large list of everyone out: stand, spot, area or On the move, and since when. Open stands listed separately.
 - Overdue members highlighted, with a full-screen alert after sunset plus grace time.
 - Runs unattended, keeps the screen awake and auto-recovers the radio connection.
 
 **7. Web admin page (Club)**
 
 - Sign in, buy or renew the club subscription (Stripe Checkout), manage billing (Stripe customer portal).
-- Roster and roles, invite links, guest passes, request a high-res map pack for the property.
+- Roster and roles, invite links, guest passes, stands and areas, harvest reports and season summaries, request a high-res map pack for the property.
 
 ## Safety, privacy and accessibility
 
@@ -280,7 +304,7 @@ The app helps hunters look out for each other; it is not an emergency service. A
 
 **Safety**
 
-- Ask for a Hand sends a HelpRequest to your party or club with your location, and retries until at least one person acknowledges it.
+- Ask for a Hand sends a HelpRequest to your party or club with your current location (not just your stand or spot), and retries until at least one person acknowledges it.
 - The overdue alert fires at sunset plus the grace time (club: admin-set; default 30 minutes). Never use legal shooting hours.
 - If the mesh is down, say so plainly ("No radios heard for 15 min"); never show stale positions as live.
 - Include a plain note in settings: for emergencies, call 911 from your phone if you have service.
@@ -290,6 +314,7 @@ The app helps hunters look out for each other; it is not an emergency service. A
 
 - Your location is shared only while you're checked in, unless you change it in settings.
 - Keep only last-known positions; no location history.
+- Harvests are private by default; sharing (party or club) is a per-harvest choice.
 - Free users have no account; nothing about them is stored on our servers.
 - Mesh messages are encrypted with the party or club key. Never log keys or message bodies.
 
@@ -333,14 +358,15 @@ Build in this order. Each milestone ends with something you can test on real rad
 2. **Radio link:** scan, pair and connect over BLE; read node info; send and receive text on the primary channel. Test: two phones text with no cell service.
 3. **Free party:** start a party, Party QR code, scan to join (max 3), Advanced settings screen.
 4. **Live map:** MapLibre with on-device USGS map download; positions on the map with freshness rings; mesh status line.
-5. **Check-in (free):** "I'm here" pin, slide to check in and out, CheckIn and CheckOut app messages with acks, bottom sheet states.
+5. **Check-in (free):** At a spot and On the move modes, mode switching, slide to check in and out, CheckIn and CheckOut app messages with acks, bottom sheet states.
 6. **Safety:** Ask for a Hand with retries and acks, overdue alert from sunset plus grace time, mesh-down warnings.
-7. **Chat:** party and direct channels, quick replies, delivery status. *The free version is complete here.*
+7. **Chat and harvests:** party and direct channels, quick replies, delivery status; log a harvest, share with the party. *The free version is complete here.*
 8. **Cloud foundation:** Supabase schema and RLS, AWS CDK stack (S3, CloudFront, Lambda, EventBridge), budget alarm, keep-alive and backup jobs.
 9. **Club subscriptions:** web admin page, Stripe Checkout and webhook, club provisioning, signed entitlements, invites and member limits.
-10. **Club in the app:** club sign-in, club key storage and reset, stand list sync, club check-in, whole-club chat and alerts.
+10. **Club in the app:** club sign-in, club key storage and reset, stand and area sync, At a stand and In an area check-in, whole-club chat and alerts, harvest sharing to the club.
 11. **Clubhouse board.**
 12. **Club map packs:** build per-club PMTiles/MBTiles, host on S3 + CloudFront, download in the app.
-13. **Field test:** one real club for one weekend; log range, battery and confusion points.
+13. **Harvest reports:** season summaries on the web admin page.
+14. **Field test:** one real club for one weekend; log range, battery and confusion points.
 
 Agent instructions live in `CLAUDE.md` at the repo root.
