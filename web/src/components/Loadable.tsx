@@ -12,5 +12,14 @@ export function Loadable<T>(props: { state: AsyncState<T>; children: (value: T) 
       </p>
     );
   }
-  return <>{props.children(state.value)}</>;
+  return (
+    <>
+      {state.stale ? (
+        <p className="banner" role="status">
+          No connection to the club service. Showing what was last loaded.
+        </p>
+      ) : null}
+      {props.children(state.value)}
+    </>
+  );
 }

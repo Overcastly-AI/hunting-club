@@ -1,6 +1,7 @@
 export * from './app';
 export * from './enums';
 export * from './fields';
+export * from './harvestReport';
 export * from './club';
 export * from './api';
 export * from './apiPaths';

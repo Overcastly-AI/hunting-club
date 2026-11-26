@@ -3,6 +3,7 @@ import type {
   Area,
   Club,
   ClubCreateRequest,
+  Harvest,
   Invite,
   InviteCreate,
   Plan,
@@ -26,6 +27,8 @@ export interface ClubApi {
   listStands(): Promise<readonly Stand[]>;
   listAreas(): Promise<readonly Area[]>;
   getSubscription(): Promise<Subscription | null>;
+  /** Harvests in the club the admin may see (theirs, plus everyone's shared ones). */
+  listHarvests(): Promise<readonly Harvest[]>;
   /** Plans on sale (active only). */
   listPlans(): Promise<readonly Plan[]>;
   /** Starts Stripe Checkout for the club; resolves to the Stripe page to open. */

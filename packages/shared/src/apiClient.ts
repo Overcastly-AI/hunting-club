@@ -18,6 +18,7 @@ import {
 } from './api';
 import {
   AreaSchema,
+  HarvestSchema,
   ClubSchema,
   type InviteCreate,
   InviteCreateSchema,
@@ -122,6 +123,9 @@ export function createClubApiClient(options: ClubApiClientOptions) {
     listStands: (clubId: string) =>
       call('GET', API_PATHS.stands, club(clubId), z.array(StandSchema)),
     listAreas: (clubId: string) => call('GET', API_PATHS.areas, club(clubId), z.array(AreaSchema)),
+    /** The club's harvests the caller may see (their own, plus everyone's shared ones). */
+    listHarvests: (clubId: string) =>
+      call('GET', API_PATHS.harvests, club(clubId), z.array(HarvestSchema)),
     getEntitlement: (clubId: string) =>
       call('GET', API_PATHS.entitlement, club(clubId), EntitlementSchema),
     getSubscription: (clubId: string) =>
