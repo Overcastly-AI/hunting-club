@@ -11,12 +11,18 @@
     "./app": "./src/app.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "jest"
   },
   "dependencies": {
+    "qrcode": "^1.5.4",
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "typescript": "~6.0.3"
+    "@types/qrcode": "^1.5.6",
+    "typescript": "~6.0.3",
+    "@types/jest": "30.0.0",
+    "jest": "~30.5.2",
+    "ts-jest": "^29.4.15"
   }
 }

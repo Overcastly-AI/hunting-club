@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Screen } from '../../components/Screen';
 import { HarvestList } from '../../harvest/HarvestList';
+import { PartyQr } from '../../party/PartyQr';
 import { radioCopy } from '../../radio/copy';
 import { PAIR_RADIO_ROUTE } from '../../radio/routes';
 import { RadioStatus } from '../../radio/ui/RadioStatus';
@@ -13,6 +14,7 @@ import { colors, spacing, textStyles } from '../../theme';
 export default function PartyScreen() {
   return (
     <Screen title="Party" description="Start a party or scan a Party QR code to hunt together.">
+      <PartyQr />
       <HarvestList />
       <SafetyNote />
       <View style={styles.section}>
