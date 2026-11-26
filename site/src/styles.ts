@@ -1,6 +1,11 @@
 import { fontFaceCss, rootVariablesCss, textScale, textStyleCss } from '@huntclub/design';
 
-/** The whole site stylesheet, inlined in every page: tokens only, no hard-coded colors. */
+/** Phones and small tablets: the header is the logo and one Menu button. */
+export const PHONE_HEADER_MAX_WIDTH = 860;
+/** The narrowest phone the layout must fit with no sideways scrolling. */
+export const NARROWEST_PHONE = 360;
+
+/** The whole site stylesheet (a hashed file, never inline): tokens only, no hard-coded colors. */
 export function siteCss(fontUrl: string): string {
   return `
 ${fontFaceCss(fontUrl)}
@@ -44,8 +49,8 @@ a { color: var(--color-text); }
   cursor: pointer; list-style: none; }
 .menu summary::-webkit-details-marker { display: none; }
 .menu[open] .nav-list { flex-direction: column; padding: var(--space-sm) 0; }
-@media (max-width: 860px) {
-  .site-header .desktop { display: none; }
+@media (max-width: ${PHONE_HEADER_MAX_WIDTH}px) {
+  .site-header .desktop, .site-header .header-action { display: none; }
   .menu { display: block; }
   .menu[open] { flex-basis: 100%; order: 3; }
 }
@@ -55,7 +60,9 @@ section { padding: var(--space-xl) 0; }
 .band-light a { color: var(--color-link-on-light); }
 .band-light .muted, .band-light .lead { color: var(--color-muted-on-light); }
 .band-light .button { color: var(--color-text-on-light); background: transparent; border-color: var(--color-text-on-light); }
-.band-light .button.primary { color: var(--color-surface); background: var(--color-accent); border-color: var(--color-accent); }
+/* Accent is under 3:1 on the light background, so a primary button there keeps a dark edge. */
+.band-light .button.primary { color: var(--color-surface); background: var(--color-accent); border-color: var(--color-text-on-light); }
+.band-light :focus-visible { outline-color: var(--color-link-on-light); }
 /* The minimum height grows with the width so the dawn scene's sun and its brightest light stay
    below the hero's text and buttons (the scene covers the hero, anchored at the bottom). */
 .hero { position: relative; overflow: hidden; padding: var(--space-xl) 0 calc(var(--space-xl) * 2);
@@ -91,6 +98,7 @@ section { padding: var(--space-xl) 0; }
 .checklist { padding-left: 1.25rem; margin: 0 0 var(--space-md); }
 .checklist li { margin-bottom: var(--space-sm); }
 .plans { padding-top: 0; }
+.club-includes { margin-top: var(--space-xl); }
 .compare { width: 100%; border-collapse: collapse; }
 .compare th, .compare td { text-align: left; padding: var(--space-sm) var(--space-md) var(--space-sm) 0;
   border-bottom: 1px solid var(--color-control-border); vertical-align: top; }

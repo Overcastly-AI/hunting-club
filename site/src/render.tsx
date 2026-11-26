@@ -3,14 +3,7 @@ import type { ReactNode } from 'react';
 import { PAGE_CONTENT } from './pages';
 import { Join } from './pages/Join';
 import { NotFound } from './pages/NotFound';
-import {
-  HASH_FORWARD_SCRIPT,
-  JOIN_PAGE,
-  NOT_FOUND_PAGE,
-  ogImagePath,
-  ROUTES,
-  type SitePath,
-} from './routes';
+import { JOIN_PAGE, NOT_FOUND_PAGE, ogImagePath, ROUTES, type SitePath } from './routes';
 import { STRUCTURED_DATA } from './structuredData';
 import { Document, type PageAssets, type PageMeta } from './Shell';
 
@@ -29,7 +22,7 @@ export function renderPage(path: SitePath, assets: PageAssets): string {
   const home =
     path === '/'
       ? {
-          script: HASH_FORWARD_SCRIPT,
+          blockingScriptSrc: assets.forwardScriptUrl,
           scriptSrc: assets.dawn.scriptUrl,
           pageCssUrl: assets.dawn.cssUrl,
         }

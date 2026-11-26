@@ -5,9 +5,11 @@
 // here writes, signs anyone up or sends email.
 import { colors, FAVICON_ICO } from '@huntclub/design';
 import { ADMIN_PATH, API_PATHS, BUILD_VERSION_URL, WEB_PAGE_PATHS } from '@huntclub/shared';
+import { cspViolations } from '@huntclub/site/csp';
 import {
   canonicalUrl,
   JOIN_PAGE,
+  NAV_LINKS,
   NOT_FOUND_PAGE,
   REDIRECTS,
   ROUTES,
@@ -95,6 +97,19 @@ export async function runSmoke(config: EnvConfig, fetch: SmokeFetch): Promise<Sm
       expect(robots === NOINDEX_HEADER.value, `${NOINDEX_HEADER.header} is ${robots ?? 'missing'}`);
     return `GET / → 200 text/html, ${NOINDEX_HEADER.header} ${robots ?? 'absent'}`;
   });
+  await check(
+    'home page has no inline code the CSP would block, and its scripts load',
+    async () => {
+      const blocked = cspViolations(home);
+      expect(blocked.length === 0, `CSP would block: ${blocked.join(', ')}`);
+      const scripts = [...home.matchAll(/<script[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1]!);
+      for (const src of scripts) {
+        const res = await fetch(`${site}${src}`);
+        expect(res.status === 200, `GET ${src} → ${res.status}`);
+      }
+      return `no inline scripts, styles or handlers; ${scripts.length} script file(s) → 200`;
+    },
+  );
   let icon = '';
   await check('page head has a title, description, theme color and icon', async () => {
     expect(/<title>[^<]+<\/title>/.test(home), 'no title');
@@ -235,7 +250,13 @@ export async function runSmoke(config: EnvConfig, fetch: SmokeFetch): Promise<Sm
     const body = await res.text();
     expect(res.status === 404, `GET → ${res.status}`);
     expect(body.includes(`<title>${NOT_FOUND_PAGE.title}</title>`), 'not the 404 page');
-    return 'GET → 404, branded page';
+    // The shared header and footer, a way home and a way to the admin.
+    const missing = [...NAV_LINKS.map((l) => l.href), '/', ADMIN_PATH].filter(
+      (href) => !body.includes(`href="${href}"`),
+    );
+    expect(missing.length === 0, `no link to ${missing.join(', ')}`);
+    expect(/<header[\s>]/.test(body) && /<footer[\s>]/.test(body), 'no site header or footer');
+    return 'GET → 404, branded page with the site nav, home and admin links';
   });
   for (const path of MISSING_FILES) {
     await check(`missing file ${path} is a 404`, async () => {

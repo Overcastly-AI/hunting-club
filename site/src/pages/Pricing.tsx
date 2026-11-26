@@ -1,13 +1,17 @@
-import { CLUB_PRICING, FREE_PARTY_MAX_MEMBERS } from '@huntclub/shared';
-import { GET_THE_APP, START_A_CLUB } from '../routes';
+import { type BillingInterval, CLUB_PRICING, FREE_PARTY_MAX_MEMBERS } from '@huntclub/shared';
+import { CONDITIONS } from '../features';
+import { CLUB_PRICE_LINE, GET_THE_APP, START_A_CLUB } from '../routes';
 
 const { intervals } = CLUB_PRICING;
+
+/** The club plan's two cards, in the order the price line names them (monthly first). */
+export const CLUB_CARD_ORDER = ['month', 'year'] as const satisfies readonly BillingInterval[];
 
 /** Free and Club, from docs/SPEC.md "Free vs Club" (real rows only). */
 export const COMPARISON: readonly { feature: string; free: string; club: string }[] = [
   { feature: 'Pair a radio and see mesh status', free: 'Yes', club: 'Yes' },
   { feature: 'Live map with free USGS topo and aerial, on your phone', free: 'Yes', club: 'Yes' },
-  { feature: 'Wind, sunrise and sunset, scent cone', free: 'Yes', club: 'Yes' },
+  { feature: CONDITIONS, free: 'Yes', club: 'Yes' },
   {
     feature: 'Map, chat, quick replies and direct messages',
     free: `Your party, up to ${FREE_PARTY_MAX_MEMBERS} people`,
@@ -34,7 +38,7 @@ export const COMPARISON: readonly { feature: string; free: string; club: string 
 
 const FREE_LIST = [
   'Live map with free USGS topo and aerial',
-  'Wind, sunrise and sunset, scent cone',
+  CONDITIONS,
   'Party map, chat and quick replies',
   'Check in at a spot or on the move',
   'Ask for a Hand and overdue alerts to your party',
@@ -60,7 +64,7 @@ const BILLING_FAQ = [
   },
   {
     q: 'How is it billed?',
-    a: `${intervals.year.price} or ${intervals.month.price}, by card through Stripe, after a ${CLUB_PRICING.trialDays}-day free trial.`,
+    a: `${CLUB_PRICE_LINE} per club, by card through Stripe, after a ${CLUB_PRICING.trialDays}-day free trial.`,
   },
   {
     q: 'Can I cancel?',
@@ -108,26 +112,20 @@ export function Pricing() {
               {GET_THE_APP.label}
             </a>
           </div>
-          <div className="card">
-            <h2>Club</h2>
-            <p className="price">
-              {intervals.year.price}
-              {intervals.year.badge ? (
-                <span className="price-note"> ({intervals.year.badge})</span>
-              ) : null}
-            </p>
-            <p className="muted">or {intervals.month.price}</p>
-            <p>For hunting clubs and leases. Members join free.</p>
-            <ul className="checklist">
-              {CLUB_LIST.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-            <a className="button primary" href={START_A_CLUB.href}>
-              {START_A_CLUB.label}
-            </a>
-            <p className="muted fine-print">{CLUB_PRICING.terms}</p>
-          </div>
+          {CLUB_CARD_ORDER.map((interval) => (
+            <ClubCard key={interval} interval={interval} />
+          ))}
+        </div>
+        <div className="wrap club-includes">
+          <h2>What a club gets</h2>
+          <p className="lead">
+            {CLUB_PRICE_LINE} per club, for hunting clubs and leases. Members join free.
+          </p>
+          <ul className="checklist">
+            {CLUB_LIST.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
         </div>
       </section>
 
@@ -187,5 +185,24 @@ export function Pricing() {
         </div>
       </section>
     </>
+  );
+}
+
+/** One billing interval of the club plan: the same weight as the other, price first. */
+function ClubCard({ interval }: { interval: BillingInterval }) {
+  const pricing = intervals[interval];
+  return (
+    <div className="card">
+      <h2>Club, {pricing.label.toLowerCase()}</h2>
+      <p className="price">
+        {pricing.price}
+        {pricing.savings ? <span className="price-note"> ({pricing.savings})</span> : null}
+      </p>
+      <p>Per club: one price covers the whole club. Members join free.</p>
+      <p className="muted">{pricing.trial}</p>
+      <a className="button primary" href={START_A_CLUB.href}>
+        {START_A_CLUB.label}
+      </a>
+    </div>
   );
 }

@@ -1,6 +1,13 @@
 import { colors } from '@huntclub/design';
 import { ADMIN_PATH, API_PATHS, BUILD_VERSION_URL, WEB_PAGE_PATHS } from '@huntclub/shared';
-import { JOIN_PAGE, NOT_FOUND_PAGE, ROUTES, sitemapXml, SITEMAP_FILE } from '@huntclub/site/routes';
+import {
+  JOIN_PAGE,
+  NAV_LINKS,
+  NOT_FOUND_PAGE,
+  ROUTES,
+  sitemapXml,
+  SITEMAP_FILE,
+} from '@huntclub/site/routes';
 import { dev } from '../config/dev';
 import {
   cloudFor,
@@ -27,11 +34,17 @@ const HOME = [
   '<link rel="icon" type="image/svg+xml" href="/favicon.svg">',
   `<meta property="og:image" content="${SITE}/og/home.png"/>`,
   '<script type="application/ld+json">{"@type":"SoftwareApplication"}</script>',
+  '<script src="/assets/forward-abc.js"></script>',
   '</head><body><h1>Hunt Club Mesh</h1></body>',
 ].join('');
 /** The admin's page (web/dist index.html under ADMIN_PATH). */
 const ADMIN = '<!doctype html><head><title>Club admin</title></head><div id="root"></div>';
-const NOT_FOUND = `<!doctype html><head><title>${NOT_FOUND_PAGE.title}</title></head>`;
+const NOT_FOUND = [
+  `<!doctype html><head><title>${NOT_FOUND_PAGE.title}</title></head><body><header>`,
+  ...NAV_LINKS.map((l) => `<a href="${l.href}">${l.label}</a>`),
+  `</header><main><a href="/">Home</a><a href="${ADMIN_PATH}">Sign in</a></main>`,
+  '<footer></footer></body>',
+].join('');
 const ADMIN_PATHS = [ADMIN_PATH, ...WEB_PAGE_PATHS];
 const HTML = { 'content-type': 'text/html' };
 /** The security headers a healthy deployment sends (security-headers.ts). */
@@ -67,7 +80,7 @@ function fakeDev(override: Record<string, number> = {}): {
       const page = `<title>${JOIN_PAGE.title}</title><meta name="robots" content="noindex"/><script type="module" src="${JOIN_SCRIPT}"></script>`;
       return reply(200, page, { ...PAGE, 'referrer-policy': REFERRER_POLICY.join });
     }
-    if (url === `${SITE}${JOIN_SCRIPT}`)
+    if (url === `${SITE}${JOIN_SCRIPT}` || url === `${SITE}/assets/forward-abc.js`)
       return reply(200, '', { 'content-type': 'text/javascript' });
     const route = ROUTES.find((r) => r.path !== '/' && url === `${SITE}${r.path}`);
     if (route) return reply(200, `<title>${route.title}</title><h1>Page</h1>`, HTML);
@@ -189,6 +202,31 @@ describe('dev smoke check', () => {
     expect(failed.map((r) => r.detail)).toEqual([
       'referrer-policy is missing',
       expect.stringMatching(/^wrong or missing: .*referrer-policy/),
+    ]);
+  });
+
+  it('fails a home page with inline code the CSP would block', async () => {
+    const { fetch } = fakeDev();
+    const inline: SmokeFetch = async (url, init) => {
+      const res = await fetch(url, init);
+      if (url !== `${SITE}/`) return res;
+      const body = HOME.replace('</head>', '<script>alert(1)</script></head>');
+      return { ...res, text: async () => body };
+    };
+    const failed = (await runSmoke(dev, inline)).filter((r) => !r.ok);
+    expect(failed.map((r) => r.detail)).toEqual(['CSP would block: inline script']);
+  });
+
+  it('fails a 404 page without the site nav', async () => {
+    const { fetch } = fakeDev();
+    const bare: SmokeFetch = async (url, init) => {
+      const res = await fetch(url, init);
+      if (url !== `${SITE}${UNKNOWN_PAGE_PATH}`) return res;
+      return { ...res, text: async () => `<title>${NOT_FOUND_PAGE.title}</title>` };
+    };
+    const failed = (await runSmoke(dev, bare)).filter((r) => !r.ok);
+    expect(failed.map((r) => r.name)).toEqual([
+      `unknown path ${UNKNOWN_PAGE_PATH} is the 404 page`,
     ]);
   });
 
