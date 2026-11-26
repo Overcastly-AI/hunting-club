@@ -14,8 +14,8 @@ import type { IncomingAlert } from './alerts';
 
 export const ASK_FOR_A_HAND = 'Ask for a Hand';
 
-/** Shown in settings (docs/SPEC.md "Safety"). */
-export const SAFETY_NOTE = 'For emergencies, call 911 from your phone if you have service.';
+/** Shown in settings (docs/SPEC.md "Safety"); one source, shared with the Terms. */
+export { SAFETY_NOTE } from '@huntclub/shared';
 
 /** "Dale", "Dale and Sam", "Dale, Sam and Joe". */
 export function listNames(names: readonly string[]): string {
