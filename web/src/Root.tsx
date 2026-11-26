@@ -1,10 +1,4 @@
-import {
-  ADMIN_PATH,
-  CHECKOUT_RETURN_PATHS,
-  JOIN_PATH,
-  LEGAL_DOCS,
-  LEGAL_PATHS,
-} from '@huntclub/shared';
+import { ADMIN_PATH, CHECKOUT_RETURN_PATHS, JOIN_PATH } from '@huntclub/shared';
 import { lazy, Suspense, type ReactNode } from 'react';
 import type { WebClubServices } from './cloud';
 import { Loading } from './components/Loading';
@@ -13,7 +7,6 @@ import { Loading } from './components/Loading';
 // and the admin doesn't pull in the mesh codec until an invite is made.
 const App = lazy(() => import('./App').then((m) => ({ default: m.App })));
 const Join = lazy(() => import('./pages/Join').then((m) => ({ default: m.Join })));
-const Legal = lazy(() => import('./pages/Legal').then((m) => ({ default: m.Legal })));
 const NotFound = lazy(() => import('./pages/NotFound').then((m) => ({ default: m.NotFound })));
 const CheckoutReturn = lazy(() =>
   import('./pages/CheckoutReturn').then((m) => ({ default: m.CheckoutReturn })),
@@ -43,15 +36,6 @@ export function Root(props: WebClubServices & { location: Pick<Location, 'pathna
     return (
       <Page>
         <CheckoutReturn outcome="cancel" />
-      </Page>
-    );
-  const legal = (Object.keys(LEGAL_PATHS) as (keyof typeof LEGAL_PATHS)[]).find(
-    (id) => LEGAL_PATHS[id] === path,
-  );
-  if (legal)
-    return (
-      <Page>
-        <Legal doc={LEGAL_DOCS[legal]} />
       </Page>
     );
   if (!isAdminPath(path))

@@ -2,6 +2,7 @@
 // URLs, Open Graph meta, the prerender list, sitemap.xml, robots.txt rules and the
 // CloudFront allowlist and redirects (infra/src/web-pages.ts) all come from here. Add a
 // page here and it is built, linked, served and tested.
+import { CLUB_PRICING, FREE_PARTY_MAX_MEMBERS, LEGAL_DOCS } from '@huntclub/shared';
 import {
   ADMIN_PATH,
   CHECKOUT_RETURN_PATHS,
@@ -23,12 +24,61 @@ export interface SiteRoute {
   readonly description: string;
 }
 
+const { intervals, trialDays } = CLUB_PRICING;
+/** "$100/year or $10/month", from the one pricing source. */
+export const CLUB_PRICE_LINE = `${intervals.year.price} or ${intervals.month.price}`;
+
+/** Paths of the pages, for links. Each is registered in ROUTES below. */
+export const PAGE_PATHS = {
+  home: '/',
+  clubs: '/clubs',
+  pricing: '/pricing',
+  download: '/download',
+  contact: '/contact',
+  privacy: LEGAL_PATHS.privacy,
+  terms: LEGAL_PATHS.terms,
+} as const;
+
 export const ROUTES = [
   {
-    path: '/',
+    path: PAGE_PATHS.home,
     title: 'Hunt Club Mesh: hunting party map and chat, no cell service',
+    description: `A live map, chat and check-in for your hunting party over Meshtastic radios, with no cell service. Free for parties of up to ${FREE_PARTY_MAX_MEMBERS}; clubs subscribe.`,
+  },
+  {
+    path: PAGE_PATHS.clubs,
+    title: 'Hunting club app: stands, roster, board | Hunt Club Mesh',
     description:
-      'A live map, chat and check-in for your hunting party over Meshtastic radios, with no cell service. Free for parties of up to 3; clubs subscribe.',
+      'Run your hunting club or lease from one app: who is in which stand, who is overdue, the roster and a clubhouse board. Works with no cell service.',
+  },
+  {
+    path: PAGE_PATHS.pricing,
+    title: 'Pricing: free app, one plan for clubs | Hunt Club Mesh',
+    description: `The app is free for hunters and parties of up to ${FREE_PARTY_MAX_MEMBERS}. Clubs pay ${CLUB_PRICE_LINE}, with a ${trialDays}-day free trial.`,
+  },
+  {
+    path: PAGE_PATHS.download,
+    title: 'Get Hunt Club Mesh for iPhone and Android',
+    description:
+      'Hunt Club Mesh is being tested on iPhone and Android before it goes into the stores. See what you need: a phone and a Meshtastic radio with GPS.',
+  },
+  {
+    path: PAGE_PATHS.contact,
+    title: 'Contact | Hunt Club Mesh',
+    description:
+      'How to reach the Hunt Club Mesh team with questions about the app, Meshtastic radios, or club plans and billing.',
+  },
+  {
+    path: PAGE_PATHS.privacy,
+    title: `${LEGAL_DOCS.privacy.title} | Hunt Club Mesh`,
+    description:
+      'What Hunt Club Mesh does with your information: free hunters have no account, and your location is shared only while you are checked in.',
+  },
+  {
+    path: PAGE_PATHS.terms,
+    title: `${LEGAL_DOCS.terms.title} | Hunt Club Mesh`,
+    description:
+      'The terms for using Hunt Club Mesh: not an emergency service, free for hunting parties, and what a club subscription covers.',
   },
 ] as const satisfies readonly SiteRoute[];
 
@@ -38,7 +88,6 @@ export type SitePath = (typeof ROUTES)[number]['path'];
 export const HOME_SECTIONS = {
   features: 'features',
   forClubs: 'for-clubs',
-  getTheApp: 'get-the-app',
   faq: 'faq',
 } as const;
 
@@ -49,26 +98,47 @@ export interface SiteLink {
   readonly href: string;
 }
 
-/** Header navigation, in order. Pages added to ROUTES later take over the section links. */
+/** Header navigation, in order. */
 export const NAV_LINKS: readonly SiteLink[] = [
   { label: 'Features', href: homeSection(HOME_SECTIONS.features) },
-  { label: 'For clubs', href: homeSection(HOME_SECTIONS.forClubs) },
+  { label: 'For clubs', href: PAGE_PATHS.clubs },
+  { label: 'Pricing', href: PAGE_PATHS.pricing },
   { label: 'FAQ', href: homeSection(HOME_SECTIONS.faq) },
 ];
 
 /** The header's main action. */
-export const GET_THE_APP: SiteLink = {
-  label: 'Get the free app',
-  href: homeSection(HOME_SECTIONS.getTheApp),
-};
+export const GET_THE_APP: SiteLink = { label: 'Get the free app', href: PAGE_PATHS.download };
 
 export const SIGN_IN: SiteLink = { label: 'Sign in', href: ADMIN_PATH };
 
-/** Footer links (Privacy and Terms are served by the club admin until they move here). */
-export const FOOTER_LINKS: readonly SiteLink[] = [
-  { label: 'Privacy', href: LEGAL_PATHS.privacy },
-  { label: 'Terms', href: LEGAL_PATHS.terms },
+/** A club admin's start: sign in to the club admin, then create the club. */
+export const START_A_CLUB: SiteLink = { label: CLUB_PRICING.cta, href: ADMIN_PATH };
+
+/** Footer link groups, each with a heading. */
+export const FOOTER_GROUPS: readonly { heading: string; links: readonly SiteLink[] }[] = [
+  {
+    heading: 'Product',
+    links: [
+      { label: 'Pricing', href: PAGE_PATHS.pricing },
+      { label: 'Download', href: PAGE_PATHS.download },
+    ],
+  },
+  {
+    heading: 'Clubs',
+    links: [{ label: 'For clubs', href: PAGE_PATHS.clubs }, SIGN_IN],
+  },
+  { heading: 'Company', links: [{ label: 'Contact', href: PAGE_PATHS.contact }] },
+  {
+    heading: 'Legal',
+    links: [
+      { label: LEGAL_DOCS.privacy.title, href: PAGE_PATHS.privacy },
+      { label: LEGAL_DOCS.terms.title, href: PAGE_PATHS.terms },
+    ],
+  },
 ];
+
+/** Every footer link. */
+export const FOOTER_LINKS: readonly SiteLink[] = FOOTER_GROUPS.flatMap((g) => g.links);
 
 /** The canonical URL of a registered page. */
 export const canonicalUrl = (path: string) => `${SITE_ORIGIN}${path}`;
@@ -85,8 +155,8 @@ export const NOT_FOUND_PAGE = {
 } as const;
 
 /**
- * Real paths the club admin (web/, under ADMIN_PATH) still answers: /join, the Checkout
- * return pages, Privacy and Terms. CloudFront sends them to the admin's index.html.
+ * Real paths the club admin (web/, under ADMIN_PATH) still answers: /join and the
+ * Checkout return pages. CloudFront sends them to the admin's index.html.
  */
 export const ADMIN_PAGE_PATHS: readonly string[] = WEB_PAGE_PATHS;
 

@@ -1,6 +1,6 @@
 import { colors } from '@huntclub/design';
 import { ADMIN_PATH, API_PATHS, BUILD_VERSION_URL, WEB_PAGE_PATHS } from '@huntclub/shared';
-import { NOT_FOUND_PAGE, sitemapXml, SITEMAP_FILE } from '@huntclub/site/routes';
+import { NOT_FOUND_PAGE, ROUTES, sitemapXml, SITEMAP_FILE } from '@huntclub/site/routes';
 import { dev } from '../config/dev';
 import {
   cloudFor,
@@ -46,6 +46,8 @@ function fakeDev(override: Record<string, number> = {}): {
     if (url === `${SITE}/`) {
       return reply(200, HOME, { ...HTML, 'x-robots-tag': NOINDEX_HEADER.value });
     }
+    const route = ROUTES.find((r) => r.path !== '/' && url === `${SITE}${r.path}`);
+    if (route) return reply(200, `<title>${route.title}</title><h1>Page</h1>`, HTML);
     if (ADMIN_PATHS.some((p) => url === `${SITE}${p}`)) return reply(200, ADMIN, HTML);
     const redirect = Object.entries(SMOKE_REDIRECTS).find(([from]) => url === `${SITE}${from}`);
     if (redirect) return reply(301, '', { location: redirect[1] });
@@ -141,6 +143,16 @@ describe('dev smoke check', () => {
     const { fetch } = fakeDev({ [`${SITE}${BUILD_VERSION_URL}`]: 404 });
     const failed = (await runSmoke(dev, fetch)).filter((r) => !r.ok);
     expect(failed.map((r) => r.name)).toEqual([`${BUILD_VERSION_URL} is served uncached`]);
+  });
+
+  it('fails a site page that is missing or is another page', async () => {
+    const { fetch } = fakeDev();
+    const wrong: SmokeFetch = async (url, init) =>
+      url === `${SITE}/pricing` ? fetch(`${SITE}/`, init) : fetch(url, init);
+    const failed = (await runSmoke(dev, wrong)).filter((r) => !r.ok);
+    expect(failed.map((r) => [r.name, r.detail])).toEqual([
+      ['site page /pricing is served', 'not this page (title differs)'],
+    ]);
   });
 
   it('fails when the sitemap is missing', async () => {

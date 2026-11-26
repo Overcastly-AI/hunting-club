@@ -3,6 +3,7 @@
 // reviews them; every screen that shows them must show LEGAL_DRAFT_NOTICE too.
 import { APP_NAME } from './app';
 import { CLOUD_ENVIRONMENTS } from './cloud';
+import { FREE_PARTY_MAX_MEMBERS } from './pricing';
 
 export const LEGAL_DRAFT_NOTICE = 'Draft, pending owner review';
 
@@ -97,7 +98,7 @@ export const termsOfUse: LegalDoc = {
     {
       heading: 'Free and paid',
       paragraphs: [
-        'The app is free for hunting parties of up to 3 people, with no account.',
+        `The app is free for hunting parties of up to ${FREE_PARTY_MAX_MEMBERS} people, with no account.`,
         'Clubs pay a subscription for the club admin page and cloud features.',
         "Everything that works over the radio mesh, including Ask for a Hand, is free and keeps working whatever a club's payment status.",
       ],

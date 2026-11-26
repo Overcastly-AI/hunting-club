@@ -12,7 +12,13 @@ import {
   WEB_PAGE_PATHS,
 } from '@huntclub/shared';
 import type { CloudEnvironment } from '@huntclub/shared/cloud';
-import { canonicalUrl, NOT_FOUND_PAGE, REDIRECTS, SITEMAP_FILE } from '@huntclub/site/routes';
+import {
+  canonicalUrl,
+  NOT_FOUND_PAGE,
+  REDIRECTS,
+  ROUTES,
+  SITEMAP_FILE,
+} from '@huntclub/site/routes';
 import type { EnvConfig } from '../config';
 import { NOINDEX_HEADER, ROBOTS_FILE, robotsTxt } from './web-pages';
 import { wellKnownFiles } from './well-known';
@@ -128,6 +134,17 @@ export async function runSmoke(config: EnvConfig, fetch: SmokeFetch): Promise<Sm
     expect(body.includes(`<loc>${canonicalUrl('/')}</loc>`), 'no home page entry');
     return 'GET → 200 XML';
   });
+
+  for (const route of ROUTES.filter((r) => r.path !== '/')) {
+    await check(`site page ${route.path} is served`, async () => {
+      const res = await fetch(`${site}${route.path}`);
+      const body = await res.text();
+      expect(res.status === 200, `GET → ${res.status}`);
+      expect(body.includes(`<title>${route.title}</title>`), 'not this page (title differs)');
+      expect((body.match(/<h1[\s>]/g) ?? []).length === 1, 'not exactly one <h1>');
+      return 'GET → 200, its title and one <h1>';
+    });
+  }
 
   // Club admin (ADMIN_PATH) and the real paths it still answers --------------------------
   let admin = '';

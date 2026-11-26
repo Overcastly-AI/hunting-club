@@ -3,7 +3,7 @@ import { APP_NAME, SAFETY_NOTE } from '@huntclub/shared';
 import type { ReactNode } from 'react';
 import {
   canonicalUrl,
-  FOOTER_LINKS,
+  FOOTER_GROUPS,
   GET_THE_APP,
   NAV_LINKS,
   SIGN_IN,
@@ -116,8 +116,13 @@ function Footer() {
   return (
     <footer className="site-footer">
       <div className="wrap">
-        <nav aria-label="Footer">
-          <LinkList links={FOOTER_LINKS} label="Footer" />
+        <nav className="footer-groups" aria-label="Footer">
+          {FOOTER_GROUPS.map((group) => (
+            <div key={group.heading}>
+              <h2 className="footer-heading">{group.heading}</h2>
+              <LinkList links={group.links} label={group.heading} />
+            </div>
+          ))}
         </nav>
         <p>{MESHTASTIC_ATTRIBUTION}</p>
         <p>{SAFETY_NOTE}</p>

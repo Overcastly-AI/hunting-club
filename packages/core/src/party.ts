@@ -6,8 +6,10 @@
  * limit (a stock Meshtastic client with the key can still listen).
  */
 
-/** Maximum people in a free hunting party, including the person who started it. */
-export const FREE_PARTY_MAX_MEMBERS = 3;
+import { FREE_PARTY_MAX_MEMBERS } from '@huntclub/shared/pricing';
+
+/** Maximum people in a free hunting party (one source: @huntclub/shared/pricing). */
+export { FREE_PARTY_MAX_MEMBERS };
 
 export class PartyFullError extends Error {
   constructor(readonly limit: number) {
