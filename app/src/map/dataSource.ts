@@ -18,10 +18,10 @@ export const EMPTY_MAP_DATA: MapData = {
   mesh: { radioConnected: false, radioCount: 0, lastHeardAt: null },
 };
 
-/** A simple in-memory source that a feeder (radio, tests) can push snapshots into. */
-export function createMapDataStore(initial: MapData = EMPTY_MAP_DATA): MapDataSource & {
-  set(data: MapData): void;
-} {
+/** A map data source that a feeder (the radio, tests) can push snapshots into. */
+export type MapDataStore = MapDataSource & { set(data: MapData): void };
+
+export function createMapDataStore(initial: MapData = EMPTY_MAP_DATA): MapDataStore {
   let snapshot = initial;
   const listeners = new Set<() => void>();
   return {

@@ -63,21 +63,5 @@ export const radioCopy = {
     body: 'Keeping your radio link open for texts and alerts.',
     channelName: 'Radio link',
   },
-  test: {
-    title: 'Radio test',
-    hint: 'Send a text to everyone on your radio’s main channel. No cell service needed.',
-    placeholder: 'Type a message',
-    send: 'Send',
-    remaining: (n: number) => `${n} characters left`,
-    you: 'You',
-    status: {
-      sending: 'Sending…',
-      sent: 'Sent',
-      heard: 'Heard by the mesh',
-      delivered: 'Delivered',
-      failed: 'Not delivered',
-      noReply: 'No reply yet',
-    },
-  },
   settingsEntry: 'Your radio',
 } as const;
