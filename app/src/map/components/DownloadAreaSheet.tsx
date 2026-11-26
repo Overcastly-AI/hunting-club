@@ -30,7 +30,12 @@ type Props = {
   bounds: Bounds | null;
   onStart: (request: DownloadRequest) => Promise<void>;
   onClose: () => void;
+  /** What is being saved (default: the area on screen). */
+  intro?: string;
 };
+
+const DEFAULT_INTRO =
+  'Saves the map you can see now so it works with no signal. Maps come free from USGS. Use Wi-Fi if you can.';
 
 /** Total estimate for one detail level across the chosen layers. */
 export function estimateForLayers(
@@ -49,7 +54,13 @@ const defaultName = () =>
   `Area saved ${new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
 
 /** "Download the map for this area": choose layers and detail, see the size, start. */
-export function DownloadAreaSheet({ visible, bounds, onStart, onClose }: Props) {
+export function DownloadAreaSheet({
+  visible,
+  bounds,
+  onStart,
+  onClose,
+  intro = DEFAULT_INTRO,
+}: Props) {
   const [layer, setLayer] = useState<LayerChoice>('both');
   const [levelId, setLevelId] = useState(DETAIL_LEVELS[DETAIL_LEVELS.length - 1]!.id);
   const [name, setName] = useState('');
@@ -79,10 +90,7 @@ export function DownloadAreaSheet({ visible, bounds, onStart, onClose }: Props) 
 
   return (
     <Sheet visible={visible} title="Download this area" onClose={onClose}>
-      <Text style={styles.body}>
-        Saves the map you can see now so it works with no signal. Maps come free from USGS. Use
-        Wi-Fi if you can.
-      </Text>
+      <Text style={styles.body}>{intro}</Text>
 
       <Text accessibilityRole="header" style={styles.heading}>
         Layers

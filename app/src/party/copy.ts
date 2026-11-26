@@ -11,4 +11,11 @@ export const partyCopy = {
     needsRadio: 'Pair your radio first to start a party. You can do it later from the Party tab.',
     failed: 'Could not set up your radio for the party. Check it is connected and try again.',
   },
+  qr: {
+    title: 'Party QR code',
+    body: 'Friends scan this in Hunt Club to join your party.',
+    imageLabel: 'Party QR code for friends to scan',
+    full: (max: number) =>
+      `Your party is full, so the QR code is hidden. A party has room for ${max} hunters.`,
+  },
 } as const;

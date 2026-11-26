@@ -4,17 +4,19 @@ import { StyleSheet, View } from 'react-native';
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
 import type { MyProfile } from '../db/appState';
+import type { DownloadRequest } from '../map/offline';
 import { PartyStep } from '../party/PartyStep';
 import { PairRadioStep } from '../radio/ui/PairRadioStep';
 import { spacing } from '../theme';
 import { onboardingCopy } from './copy';
+import { MapDownloadStep } from './MapDownloadStep';
 import { NameStep } from './NameStep';
 
 /**
- * Onboarding steps in order (spec: Screens → 5. Onboarding). Later steps
- * (party or club, name, permissions, map download) are added here.
+ * Onboarding steps in order (spec: Screens → 5. Onboarding). The
+ * permissions step goes before 'map' once its modules are on main.
  */
-export const ONBOARDING_STEPS = ['welcome', 'pairRadio', 'party', 'name'] as const;
+export const ONBOARDING_STEPS = ['welcome', 'pairRadio', 'party', 'name', 'map'] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 
 type Props = {
@@ -23,13 +25,18 @@ type Props = {
   /** Profile saved before, e.g. if onboarding was interrupted. */
   profile?: MyProfile | null;
   onProfile: (profile: MyProfile) => Promise<void>;
+  /** Starts an offline map download for the map step. */
+  onDownloadMap: (request: DownloadRequest) => Promise<void>;
 };
 
-export function OnboardingScreen({ onFinish, profile, onProfile }: Props) {
+export function OnboardingScreen({ onFinish, profile, onProfile, onDownloadMap }: Props) {
   const [index, setIndex] = useState(0);
   const step = ONBOARDING_STEPS[index];
   const next = () => (index + 1 < ONBOARDING_STEPS.length ? setIndex(index + 1) : onFinish());
 
+  if (step === 'map') {
+    return <MapDownloadStep onNext={next} onDownload={onDownloadMap} />;
+  }
   if (step === 'name') {
     return <NameStep initial={profile} onNext={(p) => void onProfile(p).then(next)} />;
   }
