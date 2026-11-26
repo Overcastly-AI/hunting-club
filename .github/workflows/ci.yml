@@ -59,8 +59,11 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # Caches Gradle dependencies and the wrapper between runs.
+      # Caches Gradle dependencies, the wrapper and the Gradle build cache
+      # between runs. Only main writes the cache; PR runs read it.
       - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Install
         run: npm ci
@@ -69,6 +72,8 @@ jobs:
         run: npx expo prebuild --platform android --no-install --clean
         working-directory: app
 
+      # One ABI (x86_64, the emulator ABI) instead of all four: the native
+      # C++ build dominates the job time, and one ABI proves the build works.
       - name: Assemble debug APK
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --no-daemon --build-cache -PreactNativeArchitectures=x86_64
         working-directory: app/android
