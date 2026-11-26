@@ -1,11 +1,13 @@
 import { colors, FAVICON_ICO, FAVICON_SVG, logoMarkSvg } from '@huntclub/design';
 import { APP_NAME, SAFETY_NOTE } from '@huntclub/shared';
 import type { ReactNode } from 'react';
+import { jsonLd } from './structuredData';
 import {
   canonicalUrl,
   FOOTER_GROUPS,
   GET_THE_APP,
   NAV_LINKS,
+  OG_IMAGE,
   SIGN_IN,
   type SiteLink,
 } from './routes';
@@ -24,8 +26,14 @@ export interface PageAssets {
 export interface PageMeta {
   readonly title: string;
   readonly description: string;
-  /** Registered pages: canonical URL and og:url. Pages without one are noindex. */
+  /** The page's path: og:url, and the canonical URL unless noindex. No path: noindex. */
   readonly path?: string;
+  /** Kept out of search results (no canonical), but still previewed when shared (/join). */
+  readonly noindex?: boolean;
+  /** The Open Graph card's path (ogImagePath): a large preview when shared. */
+  readonly ogImage?: string;
+  /** schema.org JSON-LD for the page (structuredData.ts). */
+  readonly structuredData?: readonly object[];
   /** The page's one inline script, if any (HASH_FORWARD_SCRIPT on the home page). */
   readonly script?: string;
   /** A self-hosted module script (the /join page's), loaded after the page is parsed. */
@@ -38,6 +46,7 @@ export interface PageMeta {
 export function Document(props: { meta: PageMeta; assets: PageAssets; children: ReactNode }) {
   const { meta, assets } = props;
   const url = meta.path === undefined ? undefined : canonicalUrl(meta.path);
+  const indexed = url !== undefined && !meta.noindex;
   return (
     <html lang="en">
       <head>
@@ -46,19 +55,26 @@ export function Document(props: { meta: PageMeta; assets: PageAssets; children: 
         {meta.noReferrer ? <meta name="referrer" content="no-referrer" /> : null}
         <title>{meta.title}</title>
         <meta name="description" content={meta.description} />
+        {indexed ? <link rel="canonical" href={url} /> : <meta name="robots" content="noindex" />}
         {url ? (
           <>
-            <link rel="canonical" href={url} />
             <meta property="og:type" content="website" />
             <meta property="og:site_name" content={APP_NAME} />
             <meta property="og:title" content={meta.title} />
             <meta property="og:description" content={meta.description} />
             <meta property="og:url" content={url} />
-            <meta name="twitter:card" content="summary" />
+            {meta.ogImage ? (
+              <>
+                <meta property="og:image" content={canonicalUrl(meta.ogImage)} />
+                <meta property="og:image:type" content="image/png" />
+                <meta property="og:image:width" content={String(OG_IMAGE.width)} />
+                <meta property="og:image:height" content={String(OG_IMAGE.height)} />
+                <meta property="og:image:alt" content={meta.title} />
+              </>
+            ) : null}
+            <meta name="twitter:card" content={meta.ogImage ? 'summary_large_image' : 'summary'} />
           </>
-        ) : (
-          <meta name="robots" content="noindex" />
-        )}
+        ) : null}
         <meta name="theme-color" content={colors.surface} />
         <link rel="icon" href={`/${FAVICON_ICO.file}`} sizes="48x48" />
         <link rel="icon" type="image/svg+xml" href={`/${FAVICON_SVG}`} />
@@ -66,6 +82,13 @@ export function Document(props: { meta: PageMeta; assets: PageAssets; children: 
         <style dangerouslySetInnerHTML={{ __html: assets.css }} />
         {meta.script ? <script dangerouslySetInnerHTML={{ __html: meta.script }} /> : null}
         {meta.scriptSrc ? <script type="module" src={meta.scriptSrc} /> : null}
+        {(meta.structuredData ?? []).map((data, i) => (
+          <script
+            key={i}
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: jsonLd(data) }}
+          />
+        ))}
       </head>
       <body>
         <a className="skip-link" href="#main">

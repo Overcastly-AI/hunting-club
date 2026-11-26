@@ -17,6 +17,7 @@ import {
   NAV_LINKS,
   NOINDEX_PATHS,
   NOT_FOUND_PAGE,
+  ogImagePath,
   outputFile,
   PAGE_PATHS,
   REDIRECTS,
@@ -41,7 +42,7 @@ const count = (html: string, pattern: RegExp) => (html.match(pattern) ?? []).len
 /** Visible text only (no tags or inline CSS). */
 const textOf = (html: string) =>
   html
-    .replace(/<style[\s\S]*?<\/style>/g, '')
+    .replace(/<(style|script)[\s\S]*?<\/\1>/g, '')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&#x27;/g, "'")
     .replace(/&quot;/g, '"')
@@ -83,9 +84,19 @@ describe.each(pages)('page $route.path', ({ route, html }) => {
   });
 
   it('ships no JavaScript except the old-bookmark forward on the home page (no analytics)', () => {
-    const scripts = html.match(/<script>[\s\S]*?<\/script>/g) ?? [];
-    expect(scripts).toEqual(route.path === '/' ? [`<script>${HASH_FORWARD_SCRIPT}</script>`] : []);
-    expect(count(html, /<script/gi)).toBe(scripts.length);
+    const scripts = (html.match(/<script>[\s\S]*?<\/script>/g) ?? []).length;
+    const data = (html.match(/<script type="application\/ld\+json">/g) ?? []).length;
+    expect(html.match(/<script>[\s\S]*?<\/script>/g) ?? []).toEqual(
+      route.path === '/' ? [`<script>${HASH_FORWARD_SCRIPT}</script>`] : [],
+    );
+    expect(count(html, /<script/gi)).toBe(scripts + data);
+  });
+
+  it('shares a large card at its own absolute URL', () => {
+    expect(html).toContain(
+      `<meta property="og:image" content="${canonicalUrl(ogImagePath(route.path))}"/>`,
+    );
+    expect(html).toContain('<meta name="twitter:card" content="summary_large_image"/>');
   });
 });
 

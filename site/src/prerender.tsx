@@ -1,14 +1,26 @@
 // Build step (Node): writes dist/<path>/index.html for every registered route, plus
-// join/index.html, 404.html, sitemap.xml and favicon.svg. Vite builds this file for Node
+// join/index.html, 404.html, sitemap.xml, favicon.svg, logo.png and the Open Graph cards
+// (og/*.png). Vite builds this file for Node
 // with the font emitted to dist/assets; `npm run build` then runs it.
 import fontUrl from '@huntclub/design/fonts/Archivo-Latin.woff2?url';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FAVICON_SVG, logoMarkSvg } from '@huntclub/design';
+import { ogImageSvg, OG_FONT_FILE, renderPng } from './og';
 import { JOIN_SCRIPT_ENTRY } from '../vite.config';
 import { renderJoin, renderNotFound, renderPage } from './render';
-import { JOIN_PAGE, NOT_FOUND_PAGE, outputFile, ROUTES, SITEMAP_FILE, sitemapXml } from './routes';
+import {
+  JOIN_PAGE,
+  NOT_FOUND_PAGE,
+  ogHeadline,
+  ogImagePath,
+  outputFile,
+  ROUTES,
+  SITE_LOGO,
+  SITEMAP_FILE,
+  sitemapXml,
+} from './routes';
 import { siteCss } from './styles';
 
 /** dist/, the parent of dist/.server where this file runs from. */
@@ -35,6 +47,20 @@ writeFileSync(join(DIST, SITEMAP_FILE), sitemapXml(new Date().toISOString().slic
 // The SVG favicon from the logo mark (favicon.ico is in public/, from the icons script).
 writeFileSync(join(DIST, FAVICON_SVG), logoMarkSvg());
 console.log(`${NOT_FOUND_PAGE.file}, ${SITEMAP_FILE}, ${FAVICON_SVG}`);
+// Open Graph cards (every page, and one generic /join card) and the logo PNG.
+const FONT = join(DIST, '..', '..', OG_FONT_FILE);
+const cards = [
+  ...ROUTES.map((r) => ({ path: r.path, headline: ogHeadline(r.title), subline: r.description })),
+  { path: JOIN_PAGE.path, headline: JOIN_PAGE.ogHeadline, subline: JOIN_PAGE.description },
+];
+for (const card of cards) {
+  const file = join(DIST, ogImagePath(card.path));
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, renderPng(ogImageSvg(card), FONT));
+}
+writeFileSync(join(DIST, SITE_LOGO.file), renderPng(logoMarkSvg(), FONT, SITE_LOGO.size));
+console.log(`${cards.length} Open Graph cards, ${SITE_LOGO.file}`);
+
 // The Node bundle and the manifest are build tools, not part of the site.
 rmSync(join(DIST, '.server'), { recursive: true, force: true });
 rmSync(join(DIST, '.vite'), { recursive: true, force: true });

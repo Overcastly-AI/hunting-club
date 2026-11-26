@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { JOIN_PATH } from '@huntclub/shared/app';
+import { OG_IMAGE } from '@huntclub/site/routes';
 import { App } from 'aws-cdk-lib';
 import { Match } from 'aws-cdk-lib/assertions';
 import { GSIS, PARTITION_PREFIXES, TABLE_KEYS, TTL_ATTRIBUTE } from '@huntclub/club-data';
@@ -168,7 +169,7 @@ describe('web stack', () => {
       Object.entries(t.findResources('Custom::CDKBucketDeployment')).find(([key]) =>
         key.startsWith(id),
       )![1].Properties;
-    expect(deployments()).toHaveLength(5);
+    expect(deployments()).toHaveLength(6);
     const year = { 'cache-control': 'public, max-age=31536000, immutable' };
     expect(byId('SiteAssets')).toMatchObject({
       Prune: false,
@@ -182,6 +183,7 @@ describe('web stack', () => {
       // files must never be pruned by a site deploy.
       Exclude: [
         'assets/*',
+        `${OG_IMAGE.dir}/*`,
         `${ADMIN_PREFIX}*`,
         '.well-known/*',
         ROBOTS_FILE,
@@ -189,6 +191,13 @@ describe('web stack', () => {
       ],
       SystemMetadata: { 'cache-control': 'no-cache' },
       DistributionPaths: ['/*'],
+    });
+    expect(byId('SiteOgImages')).toMatchObject({
+      Prune: false,
+      Include: [`${OG_IMAGE.dir}/*`],
+      Exclude: ['*'],
+      SystemMetadata: { 'cache-control': 'public, max-age=86400' },
+      DistributionPaths: [`/${OG_IMAGE.dir}/*`],
     });
     expect(byId('AdminAssets')).toMatchObject({
       DestinationBucketKeyPrefix: ADMIN_PREFIX,
@@ -296,7 +305,7 @@ describe('web stack', () => {
     const withLinks = synthTemplates({
       appLinks: { appleTeamId: 'ABCDE12345', androidSha256CertFingerprints: ['AA:BB'] },
     }).web;
-    expect(deployments(withLinks)).toHaveLength(6);
+    expect(deployments(withLinks)).toHaveLength(7);
     withLinks.hasResourceProperties('Custom::CDKBucketDeployment', {
       SystemMetadata: Match.objectLike({ 'content-type': 'application/json' }),
       Prune: false,

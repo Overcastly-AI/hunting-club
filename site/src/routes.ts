@@ -2,7 +2,7 @@
 // URLs, Open Graph meta, the prerender list, sitemap.xml, robots.txt rules and the
 // CloudFront allowlist and redirects (infra/src/web-pages.ts) all come from here. Add a
 // page here and it is built, linked, served and tested.
-import { CLUB_PRICING, FREE_PARTY_MAX_MEMBERS, LEGAL_DOCS } from '@huntclub/shared';
+import { APP_NAME, CLUB_PRICING, FREE_PARTY_MAX_MEMBERS, LEGAL_DOCS } from '@huntclub/shared';
 import {
   ADMIN_PATH,
   CHECKOUT_RETURN_PATHS,
@@ -144,6 +144,23 @@ export const FOOTER_LINKS: readonly SiteLink[] = FOOTER_GROUPS.flatMap((g) => g.
 export const canonicalUrl = (path: string) => `${SITE_ORIGIN}${path}`;
 
 /**
+ * Open Graph images: one 1200×630 PNG per page, rendered at build time from the page's
+ * title and description (src/og.ts), at a stable URL under og/ (cached for a day).
+ */
+export const OG_IMAGE = { dir: 'og', width: 1200, height: 630 } as const;
+
+/** A page's Open Graph image: `/` → /og/home.png, `/clubs` → /og/clubs.png. */
+export const ogImagePath = (path: string) =>
+  `/${OG_IMAGE.dir}/${path === '/' ? 'home' : path.slice(1).replace(/\//g, '-')}.png`;
+
+const SITE_NAME_SUFFIX = new RegExp(` [|·] ${APP_NAME}$`);
+/** The headline on a page's card: its title without the site name. */
+export const ogHeadline = (title: string) => title.replace(SITE_NAME_SUFFIX, '');
+
+/** The logo as a PNG (JSON-LD Organization logo), rendered from the mark at build time. */
+export const SITE_LOGO = { file: 'logo.png', size: 512 } as const;
+
+/**
  * The branded not-found page. CloudFront serves it for any missing path with a 404
  * status; it is never indexed and has no canonical URL.
  */
@@ -210,6 +227,8 @@ export const JOIN_PAGE = {
   path: JOIN_PATH,
   file: outputFile(JOIN_PATH),
   title: 'Your invite · Hunt Club Mesh',
+  /** Social previews never see the fragment: one generic card, never per club or party. */
+  ogHeadline: `You're invited to hunt with ${APP_NAME}`,
   description:
     'Open your Hunt Club Mesh invite on your phone to join a hunting party or club. The app sets up your radio and works with no cell service.',
 } as const;
