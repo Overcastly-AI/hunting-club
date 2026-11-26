@@ -1,0 +1,102 @@
+name: Mesh simulator
+
+# Integration tests of packages/mesh against stock Meshtastic firmware
+# running as `meshtasticd --sim` (Linux native build from the Meshtastic
+# PPA). Non-blocking until it has proven stable: the job can fail without
+# failing the PR. The job summary lists what worked.
+
+on:
+  pull_request:
+    paths:
+      - 'packages/mesh/**'
+      - '.github/workflows/mesh-sim.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'packages/mesh/**'
+      - '.github/workflows/mesh-sim.yml'
+  schedule:
+    # Nightly, off the top of the hour: catches firmware changes in the PPA.
+    - cron: '23 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mesh-sim-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mesh-sim:
+    name: meshtasticd --sim integration (non-blocking)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    continue-on-error: true
+    defaults:
+      run:
+        # Explicit bash gives -eo pipefail, so `cmd | tee` fails when cmd fails.
+        shell: bash
+    env:
+      SIM_DIR: /tmp/mesh-sim
+      BASE_PORT: '4410'
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install meshtasticd (Meshtastic PPA)
+        run: |
+          sudo add-apt-repository -y ppa:meshtastic/beta
+          sudo apt-get update
+          sudo apt-get install -y meshtasticd
+          # The package enables a system service on the default port; we run our own nodes.
+          sudo systemctl disable --now meshtasticd 2>/dev/null || true
+          dpkg -s meshtasticd | grep -E '^Version'
+          meshtasticd --help || true
+
+      - name: Start two simulated nodes
+        id: sim
+        run: packages/mesh/scripts/start-sim.sh 2 | tee -a "$GITHUB_OUTPUT"
+
+      - name: Integration tests
+        env:
+          MESH_SIM_NODES: ${{ steps.sim.outputs.MESH_SIM_NODES }}
+        run: |
+          mkdir -p "$SIM_DIR"
+          npm run test:integration -w @huntclub/mesh 2>&1 | tee "$SIM_DIR/jest.log"
+
+      - name: Simulator logs (on failure)
+        if: failure()
+        run: |
+          for f in "$SIM_DIR"/node*.log; do
+            echo "::group::$f (last 150 lines)"
+            tail -n 150 "$f" || true
+            echo '::endgroup::'
+          done
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo '## meshtasticd --sim'
+            dpkg -s meshtasticd 2>/dev/null | grep -E '^Version' || echo 'meshtasticd not installed'
+            echo
+            grep -h '\[mesh-sim\]' "$SIM_DIR/jest.log" 2>/dev/null | sed 's/^ *\[mesh-sim\] /- /' || true
+            echo
+            grep -hE '^\s+(✓|✕|○)' "$SIM_DIR/jest.log" 2>/dev/null | sed 's/^ */- /' || true
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload simulator logs
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: mesh-sim-logs
+          path: /tmp/mesh-sim/*.log
+          if-no-files-found: ignore

@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { clubFeaturesOpen, useClubEntitlement } from '../club/entitlement';
+import { hasClubFeatures } from '@huntclub/shared';
+import { useClubEntitlement } from '../club/entitlement';
 import { PlaceholderScreen } from '../components/PlaceholderScreen';
 import { formatClockTime } from '../conditions/clock';
 import { useNow } from '../hooks/useNow';
@@ -51,7 +52,7 @@ export function BoardScreen() {
   const now = useNow(BOARD_TICK_MS);
   useBoardRadioUpdates(radio);
 
-  if (!clubFeaturesOpen(entitlement, now)) {
+  if (!hasClubFeatures(entitlement, now)) {
     return (
       <>
         <PlaceholderScreen

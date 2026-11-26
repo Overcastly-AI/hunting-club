@@ -51,8 +51,11 @@ const OPERATIONS = {
   updateHarvest: harvests.updateHarvest,
   deleteHarvest: harvests.deleteHarvest,
 
-  createMapPack: mapPacks.createMapPack,
+  startMapPackBuild: mapPacks.startMapPackBuild,
+  finishMapPack: mapPacks.finishMapPack,
+  failMapPack: mapPacks.failMapPack,
   listMapPacks: mapPacks.listMapPacks,
+  getClubForMapPack: mapPacks.getClubForMapPack,
   deleteMapPack: mapPacks.deleteMapPack,
 
   listPlans: billing.listPlans,

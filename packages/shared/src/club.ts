@@ -297,26 +297,62 @@ export type HarvestUpdate = z.input<typeof HarvestUpdateSchema>;
 
 const zoomSchema = z.number().int().min(0).max(22);
 
+/** [west, south, east, north] in degrees. */
+export const boundsSchema = z
+  .tuple([longitudeSchema, latitudeSchema, longitudeSchema, latitudeSchema])
+  .refine(([, south, , north]) => south < north, { message: 'south must be below north' });
+
+/** What a pack covers; fixed when its build starts. */
 const mapPackFields = {
-  /** [west, south, east, north] in degrees. */
-  bounds: z
-    .tuple([longitudeSchema, latitudeSchema, longitudeSchema, latitudeSchema])
-    .refine(([, south, , north]) => south < north, { message: 'south must be below north' }),
+  bounds: boundsSchema,
   minZoom: zoomSchema,
   maxZoom: zoomSchema,
+  /** Tile source id (BASEMAPS[...].source). */
   source: z.string().min(1).max(200),
-  s3Key: z.string().min(1).max(1024),
+};
+/** Filled in when the build finishes. */
+const mapPackReadyFields = {
   sizeBytes: z.number().int().min(0),
   builtAt: timestampSchema,
 };
-const zoomRangeOrdered = (p: { minZoom: number; maxZoom: number }) => p.minZoom <= p.maxZoom;
-const ZOOM_RANGE_ORDERED = { message: 'minZoom must not exceed maxZoom', path: ['minZoom'] };
+/** Longest failure reason stored on a pack (a short sentence, never a stack trace). */
+export const MAP_PACK_REASON_MAX = 200;
+export const zoomRangeOrdered = (p: { minZoom: number; maxZoom: number }) => p.minZoom <= p.maxZoom;
+export const ZOOM_RANGE_ORDERED = { message: 'minZoom must not exceed maxZoom', path: ['minZoom'] };
 
+const mapPackEntity = {
+  id: idSchema,
+  clubId: idSchema,
+  ...mapPackFields,
+  /** packs/<clubId>/<id>.pmtiles (mapPackKey); served once the pack is ready. */
+  s3Key: z.string().min(1).max(1024),
+  ...timestamps,
+};
+
+/**
+ * A club map pack: `building` while the builder runs (it expires if the builder dies),
+ * then `ready` (downloadable) or `failed` (with a short reason).
+ */
 export const MapPackSchema = z
-  .object({ id: idSchema, clubId: idSchema, ...mapPackFields, ...timestamps })
+  .discriminatedUnion('status', [
+    z.object({ ...mapPackEntity, status: z.literal('building'), expiresAt: timestampSchema }),
+    z.object({ ...mapPackEntity, status: z.literal('ready'), ...mapPackReadyFields }),
+    z.object({
+      ...mapPackEntity,
+      status: z.literal('failed'),
+      reason: z.string().min(1).max(MAP_PACK_REASON_MAX),
+    }),
+  ])
   .refine(zoomRangeOrdered, ZOOM_RANGE_ORDERED);
 export type MapPack = z.infer<typeof MapPackSchema>;
-export const MapPackCreateSchema = z
+export type MapPackStatus = MapPack['status'];
+
+/** Starting a build (the API, for an admin): what the pack will cover. */
+export const MapPackStartSchema = z
   .strictObject(mapPackFields)
   .refine(zoomRangeOrdered, ZOOM_RANGE_ORDERED);
-export type MapPackCreate = z.input<typeof MapPackCreateSchema>;
+export type MapPackStart = z.input<typeof MapPackStartSchema>;
+
+/** Finishing a build (the builder Lambda). */
+export const MapPackReadySchema = z.strictObject(mapPackReadyFields);
+export type MapPackReady = z.input<typeof MapPackReadySchema>;

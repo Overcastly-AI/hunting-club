@@ -33,13 +33,15 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 | # | Sent | Request | Status | Result |
 |---|---|---|---|---|
+| 5 | 2026-11-26 14:47 | GitHub: `dev` environment (main only), repo var `AWS_DEPLOY_ROLE_ARN`, run Actions → Deploy dev (skip the run if the CloudShell deploy already went). Owner requested | Sent | Expect run URL + ClubApiUrl, StripeWebhookUrl |
+| 4 | 2026-11-26 14:45 | GitHub OIDC provider + role `hunt-club-mesh-github-deploy-dev` (trust repo:Overcastly-AI/hunting-club:environment:dev; may only assume the 4 cdk-hnb659fds roles). **Owner approved ("Yes GitHub")** | **Done** 14:45 UTC: role `arn:aws:iam::054825383623:role/hunt-club-mesh-github-deploy-dev`, OIDC provider `arn:aws:iam::054825383623:oidc-provider/token.actions.githubusercontent.com`, inline policy AssumeCdkBootstrapRoles, 1 h session. Grok Bot also trying the Request #3 deploy from CloudShell at the owner's request (result pending in #3 thread). | Then owner: GitHub `dev` environment + repo var `AWS_DEPLOY_ROLE_ARN`, run Actions → Deploy dev |
 | 3 | 2026-11-26 | First CDK deploy: bootstrap + HuntClub-dev-Web + HuntClub-dev-Api (no Stripe yet) | **Partly done** 11:08 UTC: CDKToolkit bootstrapped (v34); diff clean; deploy FAILED at asset upload — Grok Bot's box reaches S3 via a VPC endpoint whose policy blocks the cdk-hnb659fds-assets bucket. Nothing else created. | Proposed fix: deploy from GitHub Actions via OIDC role (needs owner approval) |
 | 2 | 2026-11-26 | Enable TTL `expiresAt` on the table; add web app client to the user pool | **Done** 06:37 UTC | TTL enabled; web client `6mpfpr6nrdqddim7trfqckegu5` |
 | 1 | 2026-11-26 | Dev subdomain: Route 53 hosted zone, delegation, ACM wildcard cert | **Done** 06:07 UTC (verified NS via public DNS) | See "AWS environment" below |
 
 ## How the project runs
 
-- **Usage limit (2026-11-26):** 7 workers + coordinator hit the plan's 5-hour usage limit at ~06:55 UTC; everything stopped until the 09:30 reset. Run at most 3 workers at a time, prioritise merges, and keep worker messages short.
+- **Usage limit (2026-11-26):** 7 workers + coordinator hit the plan's 5-hour usage limit at ~06:55 UTC; everything stopped until the 09:30 reset. Run at most 3 workers at a time, prioritise merges, and keep worker messages short. Hit again at 11:41 UTC with 3 workers (reset 14:30). **Now at most 2 workers** (club-data on #41, onboarding on M12 app side); web worker paused with M13 + map-packs admin pushed to agent/m2-research.
 
 - The owner delegated full control to the coordinator (2026-11-26). Hard limits that still need the owner: spending money beyond free tiers and the dev DNS zone, deleting the owner's data, emails to anyone but the owner.
 - Coordinator session: `session_01QS5dr3XTYjo26Gf4MeA3GC`. Wakes hourly at :34 via scheduled task `trig_01SRzKhjqQDZWWfR6krcCifn`: checks Grok Bot email, workers and PRs; reviews and merges; starts the next tasks.
@@ -47,7 +49,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 - **Never leave a worker idle (owner rule):** the moment a worker finishes or stops, give it the next task (reuse the idle session) or start a new one. Timed wake-ups are only a backup; worker messages are the main signal.
 - Workers: separate cloud sessions, up to ~5 at a time on non-overlapping files, one task each, branch `agent/<task>`, PR into `main`. Playbook: `docs/AGENTS.md`.
 - **Email is checked every 30 minutes** (owner rule): hourly check-in at :34 (`trig_01SRzKhjqQDZWWfR6krcCifn`) plus an email check at :04 (`trig_01RboB5HqcNxpdXgKpAZU6YK`), both opening every thread in full.
-- Daily status email to the owner around 13:00 UTC, subject starting "Hunt Club Mesh status" (never "Grok Bot", which is reserved for AWS requests).
+- Daily status email to the owner around 13:00 UTC, subject starting "Hunt Club Mesh status" (never "Grok Bot", which is reserved for AWS requests). Last sent: 2026-11-26 14:40 UTC (late: usage limit).
 - Commits authored as `Overcastly-AI <282247350+Overcastly-AI@users.noreply.github.com>`.
 
 ## Workers
@@ -80,7 +82,10 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 ## Backlog (coordinator)
 
 - Done: radio name (#32, #37), zod locale shim (#34, −243 KB), a11y pass (#39), deploy-dev workflow (#40, waits on owner deploy-path decision).
-- In progress: #16 sim fix + fresh screenshots (onboarding worker); map packs #41 backend → app (club-data); #41 review then web Map packs admin (web).
+- Done: #42 sim CI fixed (firmware 2 s text limit; app now spaces texts), #16 closed. Screenshots skipped (needs react-native-web; not approved).
+- Done: #41 map packs backend (global + per-club TTL locks instead of reserved concurrency, which new accounts can't spare), #43 harvest reports (M13).
+- Active (2-worker cap): onboarding worker = M12 app side; web worker = map-packs admin PR. Paused: club-data, mesh, map, CI/board, weather.
+- Was in progress: M12 app side (onboarding worker); map packs #41 backend → app (club-data); #41 review then web Map packs admin (web).
 
 - After #4 and #5: HarvestSex single source = SQL enum → @huntclub/shared → mesh derives wire codes (assigned to the schema worker).
 - After #6: move sunrise/sunset and freshness thresholds from app/src/map into packages/core if core needs them (DRY).

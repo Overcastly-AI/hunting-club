@@ -16,5 +16,6 @@
     "types": ["jest"],
     "noEmit": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/node.ts", "src/node", "src/__integration__"]
 }

@@ -10,6 +10,9 @@ import {
   MemberJoinSchema,
   MemberSchema,
   type Subscription,
+  ZOOM_RANGE_ORDERED,
+  boundsSchema,
+  zoomRangeOrdered,
 } from './club';
 import { SubscriptionStatusSchema, isEntitledStatus } from './enums';
 import {
@@ -20,6 +23,7 @@ import {
   timestampSchema,
 } from './fields';
 import type { ClubApiError } from './enums';
+import { BASEMAP_IDS, DOWNLOAD_LIMITS, type BasemapId } from './maps';
 
 /** POST /clubs: a new club with the caller as its first admin. */
 export const ClubCreateRequestSchema = z.strictObject({
@@ -89,6 +93,19 @@ export const EntitlementSchema = z.object({
 });
 export type Entitlement = z.infer<typeof EntitlementSchema>;
 
+/**
+ * Whether club-only features are open at `now`: until `featuresUntil` (ISO from the API,
+ * or epoch ms as cached on a phone). Safety and mesh features never call this.
+ */
+export function hasClubFeatures(
+  entitlement: { featuresUntil?: string | number | null | undefined } | null | undefined,
+  now: Date | number,
+): boolean {
+  const until = entitlement?.featuresUntil;
+  if (until === undefined || until === null) return false;
+  return +now < (typeof until === 'number' ? until : Date.parse(until));
+}
+
 /** The one rule turning a subscription into an entitlement (used by the API). */
 export function entitlementFor(
   clubId: string,
@@ -101,3 +118,39 @@ export function entitlementFor(
   const until = Date.parse(paidThrough) + ENTITLEMENT_GRACE_DAYS * 24 * 60 * 60 * 1000;
   return { ...base, featuresUntil: new Date(until).toISOString() };
 }
+
+const basemapIdSchema = z.enum(BASEMAP_IDS as [BasemapId, ...BasemapId[]]);
+/** Map zooms (512 px based), within the download caps. */
+const packZoomSchema = z.number().int().min(DOWNLOAD_LIMITS.minZoom).max(DOWNLOAD_LIMITS.maxZoom);
+
+/** What an admin asks for; defaults cover overview to the deepest USGS level. */
+const mapPackRequestFields = {
+  basemap: basemapIdSchema,
+  minZoom: packZoomSchema.default(DOWNLOAD_LIMITS.minZoom),
+  maxZoom: packZoomSchema.default(DOWNLOAD_LIMITS.maxZoom),
+};
+
+/** POST /clubs/:clubId/map-packs (admin): build a pack of the club's property for one basemap. */
+export const MapPackRequestSchema = z
+  .strictObject(mapPackRequestFields)
+  .refine(zoomRangeOrdered, ZOOM_RANGE_ORDERED);
+export type MapPackRequest = z.input<typeof MapPackRequestSchema>;
+
+/** What the map-pack builder Lambda is asked to do (the API's async invoke payload). */
+export const MapPackBuildSchema = z
+  .strictObject({
+    ...mapPackRequestFields,
+    clubId: idSchema,
+    packId: idSchema,
+    bounds: boundsSchema,
+  })
+  .refine(zoomRangeOrdered, ZOOM_RANGE_ORDERED);
+export type MapPackBuild = z.infer<typeof MapPackBuildSchema>;
+
+/** 202 answer: the pack is being built; it appears in GET map-packs when done. */
+export const MapPackRequestResponseSchema = z.object({
+  packId: idSchema,
+  tiles: z.number().int().min(0),
+  bytes: z.number().int().min(0),
+});
+export type MapPackRequestResponse = z.infer<typeof MapPackRequestResponseSchema>;

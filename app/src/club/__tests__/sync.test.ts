@@ -10,7 +10,8 @@ import {
 } from '../../test-utils/fakeClubApi';
 import { SECURE_KEYS } from '../../storage/secure';
 import { decodeJoinUrl } from '@huntclub/mesh';
-import { clubFeaturesOpen, entitlementOf } from '../entitlement';
+import { hasClubFeatures } from '@huntclub/shared';
+import { entitlementOf } from '../entitlement';
 import {
   loadClubAreas,
   loadClubStands,
@@ -79,7 +80,7 @@ it('redeems the invite once online, then stores club, stands with mesh ids and e
     pendingInvite: false,
     syncedAt: NOW,
   });
-  expect(clubFeaturesOpen(entitlementOf(club!), NOW)).toBe(true);
+  expect(hasClubFeatures(entitlementOf(club!), NOW)).toBe(true);
   expect((await loadClubStands(d, CLUB_ID)).map((s) => [s.meshId, s.name])).toEqual([
     [1, 'Creek Stand'],
     [2, 'Ridge Ladder'],

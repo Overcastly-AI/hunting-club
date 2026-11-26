@@ -23,7 +23,7 @@ export function buildApp(config: EnvConfig, app = new App(), options: BuildOptio
 
   const web = new WebStack(app, `${prefix}-Web`, { env, config, webDistPath });
   // The club table and user pool are owned by config.dataStackName, not by CDK.
-  const api = new ApiStack(app, `${prefix}-Api`, { env, config });
+  const api = new ApiStack(app, `${prefix}-Api`, { env, config, packBucket: web.bucket });
 
   Tags.of(app).add('Project', PROJECT);
   Tags.of(app).add('Env', config.name);

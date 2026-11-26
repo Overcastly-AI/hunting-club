@@ -20,8 +20,17 @@ import {
   type ClubSecret,
   type ClubSecretResponse,
   ClubSecretPutRequestSchema,
+  BASEMAPS,
+  MAP_PACK_LIMITS,
+  type MapPackBuild,
+  MapPackRequestSchema,
+  type MapPackRequestResponse,
+  estimatePack,
+  hasClubFeatures,
+  polygonBounds,
   RedeemInviteRequestSchema,
 } from '@huntclub/shared';
+import { randomUUID } from 'node:crypto';
 import type { z } from 'zod';
 import type { TokenVerifier } from './auth';
 import { type CheckoutConfig, createCheckout, type StripeApi } from './billing';
@@ -43,6 +52,10 @@ export interface ClubApiDeps {
   /** Stripe for Checkout; resolved lazily so other routes never read the API key. */
   stripe: () => Promise<StripeApi>;
   checkout: CheckoutConfig;
+  /** Starts the map-pack builder Lambda (async); absent until it is deployed. */
+  startMapPackBuild?: (build: MapPackBuild) => Promise<void>;
+  now?: () => Date;
+  newId?: () => string;
 }
 
 interface Ctx {
@@ -217,6 +230,57 @@ function routes(data: ClubData): Route<Ctx>[] {
       method: 'GET',
       path: API_PATHS.mapPacks,
       handle: (c, p) => data.listMapPacks(c.actor, p.clubId!),
+    },
+    {
+      // Admin: build a map pack of the club's property (one basemap) in the background.
+      method: 'POST',
+      path: API_PATHS.mapPacks,
+      status: 202,
+      handle: async (c, p): Promise<MapPackRequestResponse> => {
+        const club = await data.getClubForMapPack(c.actor, p.clubId!);
+        const now = c.deps.now?.() ?? new Date();
+        if (!hasClubFeatures(await data.getEntitlement(c.actor, club.id), now)) {
+          throw new ClubDataError(
+            'club_inactive',
+            'new map packs need an active club subscription',
+          );
+        }
+        const request = parse(MapPackRequestSchema, c.body ?? {});
+        if (!club.boundary) throw new ClubDataError('invalid', 'draw the property line first');
+        const bounds = polygonBounds(club.boundary);
+        const estimate = estimatePack(
+          bounds,
+          request.minZoom,
+          request.maxZoom,
+          request.basemap,
+          MAP_PACK_LIMITS,
+        );
+        if (estimate.overLimit) {
+          throw new ClubDataError(
+            'invalid',
+            `the property is too big for one pack (${estimate.overLimit})`,
+          );
+        }
+        if (!c.deps.startMapPackBuild) {
+          throw new ClubDataError('not_configured', 'map packs are not set up yet');
+        }
+        // Records the pack as building and takes the club's build lock (409 if busy).
+        const { minZoom, maxZoom, basemap } = request;
+        const pack = await data.startMapPackBuild(
+          c.actor,
+          club.id,
+          { bounds, minZoom, maxZoom, source: BASEMAPS[basemap].source },
+          { id: (c.deps.newId ?? randomUUID)() },
+        );
+        try {
+          await c.deps.startMapPackBuild({ clubId: club.id, packId: pack.id, bounds, ...request });
+        } catch (error) {
+          // Free the club again; the pack shows why.
+          await data.failMapPack(SERVICE, club.id, pack.id, 'the build could not be started');
+          throw error;
+        }
+        return { packId: pack.id, tiles: estimate.tiles, bytes: estimate.bytes };
+      },
     },
 
     // Radio key (admins only; base64 in JSON)
