@@ -8,6 +8,9 @@ import {
 import { CLUB_PRICING, LEGAL_DOCS, LEGAL_DRAFT_NOTICE, SAFETY_NOTE } from '@huntclub/shared';
 import { ADMIN_PATH, SUPPORT_EMAIL } from '@huntclub/shared/app';
 import { renderJoin, renderNotFound, renderPage } from '../render';
+import { FAQ, FAQ_PREVIEW } from '../faq';
+import { FEATURE_GROUPS } from '../features';
+import { HERO_ART_SLOT } from '../pages/Home';
 import { assets, FONT } from './fixtures';
 import {
   canonicalUrl,
@@ -175,13 +178,7 @@ describe('links', () => {
   it('point only at registered pages, sections that exist, or the admin', () => {
     const allowed = new Set<string>([...ROUTES.map((r) => r.path), ADMIN_PATH]);
     for (const link of [...NAV_LINKS, GET_THE_APP, SIGN_IN, START_A_CLUB, ...FOOTER_LINKS]) {
-      const [path, id] = link.href.split('#');
-      if (id) {
-        expect(path).toBe('/');
-        expect(home).toContain(`id="${id}"`);
-      } else {
-        expect(allowed.has(link.href)).toBe(true);
-      }
+      expect(allowed.has(link.href)).toBe(true);
     }
   });
 
@@ -223,14 +220,15 @@ describe('page content', () => {
 
   it('links within the site only to registered pages, home sections, the admin or mail', () => {
     const allowed = new Set<string>([...ROUTES.map((r) => r.path), ADMIN_PATH]);
-    const home = page('/');
     for (const { html } of pages) {
       for (const href of hrefs(html)) {
         if (href.startsWith('mailto:')) continue;
-        const [path, id] = href.split('#');
-        if (id && path === '/') expect(home).toContain(`id="${id}"`);
-        else if (id) expect(path).toBe('');
-        else expect(allowed.has(href)).toBe(true);
+        const [path = '', id] = href.split('#');
+        if (id) {
+          // An anchor: on this page, or on a registered page that has that id.
+          if (path) expect(page(path)).toContain(`id="${id}"`);
+          else expect(html).toContain(`id="${id}"`);
+        } else expect(allowed.has(href)).toBe(true);
       }
     }
   });
@@ -278,5 +276,38 @@ describe('page content', () => {
       expect(textOf(contact)).toMatch(/support email address is coming soon/);
       expect(contact).not.toContain('mailto:');
     }
+  });
+});
+
+describe('features and FAQ', () => {
+  const page = (path: string) => pages.find((p) => p.route.path === path)!.html;
+
+  it('gives every feature group an anchor, words for Free and Club, and a sized placeholder', () => {
+    const features = page(PAGE_PATHS.features);
+    const ids = FEATURE_GROUPS.map((g) => g.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const group of FEATURE_GROUPS) {
+      expect(group.free ?? group.club).toBeTruthy();
+      expect(features).toContain(`id="${group.id}"`);
+      expect(features).toContain(`aria-label="Screenshot coming soon: ${group.shot.label}"`);
+    }
+    expect(features).toContain('<strong>Free:</strong>');
+    expect(features).toContain('<strong>Club:</strong>');
+    expect(features).not.toMatch(/<img/);
+  });
+
+  it('answers every question on /faq, the emergency one with the safety note word for word', () => {
+    const faq = textOf(page(PAGE_PATHS.faq));
+    for (const item of FAQ) {
+      expect(faq).toContain(item.q);
+      expect(faq).toContain(item.a);
+    }
+    expect(FAQ.find((i) => /emergency/.test(i.q))?.a).toContain(SAFETY_NOTE);
+    const home = textOf(page('/'));
+    for (const item of FAQ_PREVIEW) expect(home).toContain(item.q);
+  });
+
+  it('leaves an empty, decorative slot behind the home hero for its background', () => {
+    expect(page('/')).toContain(`<div class="${HERO_ART_SLOT}" aria-hidden="true"></div>`);
   });
 });

@@ -1,3 +1,5 @@
+import { APP_DESCRIPTION } from '@huntclub/shared';
+import { FAQ } from '../faq';
 import { renderJoin, renderNotFound, renderPage } from '../render';
 import { PAGE_PATHS, ROUTES, SITE_LOGO, SITE_ORIGIN } from '../routes';
 import { jsonLd, STRUCTURED_DATA } from '../structuredData';
@@ -15,6 +17,7 @@ describe('structured data (JSON-LD)', () => {
       dataIn(renderPage(path, assets)).map((d) => d['@type']);
     expect(types(PAGE_PATHS.home)).toEqual(['Organization', 'WebSite', 'SoftwareApplication']);
     expect(types(PAGE_PATHS.download)).toEqual(['SoftwareApplication']);
+    expect(types(PAGE_PATHS.faq)).toEqual(['FAQPage']);
     for (const route of ROUTES) {
       if (!STRUCTURED_DATA[route.path]) expect(types(route.path)).toEqual([]);
     }
@@ -27,7 +30,7 @@ describe('structured data (JSON-LD)', () => {
     expect(org).toMatchObject({ url: SITE_ORIGIN, logo: `${SITE_ORIGIN}/${SITE_LOGO.file}` });
     expect(site).toMatchObject({ url: SITE_ORIGIN });
     expect(app).toMatchObject({
-      description: ROUTES[0].description,
+      description: APP_DESCRIPTION,
       operatingSystem: 'iOS, Android',
       applicationCategory: 'SportsApplication',
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
@@ -35,6 +38,17 @@ describe('structured data (JSON-LD)', () => {
     for (const data of Object.values(STRUCTURED_DATA).flat()) {
       expect(JSON.stringify(data)).not.toMatch(/aggregateRating|"review|ratingValue|downloadUrl/i);
     }
+  });
+
+  it('lists the FAQ page questions and answers exactly as the page shows them', () => {
+    const [faqPage] = dataIn(renderPage(PAGE_PATHS.faq, assets));
+    expect(faqPage!.mainEntity).toEqual(
+      FAQ.map((i) => ({
+        '@type': 'Question',
+        name: i.q,
+        acceptedAnswer: { '@type': 'Answer', text: i.a },
+      })),
+    );
   });
 
   it('cannot end its script tag early', () => {

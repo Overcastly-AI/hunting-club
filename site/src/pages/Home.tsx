@@ -1,32 +1,7 @@
 import { APP_NAME, FREE_PARTY_MAX_MEMBERS } from '@huntclub/shared';
+import { FAQ_PREVIEW } from '../faq';
+import { FEATURE_GROUPS } from '../features';
 import { GET_THE_APP, HOME_SECTIONS, PAGE_PATHS } from '../routes';
-
-const FEATURES = [
-  {
-    title: 'A live map of your party',
-    text: 'Topo and aerial maps from public USGS servers, downloaded to your phone before you go.',
-  },
-  {
-    title: 'Check in your way',
-    text: 'At a stand, at a spot or on the move. Your location is shared only while you are checked in.',
-  },
-  {
-    title: 'Chat over the radio',
-    text: 'Party chat, quick replies and direct messages travel over the radio mesh.',
-  },
-  {
-    title: 'Ask for a Hand',
-    text: 'Pings your party with where you are, and keeps trying until someone sees it.',
-  },
-  {
-    title: 'Overdue alert',
-    text: 'If you are still out after sunset plus your grace time, your party is told.',
-  },
-  {
-    title: 'Wind, sunrise and sunset',
-    text: 'Wind, a scent cone, sunrise and sunset on the map.',
-  },
-] as const;
 
 const STEPS = [
   {
@@ -43,33 +18,18 @@ const STEPS = [
   },
 ] as const;
 
-const FAQ = [
-  {
-    q: 'Do I need cell service?',
-    a: 'No. Download your maps before you go. Positions, chat and check-ins travel over the radio mesh.',
-  },
-  {
-    q: 'Which radios work?',
-    a: 'Meshtastic LoRa radios running stock Meshtastic firmware. The app pairs with one over Bluetooth.',
-  },
-  {
-    q: 'Do I need an account?',
-    a: `Not to hunt with a party. Free users have no account, and ${APP_NAME} never contacts our servers for them. Club members sign in with an emailed code.`,
-  },
-  {
-    q: 'Who can see where I am?',
-    a: 'Only your party or club, and only while you are checked in.',
-  },
-  {
-    q: 'What does a club pay for?',
-    a: 'The club setup and admin tools. Everything that works over the radio mesh, including Ask for a Hand, stays free whatever a club pays.',
-  },
-] as const;
+/**
+ * Where the animated hero background goes (built separately): an empty, decorative layer
+ * behind the hero's content. Anything placed here must stay aria-hidden and keep the
+ * hero text's contrast.
+ */
+export const HERO_ART_SLOT = 'hero-art';
 
 export function Home() {
   return (
     <>
       <section className="hero">
+        <div className={HERO_ART_SLOT} aria-hidden="true" />
         <div className="wrap">
           <h1>Keep track of your hunting party with no cell service</h1>
           <p className="lead">
@@ -88,14 +48,17 @@ export function Home() {
         </div>
       </section>
 
-      <section id={HOME_SECTIONS.features} className="band-light">
+      <section className="band-light">
         <div className="wrap">
           <h2>What it does</h2>
           <div className="grid">
-            {FEATURES.map((f) => (
-              <div key={f.title}>
+            {FEATURE_GROUPS.filter((f) => f.free).map((f) => (
+              <div key={f.id}>
                 <h3>{f.title}</h3>
-                <p className="muted">{f.text}</p>
+                <p className="muted">{f.summary}</p>
+                <a className="tap" href={`${PAGE_PATHS.features}#${f.id}`}>
+                  More about {f.title.toLowerCase()}
+                </a>
               </div>
             ))}
           </div>
@@ -138,15 +101,18 @@ export function Home() {
         </div>
       </section>
 
-      <section id={HOME_SECTIONS.faq} className="band-light faq">
+      <section className="band-light faq">
         <div className="wrap">
           <h2>Questions</h2>
-          {FAQ.map((item) => (
+          {FAQ_PREVIEW.map((item) => (
             <div key={item.q}>
               <h3>{item.q}</h3>
               <p>{item.a}</p>
             </div>
           ))}
+          <a className="tap" href={PAGE_PATHS.faq}>
+            All questions
+          </a>
         </div>
       </section>
     </>

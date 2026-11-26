@@ -56,7 +56,20 @@ section { padding: var(--space-xl) 0; }
 .band-light .muted, .band-light .lead { color: var(--color-muted-on-light); }
 .band-light .button { color: var(--color-text-on-light); background: transparent; border-color: var(--color-text-on-light); }
 .band-light .button.primary { color: var(--color-surface); background: var(--color-accent); border-color: var(--color-accent); }
-.hero { padding: var(--space-xl) 0 calc(var(--space-xl) * 2); }
+.hero { position: relative; overflow: hidden; padding: var(--space-xl) 0 calc(var(--space-xl) * 2); }
+/* The home hero's background slot (HERO_ART_SLOT): decorative, behind the content. */
+.hero-art { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.hero > .wrap { position: relative; z-index: 1; }
+.feature { display: grid; gap: var(--space-lg); align-items: center; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); }
+.shot { margin: 0; }
+.shot-frame { display: grid; place-items: center; border: 2px dashed var(--color-control-border);
+  border-radius: var(--radius-sheet-top); color: var(--color-text-secondary); }
+.band-light .shot-frame { color: var(--color-muted-on-light); }
+.shot-4x5 .shot-frame { aspect-ratio: 4 / 5; max-width: 22rem; }
+.shot-16x10 .shot-frame { aspect-ratio: 16 / 10; }
+.shot figcaption { margin-top: var(--space-sm); }
+.faq-page .wrap { max-width: 45rem; }
+.faq-page h2 { ${textStyleCss(textScale.bodyLarge)}; font-weight: 700; margin-top: var(--space-lg); }
 .grid { display: grid; gap: var(--space-lg); grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
 .steps { counter-reset: step; list-style: none; padding: 0; margin: 0; }
 .steps li { counter-increment: step; margin-bottom: var(--space-lg); padding-left: 3rem; position: relative; }

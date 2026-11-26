@@ -4,9 +4,12 @@
 /** The product name, as people see it (app name, page titles, sign-in). */
 export const APP_NAME = 'Hunt Club Mesh';
 
-/** One line about the product, for the web page's meta description and sign-in. */
+/**
+ * One line about the product, wherever it is described: the club admin's meta description
+ * and sign-in, and the public site's app structured data.
+ */
 export const APP_DESCRIPTION =
-  'Off-grid hunting with your party and club over Meshtastic radios. Club admins manage members, stands and map packs here.';
+  'Off-grid hunting for your party and club: a shared map, chat and check-in over small radios, with no cell service.';
 
 /** iOS bundle identifier and Android package name. */
 export const APP_ID = 'com.overcastly.huntclub';
