@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Banner } from '../components/Banner';
 import { Choice } from '../components/Choice';
 import { SlideToConfirm } from '../components/SlideToConfirm';
-import { TextField } from '../components/TextField';
+import { Field } from '../components/Field';
 import { placeLabel } from '../map/labels';
 import { useNow } from '../hooks/useNow';
 import { placeOf } from '../map/place';
@@ -84,8 +85,8 @@ export function CheckInScreen() {
         </View>
 
         {draft.mode === CheckInMode.Spot ? (
-          <TextField
-            placeholder="Name this spot (optional)"
+          <Field
+            label="Name this spot (optional)"
             value={draft.spotName ?? ''}
             onChangeText={(spotName) => setDraft((d) => ({ ...d, spotName }))}
             maxLength={24}
@@ -126,14 +127,14 @@ export function CheckInScreen() {
           </View>
         ) : null}
 
-        <Text style={styles.note}>
+        <Banner tone="info">
           {overdueNote(
             current?.checkedInAt ?? now,
             pin,
             radio?.graceMinutes ?? CORE_CONFIG.overdue.graceMinutes,
             radio?.audience ?? 'party',
           )}
-        </Text>
+        </Banner>
 
         <SlideToConfirm
           label={changing ? 'Slide to change mode' : 'Slide to check in'}
@@ -160,8 +161,7 @@ const useStyles = makeStyles((theme) => ({
   safe: { flex: 1, backgroundColor: theme.colors.surface0 },
   content: { padding: spacing.md, gap: spacing.md },
   overline: { ...textStyles.body, color: theme.colors.textSecondary },
-  title: { ...textStyles.sheetTitle, color: theme.colors.text },
-  heading: { ...textStyles.label, color: theme.colors.text },
+  title: { ...textStyles.title1, color: theme.colors.text },
+  heading: { ...textStyles.title3, color: theme.colors.text },
   group: { gap: spacing.sm },
-  note: { ...textStyles.body, color: theme.colors.textSecondary },
 }));

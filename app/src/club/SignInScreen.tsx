@@ -4,7 +4,7 @@ import { Text } from 'react-native';
 
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
-import { TextField } from '../components/TextField';
+import { Field } from '../components/Field';
 import { makeStyles, textStyles } from '../theme';
 import { useClub } from './ClubProvider';
 import { clubCopy } from './copy';
@@ -56,8 +56,8 @@ export function SignInScreen({ onDone }: { onDone: () => void }) {
     <Screen title={copy.title} description={copy.intro}>
       {challenge === null ? (
         <>
-          <TextField
-            placeholder={copy.email}
+          <Field
+            label={copy.email}
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
@@ -75,8 +75,8 @@ export function SignInScreen({ onDone }: { onDone: () => void }) {
       ) : (
         <>
           <Text style={styles.body}>{copy.codeSent(challenge.email)}</Text>
-          <TextField
-            placeholder={copy.code}
+          <Field
+            label={copy.code}
             value={code}
             onChangeText={(text) => setCode(codeDigits(text))}
             keyboardType="number-pad"

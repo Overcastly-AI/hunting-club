@@ -1,9 +1,10 @@
 import { MAX_TEXT_CHARS } from '@huntclub/mesh';
+import { Send } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 import { Button } from '../components/Button';
 import { OptionButtons } from '../components/OptionButtons';
-import { TextField } from '../components/TextField';
+import { Field } from '../components/Field';
 import { formatClockTime } from '../conditions/clock';
 import { QUICK_REPLIES } from '../domain/quickReplies';
 import { placeLabel } from '../map/labels';
@@ -48,7 +49,7 @@ export function SystemCard({ item }: { item: System }) {
       style={[styles.card, item.event === 'help' && styles.helpCard]}
     >
       <Text style={[styles.cardText, item.event === 'help' && styles.helpText]}>{item.text}</Text>
-      <Text style={styles.meta}>{time}</Text>
+      <Text style={[styles.meta, item.event === 'help' && styles.helpText]}>{time}</Text>
     </View>
   );
 }
@@ -85,13 +86,14 @@ export function Composer({ value, onChange, onSend, disabled }: ComposerProps) {
   const nearLimit = counter.left <= 20;
   return (
     <View style={styles.composer}>
-      <TextField
+      <Field
+        label="Message"
+        hideLabel
         placeholder="Message"
         value={value}
         onChangeText={onChange}
         multiline
         maxLength={MAX_TEXT_CHARS + 20}
-        style={styles.field}
       />
       <View style={styles.composerRow}>
         <Text
@@ -102,6 +104,7 @@ export function Composer({ value, onChange, onSend, disabled }: ComposerProps) {
         </Text>
         <Button
           variant="primary"
+          icon={Send}
           label="Send"
           onPress={onSend}
           disabled={disabled || counter.over || !value.trim()}
@@ -114,14 +117,15 @@ export function Composer({ value, onChange, onSend, disabled }: ComposerProps) {
 const useStyles = makeStyles((theme) => ({
   bubble: {
     maxWidth: '86%',
-    borderRadius: radii.primaryButton,
-    padding: spacing.sm + spacing.xs,
+    borderRadius: radii.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + spacing.xs,
     gap: spacing.xs,
   },
   mine: { alignSelf: 'flex-end', backgroundColor: theme.colors.surface2 },
   theirs: {
     alignSelf: 'flex-start',
-    backgroundColor: theme.colors.surface0,
+    backgroundColor: theme.colors.surface1,
     borderWidth: 1,
     borderColor: theme.colors.borderSubtle,
   },
@@ -130,18 +134,19 @@ const useStyles = makeStyles((theme) => ({
   problem: { color: theme.colors.warning },
   card: {
     alignSelf: 'center',
-    borderRadius: radii.primaryButton,
+    borderRadius: radii.md,
     borderWidth: 1,
     borderColor: theme.colors.borderSubtle,
+    backgroundColor: theme.colors.surface1,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     alignItems: 'center',
   },
-  helpCard: { borderColor: theme.colors.warning },
+  // Ask for a Hand in the stream: gold on the warning tint, never red, never an emergency.
+  helpCard: { borderColor: theme.colors.warning, backgroundColor: theme.colors.warningTint },
   cardText: { ...textStyles.label, color: theme.colors.text, textAlign: 'center' },
   helpText: { color: theme.colors.warning },
   composer: { gap: spacing.sm },
-  field: { paddingVertical: spacing.sm },
   composerRow: {
     flexDirection: 'row',
     alignItems: 'center',

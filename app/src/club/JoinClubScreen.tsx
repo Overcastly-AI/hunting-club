@@ -6,7 +6,7 @@ import { Text } from 'react-native';
 
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
-import { TextField } from '../components/TextField';
+import { Field } from '../components/Field';
 import { makeStyles, textStyles } from '../theme';
 import { useClub } from './ClubProvider';
 import { clubCopy } from './copy';
@@ -80,14 +80,14 @@ function JoinForm({
   const profile = MemberJoinSchema.safeParse({ displayName, initials: initials.toUpperCase() });
   return (
     <Screen title={copy.title} description={copy.intro}>
-      <TextField
-        placeholder={copy.name}
+      <Field
+        label={copy.name}
         value={displayName}
         onChangeText={setDisplayName}
         autoComplete="name"
       />
-      <TextField
-        placeholder={copy.initials}
+      <Field
+        label={copy.initials}
         value={initials}
         onChangeText={setInitials}
         autoCapitalize="characters"

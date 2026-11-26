@@ -80,12 +80,11 @@ describe.each(THEMES)('%s theme: app text contrast (at least 4.5:1)', (_name, th
     expect(contrastRatio(c.surface0, c.warning)).toBeGreaterThanOrEqual(MIN_UI_CONTRAST);
   });
 
-  it('keeps disabled choices readable', () => {
-    // Disabled controls fade to opacity.pressed. Dark keeps text contrast; light keeps
-    // 3:1 (WCAG exempts disabled controls) until P5b moves the controls to the new
-    // variants with their own disabled colours.
-    const min = theme.colorScheme === 'dark' ? MIN_TEXT_CONTRAST : MIN_UI_CONTRAST;
-    const dimmed = blendOver(c.textSecondary, c.surface2, opacity.pressed);
-    expect(contrastRatio(dimmed, c.surface2)).toBeGreaterThanOrEqual(min);
+  it('keeps disabled controls readable: tertiary text on every disabled fill', () => {
+    // Button, Choice, OptionButtons and SlideToConfirm draw disabled with their own colours
+    // (no fading), so the label keeps 4.5:1 in both themes.
+    for (const fill of ['surface1', 'surface2', 'surface3'] as const) {
+      expect(contrastRatio(c.textTertiary, c[fill])).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
+    }
   });
 });

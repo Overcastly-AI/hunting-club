@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
-import { TextField } from '../components/TextField';
+import { Field } from '../components/Field';
 import type { MyProfile } from '../db/appState';
 import { spacing } from '../theme';
 import { onboardingCopy } from './copy';
@@ -26,8 +26,8 @@ export function NameStep({ initial, onNext }: Props) {
   return (
     <Screen title={copy.title} description={copy.body}>
       <View style={styles.fields}>
-        <TextField
-          placeholder={copy.nameLabel}
+        <Field
+          label={copy.nameLabel}
           value={displayName}
           maxLength={DISPLAY_NAME_MAX}
           autoCapitalize="words"
@@ -37,8 +37,8 @@ export function NameStep({ initial, onNext }: Props) {
             if (!initialsEdited) setInitials(suggestInitials(text));
           }}
         />
-        <TextField
-          placeholder={copy.initialsLabel}
+        <Field
+          label={copy.initialsLabel}
           value={initials}
           maxLength={INITIALS_MAX}
           autoCapitalize="characters"

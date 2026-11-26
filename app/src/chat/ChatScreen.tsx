@@ -2,7 +2,11 @@ import { useContext, useMemo, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ChevronLeft, MessagesSquare, UserRound, Users } from 'lucide-react-native';
+
+import { Banner } from '../components/Banner';
 import { Button } from '../components/Button';
+import { EmptyState } from '../components/EmptyState';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { makeStyles, spacing, textStyles } from '../theme';
 import { ChatRadioContext, ChatSendError, nameOf, sendChat } from './ChatRadio';
@@ -87,7 +91,7 @@ export function ChatScreen() {
               setPeer(null);
             }}
           />
-          {!radio ? <Text style={styles.note}>{NO_RADIO}</Text> : null}
+          {!radio ? <Banner tone="info">{NO_RADIO}</Banner> : null}
         </View>
 
         {segment === 'direct' && peer === null ? (
@@ -96,12 +100,13 @@ export function ChatScreen() {
             data={people}
             keyExtractor={(n) => String(n)}
             ListEmptyComponent={
-              <Text style={styles.note}>
-                Nobody to message yet. People appear once your radio hears them.
-              </Text>
+              <EmptyState icon={Users} title="Nobody to message yet">
+                People appear once your radio hears them.
+              </EmptyState>
             }
             renderItem={({ item: node }) => (
               <Button
+                icon={UserRound}
                 label={radio ? nameOf(radio, node) : `!${node.toString(16)}`}
                 onPress={() => setPeer(node)}
               />
@@ -112,6 +117,8 @@ export function ChatScreen() {
             {segment === 'direct' && peer !== null ? (
               <View style={styles.header}>
                 <Button
+                  variant="tertiary"
+                  icon={ChevronLeft}
                   label={`Back to people · ${radio ? nameOf(radio, peer) : ''}`}
                   onPress={() => setPeer(null)}
                 />
@@ -123,6 +130,15 @@ export function ChatScreen() {
               contentContainerStyle={styles.list}
               data={shown}
               keyExtractor={(item) => item.id}
+              ListEmptyComponent={
+                // The list is inverted, so its empty slot is drawn upside down without this.
+                <View style={styles.inverted}>
+                  <EmptyState icon={MessagesSquare} title="No messages yet">
+                    Texts, check-ins and shared harvests show up here. They travel over the radio,
+                    no cell service needed.
+                  </EmptyState>
+                </View>
+              }
               renderItem={({ item }) =>
                 item.kind === 'text' ? <MessageBubble item={item} /> : <SystemCard item={item} />
               }
@@ -136,9 +152,9 @@ export function ChatScreen() {
                 disabled={!radio}
               />
               {problem ? (
-                <Text accessibilityLiveRegion="polite" style={[styles.note, styles.problem]}>
+                <Banner tone="warning" live>
                   {problem}
-                </Text>
+                </Banner>
               ) : null}
             </View>
           </>
@@ -152,14 +168,13 @@ const useStyles = makeStyles((theme) => ({
   safe: { flex: 1, backgroundColor: theme.colors.surface0 },
   flex: { flex: 1 },
   header: { paddingHorizontal: spacing.md, paddingTop: spacing.sm, gap: spacing.sm },
-  title: { ...textStyles.sheetTitle, color: theme.colors.text },
-  list: { padding: spacing.md, gap: spacing.sm },
+  title: { ...textStyles.title1, color: theme.colors.text },
+  list: { padding: spacing.md, gap: spacing.sm, flexGrow: 1 },
+  inverted: { transform: [{ scaleY: -1 }] },
   footer: {
     padding: spacing.md,
     gap: spacing.sm,
     borderTopWidth: 1,
     borderColor: theme.colors.borderSubtle,
   },
-  note: { ...textStyles.body, color: theme.colors.textSecondary },
-  problem: { color: theme.colors.warning },
 }));

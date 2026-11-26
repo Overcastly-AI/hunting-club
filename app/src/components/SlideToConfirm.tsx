@@ -8,7 +8,7 @@ import {
   type LayoutChangeEvent,
 } from 'react-native';
 
-import { makeStyles, opacity, radii, sizes, spacing, textStyles } from '../theme';
+import { makeStyles, radii, sizes, spacing, textStyles } from '../theme';
 import { clampSlide, slideConfirms } from './slide';
 
 type Props = {
@@ -82,20 +82,27 @@ export function SlideToConfirm({
         accessibilityActions={[{ name: 'activate', label }]}
         onAccessibilityAction={onAccessibilityAction}
         onLayout={onLayout}
-        style={[styles.track, disabled && { opacity: opacity.pressed }]}
+        style={[styles.track, disabled && styles.disabledTrack]}
       >
         {/* Wraps instead of cutting off at large text sizes; the track grows with it. */}
-        <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.label, disabled && styles.disabledText]}>{label}</Text>
         <Animated.View
           {...pan.panHandlers}
           testID="slide-thumb"
           style={[
             styles.thumb,
             tone === 'help' && styles.helpThumb,
+            disabled && styles.disabledThumb,
             { transform: [{ translateX: travel > 0 ? x : 0 }] },
           ]}
         >
-          <View style={[styles.chevron, tone === 'help' && styles.helpChevron]} />
+          <View
+            style={[
+              styles.chevron,
+              tone === 'help' && styles.helpChevron,
+              disabled && styles.disabledChevron,
+            ]}
+          />
         </Animated.View>
       </View>
       {disabled && disabledReason ? <Text style={styles.reason}>{disabledReason}</Text> : null}
@@ -147,5 +154,10 @@ const useStyles = makeStyles((theme) => ({
   },
   // Gold thumb: dark ink in the dark theme, white on the light theme's deep gold.
   helpChevron: { borderColor: theme.colors.surface0 },
+  // Disabled is its own look, not a fade: tertiary text and a grey thumb, 4.5:1 in both themes.
+  disabledTrack: { backgroundColor: theme.colors.surface1 },
+  disabledText: { color: theme.colors.textTertiary },
+  disabledThumb: { backgroundColor: theme.colors.surface3 },
+  disabledChevron: { borderColor: theme.colors.textTertiary },
   reason: { ...textStyles.body, color: theme.colors.textSecondary },
 }));

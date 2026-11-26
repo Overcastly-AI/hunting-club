@@ -1,9 +1,9 @@
-import { Text, View } from 'react-native';
+import { Text } from 'react-native';
 
+import { Card } from '../components/Card';
 import { SegmentedControl } from '../components/SegmentedControl';
 import {
   makeStyles,
-  spacing,
   textStyles,
   THEME_PREFERENCE_LABELS,
   THEME_PREFERENCES,
@@ -15,10 +15,7 @@ export function ThemeSection() {
   const styles = useStyles();
   const { preference, setPreference } = useThemePreference();
   return (
-    <View style={styles.section}>
-      <Text accessibilityRole="header" style={styles.heading}>
-        Theme
-      </Text>
+    <Card title="Theme">
       <SegmentedControl
         segments={THEME_PREFERENCES}
         labels={THEME_PREFERENCE_LABELS}
@@ -26,12 +23,10 @@ export function ThemeSection() {
         onSelect={(next) => void setPreference(next)}
       />
       <Text style={styles.detail}>System follows your phone’s light or dark setting.</Text>
-    </View>
+    </Card>
   );
 }
 
 const useStyles = makeStyles((theme) => ({
-  section: { gap: spacing.sm },
-  heading: { ...textStyles.label, color: theme.colors.text },
   detail: { ...textStyles.body, color: theme.colors.textSecondary },
 }));

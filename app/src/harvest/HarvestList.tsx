@@ -2,7 +2,12 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useContext, useState } from 'react';
 import { Text, View } from 'react-native';
 
+import { Crosshair, Lock, NotebookPen, Share2, Users } from 'lucide-react-native';
+
+import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
+import { Card } from '../components/Card';
+import { EmptyState } from '../components/EmptyState';
 import { formatClockTime, formatShortDate } from '../conditions/clock';
 import { makeStyles, spacing, textStyles } from '../theme';
 import { SEX_LABELS, SHARE_LABELS } from './form';
@@ -36,44 +41,52 @@ export function HarvestList() {
     if (radio && (await shareHarvest(radio, db, h, 'party'))) harvestsChanged();
   };
 
+  const logButton = (
+    <Button
+      icon={NotebookPen}
+      label="Log a harvest"
+      detail="Private unless you share it"
+      onPress={() => setLogging(true)}
+    />
+  );
+
   return (
-    <View style={styles.section}>
-      <Text accessibilityRole="header" style={styles.heading}>
-        My harvests
-      </Text>
-      <Button
-        label="Log a harvest"
-        detail="Private unless you share it"
-        onPress={() => setLogging(true)}
-      />
-      {harvests.length === 0 ? <Text style={styles.body}>No harvests logged yet.</Text> : null}
+    <Card title="My harvests">
+      {harvests.length === 0 ? (
+        <EmptyState icon={Crosshair} title="No harvests logged yet" action={logButton}>
+          Log a harvest when you take one. It stays on this phone until you share it.
+        </EmptyState>
+      ) : (
+        logButton
+      )}
       {harvests.map((h) => (
         <View key={h.id} style={styles.row}>
           <Text style={styles.summary}>{harvestSummary(h)}</Text>
-          <Text style={styles.body}>
-            {h.sharedWith === 'none'
-              ? SHARE_LABELS.none
-              : `Shared with ${SHARE_LABELS[h.sharedWith].toLowerCase()}`}
-          </Text>
+          {h.sharedWith === 'none' ? (
+            <Badge tone="neutral" icon={Lock} label={SHARE_LABELS.none} />
+          ) : (
+            <Badge
+              tone="info"
+              icon={Users}
+              label={`Shared with ${SHARE_LABELS[h.sharedWith].toLowerCase()}`}
+            />
+          )}
           {h.sharedWith === 'none' && radio ? (
-            <Button label="Share with party" onPress={() => void share(h)} />
+            <Button icon={Share2} label="Share with party" onPress={() => void share(h)} />
           ) : null}
         </View>
       ))}
       <HarvestSheet visible={logging} onClose={() => setLogging(false)} />
-    </View>
+    </Card>
   );
 }
 
 const useStyles = makeStyles((theme) => ({
-  section: { gap: spacing.sm },
-  heading: { ...textStyles.label, color: theme.colors.text },
   row: {
-    gap: spacing.xs,
+    gap: spacing.sm,
     borderTopWidth: 1,
     borderColor: theme.colors.borderSubtle,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.md,
   },
   summary: { ...textStyles.bodyLarge, color: theme.colors.text },
-  body: { ...textStyles.body, color: theme.colors.textSecondary },
 }));

@@ -12,7 +12,7 @@ type Props = {
   children?: ReactNode;
 };
 
-/** Standard screen frame: safe area, sheet-style title, optional description. */
+/** Standard screen frame: safe area, page title (title-1), optional description (body-lg). */
 export function Screen({ title, description, scroll = true, children }: Props) {
   const styles = useStyles();
   const header = (
@@ -53,7 +53,7 @@ const useStyles = makeStyles((theme) => ({
     flex: 1,
   },
   title: {
-    ...textStyles.sheetTitle,
+    ...textStyles.title1,
     color: theme.colors.text,
   },
   description: {

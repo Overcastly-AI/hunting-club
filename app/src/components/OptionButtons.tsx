@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 
-import { makeStyles, opacity, radii, sizes, spacing, textStyles } from '../theme';
+import { makeStyles, radii, sizes, spacing, textStyles } from '../theme';
 
 type Props<T extends string> = {
   options: readonly T[];
@@ -34,10 +34,11 @@ export function OptionButtons<T extends string>({
           style={({ pressed }) => [
             styles.option,
             selected === option && styles.selected,
-            (pressed || disabled) && { opacity: opacity.pressed },
+            pressed && styles.pressed,
+            disabled && styles.disabled,
           ]}
         >
-          <Text style={styles.text}>{option}</Text>
+          <Text style={[styles.text, disabled && styles.disabledText]}>{option}</Text>
         </Pressable>
       ))}
     </View>
@@ -56,5 +57,8 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: 'center',
   },
   selected: { borderColor: theme.colors.text },
+  pressed: { backgroundColor: theme.colors.surface3, borderColor: theme.colors.surface3 },
+  disabled: { backgroundColor: theme.colors.surface1, borderColor: theme.colors.borderSubtle },
+  disabledText: { color: theme.colors.textTertiary },
   text: { ...textStyles.label, color: theme.colors.text },
 }));

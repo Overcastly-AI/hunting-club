@@ -16,7 +16,7 @@ import {
 } from '../tiles';
 import { Choice } from '../../components/Choice';
 import { Sheet } from '../../components/Sheet';
-import { TextField } from '../../components/TextField';
+import { Field } from '../../components/Field';
 
 type LayerChoice = BasemapId | 'both';
 
@@ -127,12 +127,7 @@ export function DownloadAreaSheet({
         {formatBytes(DOWNLOAD_LIMITS.maxBytes)} per layer.
       </Text>
 
-      <TextField
-        placeholder="Name this area (optional)"
-        value={name}
-        onChangeText={setName}
-        maxLength={40}
-      />
+      <Field label="Name this area (optional)" value={name} onChangeText={setName} maxLength={40} />
 
       <Button
         variant="primary"
