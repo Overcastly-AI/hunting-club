@@ -1,16 +1,19 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import type { ClubApi } from './api/types';
 import type { WebClubServices } from './cloud';
-import { Billing } from './pages/Billing';
-import { Harvests } from './pages/Harvests';
-import { MapPacks } from './pages/MapPacks';
-import { MyClub } from './pages/MyClub';
+import { Loading } from './components/Loading';
 import { SignIn } from './pages/SignIn';
-import { StandsAndAreas } from './pages/StandsAndAreas';
 import { ADMIN_TITLE, useDocumentTitle } from './title';
 
-// The roster pulls in the mesh join-link codec and QR encoder: load it on first visit.
+// Each admin page loads on first visit (the roster also pulls in the mesh codec and QR encoder).
+const MyClub = lazy(() => import('./pages/MyClub').then((m) => ({ default: m.MyClub })));
 const Roster = lazy(() => import('./pages/Roster').then((m) => ({ default: m.Roster })));
+const StandsAndAreas = lazy(() =>
+  import('./pages/StandsAndAreas').then((m) => ({ default: m.StandsAndAreas })),
+);
+const Harvests = lazy(() => import('./pages/Harvests').then((m) => ({ default: m.Harvests })));
+const MapPacks = lazy(() => import('./pages/MapPacks').then((m) => ({ default: m.MapPacks })));
+const Billing = lazy(() => import('./pages/Billing').then((m) => ({ default: m.Billing })));
 
 /** Pages reachable once signed in, in navigation order. Hash routes: no server rewrites. */
 export const PAGES = [
@@ -83,6 +86,9 @@ export function App(props: WebClubServices) {
 
   return (
     <div className="layout">
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
       <nav className="nav" aria-label="Club admin">
         {PAGES.map((p) => (
           <a key={p.path} href={`#/${p.path}`} aria-current={p.path === path ? 'page' : undefined}>
@@ -93,8 +99,11 @@ export function App(props: WebClubServices) {
           Sign out
         </button>
       </nav>
-      <main>
-        <Suspense fallback={<p className="muted">Loading…</p>}>{page.render(api)}</Suspense>
+      <main id="main">
+        {/* Keyed by page: each page mounts fresh, and its heading takes focus. */}
+        <Suspense key={page.path} fallback={<Loading />}>
+          {page.render(api)}
+        </Suspense>
       </main>
       <p className="muted">Signed in as {email}</p>
     </div>

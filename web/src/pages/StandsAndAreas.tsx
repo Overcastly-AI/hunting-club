@@ -1,6 +1,9 @@
+import type { Area, Stand } from '@huntclub/shared';
 import type { ClubApi } from '../api/types';
+import { DataTable } from '../components/DataTable';
 import { Loadable } from '../components/Loadable';
-import { useAsync } from '../components/useAsync';
+import { PageHeading } from '../components/PageHeading';
+import { isOffline, useAsync } from '../components/useAsync';
 import { STAND_TYPE_LABELS } from '../format';
 
 /** The club's stands and named areas. Editing (and drawing on the map) comes later. */
@@ -9,55 +12,54 @@ export function StandsAndAreas(props: { api: ClubApi }) {
   const places = useAsync(
     () => Promise.all([props.api.listStands(), props.api.listAreas()]),
     [props.api],
+    { keepLastOn: isOffline },
   );
 
   return (
     <section aria-labelledby="stands-title">
-      <h1 id="stands-title">Stands and areas</h1>
+      <PageHeading id="stands-title">Stands and areas</PageHeading>
       <Loadable state={places}>
-        {([stands, areas]) => (
-          <>
-            <h2>Stands</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">Name</th>
-                  <th scope="col">Type</th>
-                  <th scope="col">Area</th>
-                  <th scope="col">In use</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stands.map((s) => (
-                  <tr key={s.id}>
-                    <td>{s.name}</td>
-                    <td>{STAND_TYPE_LABELS[s.type]}</td>
-                    <td>{areas.find((a) => a.id === s.areaId)?.name ?? '—'}</td>
-                    <td>{s.active ? 'Yes' : 'No'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <h2>Areas</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">Name</th>
-                  <th scope="col">Stands</th>
-                </tr>
-              </thead>
-              <tbody>
-                {areas.map((a) => (
-                  <tr key={a.id}>
-                    <td>{a.name}</td>
-                    <td>{stands.filter((s) => s.areaId === a.id).length}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        )}
+        {([stands, areas]) => <Places stands={stands} areas={areas} />}
       </Loadable>
     </section>
+  );
+}
+
+function Places({ stands, areas }: { stands: readonly Stand[]; areas: readonly Area[] }) {
+  return (
+    <>
+      <h2>Stands</h2>
+      {stands.length === 0 ? (
+        <p>No stands yet.</p>
+      ) : (
+        <DataTable
+          caption="Stands"
+          rows={stands}
+          rowKey={(s) => s.id}
+          stack
+          columns={[
+            { label: 'Name', cell: (s) => s.name },
+            { label: 'Type', cell: (s) => STAND_TYPE_LABELS[s.type] },
+            { label: 'Area', cell: (s) => areas.find((a) => a.id === s.areaId)?.name ?? '—' },
+            { label: 'In use', cell: (s) => (s.active ? 'Yes' : 'No') },
+          ]}
+        />
+      )}
+      <h2>Areas</h2>
+      {areas.length === 0 ? (
+        <p>No areas yet.</p>
+      ) : (
+        <DataTable
+          caption="Areas"
+          rows={areas}
+          rowKey={(a) => a.id}
+          stack
+          columns={[
+            { label: 'Name', cell: (a) => a.name },
+            { label: 'Stands', cell: (a) => stands.filter((s) => s.areaId === a.id).length },
+          ]}
+        />
+      )}
+    </>
   );
 }

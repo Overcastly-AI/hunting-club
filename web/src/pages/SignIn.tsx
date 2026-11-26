@@ -1,103 +1,171 @@
+import { logoMarkSvg } from '@huntclub/design';
 import {
+  APP_DESCRIPTION,
+  APP_NAME,
   type ClubSession,
   type CodeChallenge,
   CognitoAuthError,
   EMAIL_CODE_LENGTH,
+  isPlausibleEmail,
+  LEGAL_PATHS,
   signInCopy as copy,
 } from '@huntclub/shared';
 import { useState, type FormEvent } from 'react';
 import { Field } from '../components/Field';
+import { PageHeading } from '../components/PageHeading';
 
-/** Email, then the code from that email (the shared sign-in client). No passwords. */
+/** The logo mark as an image source (decorative: the app name is written next to it). */
+const LOGO_SRC = `data:image/svg+xml,${encodeURIComponent(logoMarkSvg())}`;
+
+type Busy = null | 'send' | 'resend' | 'confirm';
+
+/**
+ * Email, then the code from that email (the shared sign-in client). No passwords. Submit
+ * stays enabled; input is checked on submit and problems show under the field.
+ */
 export function SignIn(props: { session: ClubSession; onSignedIn: (email: string) => void }) {
   const { session, onSignedIn } = props;
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [challenge, setChallenge] = useState<CodeChallenge | null>(null);
+  const [fieldError, setFieldError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState<Busy>(null);
 
-  async function run(step: () => Promise<void>) {
-    setBusy(true);
+  async function run(kind: Exclude<Busy, null>, step: () => Promise<void>) {
+    if (busy) return;
+    setBusy(kind);
     setError(null);
+    setNotice(null);
     try {
       await step();
     } catch (e) {
       setError(copy.errors[e instanceof CognitoAuthError ? e.code : 'unknown']);
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
   const sendCode = (e: FormEvent) => {
     e.preventDefault();
-    void run(async () => setChallenge(await session.requestCode(email)));
+    if (!isPlausibleEmail(email)) {
+      setFieldError(copy.errors.invalid_email);
+      return;
+    }
+    setFieldError(null);
+    void run('send', async () => setChallenge(await session.requestCode(email.trim())));
+  };
+
+  const resend = () => {
+    if (!challenge) return;
+    void run('resend', async () => {
+      setChallenge(await session.requestCode(challenge.email));
+      setCode('');
+      setNotice(copy.resent);
+    });
   };
 
   const confirm = (e: FormEvent) => {
     e.preventDefault();
     if (!challenge) return;
-    void run(async () => {
+    if (code.length !== EMAIL_CODE_LENGTH) {
+      setFieldError(copy.codeIncomplete);
+      return;
+    }
+    setFieldError(null);
+    void run('confirm', async () => {
       await session.confirmCode(challenge, code);
       onSignedIn(challenge.email);
     });
   };
 
+  const otherEmail = () => {
+    setChallenge(null);
+    setCode('');
+    setFieldError(null);
+    setError(null);
+    setNotice(null);
+  };
+
   return (
-    <section aria-labelledby="sign-in-title">
-      <h1 id="sign-in-title">{copy.title}</h1>
-      {challenge === null ? (
-        <form onSubmit={sendCode}>
-          <p>{copy.intro}</p>
-          <Field
-            label={copy.email}
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <button className="button primary" type="submit" disabled={busy || !email.includes('@')}>
-            {busy ? copy.sending : copy.sendCode}
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={confirm}>
-          <p>{copy.codeSent(challenge.email)}</p>
-          <Field
-            label={copy.code}
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={EMAIL_CODE_LENGTH}
-            required
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-          />
-          <button
-            className="button primary"
-            type="submit"
-            disabled={busy || code.length !== EMAIL_CODE_LENGTH}
-          >
-            {copy.confirm}
-          </button>{' '}
-          <button
-            className="button"
-            type="button"
-            disabled={busy}
-            onClick={() => {
-              setChallenge(null);
-              setCode('');
-            }}
-          >
-            {copy.useOtherEmail}
-          </button>
-        </form>
-      )}
-      {error ? (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      ) : null}
-    </section>
+    <div className="auth">
+      <section className="auth-card" aria-labelledby="sign-in-title">
+        <div className="auth-brand">
+          <img src={LOGO_SRC} alt="" width={48} height={48} />
+          <div>
+            <p className="auth-app-name">{APP_NAME}</p>
+            <p className="muted">{APP_DESCRIPTION}</p>
+          </div>
+        </div>
+        <PageHeading id="sign-in-title">{copy.title}</PageHeading>
+        {challenge === null ? (
+          <form onSubmit={sendCode} noValidate>
+            <p>{copy.intro}</p>
+            <Field
+              label={copy.email}
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              autoCapitalize="none"
+              spellCheck={false}
+              placeholder={copy.emailPlaceholder}
+              required
+              error={fieldError}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <button className="button primary wide" type="submit" aria-busy={busy === 'send'}>
+              {busy === 'send' ? copy.sending : copy.sendCode}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={confirm} noValidate>
+            <p>{copy.codeSent(challenge.email)}</p>
+            <Field
+              label={copy.code}
+              hint={copy.codeHelp}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={EMAIL_CODE_LENGTH}
+              required
+              error={fieldError}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+            />
+            <button className="button primary wide" type="submit" aria-busy={busy === 'confirm'}>
+              {busy === 'confirm' ? copy.signingIn : copy.confirm}
+            </button>
+            <div className="row auth-secondary">
+              <button className="button" type="button" disabled={busy !== null} onClick={resend}>
+                {busy === 'resend' ? copy.sending : copy.resend}
+              </button>
+              <button
+                className="button"
+                type="button"
+                disabled={busy !== null}
+                onClick={otherEmail}
+              >
+                {copy.useOtherEmail}
+              </button>
+            </div>
+          </form>
+        )}
+        {notice ? (
+          <p className="muted" role="status">
+            {notice}
+          </p>
+        ) : null}
+        {error ? (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </section>
+      <footer className="auth-footer muted">
+        <a href={LEGAL_PATHS.privacy}>Privacy</a>
+        <a href={LEGAL_PATHS.terms}>Terms</a>
+      </footer>
+    </div>
   );
 }

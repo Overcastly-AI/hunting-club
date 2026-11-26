@@ -2,6 +2,7 @@ import { isEntitledStatus, type Plan, type Subscription } from '@huntclub/shared
 import { useState } from 'react';
 import type { ClubApi } from '../api/types';
 import { Loadable } from '../components/Loadable';
+import { PageHeading } from '../components/PageHeading';
 import { useAsync } from '../components/useAsync';
 import { SUBSCRIPTION_STATUS_LABELS, formatDate } from '../format';
 import { navigateTo } from '../navigate';
@@ -15,7 +16,7 @@ export function Billing(props: { api: ClubApi }) {
 
   return (
     <section aria-labelledby="billing-title">
-      <h1 id="billing-title">Billing</h1>
+      <PageHeading id="billing-title">Billing</PageHeading>
       <Loadable state={billing}>
         {([subscription, plans]) => (
           <>
@@ -65,17 +66,19 @@ function Pay(props: { api: ClubApi; plans: readonly Plan[] }) {
     <div>
       <h2>Pay for the club</h2>
       <p>Payment is handled by Stripe. You come back here when it is done.</p>
-      {props.plans.map((plan) => (
-        <button
-          key={plan.id}
-          className="button primary"
-          type="button"
-          disabled={busy}
-          onClick={() => void pay(plan.id)}
-        >
-          Continue to payment: {plan.name}
-        </button>
-      ))}
+      <div className="row">
+        {props.plans.map((plan) => (
+          <button
+            key={plan.id}
+            className="button primary"
+            type="button"
+            disabled={busy}
+            onClick={() => void pay(plan.id)}
+          >
+            Continue to payment: {plan.name}
+          </button>
+        ))}
+      </div>
       {failed ? (
         <p className="error" role="alert">
           Could not open the payment page. Try again.

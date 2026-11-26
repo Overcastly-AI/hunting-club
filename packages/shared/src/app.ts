@@ -22,6 +22,12 @@ export const WEB_DOMAINS = {
   dev: 'huntclub-dev.jaycobjones.com',
 } as const;
 
+/**
+ * Privacy and Terms pages, linked from the web sign-in footer. Placeholders: the pages
+ * themselves do not exist yet, so these paths show Page not found until they do.
+ */
+export const LEGAL_PATHS = { privacy: '/privacy', terms: '/terms' } as const;
+
 /** Path of the join page that club and party invite links open. */
 export const JOIN_PATH = '/join';
 

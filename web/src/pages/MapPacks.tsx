@@ -14,7 +14,9 @@ import {
 import { useState } from 'react';
 import type { ClubApi } from '../api/types';
 import { Loadable } from '../components/Loadable';
-import { useAsync } from '../components/useAsync';
+import { DataTable } from '../components/DataTable';
+import { PageHeading } from '../components/PageHeading';
+import { isOffline, useAsync } from '../components/useAsync';
 import { formatDate } from '../format';
 
 /** How long a build may take, in words ("15 minutes"). */
@@ -46,43 +48,51 @@ function requestError(error: unknown): string {
  * app. The admin picks a basemap; the cloud builds the pack in the background.
  */
 export function MapPacks(props: { api: ClubApi }) {
-  const [reload, setReload] = useState(0);
   const state = useAsync(
-    () => Promise.all([props.api.getClub(), props.api.listMapPacks()]),
-    [props.api, reload],
+    async () => {
+      // No club yet: nothing to list, and the page asks for a club first.
+      const club = await props.api.getClub();
+      return [club, club ? await props.api.listMapPacks() : []] as const;
+    },
+    [props.api],
+    { keepLastOn: isOffline },
   );
 
   return (
     <section aria-labelledby="packs-title">
-      <h1 id="packs-title">Map packs</h1>
+      <PageHeading id="packs-title">Map packs</PageHeading>
       <p>
         A map pack covers your property line in full detail. Members download it in the app, so the
         map works with no cell service.
       </p>
       <Loadable state={state}>
-        {([club, packs]) => (
-          <>
-            {club ? (
+        {([club, packs]) =>
+          !club ? (
+            <p>
+              Create your club first. <a href="#/club">Go to My club</a>
+            </p>
+          ) : (
+            <>
               <BuildPack
                 api={props.api}
                 club={club}
                 building={packs.some((p) => p.status === 'building')}
-                onStarted={() => setReload((n) => n + 1)}
+                onStarted={state.reload}
               />
-            ) : null}
-            <h2>Map packs</h2>
-            {packs.length === 0 ? (
-              <p>No map packs yet.</p>
-            ) : (
-              <>
-                <PackTable packs={packs} />
-                <button className="button" type="button" onClick={() => setReload((n) => n + 1)}>
-                  Check again
-                </button>
-              </>
-            )}
-          </>
-        )}
+              <h2>Map packs</h2>
+              {packs.length === 0 ? (
+                <p>No map packs yet.</p>
+              ) : (
+                <>
+                  <PackTable packs={packs} />
+                  <button className="button" type="button" onClick={state.reload}>
+                    Check again
+                  </button>
+                </>
+              )}
+            </>
+          )
+        }
       </Loadable>
     </section>
   );
@@ -172,30 +182,24 @@ function packStatus(p: MapPack): { status: string; size: string; date: string } 
 }
 
 function PackTable({ packs }: { packs: readonly MapPack[] }) {
-  const newestFirst = [...packs].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const rows = [...packs]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .map((p) => ({
+      id: p.id,
+      basemap: basemapBySource(p.source)?.label ?? p.source,
+      ...packStatus(p),
+    }));
   return (
-    <table>
-      <thead>
-        <tr>
-          <th scope="col">Basemap</th>
-          <th scope="col">Status</th>
-          <th scope="col">Size</th>
-          <th scope="col">Date</th>
-        </tr>
-      </thead>
-      <tbody>
-        {newestFirst.map((p) => {
-          const row = packStatus(p);
-          return (
-            <tr key={p.id}>
-              <td>{basemapBySource(p.source)?.label ?? p.source}</td>
-              <td>{row.status}</td>
-              <td>{row.size}</td>
-              <td>{row.date}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+    <DataTable
+      caption="Club map packs, newest first"
+      rows={rows}
+      rowKey={(r) => r.id}
+      columns={[
+        { label: 'Basemap', cell: (r) => r.basemap },
+        { label: 'Status', cell: (r) => r.status },
+        { label: 'Size', cell: (r) => r.size },
+        { label: 'Date', cell: (r) => r.date },
+      ]}
+    />
   );
 }

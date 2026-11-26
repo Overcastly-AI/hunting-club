@@ -1,4 +1,4 @@
-import { QR_QUIET_ZONE_MODULES, qrMatrix } from '@huntclub/shared';
+import { QR_QUIET_ZONE_MODULES, qrMatrix, qrPath } from '@huntclub/shared';
 import { useMemo } from 'react';
 import Svg, { Path, Rect } from 'react-native-svg';
 
@@ -10,14 +10,6 @@ type Props = {
   size: number;
   accessibilityLabel: string;
 };
-
-/** SVG path drawing every dark module as a 1×1 square, offset by the quiet zone. */
-export function qrPath(rows: readonly (readonly boolean[])[]): string {
-  const q = QR_QUIET_ZONE_MODULES;
-  return rows
-    .flatMap((row, y) => row.map((dark, x) => (dark ? `M${x + q},${y + q}h1v1h-1z` : '')))
-    .join('');
-}
 
 /**
  * A QR code from the shared encoder (@huntclub/shared qrMatrix). Always dark
