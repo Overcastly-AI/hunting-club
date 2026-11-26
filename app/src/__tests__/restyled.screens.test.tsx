@@ -6,7 +6,7 @@
  * screens in the light theme, where every colour must come from the light theme's tokens.
  */
 import { darkTheme, lightTheme, type ThemePreference } from '@huntclub/design';
-import { privacyPolicy } from '@huntclub/shared';
+import { privacyPolicy, RESEND_CODE_COOLDOWN_SECONDS } from '@huntclub/shared';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { getPermissionsAsync, requestPermissionsAsync } from 'expo-notifications';
 import { readFileSync } from 'node:fs';
@@ -201,7 +201,11 @@ const CASES: Record<string, Case> = {
       await fireEvent.press(screen.getByRole('button', { name: clubCopy.signIn.confirm }));
       await screen.findByText(clubCopy.signIn.codeIncomplete('signIn'));
     },
-    buttons: [clubCopy.signIn.confirm, clubCopy.signIn.useOtherEmail],
+    buttons: [
+      clubCopy.signIn.confirm,
+      clubCopy.signIn.resendIn(RESEND_CODE_COOLDOWN_SECONDS),
+      clubCopy.signIn.useOtherEmail,
+    ],
     fields: [clubCopy.signIn.code],
   },
   'join club': {
