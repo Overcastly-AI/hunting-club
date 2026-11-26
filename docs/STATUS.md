@@ -5,7 +5,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 ## Working agreements
 
 - AWS changes are requested by email to the owner with a subject starting with `Grok Bot`. Grok Bot configures AWS.
-- **Secrets (owner decision 2026-11-26):** project secrets live in AWS Secrets Manager (`hunt-club-mesh/<env>/<name>`). They may be sent by email between the coordinator and Grok Bot; the owner accepts that and will rotate them later. Never put secrets in the repo, PRs, commit messages, logs or worker briefs; Lambdas read them from Secrets Manager at runtime. Every secret that travels by email is listed under "Rotate later" below.
+- **Secrets (owner decision 2026-11-26):** project secrets live in AWS SSM Parameter Store as SecureString, standard tier, free (`/hunt-club-mesh/<env>/<name>`). Not Secrets Manager: it costs $0.40 per secret per month. They may be sent by email between the coordinator and Grok Bot; the owner accepts that and will rotate them later. Never put secrets in the repo, PRs, commit messages, logs or worker briefs; Lambdas read them from Parameter Store at runtime. Every secret that travels by email is listed under "Rotate later" below.
 - Commit messages never credit Claude or other AI tools (enforced by `.githooks/commit-msg`).
 - Stop and ask the owner before: spending money, open decisions in `docs/SPEC.md`, emails to anyone other than the owner, deleting anything.
 
@@ -78,7 +78,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 ## Rotate later (secrets that travelled by email)
 
-| Secret | Secrets Manager name | Sent | Rotated |
+| Secret | Parameter name | Sent | Rotated |
 |---|---|---|---|
 
 ## Database
