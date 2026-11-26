@@ -15,7 +15,7 @@ these handlers once per container, and let esbuild bundle them.
 
 ## Club API
 
-Every route needs `Authorization: Bearer <Cognito access token>` except `GET /plans`. Bodies are
+Paths are `API_PATHS` in `@huntclub/shared`, and `createClubApiClient` there is the typed client for them. Every route needs `Authorization: Bearer <Cognito access token>` except `GET /plans`. Bodies are
 JSON, validated with the `@huntclub/shared` schemas. Errors are
 `{ "error": { "code", "message" } }` with `code` from `CLUB_API_ERRORS`.
 
@@ -35,6 +35,7 @@ JSON, validated with the `@huntclub/shared` schemas. Errors are
 | same for `/areas` and `/harvests`                            | member / admin (harvests: the hunter) |                                                                                                         |
 | `GET /clubs/:clubId/map-packs`                               | member                                |                                                                                                         |
 | `GET`, `PUT /clubs/:clubId/secret`                           | admin                                 | `{ channelKey: base64 }` (`ClubSecretPutRequest`)                                                       |
+| `GET /clubs/:clubId/entitlement`                             | member                                | `Entitlement`: status, paid-through, `featuresUntil` (paid-through + grace); cached by phones           |
 | `GET /clubs/:clubId/subscription`                            | admin                                 | subscription                                                                                            |
 | `POST /clubs/:clubId/checkout`                               | admin                                 | `{ planId }` → `{ url }` (503 `not_configured` until the plan has a Stripe price)                       |
 
