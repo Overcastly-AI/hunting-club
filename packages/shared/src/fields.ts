@@ -12,6 +12,8 @@ export const CHANNEL_KEY_BYTES = 32;
 export const INVITE_TOKEN_BYTES = 32;
 
 export const NOTES_MAX = 500;
+/** Harvest species, e.g. "Deer" (app form, club data). */
+export const SPECIES_MAX = 40;
 
 export const idSchema = z.uuid();
 /** A Cognito user's `sub`. */
