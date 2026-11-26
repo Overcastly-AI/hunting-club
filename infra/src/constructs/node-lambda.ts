@@ -1,9 +1,9 @@
-import * as path from 'node:path';
 import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction, OutputFormat } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
+import { lambdaEntry } from '../paths';
 
 /** Log retention for every log group in the project (owner rule: 14 days). */
 export const LOG_RETENTION = logs.RetentionDays.TWO_WEEKS;
@@ -33,7 +33,7 @@ export class NodeLambda extends Construct {
     });
 
     this.function = new NodejsFunction(this, 'Function', {
-      entry: path.join(__dirname, '..', '..', 'lambda', props.entry, 'index.ts'),
+      entry: lambdaEntry(props.entry),
       runtime: lambda.Runtime.NODEJS_24_X,
       architecture: lambda.Architecture.ARM_64,
       memorySize: props.memorySize ?? 256,

@@ -4,6 +4,7 @@
   "main": "expo-router/entry",
   "dependencies": {
     "@huntclub/core": "*",
+    "@huntclub/design": "*",
     "@huntclub/mesh": "*",
     "@huntclub/shared": "*",
     "@maplibre/maplibre-react-native": "^11.5.1",

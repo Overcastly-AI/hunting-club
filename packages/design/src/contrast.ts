@@ -1,5 +1,5 @@
 /**
- * WCAG 2 contrast, used by tests to hold every text/background pair the app
+ * WCAG 2 contrast, used by tests to hold every text/background pair the app and web
  * draws to docs/SPEC.md "Accessibility" (4.5:1, including map labels on their halo).
  */
 export const MIN_TEXT_CONTRAST = 4.5;

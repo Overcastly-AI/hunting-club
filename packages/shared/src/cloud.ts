@@ -18,7 +18,8 @@ export const CLOUD_ENVIRONMENTS = {
     region: 'us-east-1',
     userPoolId: 'us-east-1_0W2YbjVht',
     appClientId: '5dn1jcrnef1v6cfv6da0i7qtne',
-    // Pending from the operator: the web client and the deployed club API URL.
+    webClientId: '6mpfpr6nrdqddim7trfqckegu5',
+    // Pending from the operator: the deployed club API URL.
   },
 } as const satisfies Record<string, CloudEnvironment>;
 

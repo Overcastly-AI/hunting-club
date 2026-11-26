@@ -9,7 +9,7 @@
  * Channel keys are secrets: never log a ChannelSet, URL or PSK.
  */
 import { create, fromBinary, toBinary } from '@bufbuild/protobuf';
-import { CHANNEL_KEY_BYTES } from '@huntclub/shared';
+import { CHANNEL_KEY_BYTES, JOIN_PATH, WEB_DOMAINS } from '@huntclub/shared';
 import { AppOnly, Channel, Config } from '../protobufs';
 import type { RandomSource } from '../random';
 import { base64UrlDecode, base64UrlEncode } from './base64url';
@@ -31,6 +31,8 @@ export const VALID_PSK_LENGTHS: readonly number[] = [0, 1, 16, 32];
 /** We always generate AES-256 keys (same length as club keys). */
 export const PARTY_PSK_BYTES = CHANNEL_KEY_BYTES;
 export const PARTY_CHANNEL_NAME = 'Party';
+/** The club channel's name (shown only in Advanced settings / other Meshtastic apps). */
+export const CLUB_CHANNEL_NAME = 'Club';
 /** Name firmware uses for an unnamed channel on the LongFast preset (channel hash, frequency slot). */
 export const DEFAULT_CHANNEL_NAME = 'LongFast';
 /** Our hunt channel shares full-precision positions. */
@@ -99,13 +101,14 @@ export interface JoinLink {
 
 /**
  * Hosts that serve the web join page (and, later, the iOS/Android universal
- * link) at JOIN_WEB_PATH. First entry is the default for new links.
- * TODO(backlog): the production host is not decided yet. Add it here (as
- * the first entry) once chosen; until then QR codes default to the app
- * form, and the web form only works on the dev domain.
+ * link) at JOIN_WEB_PATH, from WEB_DOMAINS in @huntclub/shared (the single
+ * source). First entry is the default for new links.
+ * TODO(backlog): the production host is not decided yet. Add it to
+ * WEB_DOMAINS (as the first entry) once chosen; until then QR codes default
+ * to the app form, and the web form only works on the dev domain.
  */
-export const JOIN_WEB_HOSTS: readonly string[] = ['huntclub-dev.jaycobjones.com'];
-export const JOIN_WEB_PATH = '/join';
+export const JOIN_WEB_HOSTS: readonly string[] = Object.values(WEB_DOMAINS);
+export const JOIN_WEB_PATH = JOIN_PATH;
 
 /**
  * - `app`: `huntclub://join?cs=…&party=…` (opens the app directly).
@@ -206,13 +209,26 @@ export interface PartyChannelOptions {
  * hop limit 3 and full-precision positions on this channel.
  */
 export function generatePartyChannelSet(opts: PartyChannelOptions): ChannelSet {
+  const psk = opts.random(PARTY_PSK_BYTES);
+  if (psk.length !== PARTY_PSK_BYTES)
+    throw new Error('Random source returned the wrong number of bytes');
+  return channelSetWithKey(psk, opts);
+}
+
+/**
+ * The hunt channel settings (as generatePartyChannelSet) around an existing 256-bit key,
+ * e.g. the club key from the club secret.
+ */
+export function channelSetWithKey(
+  psk: Uint8Array,
+  opts: Omit<PartyChannelOptions, 'random'> = {},
+): ChannelSet {
   const name = opts.name ?? PARTY_CHANNEL_NAME;
   if (encodeUtf8(name).length > MAX_CHANNEL_NAME_BYTES) {
     throw new ChannelUrlError(`Channel name must be at most ${MAX_CHANNEL_NAME_BYTES} bytes`);
   }
-  const psk = opts.random(PARTY_PSK_BYTES);
   if (psk.length !== PARTY_PSK_BYTES)
-    throw new Error('Random source returned the wrong number of bytes');
+    throw new ChannelUrlError(`Channel key must be ${PARTY_PSK_BYTES} bytes`);
   return create(AppOnly.ChannelSetSchema, {
     settings: [
       {

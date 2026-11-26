@@ -1,7 +1,9 @@
 import { create } from '@bufbuild/protobuf';
 import { AppOnly, Config } from '../protobufs';
 import {
+  CLUB_CHANNEL_NAME,
   ChannelUrlError,
+  channelSetWithKey,
   JOIN_WEB_HOSTS,
   JOIN_WEB_PATH,
   HUNT_POSITION_PRECISION,
@@ -52,6 +54,15 @@ describe('party channel generator', () => {
       ChannelUrlError,
     );
     expect(() => generatePartyChannelSet({ random: () => new Uint8Array(16) })).toThrow();
+  });
+
+  it('wraps an existing key (the club key) in the same hunt settings', () => {
+    const key = seededRandom(3)(32);
+    const cs = channelSetWithKey(key, { name: CLUB_CHANNEL_NAME });
+    const generated = generatePartyChannelSet({ random: () => key, name: CLUB_CHANNEL_NAME });
+    expect(encodeChannelSet(cs)).toEqual(encodeChannelSet(generated));
+    expect(cs.settings[0]!.name).toBe('Club');
+    expect(() => channelSetWithKey(new Uint8Array(16))).toThrow(ChannelUrlError);
   });
 
   it('honours region and preset overrides', () => {

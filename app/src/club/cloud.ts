@@ -4,13 +4,13 @@
  */
 import {
   CLOUD_ENVIRONMENTS,
+  ClubSession,
   type CloudEnvironment,
   createClubApiClient,
   createCognitoAuth,
   type FetchLike,
 } from '@huntclub/shared';
 
-import { ClubSession } from './session';
 import { secureTokenStore } from './secureTokenStore';
 
 /** The app talks to dev until a production environment exists. */

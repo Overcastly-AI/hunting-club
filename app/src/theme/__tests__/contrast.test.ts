@@ -1,5 +1,5 @@
 import { colors, opacity } from '..';
-import { MIN_TEXT_CONTRAST, blendOver, contrastRatio } from '../contrast';
+import { MIN_TEXT_CONTRAST, blendOver, contrastRatio } from '@huntclub/design';
 
 describe('contrastRatio', () => {
   it('matches the WCAG reference values', () => {

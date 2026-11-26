@@ -19,7 +19,7 @@ import type { MyProfile } from '../db/appState';
 import type { SqlDatabase } from '../db/types';
 import { useProfile } from '../profile/ProfileProvider';
 import { ClubEntitlementContext, entitlementOf } from './entitlement';
-import type { ClubSession } from './session';
+import type { ClubSession } from '@huntclub/shared';
 import { type LocalClub, loadClubs } from './store';
 import { joinClubFromLink, syncAllClubs } from './sync';
 
