@@ -49,6 +49,12 @@ export interface CoreConfig {
     /** A member's CheckIn this soon after their previous one is a mode change in the same outing. */
     sameOutingMs: number;
   };
+  party: {
+    /** After joining, listen this long for the other members' node info before deciding the party is full. */
+    discoveryMs: number;
+    /** Save a member's last-heard time at most this often (writes to the store). */
+    lastHeardSaveMs: number;
+  };
 }
 
 export const CORE_CONFIG: Readonly<CoreConfig> = {
@@ -63,6 +69,7 @@ export const CORE_CONFIG: Readonly<CoreConfig> = {
     checkIntervalMs: 60_000,
   },
   checkIn: { sameOutingMs: 16 * 3_600_000 },
+  party: { discoveryMs: 30_000, lastHeardSaveMs: 5 * 60_000 },
 };
 
 export const MINUTE_MS = 60_000;

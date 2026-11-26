@@ -17,7 +17,7 @@ npm run typecheck # tsc --noEmit, strict
 | `src/ble.ts`                      | `MESHTASTIC_BLE`: GATT service and characteristic UUIDs, preferred MTU, default PIN                                                                                                                    |
 | `src/codec/radio.ts`              | `ToRadio`/`FromRadio` helpers; lenient `FromRadio` decoding                                                                                                                                            |
 | `src/codec/appPort.ts`            | App messages on private port 314 (version byte, type byte, protobuf wire-format body, ≤ 200 bytes). The format is data (`FIELDS`, `APP_MESSAGE_SCHEMAS`) walked by one generic encoder and decoder     |
-| `src/codec/channelUrl.ts`         | `meshtastic.org/e/#` ChannelSet URLs, the `huntclub://join` wrapper, party channel generator                                                                                                           |
+| `src/codec/channelUrl.ts`         | `meshtastic.org/e/#` ChannelSet URLs, the join link (`huntclub://join?…` or `https://<host>/join#…`, one builder and one parser for the app and the web page), party channel generator                 |
 | `src/provisioning.ts`             | AdminMessage sequence that applies a channel set to our radio                                                                                                                                          |
 | `src/transports/FakeTransport.ts` | `FakeRadio` (scripted radio) and `FakeAir` (multi-radio loopback with duplicate rebroadcasts)                                                                                                          |
 
