@@ -15,3 +15,4 @@ export * from './signInCopy';
 export * from './maps';
 export * from './legal';
 export * from './secureKeys';
+export * from './pricing';

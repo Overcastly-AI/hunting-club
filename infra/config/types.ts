@@ -1,3 +1,4 @@
+import type { StripePrices } from '@huntclub/shared';
 /** Project-wide constants used by every environment. */
 export const PROJECT = 'hunt-club-mesh';
 
@@ -67,8 +68,11 @@ export interface EnvConfig {
   readonly clubTableName: string;
   /** Stripe (test mode in dev). */
   readonly stripe: {
-    /** Price id per plan id (club-data PLACEHOLDER_PLANS); Checkout answers 503 without one. */
-    readonly prices: Readonly<Record<string, string>>;
+    /**
+     * Stripe Price id per plan id (club-data PLACEHOLDER_PLANS) and billing interval;
+     * Checkout answers 503 without one. Unset in dev until the owner sets up Stripe.
+     */
+    readonly prices: StripePrices;
   };
   readonly cognito: {
     readonly userPoolId: string;

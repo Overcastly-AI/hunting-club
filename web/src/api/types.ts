@@ -13,6 +13,7 @@ import type {
   Stand,
   Subscription,
   BasemapId,
+  BillingInterval,
 } from '@huntclub/shared';
 
 /**
@@ -49,6 +50,6 @@ export interface ClubApi {
   requestMapPack(basemap: BasemapId): Promise<MapPackRequestResponse>;
   /** Plans on sale (active only). */
   listPlans(): Promise<readonly Plan[]>;
-  /** Starts Stripe Checkout for the club; resolves to the Stripe page to open. */
-  startCheckout(planId: string): Promise<string>;
+  /** Starts Stripe Checkout (with the free trial) for the club; resolves to the Stripe page to open. */
+  startCheckout(planId: string, interval: BillingInterval): Promise<string>;
 }
