@@ -33,7 +33,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 | # | Sent | Request | Status | Result |
 |---|---|---|---|---|
-| 9 | 2026-11-26 17:08 | Seed dev "UAT Test Club" (seed:dev) for jonesjaycob+uitest@gmail.com once that user exists | WAITING 17:04 UTC: user not yet created (needs Deploy dev with #51 + reviewer sign-up) | |
+| 9 | 2026-11-26 17:08 | Seed dev "UAT Test Club" (seed:dev) for jonesjaycob+uitest@gmail.com once that user exists | WAITING: +uitest not yet signed up (UAT signed up +huntclubuat at 17:39 UTC; returning sign-in blocked by 8-digit code bug) | |
 | 8 | 2026-11-26 16:37 | UAT blocker: Cognito sign-in emails don't arrive. Diagnose; SES domain identity huntclub-dev.jaycobjones.com (DKIM, MAIL FROM, DMARC p=none), pool EmailConfiguration → SES DEVELOPER, verify test recipients (sandbox), AutoVerifiedAttributes email | **NEEDS OWNER APPROVAL** 16:40 UTC (SES not yet an approved service). Diagnosis: pool has 0 users; client never called SignUp because PreventUserExistenceErrors hides unknown users (fix PR #51); pool on COGNITO_DEFAULT, which can't deliver EMAIL_OTP; Essentials plan (free ≤10k MAU) | **Owner approved 16:49 UTC** (SES now an approved service for dev; stay in sandbox). Client fix #51 merged. **Done 17:00 UTC (partly):** SES domain identity huntclub-dev.jaycobjones.com DKIM SUCCESS, MAIL FROM mail.huntclub-dev…, DMARC p=none; pool EmailConfiguration → DEVELOPER from no-reply@huntclub-dev.jaycobjones.com; test email delivered. Both SES test recipients verified 17:04 UTC. |
 | 7 | 2026-11-26 16:12 | Fix OIDC trust: Deploy dev run 45855450992 (owner, 16:05) failed at AWS credentials with `Not authorized to perform sts:AssumeRoleWithWebIdentity` (env + variable OK; role ARN correct). Find the token's sub/aud in CloudTrail, match the trust policy (still this repo + dev env only) | **Done** 16:09 UTC: GitHub uses a customised OIDC sub with IDs; trust sub now `repo:Overcastly-AI@282247350/hunting-club@1472690296:environment:dev`, aud sts.amazonaws.com | **Deploy dev works:** run 45855450992 attempt 2 succeeded 16:12 UTC (OIDC ok). Future deploys: Actions → Deploy dev |
 | 6 | 2026-11-26 15:37 | Redeploy dev from CloudShell at main c5685ed (#46 club API init fix, #41 map pack builder, #44, #45) | **Done** 15:54 UTC (code = main 09d833c): both stacks UPDATE_COMPLETE; MapPackBuilder Lambda added (no reserved/provisioned concurrency, 900 s, logs 14 d); GET ClubApiUrl 404 (was 502) — club API healthy. Note: repo default branch is `claude/amazing-newton-q7bbpo`, should be `main` (owner to change). | Expect GET ClubApiUrl no longer 502 |
@@ -91,6 +91,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 - Done: #41 map packs backend (global + per-club TTL locks instead of reserved concurrency, which new accounts can't spare), #43 harvest reports (M13).
 - Active (2-worker cap): onboarding worker = M12 app side; web worker = map-packs admin PR. Paused: club-data, mesh, map, CI/board, weather.
 - Done: #44 web map-packs admin, #45 app club map packs (M12 complete in code; device check of pmtiles://file:// in field-test plan), #46 Lambda ESM require fix + dev clubApiUrl.
+- 17:23 UTC: first automatic Deploy dev (run 45866729496, #56) succeeded with smoke. Merged since 16:30: #47 DRY, #48 smoke + webhook 400, #49 TestFlight, #50 dev seed, #51 SignUp-first, #52 site 404/SPA, #53 web UI review fixes, #54 app icons, #55 legal drafts, #56 auto-deploy, #57 app legal screens.
 - All workers paused 15:15 UTC (remaining work waits on owner: GitHub dev env/variable, Stripe, Apple Team ID/Android fingerprints, field test).
 - Was in progress: M12 app side (onboarding worker); map packs #41 backend → app (club-data); #41 review then web Map packs admin (web).
 
@@ -107,6 +108,10 @@ Owner rule (2026-11-26): Grok Bot runs UAT and reviews UI decisions by email. Ev
 
 | Date | Thread / subject | Finding | Decision | PR |
 |---|---|---|---|---|
+| 2026-11-26 | UAT retest 17:42 | Earlier fixes pass: SES codes arrive, 404/SPA, legal drafts, branding, validation, first sign-up works, /me/clubs 200 | Closed | #51–#55 |
+| 2026-11-26 | UAT retest 17:42 | BLOCKER: returning-user EMAIL_OTP code is 8 digits, UI accepts 6 | Accepted: code length per challenge kind (shared helper) | web PR (next) |
+| 2026-11-26 | UAT retest 17:42 | MAJOR: session lost on reload/deep link | Accepted: persist refresh token (localStorage), refresh on load, expired message, return to route | web PR (next) |
+| 2026-11-26 | UAT retest 17:42 | MINOR/POLISH: no-club errors on tabs; route jump after failed code; title; double error; /favicon.ico 404 | Accepted | web PR (next) |
 | 2026-11-26 | UAT feedback | BLOCKER: sign-in code email never arrives | Accepted: Grok Bot Request #8 (Cognito → SES, verify test inboxes) | — |
 | 2026-11-26 | UAT feedback | MAJOR: deep links/unknown paths → raw 403 XML | Accepted: SPA fallback + styled 404 + robots.txt | web PR A |
 | 2026-11-26 | UAT feedback | MINOR: no email validation message; first-load 403 | Accepted | web PR A/B |
