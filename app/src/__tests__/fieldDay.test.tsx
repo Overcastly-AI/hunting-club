@@ -138,6 +138,10 @@ it('a party of three hunts a day: join, check in, ask for a hand, chat, overdue'
   // 2. Dave, with a screenshot of the code from earlier, is refused.
   await expect(join(d, link)).rejects.toThrow(PartyFullError);
   expect(party(d).current).toBeNull();
+  // Nobody's roster lists him.
+  for (const p of [a, b, c]) {
+    expect(party(p).current!.members.map((m) => m.node)).not.toContain(RADIO_D.nodeNum);
+  }
 
   // Safety alerts and chat, as the app's connectors wire them.
   const stops = all.map((p) => connectSafetyAlerts(p.contexts.safety!, p.alerts));

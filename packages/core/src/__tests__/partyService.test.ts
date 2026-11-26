@@ -86,7 +86,15 @@ describe('party lifecycle', () => {
     expect(await d!.store.load()).toBeNull();
     expect(d!.radio.channels[0]!.settings!.name).toBe(SOLO_CHANNEL_NAME);
     expect(over).toHaveLength(1);
-    expect(over[0]).toMatchObject({ size: 4, overCapacity: true });
+    expect(over[0]).toMatchObject({ size: 3, isFull: true, overCapacity: true });
+    expect(over[0]!.refused.map((m) => m.node)).toEqual([d!.client.myNodeNum]);
+
+    // Dave is never on anyone's roster, and is not saved with the party.
+    for (const h of [a!, b!, c!]) {
+      expect(h.party.current).toMatchObject({ size: 3 });
+      expect(nodesOf(h)).not.toContain(d!.client.myNodeNum);
+    }
+    expect((await a!.store.load())!.members.map((m) => m.node)).not.toContain(d!.client.myNodeNum);
 
     // Dave can no longer be heard on the party channel: Alice's text reaches B and C only.
     const before = air.log.length;
@@ -95,6 +103,27 @@ describe('party lifecycle', () => {
     await tick(1000);
     expect(air.log.length).toBeGreaterThan(before);
     expect(atDave).toEqual([]);
+  });
+
+  it('a stock client with the key is refused once, however often it is heard', async () => {
+    const { hunters } = await fourHunters();
+    const [a, b, c, d] = hunters;
+    await settle(a!.party.create());
+    await settle(b!.party.join(a!.party.qrLink()!));
+    await settle(c!.party.join(a!.party.qrLink()!));
+    const over = collect(a!.party, 'overCapacity');
+
+    // Dave's radio gets the party channel some other way (not through the app).
+    d!.radio.channels[0] = a!.radio.channels[0];
+    for (let i = 0; i < 2; i++) {
+      d!.client.sendText('hello?');
+      await tick(1000);
+    }
+
+    expect(over).toHaveLength(1);
+    expect(a!.party.current).toMatchObject({ size: 3, overCapacity: true });
+    expect(a!.party.current!.refused.map((m) => m.node)).toEqual([d!.client.myNodeNum]);
+    expect(nodesOf(a!)).toEqual([b!.client.myNodeNum, c!.client.myNodeNum].sort());
   });
 
   it('members learned from check-ins and positions too, and last-heard is kept', async () => {
