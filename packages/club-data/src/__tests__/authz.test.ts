@@ -68,6 +68,7 @@ const EXPECTED: Record<
   readMapPacks: MEMBERS,
   writeMapPacks: SERVICE_ONLY,
   readSubscription: ADMINS,
+  manageBilling: ADMINS,
   writeBilling: SERVICE_ONLY,
   readStripeEvents: SERVICE_ONLY,
 };

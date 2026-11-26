@@ -13,3 +13,9 @@ export const URL_SCHEME = 'huntclub';
  * even before the app is installed (docs/research/stripe-and-auth.md §9).
  */
 export const APP_LINK_PATHS = ['/join'] as const;
+
+/** Web admin pages Stripe Checkout returns to (on the web domain). */
+export const CHECKOUT_RETURN_PATHS = {
+  success: '/checkout/done',
+  cancel: '/checkout/cancel',
+} as const;
