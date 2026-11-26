@@ -14,3 +14,4 @@ export { defaultRandom, randomUint32, type RandomSource } from './random';
 export { defaultTimers, type TimerHandle, type Timers } from './runtime';
 export { Emitter } from './emitter';
 export * as Protobufs from './protobufs';
+export * from './codec/joinKind';
