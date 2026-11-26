@@ -49,7 +49,13 @@ describe('receipts', () => {
   });
 
   it('rate-limits receipts per sender so a chatty sender cannot flood the air', async () => {
-    const { phones, air } = await party({ size: 2 });
+    // A burst no Hunt Club phone sends (it spaces texts for the firmware's
+    // limit): a stock client on firmware without that limit.
+    const { phones, air } = await party({
+      size: 2,
+      client: { textSpacingMs: 0 },
+      radio: { textRateLimitMs: 0 },
+    });
     const [alice, bob] = phones;
     for (let i = 0; i < 10; i++) alice!.client.sendText(`msg ${i}`);
     await tick(10_000);
