@@ -1,6 +1,7 @@
 # Hunt Club Mesh
 
-Off-grid hunting club app: phones pair over BLE to Meshtastic LoRa radios.
+Off-grid hunting app: phones pair over BLE to Meshtastic LoRa radios.
+Free for hunters (parties up to 3); clubs pay a subscription for the cloud/admin layer.
 Source of truth: docs/SPEC.md. Read it before starting any milestone.
 
 ## Rules
@@ -10,8 +11,12 @@ Source of truth: docs/SPEC.md. Read it before starting any milestone.
 - Use theme tokens only; no hard-coded colors. Font: Archivo.
 - Min tap target 48px, min map text 13px, body 16px+.
 - Never show legal shooting hours. Sunrise and sunset only.
-- Ask for a Hand pings club members. Never style or word anything like a 911 call.
-- Harvests are private by default. Location is shared only while checked in.
+- Ask for a Hand pings your party or club. Never style or word anything like a 911 call.
+- Location is shared only while checked in.
+- Everything over the mesh is free forever; never paywall mesh or safety features.
+- Free users have no account and never call our backend.
+- Cloud: Supabase free plan + AWS pay-per-use only (Lambda, S3, CloudFront, EventBridge). No always-on compute.
+- Clubs are rows with club_id + RLS in one shared database, never per-club infrastructure.
 - Never log channel keys or message bodies.
 
 ## Workflow
