@@ -1,11 +1,12 @@
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { SQLiteProvider } from 'expo-sqlite';
+import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 
 import { DATABASE_NAME, initDatabase } from '../db';
+import { ProfileProvider } from '../profile/ProfileProvider';
 import { AppRadioProvider } from '../radio/AppRadioProvider';
 import { colors, fontSources } from '../theme';
 
@@ -27,7 +28,7 @@ export default function RootLayout() {
 
   return (
     <SQLiteProvider databaseName={DATABASE_NAME} onInit={initDatabase}>
-      <AppRadioProvider>
+      <AppProviders>
         <StatusBar style="light" />
         <Stack
           screenOptions={{
@@ -39,7 +40,17 @@ export default function RootLayout() {
         >
           <Stack.Screen name="board" options={{ orientation: 'landscape' }} />
         </Stack>
-      </AppRadioProvider>
+      </AppProviders>
     </SQLiteProvider>
+  );
+}
+
+/** App-wide state that needs the database: the hunter's profile, then the radio. */
+function AppProviders({ children }: { children: ReactNode }) {
+  const db = useSQLiteContext();
+  return (
+    <ProfileProvider db={db}>
+      <AppRadioProvider>{children}</AppRadioProvider>
+    </ProfileProvider>
   );
 }
