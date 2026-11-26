@@ -9,17 +9,19 @@ npm run typecheck # tsc --noEmit, strict
 
 ## What's here
 
-| Path                              | What                                                                                                                                                                          |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/transport.ts`                | `Transport` interface: raw, unframed `ToRadio`/`FromRadio` bytes plus link status                                                                                             |
-| `src/MeshClient.ts`               | Handshake (`want_config_id`, re-run on every reconnect), node DB, channels, config, paced send queue respecting `QueueStatus`, ack/nak matching, de-duplication, typed events |
-| `src/codec/radio.ts`              | `ToRadio`/`FromRadio` helpers; lenient `FromRadio` decoding                                                                                                                   |
-| `src/codec/appPort.ts`            | App messages on private port 314 (version byte, type byte, protobuf wire-format body, ≤ 200 bytes)                                                                            |
-| `src/codec/channelUrl.ts`         | `meshtastic.org/e/#` ChannelSet URLs, the `huntclub://join` wrapper, party channel generator                                                                                  |
-| `src/provisioning.ts`             | AdminMessage sequence that applies a channel set to our radio                                                                                                                 |
-| `src/transports/FakeTransport.ts` | `FakeRadio` (scripted radio) and `FakeAir` (multi-radio loopback with duplicate rebroadcasts)                                                                                 |
+| Path                              | What                                                                                                                                                                                               |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/transport.ts`                | `Transport` interface: raw, unframed `ToRadio`/`FromRadio` bytes plus link status                                                                                                                  |
+| `src/MeshClient.ts`               | Handshake (`want_config_id`, re-run on every reconnect), node DB, channels, config, paced send queue respecting `QueueStatus`, ack/nak matching, de-duplication, typed events                      |
+| `src/domain.ts`                   | Single source for mesh domain enums (`CheckInMode`, `HarvestSex`) with their database string keys, and `MAX_TEXT_CHARS`                                                                            |
+| `src/ble.ts`                      | `MESHTASTIC_BLE`: GATT service and characteristic UUIDs, preferred MTU, default PIN                                                                                                                |
+| `src/codec/radio.ts`              | `ToRadio`/`FromRadio` helpers; lenient `FromRadio` decoding                                                                                                                                        |
+| `src/codec/appPort.ts`            | App messages on private port 314 (version byte, type byte, protobuf wire-format body, ≤ 200 bytes). The format is data (`FIELDS`, `APP_MESSAGE_SCHEMAS`) walked by one generic encoder and decoder |
+| `src/codec/channelUrl.ts`         | `meshtastic.org/e/#` ChannelSet URLs, the `huntclub://join` wrapper, party channel generator                                                                                                       |
+| `src/provisioning.ts`             | AdminMessage sequence that applies a channel set to our radio                                                                                                                                      |
+| `src/transports/FakeTransport.ts` | `FakeRadio` (scripted radio) and `FakeAir` (multi-radio loopback with duplicate rebroadcasts)                                                                                                      |
 
-Test doubles are also exported from `@huntclub/mesh/testing`.
+Test doubles and shared fixtures (`connectedClient`, `connectedMesh`, `collect`, `tick`, `NODES`, `seededRandom`, and `FakeRadio.injectText` / `injectRouting` / `injectData`) are exported from `@huntclub/mesh/testing`.
 
 ## Usage sketch
 

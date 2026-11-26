@@ -1,7 +1,7 @@
+import { MESHTASTIC_BLE } from '@huntclub/mesh';
 import BleManager, { type Peripheral } from 'react-native-ble-manager';
 
 import { ensureBleStarted } from './bleManager';
-import { MESHTASTIC_BLE } from './meshPending';
 
 /** A radio seen in a Bluetooth scan. */
 export type FoundRadio = {

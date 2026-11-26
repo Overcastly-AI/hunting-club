@@ -17,21 +17,38 @@ import { create, type MessageInitShape } from '@bufbuild/protobuf';
 import { Admin, Channel, Config, Mesh, Portnums } from '../protobufs';
 import {
   BROADCAST_ADDR,
+  DEFAULT_HOP_LIMIT,
+  RADIO_TX_QUEUE_SIZE,
   decodeAdmin,
   decodeToRadio,
+  nodeId,
   encodeFromRadio,
   encodeRouting,
 } from '../codec/radio';
 import {
+  DEFAULT_CHANNEL_NAME,
+  HUNT_POSITION_PRECISION,
+  MAX_CHANNELS,
   channelHash,
   defaultLoRaConfig,
   expandPsk,
   type ChannelSettings,
 } from '../codec/channelUrl';
 import type { LinkStatus, Transport, Unsubscribe } from '../transport';
+import { encodeUtf8 } from '../runtime';
 
 type FromRadioInit = MessageInitShape<typeof Mesh.FromRadioSchema>;
 type MeshPacketInit = MessageInitShape<typeof Mesh.MeshPacketSchema>;
+
+/** Header fields a test may set on an injected packet. */
+export interface InjectedPacketFields {
+  id?: number;
+  to?: number;
+  channel?: number;
+  hopStart?: number;
+  hopLimit?: number;
+  rxTime?: number;
+}
 
 /** How the fake radio answers a phone-originated packet that asked for an ack. */
 export type AckMode =
@@ -55,7 +72,7 @@ export interface FakeRadioOptions {
   sendQueueStatus?: boolean;
   /** QueueStatus.res to report for phone sends (non-zero = rejected). Default 0. */
   queueStatusRes?: number;
-  /** Radio TX queue size. Default 16. */
+  /** Radio TX queue size. Default RADIO_TX_QUEUE_SIZE. */
   queueSize?: number;
   /** When false, packets sent by the phone are accepted but the TX queue never drains (to test back-pressure). */
   drainTxQueue?: boolean;
@@ -75,8 +92,6 @@ interface AirPacket {
 export const QUEUE_FULL_RES = 1;
 
 export const TEST_PSK = Uint8Array.from({ length: 32 }, (_, i) => (i * 7 + 3) & 0xff);
-
-const nodeId = (num: number): string => `!${(num >>> 0).toString(16).padStart(8, '0')}`;
 
 export class FakeRadio implements Transport {
   readonly nodeNum: number;
@@ -123,17 +138,17 @@ export class FakeRadio implements Transport {
     this.ackMode = opts.ackMode ?? 'auto';
     this.sendQueueStatus = opts.sendQueueStatus ?? true;
     this.queueStatusRes = opts.queueStatusRes ?? 0;
-    this.queueSize = opts.queueSize ?? 16;
+    this.queueSize = opts.queueSize ?? RADIO_TX_QUEUE_SIZE;
     this.drainTxQueue = opts.drainTxQueue ?? true;
 
     const chans = opts.channels ?? [
       create(Channel.ChannelSettingsSchema, {
         name: 'Test',
         psk: TEST_PSK,
-        moduleSettings: { positionPrecision: 32 },
+        moduleSettings: { positionPrecision: HUNT_POSITION_PRECISION },
       }),
     ];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < MAX_CHANNELS; i++) {
       const s = chans[i];
       this.channels[i] = create(Channel.ChannelSchema, {
         index: i,
@@ -237,6 +252,54 @@ export class FakeRadio implements Transport {
     this.deliverPacket(encodeFromRadio({ payloadVariant: { case: 'packet', value: packet } }));
   }
 
+  /** Delivers a text message to the phone as if heard from `from`. */
+  injectText(from: number, text: string, packet: InjectedPacketFields = {}): void {
+    this.injectData(from, Portnums.PortNum.TEXT_MESSAGE_APP, encodeUtf8(text), packet);
+  }
+
+  /** Delivers a Routing ack (NONE) or nak for one of the phone's packets. */
+  injectRouting(requestId: number, error: Mesh.Routing_Error, from = this.nodeNum): void {
+    this.injectData(from, Portnums.PortNum.ROUTING_APP, encodeRouting(error), {
+      id: this.nextPacketId++,
+      to: this.nodeNum,
+      requestId,
+    });
+  }
+
+  /** Delivers a decoded packet on any port. `requestId` goes into Data. */
+  injectData(
+    from: number,
+    portnum: Portnums.PortNum | number,
+    payload: Uint8Array,
+    packet: InjectedPacketFields & { requestId?: number } = {},
+  ): void {
+    const { requestId, ...rest } = packet;
+    this.injectPacket({
+      from,
+      to: BROADCAST_ADDR,
+      id: this.nextPacketId++,
+      ...rest,
+      payloadVariant: {
+        case: 'decoded',
+        value: { portnum: portnum as Portnums.PortNum, payload, requestId: requestId ?? 0 },
+      },
+    });
+  }
+
+  /** MeshPackets the phone has written so far. */
+  sentPackets(): Mesh.MeshPacket[] {
+    return this.writes
+      .filter((w) => w.payloadVariant.case === 'packet')
+      .map((w) => w.payloadVariant.value as Mesh.MeshPacket);
+  }
+
+  /** Nonces of every want_config_id the phone sent. */
+  configNonces(): number[] {
+    return this.writes
+      .filter((w) => w.payloadVariant.case === 'wantConfigId')
+      .map((w) => w.payloadVariant.value as number);
+  }
+
   /** Lets queued phone sends leave the TX queue (when drainTxQueue is false). */
   drainQueue(): void {
     this.txInFlight = 0;
@@ -257,7 +320,7 @@ export class FakeRadio implements Transport {
     for (const ch of this.channels) {
       if (!ch?.settings || ch.role === Channel.Channel_Role.DISABLED) continue;
       if (channelHash(ch.settings) !== wantHash) continue;
-      if ((ch.settings.name || 'LongFast') !== (name || 'LongFast')) continue;
+      if ((ch.settings.name || DEFAULT_CHANNEL_NAME) !== (name || DEFAULT_CHANNEL_NAME)) continue;
       if (bytesEqual(expandPsk(ch.settings.psk), wantKey)) return ch.index;
     }
     return -1;
@@ -401,7 +464,7 @@ export class FakeRadio implements Transport {
         from: this.nodeNum,
         to: p.to,
         id,
-        hopStart: p.hopLimit || 3,
+        hopStart: p.hopLimit || DEFAULT_HOP_LIMIT,
         wantAck: p.wantAck,
         channel: { name: ch.name, psk: ch.psk },
         data,

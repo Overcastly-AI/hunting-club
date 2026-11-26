@@ -7,10 +7,11 @@ import {
   type MeshClientOptions,
   type Transport,
   type Unsubscribe,
+  Emitter,
+  nodeId,
 } from '@huntclub/mesh';
 
 import type { PairedRadio } from '../db/pairedRadio';
-import { Emitter, nodeId } from './meshPending';
 import type { FoundRadio } from './scan';
 
 /** Where the app remembers its paired radio (SQLite in the app, in-memory in tests). */

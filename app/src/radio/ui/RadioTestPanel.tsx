@@ -1,3 +1,4 @@
+import { MAX_TEXT_CHARS, nodeId } from '@huntclub/mesh';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
@@ -5,7 +6,6 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { colors, radii, sizes, spacing, textStyles } from '../../theme';
 import { radioCopy } from '../copy';
-import { MAX_TEXT_CHARS, nodeId } from '../meshPending';
 import type { RadioText } from '../RadioController';
 import { useRadio } from '../RadioProvider';
 import { PAIR_RADIO_ROUTE } from '../routes';

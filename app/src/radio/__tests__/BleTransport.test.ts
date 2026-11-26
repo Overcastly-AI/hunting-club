@@ -1,9 +1,8 @@
-import type { LinkStatus } from '@huntclub/mesh';
+import { MESHTASTIC_BLE, type LinkStatus } from '@huntclub/mesh';
 
 import { fakeBle, resetFakeBle } from '../../test-utils/fakeBleManager';
 import { resetBleStartedForTests } from '../bleManager';
 import { BleTransport, type BleTransportOptions } from '../BleTransport';
-import { MESHTASTIC_BLE } from '../meshPending';
 
 jest.mock(
   'react-native-ble-manager',

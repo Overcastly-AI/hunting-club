@@ -2,13 +2,14 @@
  * In-memory stand-in for react-native-ble-manager, scripted by tests.
  *
  *   jest.mock('react-native-ble-manager', () =>
- *     require('../../test-utils/fakeBleManager').fakeBleManagerModule,
+ *     jest.requireActual('../../test-utils/fakeBleManager').fakeBleManagerModule,
  *   );
  *
  * It models one Meshtastic radio: fromRadio is a queue of packets that reads
  * drain (an empty read means the queue is empty), writes are recorded, and
  * tests can fail the next connects, notify fromNum or drop the link.
  */
+import { MESHTASTIC_BLE } from '@huntclub/mesh';
 import type {
   BleDisconnectPeripheralEvent,
   BleManagerDidUpdateStateEvent,
@@ -16,8 +17,6 @@ import type {
   Peripheral,
   ScanOptions,
 } from 'react-native-ble-manager';
-
-import { MESHTASTIC_BLE } from '../radio/meshPending';
 
 // The real enums, without loading the native module.
 const types = jest.requireActual<typeof import('react-native-ble-manager')>(

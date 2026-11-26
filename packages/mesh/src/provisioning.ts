@@ -27,10 +27,9 @@ import {
 } from '@bufbuild/protobuf';
 import { Admin, Channel, Config } from './protobufs';
 import type { ChannelSet, ChannelSettings } from './codec/channelUrl';
-import { HUNT_POSITION_PRECISION } from './codec/channelUrl';
+import { HUNT_POSITION_PRECISION, MAX_CHANNELS } from './codec/channelUrl';
 
 export type AdminMessage = Admin.AdminMessage;
-export const MAX_CHANNELS = 8;
 
 /** Spec: one setting for now (120 s + smart position) until real-radio testing. */
 export const RECOMMENDED_POSITION_CONFIG: Readonly<

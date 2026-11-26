@@ -1,6 +1,6 @@
+import { MESHTASTIC_BLE } from '@huntclub/mesh';
 import { fakeBle, resetFakeBle } from '../../test-utils/fakeBleManager';
 import { resetBleStartedForTests } from '../bleManager';
-import { MESHTASTIC_BLE } from '../meshPending';
 import { scanForRadios, toFoundRadio, type FoundRadio } from '../scan';
 import { signalLabel, signalLevel } from '../signal';
 

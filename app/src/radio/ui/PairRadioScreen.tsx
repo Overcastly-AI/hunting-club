@@ -1,3 +1,4 @@
+import { MESHTASTIC_BLE } from '@huntclub/mesh';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -5,7 +6,6 @@ import { Button } from '../../components/Button';
 import { Screen } from '../../components/Screen';
 import { colors, radii, sizes, spacing, textStyles } from '../../theme';
 import { radioCopy } from '../copy';
-import { MESHTASTIC_BLE } from '../meshPending';
 import { requestRadioPermissions, type RadioPermissionState } from '../permissions';
 import { useRadio } from '../RadioProvider';
 import { scanForRadios, type FoundRadio } from '../scan';

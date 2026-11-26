@@ -1,16 +1,19 @@
 import { create } from '@bufbuild/protobuf';
 import { AppOnly, Channel, Config, Mesh, Portnums } from '../protobufs';
 import {
-  MAX_CHANNELS,
   RECOMMENDED_POSITION_CONFIG,
   buildProvisioningMessages,
   planFromChannelSet,
   type AdminMessage,
 } from '../provisioning';
-import { generatePartyChannelSet, decodeJoinUrl, encodeJoinUrl } from '../codec/channelUrl';
+import {
+  MAX_CHANNELS,
+  generatePartyChannelSet,
+  decodeJoinUrl,
+  encodeJoinUrl,
+} from '../codec/channelUrl';
 import { decodeAdmin } from '../codec/radio';
-import { MeshClient } from '../MeshClient';
-import { FakeRadio } from '../transports/FakeTransport';
+import { connectedClient, tick } from '../testing/fixtures';
 import { seededRandom } from '../testing/seededRandom';
 
 const cases = (msgs: AdminMessage[]) =>
@@ -169,24 +172,19 @@ describe('MeshClient.provision over the fake radio', () => {
   afterEach(() => jest.useRealTimers());
 
   it('scan a join QR, provision the radio, and the radio holds the new channel', async () => {
-    const radio = new FakeRadio({ nodeNum: 0x1234 });
-    const client = new MeshClient({ transport: radio, random: seededRandom(5) });
-    await client.connect();
-    await jest.advanceTimersByTimeAsync(0);
+    const { radio, client } = await connectedClient();
 
     const qr = encodeJoinUrl({ channelSet: party, target: { kind: 'party', partyId: 'p1' } });
     const { channelSet } = decodeJoinUrl(qr);
     const handles = client.provision(planFromChannelSet(channelSet));
     expect(handles).toHaveLength(13);
-    await jest.advanceTimersByTimeAsync(13 * 250);
+    await tick(13 * 250);
 
     // Admin packets go to our own node on ADMIN_APP, in order.
-    const packets = radio.writes
-      .filter((w) => w.payloadVariant.case === 'packet')
-      .map((w) => w.payloadVariant.value as Mesh.MeshPacket);
+    const packets = radio.sentPackets();
     expect(packets).toHaveLength(13);
     for (const p of packets) {
-      expect(p.to).toBe(0x1234);
+      expect(p.to).toBe(radio.nodeNum);
       expect((p.payloadVariant.value as Mesh.Data).portnum).toBe(Portnums.PortNum.ADMIN_APP);
     }
     expect(
@@ -208,7 +206,7 @@ describe('MeshClient.provision over the fake radio', () => {
     // After the radio reboots, the handshake shows the new channel.
     radio.dropLink();
     radio.restoreLink();
-    await jest.advanceTimersByTimeAsync(0);
+    await tick();
     expect(client.channels.get(0)?.settings?.name).toBe('Party');
   });
 });

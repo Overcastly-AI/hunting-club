@@ -1,10 +1,18 @@
-import type { LinkStatus, Timers, Transport, Unsubscribe } from '@huntclub/mesh';
+import {
+  defaultTimers,
+  Emitter,
+  MESHTASTIC_BLE,
+  type TimerHandle,
+  type LinkStatus,
+  type Timers,
+  type Transport,
+  type Unsubscribe,
+} from '@huntclub/mesh';
 import { Platform } from 'react-native';
 import BleManager, { BleState } from 'react-native-ble-manager';
 
 import { classifyDisconnect, classifyError, type BleFailure } from './bleErrors';
 import { ensureBleStarted, sameUuid } from './bleManager';
-import { defaultTimers, Emitter, MESHTASTIC_BLE, type TimerHandle } from './meshPending';
 
 /** Extra link events the app shows to the user; not part of the mesh Transport interface. */
 export type BleTransportEvents = {
