@@ -13,3 +13,4 @@ export * from './qr';
 export * from './session';
 export * from './signInCopy';
 export * from './maps';
+export * from './legal';
