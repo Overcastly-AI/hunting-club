@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "Hunt Club Mesh",
+    "slug": "hunt-club-mesh",
+    "scheme": "huntclub",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#121416",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.huntclubmesh.app"
+    },
+    "android": {
+      "package": "com.huntclubmesh.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#121416",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#121416",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200
+        }
+      ]
+    ]
+  }
+}
