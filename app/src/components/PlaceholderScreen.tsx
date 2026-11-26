@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -6,10 +7,11 @@ import { colors, spacing, textStyles } from '../theme';
 type Props = {
   title: string;
   description: string;
+  children?: ReactNode;
 };
 
 /** Temporary screen body used until each tab's milestone lands. */
-export function PlaceholderScreen({ title, description }: Props) {
+export function PlaceholderScreen({ title, description, children }: Props) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.content}>
@@ -17,6 +19,7 @@ export function PlaceholderScreen({ title, description }: Props) {
           {title}
         </Text>
         <Text style={styles.description}>{description}</Text>
+        {children}
       </View>
     </SafeAreaView>
   );

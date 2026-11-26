@@ -90,3 +90,40 @@ export function distanceMeters(a: LatLon, b: LatLon): number {
   const h = Math.sin(dPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) ** 2;
   return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
 }
+
+/** Initial compass bearing from `a` to `b`, 0–360 degrees. */
+export function bearingDeg(a: LatLon, b: LatLon): number {
+  const phi1 = a.lat * DEG;
+  const phi2 = b.lat * DEG;
+  const dLambda = (b.lon - a.lon) * DEG;
+  const y = Math.sin(dLambda) * Math.cos(phi2);
+  const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLambda);
+  return (((Math.atan2(y, x) / DEG) % 360) + 360) % 360;
+}
+
+const COMPASS_WORDS = [
+  'north',
+  'northeast',
+  'east',
+  'southeast',
+  'south',
+  'southwest',
+  'west',
+  'northwest',
+] as const;
+
+/** Eight-point compass word for a bearing, e.g. 40° → "northeast". */
+export function compassWord(bearing: number): (typeof COMPASS_WORDS)[number] {
+  return COMPASS_WORDS[Math.round((((bearing % 360) + 360) % 360) / 45) % 8]!;
+}
+
+/** "0.4 mi northeast" or "300 ft south": how far and which way someone is from you. */
+export function distanceAndDirection(from: LatLon, to: LatLon): string {
+  const meters = distanceMeters(from, to);
+  const feet = meters / FOOT_M;
+  const distance =
+    feet < 1000
+      ? `${Math.max(10, Math.round(feet / 10) * 10)} ft`
+      : `${(meters / MILE_M).toFixed(1)} mi`;
+  return `${distance} ${compassWord(bearingDeg(from, to))}`;
+}
