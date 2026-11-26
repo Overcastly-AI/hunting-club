@@ -13,7 +13,7 @@
  * Never logs message bodies or channel keys: the optional logger only gets
  * ids, port numbers, sizes and states.
  */
-import { fromBinary, toBinary, type MessageInitShape } from '@bufbuild/protobuf';
+import { create, fromBinary, toBinary, type MessageInitShape } from '@bufbuild/protobuf';
 import { Admin, Channel, Config, Mesh, ModuleConfig, Portnums, Telemetry } from './protobufs';
 import {
   BROADCAST_ADDR,
@@ -350,9 +350,19 @@ export class MeshClient extends Emitter<MeshClientEvents> {
     });
   }
 
-  /** Writes our name and initials to our radio (see owner.ts; validate first). */
+  /**
+   * Writes our name and initials to our radio (see owner.ts; validate first),
+   * and to our own node record, which is what `sendNodeInfo` shares.
+   */
   setOwner(owner: Owner): SendHandle {
-    return this.sendAdmin(buildSetOwnerMessage(owner));
+    const handle = this.sendAdmin(buildSetOwnerMessage(owner));
+    const user = this.nodes.get(this._myNodeNum)?.user;
+    if (user) {
+      this.updateNode(this._myNodeNum, (n) => {
+        n.user = create(Mesh.UserSchema, { ...user, ...owner });
+      });
+    }
+    return handle;
   }
 
   /**

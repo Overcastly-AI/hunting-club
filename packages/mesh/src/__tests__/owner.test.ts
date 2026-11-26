@@ -1,7 +1,7 @@
-import { toBinary } from '@bufbuild/protobuf';
+import { fromBinary, toBinary } from '@bufbuild/protobuf';
 
 import { decodeAdmin } from '../codec/radio';
-import { Admin, Mesh } from '../protobufs';
+import { Admin, Mesh, Portnums } from '../protobufs';
 import { OWNER_WIRE_LIMITS, buildSetOwnerMessage, fitUtf8, ownerFromProfile } from '../owner';
 import { connectedClient, tick } from '../testing/fixtures';
 
@@ -43,5 +43,22 @@ describe('setOwner', () => {
     expect(admin.payloadVariant.case).toBe('setOwner');
     expect(radio.user).toMatchObject({ longName: 'Dale Earl', shortName: 'DE' });
     expect((await handle.result).status).toBe('acked');
+  });
+
+  it('shares the new name in the node info we send', async () => {
+    const { radio, client } = await connectedClient();
+    client.setOwner({ longName: 'Dale Earl', shortName: 'DE' });
+    expect(client.nodes.get(client.myNodeNum)?.user).toMatchObject({
+      longName: 'Dale Earl',
+      shortName: 'DE',
+      id: radio.user.id,
+    });
+    client.sendNodeInfo();
+    await tick(500);
+    const info = radio
+      .sentPackets()
+      .map((p) => p.payloadVariant.value as Mesh.Data)
+      .find((d) => d.portnum === Portnums.PortNum.NODEINFO_APP)!;
+    expect(fromBinary(Mesh.UserSchema, info.payload)).toMatchObject({ longName: 'Dale Earl' });
   });
 });

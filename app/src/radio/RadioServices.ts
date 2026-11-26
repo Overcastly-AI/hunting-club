@@ -9,9 +9,11 @@ import {
   OverdueMonitor,
   PartyService,
   ReceiptService,
+  FREE_PARTY_MAX_MEMBERS,
   type CoreConfig,
   type CoreContext,
   type PartyStore,
+  type SunApi,
 } from '@huntclub/core';
 import type { MeshClient } from '@huntclub/mesh';
 
@@ -34,6 +36,8 @@ export type RadioServicesOptions = Omit<CoreContext, 'client'> & {
   receipts?: Partial<CoreConfig['receipts']>;
   helpSchedule?: Partial<CoreConfig['help']>;
   partyConfig?: Partial<CoreConfig['party']>;
+  /** Sunrise and sunset for the overdue alert (default: calculated on the phone). */
+  sun?: SunApi;
   /** Where the free party is kept (the app: SQLite). Default: in memory. */
   partyStore?: PartyStore;
 };
@@ -76,6 +80,7 @@ export class RadioServices {
       receipts,
       helpSchedule,
       partyConfig,
+      sun,
       partyStore,
       ...context
     } = options;
@@ -105,6 +110,7 @@ export class RadioServices {
       checkIns: this.checkIns,
       board: this.board,
       config: { graceMinutes },
+      ...(sun ? { sun } : {}),
     }).start();
 
     const withNames = names ? { names } : {};
@@ -126,8 +132,14 @@ export class RadioServices {
       board: this.board,
       audience,
       ...withNames,
-      // Everyone else our radio knows on the party channel.
-      groupSize: () => [...client.nodes.keys()].filter((n) => n !== client.myNodeNum).length,
+      groupSize: () => {
+        // A free party: the others in it, never more than the cap allows (a
+        // radio refused as over capacity was heard, but isn't in the party).
+        const party = this.party.current;
+        if (!club && party) return Math.min(party.size, FREE_PARTY_MAX_MEMBERS) - 1;
+        // Otherwise everyone else our radio knows on the channel.
+        return [...client.nodes.keys()].filter((n) => n !== client.myNodeNum).length;
+      },
       channelOf,
       segmentOfChannel: () => 'party',
     };
