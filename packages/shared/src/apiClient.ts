@@ -12,6 +12,9 @@ import {
   ClubCreateRequestSchema,
   ClubSecretResponseSchema,
   EntitlementSchema,
+  type MapPackRequest,
+  MapPackRequestResponseSchema,
+  MapPackRequestSchema,
   MyClubSchema,
   type RedeemInviteRequest,
   RedeemInviteRequestSchema,
@@ -23,6 +26,7 @@ import {
   type InviteCreate,
   InviteCreateSchema,
   InviteSchema,
+  MapPackSchema,
   MemberSchema,
   PlanSchema,
   StandSchema,
@@ -141,6 +145,17 @@ export function createClubApiClient(options: ClubApiClientOptions) {
       ),
     getClubSecret: (clubId: string) =>
       call('GET', API_PATHS.secret, club(clubId), ClubSecretResponseSchema),
+    listMapPacks: (clubId: string) =>
+      call('GET', API_PATHS.mapPacks, club(clubId), z.array(MapPackSchema)),
+    /** Admin: starts building the club's pack for one basemap; it is listed once built. */
+    requestMapPack: async (clubId: string, request: MapPackRequest) =>
+      call(
+        'POST',
+        API_PATHS.mapPacks,
+        club(clubId),
+        MapPackRequestResponseSchema,
+        MapPackRequestSchema.parse(request),
+      ),
     redeemInvite: async (request: RedeemInviteRequest) =>
       call(
         'POST',

@@ -11,6 +11,7 @@ export interface CloudEnvironment {
   readonly webClientId?: string;
   /** Club API Function URL (no trailing slash); set once deployed. */
   readonly clubApiUrl?: string;
+  /** Web admin page and club map packs (CloudFront), e.g. `huntclub-dev.example.com`. */
 }
 
 export const CLOUD_ENVIRONMENTS = {

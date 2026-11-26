@@ -1,0 +1,232 @@
+// USGS basemaps and slippy-map tile maths: the single source for the app's live map
+// and downloads, and for the club map-pack builder Lambda.
+
+/**
+ * Free basemaps from USGS The National Map (public domain), confirmed
+ * 2026-11-26 against each service's `?f=json`:
+ * - Cached Web Mercator (wkid 3857) services, 256 px JPEG tiles, `/tile/{z}/{y}/{x}`.
+ * - The cache's coarsest scale (maxScale 9027.98) is tile level 16; deeper
+ *   levels are not cached (404), so we cap there and let the map overzoom.
+ * - USGSImageryTopo no longer exists (404), so aerial is USGSImageryOnly.
+ */
+const USGS_BASEMAP_ROOT = 'https://basemap.nationalmap.gov/arcgis/rest/services';
+
+/** Deepest cached USGS tile level. */
+export const USGS_MAX_TILE_ZOOM = 16;
+/** USGS tiles are 256 px. MapLibre zoom is 512 px based, so map zoom = tile zoom - 1. */
+export const USGS_TILE_SIZE = 256;
+/** Tile zoom = map zoom + this. */
+export const TILE_ZOOM_OFFSET = Math.log2(512 / USGS_TILE_SIZE);
+
+export type BasemapId = 'topo' | 'aerial';
+
+export type Basemap = {
+  id: BasemapId;
+  /** Word label in the layer switcher. */
+  label: string;
+  /** Stored as a map pack's `source`. */
+  source: string;
+  /** `{z}/{y}/{x}` template (ArcGIS order: row before column). */
+  tileUrl: string;
+  /** Short credit always visible on the map. */
+  credit: string;
+  /** The service's own copyrightText, shown in full from the layers panel. */
+  attribution: string;
+  /**
+   * Average bytes per tile used for download size estimates. Measured tiles
+   * were 21–29 KB; these round up so estimates err high (forest imagery is larger).
+   */
+  averageTileBytes: number;
+};
+
+const usgsTiles = (service: string) => `${USGS_BASEMAP_ROOT}/${service}/MapServer/tile/{z}/{y}/{x}`;
+
+export const BASEMAPS: Record<BasemapId, Basemap> = {
+  topo: {
+    id: 'topo',
+    label: 'Topo',
+    source: 'usgs-topo',
+    tileUrl: usgsTiles('USGSTopo'),
+    credit: 'USGS The National Map',
+    attribution:
+      'USGS The National Map: National Boundaries Dataset, 3DEP Elevation Program, Geographic Names Information System, National Hydrography Dataset, National Land Cover Database, National Structures Dataset, and National Transportation Dataset; USGS Global Ecosystems; U.S. Census Bureau TIGER/Line data; USFS Road data; Natural Earth Data; U.S. Department of State HIU; NOAA National Centers for Environmental Information.',
+    averageTileBytes: 32_000,
+  },
+  aerial: {
+    id: 'aerial',
+    label: 'Aerial',
+    source: 'usgs-imagery',
+    tileUrl: usgsTiles('USGSImageryOnly'),
+    credit: 'USDA, USGS The National Map',
+    attribution: 'USDA, USGS The National Map: Orthoimagery.',
+    averageTileBytes: 40_000,
+  },
+};
+
+export const BASEMAP_IDS = Object.keys(BASEMAPS) as BasemapId[];
+
+export function basemapBySource(source: string): Basemap | undefined {
+  return Object.values(BASEMAPS).find((basemap) => basemap.source === source);
+}
+
+/** The URL of one tile (tile zoom, column, row). */
+export function tileUrl(basemap: BasemapId, z: number, x: number, y: number): string {
+  return BASEMAPS[basemap].tileUrl
+    .replace('{z}', String(z))
+    .replace('{x}', String(x))
+    .replace('{y}', String(y));
+}
+
+/** [west, south, east, north] in degrees, as MapLibre uses. */
+export type Bounds = [west: number, south: number, east: number, north: number];
+
+/** Web Mercator stops at this latitude. */
+const MAX_MERCATOR_LAT = 85.05112878;
+
+function clampLat(lat: number): number {
+  return Math.min(MAX_MERCATOR_LAT, Math.max(-MAX_MERCATOR_LAT, lat));
+}
+
+/** Slippy-map tile column and row containing a point at a tile zoom. */
+export function tileXY(lon: number, lat: number, zoom: number): { x: number; y: number } {
+  const n = 2 ** zoom;
+  const phi = (clampLat(lat) * Math.PI) / 180;
+  const x = Math.floor(((lon + 180) / 360) * n);
+  const y = Math.floor(((1 - Math.log(Math.tan(phi) + 1 / Math.cos(phi)) / Math.PI) / 2) * n);
+  const clamp = (v: number) => Math.min(n - 1, Math.max(0, v));
+  return { x: clamp(x), y: clamp(y) };
+}
+
+/** The USGS tile ranges (per tile zoom) covering bounds over a MAP-zoom range. */
+export function tileRanges(
+  bounds: Readonly<Bounds>,
+  minZoom: number,
+  maxZoom: number,
+): { z: number; minX: number; maxX: number; minY: number; maxY: number }[] {
+  const [west, south, east, north] = bounds;
+  const ranges = new Map<
+    number,
+    { z: number; minX: number; maxX: number; minY: number; maxY: number }
+  >();
+  for (let mapZoom = minZoom; mapZoom <= maxZoom; mapZoom++) {
+    const z = Math.min(USGS_MAX_TILE_ZOOM, mapZoom + TILE_ZOOM_OFFSET);
+    const topLeft = tileXY(west, north, z);
+    const bottomRight = tileXY(east, south, z);
+    ranges.set(z, {
+      z,
+      minX: topLeft.x,
+      maxX: bottomRight.x,
+      minY: topLeft.y,
+      maxY: bottomRight.y,
+    });
+  }
+  return [...ranges.values()];
+}
+
+/** Number of USGS tiles covering bounds over a map-zoom range. */
+export function countTiles(bounds: Readonly<Bounds>, minZoom: number, maxZoom: number): number {
+  return tileRanges(bounds, minZoom, maxZoom).reduce(
+    (sum, r) => sum + (r.maxX - r.minX + 1) * (r.maxY - r.minY + 1),
+    0,
+  );
+}
+
+/** Every tile (tile zoom, column, row) covering bounds over a map-zoom range. */
+export function* tilesInBounds(
+  bounds: Readonly<Bounds>,
+  minZoom: number,
+  maxZoom: number,
+): Generator<{ z: number; x: number; y: number }> {
+  for (const r of tileRanges(bounds, minZoom, maxZoom))
+    for (let x = r.minX; x <= r.maxX; x++)
+      for (let y = r.minY; y <= r.maxY; y++) yield { z: r.z, x, y };
+}
+
+/**
+ * Download limits for one basemap layer (phone downloads and club packs alike).
+ * USGS publishes no bulk-download policy, so we stay modest: a hunting property,
+ * not a state. Map zoom 15 reaches the deepest cached USGS level (16).
+ */
+export const DOWNLOAD_LIMITS = {
+  minZoom: 8,
+  maxZoom: USGS_MAX_TILE_ZOOM - TILE_ZOOM_OFFSET,
+  maxTiles: 6_000,
+  maxBytes: 150 * 1024 * 1024,
+} as const;
+
+/** S3 key prefix (and CloudFront path) of club map packs. Never pruned by web deploys. */
+export const MAP_PACKS_PREFIX = 'packs/';
+
+/** Where a club's map pack archive lives: `packs/<clubId>/<packId>.pmtiles`. */
+export function mapPackKey(clubId: string, packId: string): string {
+  return `${MAP_PACKS_PREFIX}${clubId}/${packId}.pmtiles`;
+}
+
+/** Bounding box of a GeoJSON Polygon or MultiPolygon (a club's property line). */
+export function polygonBounds(polygon: { coordinates: unknown }): Bounds {
+  const points: [number, number][] = [];
+  const walk = (value: unknown) => {
+    if (Array.isArray(value) && typeof value[0] === 'number' && typeof value[1] === 'number') {
+      points.push([value[0], value[1]]);
+    } else if (Array.isArray(value)) value.forEach(walk);
+  };
+  walk(polygon.coordinates);
+  if (points.length === 0) throw new Error('polygon has no coordinates');
+  const lons = points.map((p) => p[0]);
+  const lats = points.map((p) => p[1]);
+  return [Math.min(...lons), Math.min(...lats), Math.max(...lons), Math.max(...lats)];
+}
+
+/** How politely the map-pack builder fetches USGS tiles (no published bulk policy). */
+export const TILE_FETCH_POLICY = {
+  /** Requests in flight at once. */
+  concurrency: 4,
+  /** At most this many requests start per second. */
+  perSecond: 8,
+  /** Retries for 429, 5xx and network errors, with doubling backoff. */
+  retries: 3,
+  backoffMs: 500,
+} as const;
+
+/** Lambda's maximum run time; the builder uses all of it. */
+const BUILD_TIMEOUT_SECONDS = 900;
+
+/** The map-pack builder Lambda's time budget. */
+export const MAP_PACK_BUILD = {
+  timeoutSeconds: BUILD_TIMEOUT_SECONDS,
+  /**
+   * Left over after fetching at the full rate: USGS latency, retries and backoff,
+   * writing the archive and uploading it. A build that would not fit is refused.
+   */
+  marginSeconds: 300,
+  /** A pending build blocks the next one for this long, even if its Lambda died. */
+  lockSeconds: BUILD_TIMEOUT_SECONDS + 60,
+} as const;
+
+/**
+ * Caps for a club map pack: the phone-download caps, with the tile count derived from
+ * the fetch rate and the builder's time budget so every accepted pack can finish.
+ */
+export const MAP_PACK_LIMITS = {
+  ...DOWNLOAD_LIMITS,
+  maxTiles: Math.min(
+    DOWNLOAD_LIMITS.maxTiles,
+    TILE_FETCH_POLICY.perSecond * (MAP_PACK_BUILD.timeoutSeconds - MAP_PACK_BUILD.marginSeconds),
+  ),
+} as const;
+
+export type DownloadLimits = { readonly maxTiles: number; readonly maxBytes: number };
+
+/** Size check for one basemap layer over bounds and a map-zoom range. */
+export function estimatePack(
+  bounds: Readonly<Bounds>,
+  minZoom: number,
+  maxZoom: number,
+  basemap: BasemapId,
+  limits: DownloadLimits = DOWNLOAD_LIMITS,
+): { tiles: number; bytes: number; overLimit: 'tiles' | 'bytes' | null } {
+  const tiles = countTiles(bounds, minZoom, maxZoom);
+  const bytes = tiles * BASEMAPS[basemap].averageTileBytes;
+  const overLimit = tiles > limits.maxTiles ? 'tiles' : bytes > limits.maxBytes ? 'bytes' : null;
+  return { tiles, bytes, overLimit };
+}

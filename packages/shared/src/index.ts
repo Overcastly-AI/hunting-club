@@ -12,3 +12,4 @@ export * from './http';
 export * from './qr';
 export * from './session';
 export * from './signInCopy';
+export * from './maps';

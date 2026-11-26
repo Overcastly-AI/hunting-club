@@ -175,6 +175,11 @@ export function fakeClubClient(data: FakeClubData = sampleData()): ClubApiClient
   };
   return {
     listPlans: async () => data.plans,
+    // Map packs (admin request UI) arrive with M12; the web pages don't call these yet.
+    listMapPacks: async () => [],
+    async requestMapPack() {
+      throw new ClubApiRequestError('not_configured', 503);
+    },
     listMyClubs: async () => (data.club ? [{ club: data.club, membership: admin() }] : []),
     async createClub(request) {
       const { club, admin: profile } = ClubCreateRequestSchema.parse(request);

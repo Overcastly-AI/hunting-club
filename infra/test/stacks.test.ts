@@ -3,6 +3,7 @@ import { App } from 'aws-cdk-lib';
 import { Match } from 'aws-cdk-lib/assertions';
 import { GSIS, PARTITION_PREFIXES, TABLE_KEYS, TTL_ATTRIBUTE } from '@huntclub/club-data';
 import { APP_ID } from '@huntclub/shared';
+import { MAP_PACK_BUILD, MAP_PACKS_PREFIX } from '@huntclub/shared/maps';
 import {
   API_ENV,
   CLUB_API_SECRETS,
@@ -14,7 +15,7 @@ import {
   userPoolClientIds,
 } from '../config';
 import { dev } from '../config/dev';
-import { CLUB_API_TABLE_ACTIONS } from '../src/stacks/api-stack';
+import { CLUB_API_TABLE_ACTIONS, MAP_PACK_BUILDER_TABLE_ACTIONS } from '../src/stacks/api-stack';
 import { buildApp } from '../src/app';
 import { webPageRewriteSource } from '../src/web-pages';
 import { synthTemplates } from './helpers';
@@ -151,7 +152,8 @@ describe('web stack', () => {
     });
     expect(pages).toMatchObject({
       Prune: true,
-      Exclude: ['assets/*', '.well-known/*'],
+      // Map packs are written by the builder Lambda; a web deploy must never prune them.
+      Exclude: ['assets/*', '.well-known/*', `${MAP_PACKS_PREFIX}*`],
       SystemMetadata: { 'cache-control': 'no-cache' },
       DistributionPaths: ['/*'],
     });
@@ -198,7 +200,7 @@ describe('api stack', () => {
 
   type Statement = { Action: string | string[]; Resource: unknown; Condition?: unknown };
   /** Policy statements, optionally only those attached to one Lambda's role (by logical id). */
-  const statements = (lambda?: 'ClubApi' | 'StripeWebhook') =>
+  const statements = (lambda?: 'ClubApi' | 'StripeWebhook' | 'MapPackBuilder') =>
     Object.values(t.findResources('AWS::IAM::Policy'))
       .filter((p) => !lambda || JSON.stringify(p.Properties.Roles).includes(lambda))
       .flatMap((p) => p.Properties.PolicyDocument.Statement as Statement[]);
@@ -224,6 +226,7 @@ describe('api stack', () => {
           [API_ENV.userPoolClientIds]: userPoolClientIds(dev).join(','),
           [API_ENV.webOrigin]: `https://${dev.domainName}`,
           [API_ENV.stripePrices]: JSON.stringify(dev.stripe.prices),
+          [API_ENV.mapPackBuilder]: Match.anyValue(),
           [secretParameterEnvVar('stripeApiKey')]: secretParameterName(dev.name, 'stripeApiKey'),
         },
       },
@@ -320,12 +323,68 @@ describe('api stack', () => {
   });
 
   it('gives the club API item and query access only: no Scan, no streams, no table admin', () => {
-    const clubApi = statements().filter(
+    const clubApi = statements('ClubApi').filter(
       (s) => s.Condition === undefined && actionsOf(s).some((a) => a.startsWith('dynamodb:')),
     );
     expect(clubApi).toHaveLength(1);
     expect(actionsOf(clubApi[0]!).sort()).toEqual([...CLUB_API_TABLE_ACTIONS].sort());
     expect(clubApi[0]!.Resource).toEqual([clubTableArn(), clubTableArn('/index/*')]);
+  });
+
+  describe('map-pack builder', () => {
+    const builder = () => {
+      const fns = t.findResources('AWS::Lambda::Function', {
+        Properties: { Timeout: MAP_PACK_BUILD.timeoutSeconds },
+      });
+      expect(Object.keys(fns)).toHaveLength(1);
+      return Object.entries(fns)[0]!;
+    };
+
+    it('runs on demand only: no Function URL, no schedule, bounded by a timeout', () => {
+      const [id, fn] = builder();
+      expect(id).toMatch(/^MapPackBuilder/);
+      expect(fn.Properties.Environment.Variables).toEqual({
+        [API_ENV.envName]: dev.name,
+        [API_ENV.tableName]: dev.clubTableName,
+        // The web stack's bucket, so CloudFront serves packs from the site domain.
+        [API_ENV.mapPackBucket]: { 'Fn::ImportValue': expect.stringContaining('SiteBucket') },
+        [API_ENV.webOrigin]: `https://${dev.domainName}`,
+      });
+      t.resourceCountIs('AWS::Lambda::Url', 2);
+      t.resourceCountIs('AWS::Events::Rule', 0);
+      // The shared tile cap (MAP_PACK_LIMITS) assumes exactly this timeout.
+      expect(fn.Properties.Timeout).toBe(MAP_PACK_BUILD.timeoutSeconds);
+      // Never retried; no reserved concurrency (a table lock serializes builds).
+      expect(fn.Properties.ReservedConcurrentExecutions).toBeUndefined();
+      t.hasResourceProperties('AWS::Lambda::EventInvokeConfig', {
+        MaximumRetryAttempts: 0,
+        MaximumEventAgeInSeconds: MAP_PACK_BUILD.lockSeconds,
+      });
+    });
+
+    it('writes only under packs/ in the web bucket', () => {
+      const s3 = statements('MapPackBuilder').filter((s) =>
+        actionsOf(s).some((a) => a.startsWith('s3:')),
+      );
+      expect(s3).toHaveLength(1);
+      expect(actionsOf(s3[0]!).every((a) => /^s3:(PutObject|Abort)/.test(a))).toBe(true);
+      expect(JSON.stringify(s3[0]!.Resource)).toContain(`/${MAP_PACKS_PREFIX}*`);
+    });
+
+    it('records packs with item access only', () => {
+      const ddb = statements('MapPackBuilder').filter((s) =>
+        actionsOf(s).some((a) => a.startsWith('dynamodb:')),
+      );
+      expect(ddb).toHaveLength(1);
+      expect(actionsOf(ddb[0]!).sort()).toEqual([...MAP_PACK_BUILDER_TABLE_ACTIONS].sort());
+    });
+
+    it('can be started only by the club API, which knows its name', () => {
+      const invokers = statements().filter((s) => actionsOf(s).includes('lambda:InvokeFunction'));
+      expect(invokers).toHaveLength(1);
+      expect(statements('ClubApi')).toContainEqual(invokers[0]);
+      expect(JSON.stringify(invokers[0]!.Resource)).toContain('MapPackBuilder');
+    });
   });
 });
 

@@ -97,6 +97,10 @@ export function fakeClubApi(options: { featuresUntil?: string; offline?: boolean
     getClubSecret: offline(() => {
       throw new ClubApiRequestError('forbidden', 403);
     }),
+    listMapPacks: offline(() => []),
+    requestMapPack: offline(() => {
+      throw new ClubApiRequestError('forbidden', 403);
+    }),
     redeemInvite: jest.fn(async (req: { token: string; displayName: string; initials: string }) => {
       if (options.offline) throw new ClubApiRequestError('network', 0);
       joined = true;
