@@ -7,10 +7,11 @@ import {
 } from '@huntclub/mesh';
 
 import type { SqlDatabase } from '../db/types';
-import type { Audience } from '../domain/audience';
+import { AUDIENCES } from '../domain/audience';
 
-/** Who a harvest is shared with (matches `harvests.shared_with`). */
-export type SharedWith = 'none' | Audience;
+/** Who a harvest is shared with (the `harvests.shared_with` column's values). */
+export const SHARE_TARGETS = ['none', ...AUDIENCES] as const;
+export type SharedWith = (typeof SHARE_TARGETS)[number];
 
 /** A harvest in this phone's log. Private unless shared. */
 export type LocalHarvest = {

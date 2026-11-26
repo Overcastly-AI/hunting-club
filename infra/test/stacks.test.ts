@@ -18,7 +18,7 @@ import { dev } from '../config/dev';
 import { CLUB_API_TABLE_ACTIONS, MAP_PACK_BUILDER_TABLE_ACTIONS } from '../src/stacks/api-stack';
 import { buildApp } from '../src/app';
 import { webPageRewriteSource } from '../src/web-pages';
-import { synthTemplates } from './helpers';
+import { CDK_CONTEXT, synthTemplates } from './helpers';
 
 const templates = synthTemplates();
 /** The club table ARN as CDK synthesizes it (partition token, explicit account/region). */
@@ -181,6 +181,19 @@ describe('web stack', () => {
       Prune: false,
       DistributionPaths: ['/.well-known/*'],
     });
+  });
+});
+
+it('keeps strong cross-stack references (the behaviour deployed so far)', () => {
+  // Pinned in cdk.json: CDK's recommended default is moving to "weak", which would
+  // change how the API stack reads the web bucket.
+  expect(CDK_CONTEXT['@aws-cdk/core:defaultCrossStackReferences']).toBe('strong');
+  templates.api.hasResourceProperties('AWS::Lambda::Function', {
+    Environment: {
+      Variables: Match.objectLike({
+        [API_ENV.mapPackBucket]: { 'Fn::ImportValue': Match.stringLikeRegexp('SiteBucket') },
+      }),
+    },
   });
 });
 
