@@ -20,6 +20,7 @@ import { RadioController, type RadioControllerDeps, type RadioSnapshot } from '.
 import {
   DEFAULT_SERVICES_OPTIONS,
   RadioServices,
+  type RadioClub,
   type RadioServicesOptions,
 } from './RadioServices';
 
@@ -37,8 +38,10 @@ export function useRadio(): RadioContextValue {
 
 type Props = RadioControllerDeps & {
   children: ReactNode;
-  /** Party/club settings for the core services (defaults: free party). */
+  /** Settings for the core services (defaults: free party). Read once, at mount. */
   services?: Partial<RadioServicesOptions>;
+  /** The phone's club (from the club layer); changing it rebuilds the services. */
+  club?: RadioClub | null;
   /** Where the map's data goes (defaults to the app's store). */
   mapStore?: MapDataStore;
 };
@@ -51,6 +54,7 @@ type Props = RadioControllerDeps & {
 export function RadioProvider({
   children,
   services: serviceOptions,
+  club,
   mapStore = mapDataStore,
   ...deps
 }: Props) {
@@ -64,12 +68,16 @@ export function RadioProvider({
     };
   }, [controller]);
 
-  const [options] = useState<RadioServicesOptions>(() => ({
+  const [baseOptions] = useState<RadioServicesOptions>(() => ({
     ...DEFAULT_SERVICES_OPTIONS,
     ...(deps.clientOptions?.random ? { random: deps.clientOptions.random } : {}),
     ...(deps.now ? { now: deps.now } : {}),
     ...serviceOptions,
   }));
+  const options = useMemo<RadioServicesOptions>(
+    () => (club ? { ...baseOptions, club } : baseOptions),
+    [baseOptions, club],
+  );
   const [services, setServices] = useState<RadioServices | null>(null);
 
   // New services for each radio link; the old ones are disposed with it.

@@ -5,14 +5,18 @@ import {
   INVITE_TOKEN,
   clubJoinUrl,
   fakeClubApi,
+  memorySecureStorage,
   partyJoinUrl,
 } from '../../test-utils/fakeClubApi';
+import { SECURE_KEYS } from '../../storage/secure';
+import { decodeJoinUrl } from '@huntclub/mesh';
 import { clubFeaturesOpen, entitlementOf } from '../entitlement';
 import {
   loadClubAreas,
   loadClubStands,
   loadClubs,
   loadPendingInvite,
+  loadRadioClub,
   UNSYNCED_CLUB_NAME,
 } from '../store';
 import { NotAClubLinkError, joinClubFromLink, syncAllClubs, syncClub } from '../sync';
@@ -21,6 +25,10 @@ import { migrations } from '../../db/migrations';
 
 const NOW = Date.parse('2026-11-26T12:00:00Z');
 const profile = { displayName: 'Max', initials: 'MX' };
+let secrets = memorySecureStorage();
+beforeEach(() => {
+  secrets = memorySecureStorage();
+});
 
 async function db() {
   const d = createTestDatabase();
@@ -30,7 +38,7 @@ async function db() {
 
 it('joins offline from the link: club, radio key and invite saved, nothing sent', async () => {
   const d = await db();
-  expect(await joinClubFromLink(d, clubJoinUrl(), profile, NOW)).toBe(CLUB_ID);
+  expect(await joinClubFromLink(d, secrets, clubJoinUrl(), profile, NOW)).toBe(CLUB_ID);
   expect(await loadClubs(d)).toEqual([
     {
       id: CLUB_ID,
@@ -39,22 +47,27 @@ it('joins offline from the link: club, radio key and invite saved, nothing sent'
       featuresUntil: null,
       pendingInvite: true,
       syncedAt: null,
+      graceMinutes: 30,
     },
   ]);
   expect(await loadPendingInvite(d, CLUB_ID)).toEqual({ token: INVITE_TOKEN, ...profile });
-  const row = await d.getFirstAsync<{ channel_key: Uint8Array }>('SELECT channel_key FROM groups');
-  expect(row?.channel_key).toHaveLength(32);
+  // The link (with the channel key) goes to the keystore, never to SQLite.
+  expect(secrets.items.get(SECURE_KEYS.clubJoinLink)).toBe(clubJoinUrl());
+  const row = await d.getFirstAsync<{ channel_key: Uint8Array | null }>(
+    'SELECT channel_key FROM groups',
+  );
+  expect(row?.channel_key).toBeNull();
 });
 
 it('refuses a party link', async () => {
-  await expect(joinClubFromLink(await db(), partyJoinUrl(), profile, NOW)).rejects.toBeInstanceOf(
-    NotAClubLinkError,
-  );
+  await expect(
+    joinClubFromLink(await db(), secrets, partyJoinUrl(), profile, NOW),
+  ).rejects.toBeInstanceOf(NotAClubLinkError);
 });
 
 it('redeems the invite once online, then stores club, stands with mesh ids and entitlement', async () => {
   const d = await db();
-  await joinClubFromLink(d, clubJoinUrl(), profile, NOW);
+  await joinClubFromLink(d, secrets, clubJoinUrl(), profile, NOW);
   const api = fakeClubApi({ featuresUntil: '2027-09-01T00:00:00.000Z' });
   await syncClub(d, api, CLUB_ID, NOW);
 
@@ -80,7 +93,7 @@ it('redeems the invite once online, then stores club, stands with mesh ids and e
 
 it('keeps the offline join when the network is down, and reports the failure', async () => {
   const d = await db();
-  await joinClubFromLink(d, clubJoinUrl(), profile, NOW);
+  await joinClubFromLink(d, secrets, clubJoinUrl(), profile, NOW);
   const { failed } = await syncAllClubs(d, fakeClubApi({ offline: true }), NOW);
   expect(failed).toHaveLength(1);
   expect((await loadClubs(d))[0]).toMatchObject({ pendingInvite: true, name: UNSYNCED_CLUB_NAME });
@@ -88,8 +101,27 @@ it('keeps the offline join when the network is down, and reports the failure', a
 
 it('closes club features when the club has no paid-through date', async () => {
   const d = await db();
-  await joinClubFromLink(d, clubJoinUrl(), profile, NOW);
+  await joinClubFromLink(d, secrets, clubJoinUrl(), profile, NOW);
   await syncClub(d, fakeClubApi(), CLUB_ID, NOW);
   const [club] = await loadClubs(d);
   expect(entitlementOf(club!)).toBeNull();
+});
+
+it('gives the radio the club: stands, areas, grace time and the club channels from the link', async () => {
+  const d = await db();
+  await joinClubFromLink(d, secrets, clubJoinUrl(), profile, NOW);
+  await syncClub(d, fakeClubApi(), CLUB_ID, NOW);
+  const [club] = await loadClubs(d);
+  const radio = await loadRadioClub(d, secrets, club!);
+  expect(radio).toMatchObject({ clubId: CLUB_ID, graceMinutes: 30, areas: [] });
+  expect(radio.stands.map((s) => s.meshId)).toEqual([1, 2]);
+  expect(radio.channelSet).toEqual(decodeJoinUrl(clubJoinUrl()).channelSet);
+});
+
+it('leaves the channels out when the saved link is for another club', async () => {
+  const d = await db();
+  await joinClubFromLink(d, secrets, clubJoinUrl(), profile, NOW);
+  await secrets.set(SECURE_KEYS.clubJoinLink, clubJoinUrl('00000000-0000-4000-8000-0000000000ff'));
+  const [club] = await loadClubs(d);
+  expect((await loadRadioClub(d, secrets, club!)).channelSet).toBeUndefined();
 });
