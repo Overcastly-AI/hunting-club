@@ -1,5 +1,8 @@
 import type { TextStyle } from 'react-native';
 
+import { colors } from './colors';
+import { sizes } from './sizes';
+
 /**
  * Archivo font faces loaded in the root layout. The spec allows weights 500–800.
  * The keys are the font family names registered with expo-font.
@@ -37,3 +40,10 @@ export const textStyles = {
   markerName: { fontFamily: fontFamily.extraBold, fontSize: fontSize.markerName },
   sheetTitle: { fontFamily: fontFamily.extraBold, fontSize: fontSize.sheetTitle, lineHeight: 30 },
 } as const satisfies Record<string, TextStyle>;
+
+/** Dark outline behind all text drawn on the map (map-halo token, 3 px). */
+export const mapTextHalo = {
+  textShadowColor: colors.mapHalo,
+  textShadowRadius: sizes.mapHaloWidth,
+  textShadowOffset: { width: 0, height: 0 },
+} as const satisfies TextStyle;

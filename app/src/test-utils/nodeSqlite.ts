@@ -1,5 +1,7 @@
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 
+import { migrate } from '../db/migrate';
+import { migrations } from '../db/migrations';
 import type { SqlDatabase, SqlValue } from '../db/types';
 
 /**
@@ -13,6 +15,12 @@ export function createTestDatabase(): SqlDatabase & { raw: DatabaseSync } {
     raw,
     async execAsync(source) {
       raw.exec(source);
+    },
+    async runAsync(source: string, ...params: SqlValue[]) {
+      return raw.prepare(source).run(...(params as SQLInputValue[]));
+    },
+    async getAllAsync<T>(source: string, ...params: SqlValue[]) {
+      return raw.prepare(source).all(...(params as SQLInputValue[])) as T[];
     },
     async getFirstAsync<T>(source: string, ...params: SqlValue[]) {
       const row = raw.prepare(source).get(...(params as SQLInputValue[]));
@@ -29,4 +37,11 @@ export function createTestDatabase(): SqlDatabase & { raw: DatabaseSync } {
       }
     },
   };
+}
+
+/** A test database with every app migration applied. */
+export async function createMigratedTestDatabase(): Promise<ReturnType<typeof createTestDatabase>> {
+  const db = createTestDatabase();
+  await migrate(db, migrations);
+  return db;
 }
