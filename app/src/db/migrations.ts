@@ -197,10 +197,17 @@ CREATE TABLE app_state (
 INSERT INTO app_state (id) VALUES (1);
 `;
 
+/** The hunter's own name and initials (onboarding step "Enter your name"). */
+const myProfile = `
+ALTER TABLE app_state ADD COLUMN display_name TEXT;
+ALTER TABLE app_state ADD COLUMN initials TEXT;
+`;
+
 export const migrations: readonly Migration[] = [
   { version: 1, name: 'initial local schema', sql: initialSchema },
   { version: 2, name: 'map pack downloads', sql: mapPackDownloads },
   { version: 3, name: 'paired radio', sql: pairedRadio },
   { version: 4, name: 'harvest places', sql: harvestPlaces },
   { version: 5, name: 'app state', sql: appState },
+  { version: 6, name: 'my profile', sql: myProfile },
 ];
