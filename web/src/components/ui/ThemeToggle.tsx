@@ -1,8 +1,4 @@
-import {
-  THEME_PREFERENCE_LABELS,
-  THEME_PREFERENCES,
-  type ThemePreference,
-} from '@huntclub/design';
+import { THEME_PREFERENCE_LABELS, THEME_PREFERENCES, type ThemePreference } from '@huntclub/design';
 import { Monitor, Moon, Sun, type LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import { applyThemePreference, readThemePreference } from '../../theme/preference';
