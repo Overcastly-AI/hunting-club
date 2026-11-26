@@ -5,6 +5,8 @@ import type { FoundRadio } from '../radio/scan';
 
 export const RADIO_A = { nodeNum: 0x1a2b3c4d, longName: 'Jake radio', shortName: 'JK' };
 export const RADIO_B = { nodeNum: 0x0badf00d, longName: 'Sam radio', shortName: 'SM' };
+export const RADIO_C = { nodeNum: 0x0c0ffee0, longName: 'Cody radio', shortName: 'CH' };
+export const RADIO_D = { nodeNum: 0x0d00d1e5, longName: 'Dave radio', shortName: 'DR' };
 
 export const FOUND_RADIO: FoundRadio = {
   id: 'AA:BB:CC:DD:EE:FF',

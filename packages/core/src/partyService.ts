@@ -7,9 +7,10 @@
  *   (encodeJoinUrl / decodeJoinUrl; app and web forms).
  * - The 3-person cap is enforced by the app: the QR code is hidden when the
  *   party is full, and a phone that joins and finds 3 others already there
- *   refuses (leaves again) with PartyFullError. Existing members get an
- *   `overCapacity` event if a 4th radio is heard anyway (a soft limit:
- *   a stock Meshtastic client with the key can still listen).
+ *   refuses (leaves again) with PartyFullError. A radio heard on the channel
+ *   once the party is full is never a member: it goes on the `refused` list
+ *   and existing members get an `overCapacity` event (a soft limit: a stock
+ *   Meshtastic client with the key can still listen).
  * - The roster comes from live packets on the party channel (`heard`:
  *   node info, check-ins, positions, texts), not the radio's node DB, which
  *   may hold radios from before we joined.
@@ -65,13 +66,18 @@ export interface PartyView {
   id: string;
   role: StoredParty['role'];
   joinedAt: number;
-  /** Other members (not us). */
+  /** Other members (not us), never more than the cap allows. */
   members: PartyMemberView[];
   /** People in the party, including us. */
   size: number;
   /** No one else may join (size ≥ the cap): hide the QR code. */
   isFull: boolean;
-  /** More radios than the cap were heard on the channel. */
+  /**
+   * Radios heard on the party channel after it was full (this session).
+   * Not members: rosters and delivery counts leave them out.
+   */
+  refused: PartyMemberView[];
+  /** At least one radio was refused. */
   overCapacity: boolean;
 }
 
@@ -84,16 +90,31 @@ export interface PartyServiceEvents {
 export interface PartyServiceOptions {
   store: PartyStore;
   config?: Partial<CoreConfig['party']>;
-  /** Cap for this group; default FREE_PARTY_MAX_MEMBERS. */
+  /** Cap for this group; default FREE_PARTY_MAX_MEMBERS (ignored inside a club). */
   maxMembers?: number;
+  /**
+   * The club this hunter belongs to (its channels, from the Club QR code). Then a
+   * party is a SECONDARY channel next to the club's primary, which it never
+   * disturbs, and club parties have no size cap (spec "Free vs Club").
+   */
+  clubChannelSet?: ChannelSet;
 }
+
+/** Radio channel of a party inside a club (index 0 is the club's). */
+export const CLUB_PARTY_CHANNEL = 1;
 
 export class PartyService extends Emitter<PartyServiceEvents> {
   private readonly ctx: ResolvedContext;
   private readonly store: PartyStore;
   private readonly config: CoreConfig['party'];
-  private readonly maxMembers: number;
+  /** null = no cap (parties inside a club). */
+  private readonly maxMembers: number | null;
+  private readonly clubChannelSet: ChannelSet | undefined;
+  /** Where our party lives on the radio: primary, or the secondary next to the club's. */
+  private readonly partyChannel: number;
   private party: StoredParty | null = null;
+  /** Radios heard after the party was full; reset whenever the party changes. */
+  private refused: PartyMember[] = [];
   private readonly lastSaved = new Map<number, number>();
   private readonly offHeard: Unsubscribe;
   private busy = false;
@@ -103,7 +124,9 @@ export class PartyService extends Emitter<PartyServiceEvents> {
     this.ctx = resolveContext(ctx);
     this.store = opts.store;
     this.config = { ...CORE_CONFIG.party, ...opts.config };
-    this.maxMembers = opts.maxMembers ?? FREE_PARTY_MAX_MEMBERS;
+    this.clubChannelSet = opts.clubChannelSet;
+    this.maxMembers = this.clubChannelSet ? null : (opts.maxMembers ?? FREE_PARTY_MAX_MEMBERS);
+    this.partyChannel = this.clubChannelSet ? CLUB_PARTY_CHANNEL : 0;
     this.offHeard = this.ctx.client.on('heard', (e) => this.onHeard(e));
   }
 
@@ -115,6 +138,7 @@ export class PartyService extends Emitter<PartyServiceEvents> {
   /** Loads the saved party (app start). */
   async restore(): Promise<PartyView | null> {
     this.party = await this.store.load();
+    this.refused = [];
     this.emit('change', this.current);
     return this.current;
   }
@@ -140,7 +164,7 @@ export class PartyService extends Emitter<PartyServiceEvents> {
         joinLink: encodeJoinUrl({ channelSet, target: { kind: 'party', partyId: id } }),
         role: 'creator',
         joinedAt: this.ctx.now(),
-        channelIndex: 0,
+        channelIndex: this.partyChannel,
         members: [],
       });
     });
@@ -165,14 +189,18 @@ export class PartyService extends Emitter<PartyServiceEvents> {
         joinLink: encodeJoinUrl(parsed),
         role: 'member',
         joinedAt: this.ctx.now(),
-        channelIndex: 0,
+        channelIndex: this.partyChannel,
         members: [],
       });
       // Ask everyone on the channel to answer with their node info.
-      this.ctx.client.sendNodeInfo({ channel: 0, wantResponse: true });
+      this.ctx.client.sendNodeInfo({ channel: this.partyChannel, wantResponse: true });
       await this.sleep(this.config.discoveryMs);
       const party = this.party!;
-      if (party.members.length >= this.maxMembers) {
+      // Everyone we heard: once the party looked full to us, the rest were refused.
+      if (
+        this.maxMembers !== null &&
+        party.members.length + this.refused.length >= this.maxMembers
+      ) {
         await this.leaveNow();
         throw new PartyFullError(this.maxMembers);
       }
@@ -180,7 +208,10 @@ export class PartyService extends Emitter<PartyServiceEvents> {
     });
   }
 
-  /** Leaves the party: our radio moves to a fresh private channel and the saved party is cleared. */
+  /**
+   * Leaves the party and clears the saved party. Our radio moves to a fresh private
+   * channel, or, inside a club, keeps just the club's channel.
+   */
   async leave(): Promise<void> {
     return this.exclusive(() => this.leaveNow());
   }
@@ -193,16 +224,23 @@ export class PartyService extends Emitter<PartyServiceEvents> {
 
   private async leaveNow(): Promise<void> {
     if (!this.party) throw new PartyError('not-in-party', 'Not in a party');
-    const solo = generatePartyChannelSet({ random: this.ctx.random, name: SOLO_CHANNEL_NAME });
     this.party = null;
+    this.refused = [];
     this.lastSaved.clear();
     await this.store.clear();
     this.emit('change', null);
-    await this.provision(solo);
+    if (this.clubChannelSet) {
+      await this.provision(this.clubChannelSet, { alone: true });
+      return;
+    }
+    await this.provision(
+      generatePartyChannelSet({ random: this.ctx.random, name: SOLO_CHANNEL_NAME }),
+    );
   }
 
   private async enter(party: StoredParty): Promise<PartyView> {
     this.party = party;
+    this.refused = [];
     await this.store.save(party);
     this.emit('change', this.current);
     return this.view(party);
@@ -219,11 +257,22 @@ export class PartyService extends Emitter<PartyServiceEvents> {
       if (t - saved >= this.config.lastHeardSaveMs) this.persist(e.from, t);
       return;
     }
-    party.members.push({ node: e.from, firstHeard: t, lastHeard: t });
-    this.persist(e.from, t);
+    const refused = this.refused.find((m) => m.node === e.from);
+    if (refused) {
+      refused.lastHeard = t;
+      return;
+    }
+    const heard = { node: e.from, firstHeard: t, lastHeard: t };
+    if (canJoinParty(this.sizeOf(party), this.maxMembers)) {
+      party.members.push(heard);
+      this.persist(e.from, t);
+      this.emit('change', this.view(party));
+      return;
+    }
+    this.refused.push(heard);
     const view = this.view(party);
     this.emit('change', view);
-    if (view.overCapacity) this.emit('overCapacity', view);
+    this.emit('overCapacity', view);
   }
 
   private persist(node: number, t: number): void {
@@ -231,9 +280,11 @@ export class PartyService extends Emitter<PartyServiceEvents> {
     if (this.party) void this.store.save(this.party);
   }
 
-  private async provision(channelSet: ChannelSet): Promise<void> {
+  /** Party channels go on the radio (after the club's, in a club); `alone` writes just this set. */
+  private async provision(channelSet: ChannelSet, opts: { alone?: boolean } = {}): Promise<void> {
+    const under = opts.alone ? undefined : this.clubChannelSet;
     try {
-      await applyChannelSet(this.ctx.client, channelSet);
+      await applyChannelSet(this.ctx.client, channelSet, under ? { under } : {});
     } catch (error) {
       if (error instanceof ChannelApplyError) throw new PartyError(error.code, error.message);
       throw error;
@@ -242,17 +293,19 @@ export class PartyService extends Emitter<PartyServiceEvents> {
 
   private view(p: StoredParty): PartyView {
     const size = this.sizeOf(p);
+    const named = (m: PartyMember): PartyMemberView => {
+      const name = this.ctx.client.nodes.get(m.node)?.user?.longName;
+      return name ? { ...m, name } : { ...m };
+    };
     return {
       id: p.id,
       role: p.role,
       joinedAt: p.joinedAt,
-      members: p.members.map((m) => {
-        const name = this.ctx.client.nodes.get(m.node)?.user?.longName;
-        return name ? { ...m, name } : { ...m };
-      }),
+      members: p.members.map(named),
       size,
       isFull: !canJoinParty(size, this.maxMembers),
-      overCapacity: size > this.maxMembers,
+      refused: this.refused.map(named),
+      overCapacity: this.refused.length > 0,
     };
   }
 
