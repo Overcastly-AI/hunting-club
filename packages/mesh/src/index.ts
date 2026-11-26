@@ -5,6 +5,7 @@ export * from './codec/appPort';
 export * from './codec/channelUrl';
 export * from './codec/base64url';
 export * from './provisioning';
+export * from './owner';
 export * from './domain';
 export * from './ble';
 export { DedupCache, packetKey } from './dedup';

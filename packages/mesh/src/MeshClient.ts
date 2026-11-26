@@ -41,6 +41,7 @@ import { defaultRandom, randomUint32, type RandomSource } from './random';
 import { decodeUtf8, defaultTimers, encodeUtf8, type TimerHandle, type Timers } from './runtime';
 import type { LinkStatus, Transport, Unsubscribe } from './transport';
 import { buildProvisioningMessages, type ProvisioningPlan } from './provisioning';
+import { buildSetOwnerMessage, type Owner } from './owner';
 
 export type ClientState = 'disconnected' | 'connecting' | 'configuring' | 'ready';
 
@@ -347,6 +348,11 @@ export class MeshClient extends Emitter<MeshClientEvents> {
       // The radio answers an admin request with a Routing reply; wait for it like an ack.
       awaitRouting: true,
     });
+  }
+
+  /** Writes our name and initials to our radio (see owner.ts; validate first). */
+  setOwner(owner: Owner): SendHandle {
+    return this.sendAdmin(buildSetOwnerMessage(owner));
   }
 
   /**
