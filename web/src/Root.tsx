@@ -1,12 +1,11 @@
-import { ADMIN_PATH, CHECKOUT_RETURN_PATHS, JOIN_PATH } from '@huntclub/shared';
+import { ADMIN_PATH, CHECKOUT_RETURN_PATHS } from '@huntclub/shared';
 import { lazy, Suspense, type ReactNode } from 'react';
 import type { WebClubServices } from './cloud';
 import { Loading } from './components/Loading';
 
-// Each entry path loads only its own code: the join page doesn't pull in the admin,
+// Each entry path loads only its own code: the Checkout pages don't pull in the admin,
 // and the admin doesn't pull in the mesh codec until an invite is made.
 const App = lazy(() => import('./App').then((m) => ({ default: m.App })));
-const Join = lazy(() => import('./pages/Join').then((m) => ({ default: m.Join })));
 const NotFound = lazy(() => import('./pages/NotFound').then((m) => ({ default: m.NotFound })));
 const CheckoutReturn = lazy(() =>
   import('./pages/CheckoutReturn').then((m) => ({ default: m.CheckoutReturn })),
@@ -20,12 +19,6 @@ const CheckoutReturn = lazy(() =>
 export function Root(props: WebClubServices & { location: Pick<Location, 'pathname' | 'href'> }) {
   const { location, ...services } = props;
   const path = location.pathname.length > 1 ? location.pathname.replace(/\/+$/, '') : '/';
-  if (path === JOIN_PATH)
-    return (
-      <Page>
-        <Join href={location.href} />
-      </Page>
-    );
   if (path === CHECKOUT_RETURN_PATHS.success)
     return (
       <Page>

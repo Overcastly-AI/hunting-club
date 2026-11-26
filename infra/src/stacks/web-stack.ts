@@ -8,6 +8,7 @@ import * as targets from 'aws-cdk-lib/aws-route53-targets';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import type { Construct } from 'constructs';
+import { JOIN_PATH } from '@huntclub/shared/app';
 import { MAP_PACKS_PREFIX } from '@huntclub/shared/maps';
 import type { EnvConfig } from '../../config';
 import { LOG_RETENTION } from '../constructs/node-lambda';
@@ -65,22 +66,42 @@ export class WebStack extends Stack {
       code: cloudfront.FunctionCode.fromInline(webPageRewriteSource()),
     });
 
-    // The managed SECURITY_HEADERS values, plus X-Robots-Tag where search engines must stay out.
-    const headers = new cloudfront.ResponseHeadersPolicy(this, 'Headers', {
-      comment: `${config.domainName} security headers`,
-      securityHeadersBehavior: {
-        contentTypeOptions: { override: true },
-        frameOptions: { frameOption: cloudfront.HeadersFrameOption.SAMEORIGIN, override: true },
-        referrerPolicy: {
-          referrerPolicy: cloudfront.HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
-          override: true,
+    // The managed SECURITY_HEADERS values, plus X-Robots-Tag where search engines must stay
+    // out. /join sends no referrer at all: its URL holds an invite (in the fragment, which
+    // browsers never send, but no page there should leak even its path).
+    const headersPolicy = (id: string, referrerPolicy: cloudfront.HeadersReferrerPolicy) =>
+      new cloudfront.ResponseHeadersPolicy(this, id, {
+        comment: `${config.domainName} security headers, referrer ${referrerPolicy}`,
+        securityHeadersBehavior: {
+          contentTypeOptions: { override: true },
+          frameOptions: { frameOption: cloudfront.HeadersFrameOption.SAMEORIGIN, override: true },
+          referrerPolicy: { referrerPolicy, override: true },
+          strictTransportSecurity: { accessControlMaxAge: Duration.days(365), override: true },
+          xssProtection: { protection: true, modeBlock: true, override: true },
         },
-        strictTransportSecurity: { accessControlMaxAge: Duration.days(365), override: true },
-        xssProtection: { protection: true, modeBlock: true, override: true },
-      },
-      ...(config.searchIndexing
-        ? {}
-        : { customHeadersBehavior: { customHeaders: [{ ...NOINDEX_HEADER, override: true }] } }),
+        ...(config.searchIndexing
+          ? {}
+          : { customHeadersBehavior: { customHeaders: [{ ...NOINDEX_HEADER, override: true }] } }),
+      });
+    const headers = headersPolicy(
+      'Headers',
+      cloudfront.HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
+    );
+    const joinHeaders = headersPolicy('JoinHeaders', cloudfront.HeadersReferrerPolicy.NO_REFERRER);
+
+    // LIST lets S3 answer a missing file with 404 instead of 403. Listing itself is
+    // unreachable: `/` is the default root object and query strings are not forwarded.
+    const origin = origins.S3BucketOrigin.withOriginAccessControl(this.bucket, {
+      originAccessLevels: [cloudfront.AccessLevel.READ, cloudfront.AccessLevel.LIST],
+    });
+    const behavior = (responseHeadersPolicy: cloudfront.IResponseHeadersPolicy) => ({
+      origin,
+      viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+      cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+      responseHeadersPolicy,
+      functionAssociations: [
+        { function: webPages, eventType: cloudfront.FunctionEventType.VIEWER_REQUEST },
+      ],
     });
 
     this.distribution = new cloudfront.Distribution(this, 'Distribution', {
@@ -92,19 +113,11 @@ export class WebStack extends Stack {
       httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
       // North America and Europe edges only: the cheapest price class.
       priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
-      defaultBehavior: {
-        // LIST lets S3 answer a missing file with 404 instead of 403. Listing itself is
-        // unreachable: `/` is the default root object and query strings are not forwarded.
-        origin: origins.S3BucketOrigin.withOriginAccessControl(this.bucket, {
-          originAccessLevels: [cloudfront.AccessLevel.READ, cloudfront.AccessLevel.LIST],
-        }),
-        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
-        responseHeadersPolicy: headers,
-        functionAssociations: [
-          { function: webPages, eventType: cloudfront.FunctionEventType.VIEWER_REQUEST },
-        ],
-      },
+      defaultBehavior: behavior(headers),
+      // The invite page, and its trailing-slash form (which the function redirects).
+      additionalBehaviors: Object.fromEntries(
+        [JOIN_PATH, `${JOIN_PATH}/*`].map((pattern) => [pattern, behavior(joinHeaders)]),
+      ),
       // A missing file (S3 404, or 403 if listing were ever denied) is the branded 404 page,
       // with a real 404 status: no soft 404s.
       errorResponses: [404, 403].map((httpStatus) => ({

@@ -6,7 +6,7 @@ import {
   LEGAL_PATHS,
 } from '@huntclub/shared/app';
 import { MAP_PACKS_PREFIX } from '@huntclub/shared/maps';
-import { NOINDEX_PATHS, outputFile, REDIRECTS, ROUTES } from '@huntclub/site/routes';
+import { JOIN_PAGE, NOINDEX_PATHS, outputFile, REDIRECTS, ROUTES } from '@huntclub/site/routes';
 import {
   ADMIN_PAGE_OBJECT,
   robotsTxt,
@@ -51,10 +51,14 @@ describe('site and admin routing (CloudFront Function)', () => {
     expect(servedAs(BUILD_VERSION_URL)).toBe(BUILD_VERSION_URL);
   });
 
-  it('serves the admin for /join and the Checkout return pages', () => {
-    for (const uri of [JOIN_PATH, ...Object.values(CHECKOUT_RETURN_PATHS)]) {
+  it('serves the admin for the Checkout return pages', () => {
+    for (const uri of Object.values(CHECKOUT_RETURN_PATHS)) {
       expect(servedAs(uri)).toBe(ADMIN_PAGE_OBJECT);
     }
+  });
+
+  it('serves the static invite page for /join', () => {
+    expect(servedAs(JOIN_PATH)).toBe(`/${JOIN_PAGE.file}`);
   });
 
   it('serves Privacy and Terms from the public site, at the paths the stores link to', () => {

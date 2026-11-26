@@ -1,8 +1,9 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ReactNode } from 'react';
 import { PAGE_CONTENT } from './pages';
+import { Join } from './pages/Join';
 import { NotFound } from './pages/NotFound';
-import { HASH_FORWARD_SCRIPT, NOT_FOUND_PAGE, ROUTES, type SitePath } from './routes';
+import { HASH_FORWARD_SCRIPT, JOIN_PAGE, NOT_FOUND_PAGE, ROUTES, type SitePath } from './routes';
 import { Document, type PageAssets, type PageMeta } from './Shell';
 
 const html = (meta: PageMeta, assets: PageAssets, content: ReactNode) =>
@@ -23,4 +24,10 @@ export function renderPage(path: SitePath, assets: PageAssets): string {
 /** The branded 404 page (noindex, no canonical). */
 export function renderNotFound(assets: PageAssets): string {
   return html(NOT_FOUND_PAGE, assets, <NotFound />);
+}
+
+/** The /join invite page, with its self-hosted script (noindex, no canonical, no referrer). */
+export function renderJoin(assets: PageAssets, scriptSrc: string): string {
+  const { title, description } = JOIN_PAGE;
+  return html({ title, description, scriptSrc, noReferrer: true }, assets, <Join />);
 }

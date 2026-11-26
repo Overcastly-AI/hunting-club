@@ -14,6 +14,7 @@ import {
 import type { CloudEnvironment } from '@huntclub/shared/cloud';
 import {
   canonicalUrl,
+  JOIN_PAGE,
   NOT_FOUND_PAGE,
   REDIRECTS,
   ROUTES,
@@ -145,6 +146,21 @@ export async function runSmoke(config: EnvConfig, fetch: SmokeFetch): Promise<Sm
       return 'GET → 200, its title and one <h1>';
     });
   }
+
+  await check(`invite page ${JOIN_PAGE.path} is served noindex with no referrer`, async () => {
+    const res = await fetch(`${site}${JOIN_PAGE.path}`);
+    const body = await res.text();
+    const referrer = res.headers.get('referrer-policy');
+    expect(res.status === 200, `GET → ${res.status}`);
+    expect(body.includes(`<title>${JOIN_PAGE.title}</title>`), 'not the invite page');
+    expect(body.includes('<meta name="robots" content="noindex"/>'), 'no noindex meta');
+    expect(referrer === 'no-referrer', `referrer-policy is ${referrer ?? 'missing'}`);
+    const script = /<script type="module" src="(\/assets\/[^"]+\.js)">/.exec(body)?.[1];
+    expect(Boolean(script), 'no self-hosted script');
+    const js = await fetch(`${site}${script}`);
+    expect(js.status === 200, `GET ${script} → ${js.status}`);
+    return `GET → 200, noindex, no-referrer, ${script} → 200`;
+  });
 
   // Club admin (ADMIN_PATH) and the real paths it still answers --------------------------
   let admin = '';
