@@ -2,7 +2,8 @@ import { AppMessageType, CheckInMode, Protobufs, type MeshClient } from '@huntcl
 import { collect, tick } from '@huntclub/mesh/testing';
 import { HelpRequester, helpRetryDelay } from '../help';
 import { CORE_CONFIG } from '../config';
-import { HOME, HOUR, MIN, T0, onAir, party, type Phone } from '../testing/party';
+import { HOUR_MS, MINUTE_MS } from '../config';
+import { HOME, T0, onAir, party, type Phone } from '../testing/party';
 
 beforeEach(() => jest.useFakeTimers({ now: T0 }));
 afterEach(() => jest.useRealTimers());
@@ -32,7 +33,7 @@ describe('Ask for a Hand', () => {
     const states = collect(help, 'change');
     const first = help.ask();
 
-    await tick(3 * MIN);
+    await tick(3 * MINUTE_MS);
     const sentSoFar = onAir(air, AppMessageType.HelpRequest);
     expect(sentSoFar.length).toBeGreaterThanOrEqual(3);
     expect(new Set(sentSoFar.map((m) => m.id))).toEqual(new Set([first.id]));
@@ -43,14 +44,14 @@ describe('Ask for a Hand', () => {
 
     // Bob's app comes back and answers the next retry.
     bob!.receipts.start();
-    await tick(5 * MIN);
+    await tick(5 * MINUTE_MS);
     expect(help.current).toMatchObject({
       status: 'acknowledged',
       acknowledgedBy: [bob!.client.myNodeNum],
     });
     const copiesWhenAcked = onAir(air, AppMessageType.HelpRequest).length;
 
-    await tick(2 * HOUR);
+    await tick(2 * HOUR_MS);
     expect(onAir(air, AppMessageType.HelpRequest)).toHaveLength(copiesWhenAcked);
     expect(states.at(-1)!.status).toBe('acknowledged');
   });
@@ -70,7 +71,7 @@ describe('Ask for a Hand', () => {
     phones[1]!.receipts.stop();
     const help = requester(phones[0]!);
     help.ask();
-    await tick(3 * HOUR);
+    await tick(3 * HOUR_MS);
     const copies = onAir(air, AppMessageType.HelpRequest).length;
     expect(help.current!.status).toBe('sending');
     // 3 h at ≤ 6 min (5 min + 20% jitter) apart, after the first few short gaps.
@@ -84,10 +85,10 @@ describe('Ask for a Hand', () => {
     const help = requester(phones[0]!);
     const a = help.ask();
     expect(help.ask().id).toBe(a.id); // idempotent while active
-    await tick(MIN);
+    await tick(MINUTE_MS);
     help.cancel();
     const n = onAir(air, AppMessageType.HelpRequest).length;
-    await tick(HOUR);
+    await tick(HOUR_MS);
     expect(onAir(air, AppMessageType.HelpRequest)).toHaveLength(n);
     expect(help.current!.status).toBe('cancelled');
     expect(help.ask().id).not.toBe(a.id);
@@ -126,7 +127,7 @@ describe('Ask for a Hand', () => {
     alice.radio.dropLink();
     const help = requester(alice);
     help.ask();
-    await tick(HOUR);
+    await tick(HOUR_MS);
     expect(alice.client.pendingCount).toBe(1);
     expect(help.current!.attempts).toBe(1);
     // Link back: the queued copy goes out and the party answers.
@@ -153,7 +154,7 @@ describe('Ask for a Hand', () => {
     };
     const help = requester(alice);
     help.ask();
-    await tick(30 * MIN);
+    await tick(30 * MINUTE_MS);
     const gaps = sendTimes.slice(1).map((t, i) => t - sendTimes[i]!);
     // Normal schedule would be ~20, 40, 80 s...; with the penalty each gap is
     // at least double the normal one (minus jitter).

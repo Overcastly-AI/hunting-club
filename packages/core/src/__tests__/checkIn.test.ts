@@ -2,7 +2,8 @@ import { AppMessageType, CheckInMode, type MeshClient } from '@huntclub/mesh';
 import { collect, tick } from '@huntclub/mesh/testing';
 import { CheckInController, CheckInError } from '../checkIn';
 import { CORE_CONFIG } from '../config';
-import { HOME, HOUR, MIN, T0, onAir, party } from '../testing/party';
+import { HOUR_MS, MINUTE_MS } from '../config';
+import { HOME, T0, onAir, party } from '../testing/party';
 
 beforeEach(() => jest.useFakeTimers({ now: T0 }));
 afterEach(() => jest.useRealTimers());
@@ -39,7 +40,7 @@ describe('check-in', () => {
     const { phones, air } = await party();
     const [alice, bob] = phones;
     alice!.checkIns.checkIn({ mode: CheckInMode.Spot, pin: HOME });
-    await tick(30 * MIN);
+    await tick(30 * MINUTE_MS);
     const first = alice!.checkIns.current!;
     alice!.checkIns.checkIn({ mode: CheckInMode.Moving });
     await tick(1000);
@@ -47,7 +48,7 @@ describe('check-in', () => {
     const now = alice!.checkIns.current!;
     expect(now.placement.mode).toBe(CheckInMode.Moving);
     expect(now.checkedInAt).toBe(T0);
-    expect(now.modeSince).toBe(T0 + 30 * MIN);
+    expect(now.modeSince).toBe(T0 + 30 * MINUTE_MS);
     expect(now.messageId).not.toBe(first.messageId);
     expect(bob!.board.get(alice!.client.myNodeNum)).toMatchObject({
       mode: CheckInMode.Moving,
@@ -70,10 +71,10 @@ describe('check-in', () => {
     const [alice, bob] = phones;
     expect(() => alice!.checkIns.extend()).toThrow('Not checked in');
     alice!.checkIns.checkIn({ mode: CheckInMode.Spot, pin: HOME });
-    await tick(HOUR);
+    await tick(HOUR_MS);
     alice!.checkIns.extend();
     await tick(1000);
-    const expected = T0 + HOUR + CORE_CONFIG.overdue.extendMinutes * MIN;
+    const expected = T0 + HOUR_MS + CORE_CONFIG.overdue.extendMinutes * MINUTE_MS;
     expect(alice!.checkIns.current).toMatchObject({
       checkedInAt: T0,
       modeSince: T0,
@@ -136,7 +137,7 @@ describe('check-in', () => {
     alice!.checkIns.checkIn({ mode: CheckInMode.Moving });
     await tick(1000);
     // Alice's CheckOut never reached Bob; the next morning she checks in again.
-    const next = T0 + CORE_CONFIG.checkIn.sameOutingMs + HOUR;
+    const next = T0 + CORE_CONFIG.checkIn.sameOutingMs + HOUR_MS;
     jest.setSystemTime(next);
     alice!.checkIns.checkIn({ mode: CheckInMode.Moving });
     await tick(1000);

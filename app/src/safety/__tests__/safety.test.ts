@@ -6,6 +6,7 @@ import type {
   OverdueEvents,
   OverdueMonitor,
 } from '@huntclub/core';
+import { MINUTE_MS } from '@huntclub/core';
 import {
   AppMessageType,
   CheckInMode,
@@ -17,7 +18,7 @@ import {
 import { readFileSync } from 'node:fs';
 import { relative } from 'node:path';
 
-import { MINUTES, NOW } from '../../test-utils/mapFixtures';
+import { NOW } from '../../test-utils/mapFixtures';
 import { SRC, sourceFiles } from '../../test-utils/sourceFiles';
 import type { MapNode } from '../../map/meshMapData';
 import { ALERT_PIN_TTL_MS, createAlertStore, nextUnseen } from '../alerts';
@@ -104,7 +105,7 @@ describe('safety wording', () => {
 
   it('asks "Still out?" with the time the alert would go out', () => {
     const alertAt = new Date(2026, 10, 30, 17, 26).getTime();
-    expect(selfPromptText({ overdueAt: alertAt - 10 * MINUTES, alertAt }, 30, 'party')).toBe(
+    expect(selfPromptText({ overdueAt: alertAt - 10 * MINUTE_MS, alertAt }, 30, 'party')).toBe(
       'It’s 30 minutes past sunset. If you don’t answer by 5:26 PM, your party gets an overdue alert.',
     );
   });

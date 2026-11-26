@@ -2,7 +2,8 @@ import { AppMessageType, CheckInMode } from '@huntclub/mesh';
 import { collect, tick } from '@huntclub/mesh/testing';
 import { DeliveryTracker } from '../receipts';
 import { CORE_CONFIG } from '../config';
-import { MIN, T0, onAir, party } from '../testing/party';
+import { MINUTE_MS } from '../config';
+import { T0, onAir, party } from '../testing/party';
 
 beforeEach(() => jest.useFakeTimers({ now: T0 }));
 afterEach(() => jest.useRealTimers());
@@ -114,7 +115,7 @@ describe('receipts', () => {
 
     bob!.receipts.stop();
     alice!.client.sendText('b');
-    await tick(10 * MIN);
+    await tick(10 * MINUTE_MS);
     expect(bob!.receipts.sent).toBe(1);
     tracker.dispose();
   });

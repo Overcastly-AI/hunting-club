@@ -3,6 +3,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 
+import { saveProfile } from '../../db/appState';
 import { migrate } from '../../db/migrate';
 import { migrations } from '../../db/migrations';
 import { createTestDatabase } from '../../test-utils/nodeSqlite';
@@ -70,6 +71,14 @@ it('joins from a Club QR code with a name and initials', async () => {
   );
   expect(row?.pending_initials).toBe('MX');
   expect(api.redeemInvite).not.toHaveBeenCalled();
+});
+
+it('prefills the join form with the name from onboarding', async () => {
+  const { db, wrap } = await setup({ session: fakeSession(false), api: fakeClubApi() });
+  await saveProfile(db, { displayName: 'Maxine', initials: 'MX' });
+  await render(wrap(<JoinClubScreen url={clubJoinUrl()} onDone={jest.fn()} />));
+  expect(await screen.findByDisplayValue('Maxine')).toBeTruthy();
+  expect(screen.getByDisplayValue('MX')).toBeTruthy();
 });
 
 it('sends party QR codes and other links elsewhere', async () => {

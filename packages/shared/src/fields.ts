@@ -37,7 +37,13 @@ export const polygonSchema = z.looseObject({
 });
 export type Polygon = z.infer<typeof polygonSchema>;
 
-export const initialsSchema = z.string().regex(/^[\p{L}\p{N}]{1,3}$/u);
+/** Initials shown on map markers, e.g. "JK". */
+export const INITIALS_MAX = 3;
+export const initialsSchema = z
+  .string()
+  .regex(new RegExp(`^[\\p{L}\\p{N}]{1,${INITIALS_MAX}}$`, 'u'));
+/** A member's display name, e.g. "Jake Smith". */
+export const DISPLAY_NAME_MAX = 40;
 /** Meshtastic LoRa region code, e.g. 'US'. */
 export const regionSchema = z.string().regex(/^[A-Z0-9_]{2,12}$/);
 export const planIdSchema = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/);

@@ -23,7 +23,7 @@ import {
   type CoreContext,
   type ResolvedContext,
 } from './context';
-import { CORE_CONFIG, type CoreConfig } from './config';
+import { CORE_CONFIG, HOUR_MS, type CoreConfig } from './config';
 
 /** Calls `cb` for every Receipt from another node (first copies and repeats). */
 export function onReceipt(client: MeshClient, cb: (receipt: Receipt) => void): Unsubscribe {
@@ -131,7 +131,7 @@ export class ReceiptService {
   }
 
   private pruneAnswered(t: number): void {
-    const horizon = Math.max(this.policy.repeatMinMs, 3_600_000);
+    const horizon = Math.max(this.policy.repeatMinMs, HOUR_MS);
     for (const [k, at] of this.answered) {
       if (t - at < horizon) break;
       this.answered.delete(k);

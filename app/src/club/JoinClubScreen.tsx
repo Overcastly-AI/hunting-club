@@ -1,5 +1,5 @@
 import { ChannelUrlError, decodeJoinUrl } from '@huntclub/mesh';
-import { MemberJoinSchema } from '@huntclub/shared';
+import { type MemberJoin, MemberJoinSchema } from '@huntclub/shared';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
@@ -27,13 +27,11 @@ function linkKind(url: string | null): 'club' | 'party' | 'bad' {
 
 /** Opened by a Club QR code (huntclub://join?…&club=…&invite=…). Works offline. */
 export function JoinClubScreen({ url, onDone }: { url: string | null; onDone: () => void }) {
-  const { join, signedIn, cloudAvailable } = useClub();
-  const [displayName, setDisplayName] = useState('');
-  const [initials, setInitials] = useState('');
+  const { join, signedIn, cloudAvailable, myProfile } = useClub();
   const [joined, setJoined] = useState(false);
   const kind = linkKind(url);
 
-  if (kind !== 'club') {
+  if (kind !== 'club' || !url) {
     return (
       <Screen title={copy.title}>
         <Text style={styles.body}>{kind === 'party' ? copy.notClub : copy.badLink}</Text>
@@ -42,7 +40,6 @@ export function JoinClubScreen({ url, onDone }: { url: string | null; onDone: ()
     );
   }
 
-  const profile = MemberJoinSchema.safeParse({ displayName, initials: initials.toUpperCase() });
   if (joined) {
     return (
       <Screen title={copy.title}>
@@ -59,6 +56,27 @@ export function JoinClubScreen({ url, onDone }: { url: string | null; onDone: ()
     );
   }
 
+  // Remount when the onboarding profile arrives so it prefills the fields.
+  return (
+    <JoinForm
+      key={myProfile ? 'profile' : 'empty'}
+      initial={myProfile}
+      onJoin={(profile) => void join(url, profile).then(() => setJoined(true))}
+    />
+  );
+}
+
+/** Name and initials for the club roster (prefilled from onboarding). */
+function JoinForm({
+  initial,
+  onJoin,
+}: {
+  initial: MemberJoin | null;
+  onJoin: (profile: MemberJoin) => void;
+}) {
+  const [displayName, setDisplayName] = useState(initial?.displayName ?? '');
+  const [initials, setInitials] = useState(initial?.initials ?? '');
+  const profile = MemberJoinSchema.safeParse({ displayName, initials: initials.toUpperCase() });
   return (
     <Screen title={copy.title} description={copy.intro}>
       <TextField
@@ -78,10 +96,7 @@ export function JoinClubScreen({ url, onDone }: { url: string | null; onDone: ()
         variant="primary"
         label={copy.join}
         disabled={!profile.success}
-        onPress={() => {
-          if (!profile.success || !url) return;
-          void join(url, profile.data).then(() => setJoined(true));
-        }}
+        onPress={() => profile.success && onJoin(profile.data)}
       />
     </Screen>
   );

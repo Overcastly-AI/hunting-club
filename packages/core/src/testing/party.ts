@@ -97,8 +97,6 @@ export async function party(
 
 /** Start time used by tests: 2026-11-26 14:00 UTC (sunset in fixedSun() is 23:00 UTC). */
 export const T0 = Date.UTC(2026, 10, 26, 14);
-export const MIN = 60_000;
-export const HOUR = 60 * MIN;
 
 /** App messages of one type that went over the air, decoded, in order. */
 export function onAir<T extends AppMessageType>(

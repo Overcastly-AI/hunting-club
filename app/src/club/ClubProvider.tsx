@@ -15,6 +15,7 @@ import {
   useState,
 } from 'react';
 
+import { type MyProfile, loadProfile } from '../db/appState';
 import type { SqlDatabase } from '../db/types';
 import { ClubEntitlementContext, entitlementOf } from './entitlement';
 import type { ClubSession } from './session';
@@ -26,6 +27,8 @@ export type ClubServices = { session: ClubSession; api: ClubApiClient | undefine
 export type ClubState = {
   clubs: LocalClub[];
   signedIn: boolean;
+  /** The hunter's own name and initials from onboarding (prefills joining a club). */
+  myProfile: MyProfile | null;
   /** False until the club API is deployed and configured. */
   cloudAvailable: boolean;
   session: ClubSession;
@@ -77,13 +80,17 @@ export function ClubStateProvider({
   const { session, api } = services;
   const [clubs, setClubs] = useState<LocalClub[]>([]);
   const [signedIn, setSignedIn] = useState(false);
+  const [myProfile, setMyProfile] = useState<MyProfile | null>(null);
 
   const reload = useCallback(
     () =>
-      Promise.all([loadClubs(db), session.isSignedIn()]).then(([loaded, isSignedIn]) => {
-        setClubs(loaded);
-        setSignedIn(isSignedIn);
-      }),
+      Promise.all([loadClubs(db), session.isSignedIn(), loadProfile(db)]).then(
+        ([loaded, isSignedIn, profile]) => {
+          setClubs(loaded);
+          setSignedIn(isSignedIn);
+          setMyProfile(profile);
+        },
+      ),
     [db, session],
   );
 
@@ -110,8 +117,17 @@ export function ClubStateProvider({
   }, [reload, sync]);
 
   const state = useMemo<ClubState>(
-    () => ({ clubs, signedIn, cloudAvailable: api !== undefined, session, join, sync, reload }),
-    [api, clubs, join, reload, session, signedIn, sync],
+    () => ({
+      clubs,
+      signedIn,
+      myProfile,
+      cloudAvailable: api !== undefined,
+      session,
+      join,
+      sync,
+      reload,
+    }),
+    [api, clubs, join, myProfile, reload, session, signedIn, sync],
   );
   const firstPaid = clubs.map(entitlementOf).find((e) => e !== null) ?? null;
 

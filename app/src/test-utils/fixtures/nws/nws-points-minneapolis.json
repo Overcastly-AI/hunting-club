@@ -1,0 +1,63 @@
+{
+  "id": "https://api.weather.gov/points/44.9778,-93.265",
+  "type": "Feature",
+  "geometry": {
+    "type": "Point",
+    "coordinates": [-93.265, 44.9778]
+  },
+  "properties": {
+    "@id": "https://api.weather.gov/points/44.9778,-93.265",
+    "@type": "wx:Point",
+    "cwa": "MPX",
+    "type": "land",
+    "forecastOffice": "https://api.weather.gov/offices/MPX",
+    "gridId": "MPX",
+    "gridX": 108,
+    "gridY": 72,
+    "forecast": "https://api.weather.gov/gridpoints/MPX/108,72/forecast",
+    "forecastHourly": "https://api.weather.gov/gridpoints/MPX/108,72/forecast/hourly",
+    "forecastGridData": "https://api.weather.gov/gridpoints/MPX/108,72",
+    "observationStations": "https://api.weather.gov/gridpoints/MPX/108,72/stations",
+    "relativeLocation": {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-93.2683198, 44.9633242]
+      },
+      "properties": {
+        "city": "Minneapolis",
+        "state": "MN",
+        "distance": {
+          "unitCode": "wmoUnit:m",
+          "value": 0
+        },
+        "bearing": {
+          "unitCode": "wmoUnit:degree_(angle)",
+          "value": 0
+        }
+      }
+    },
+    "forecastZone": "https://api.weather.gov/zones/forecast/MNZ060",
+    "county": "https://api.weather.gov/zones/county/MNC053",
+    "fireWeatherZone": "https://api.weather.gov/zones/fire/MNZ060",
+    "timeZone": "America/Chicago",
+    "radarStation": "KMPX",
+    "astronomicalData": {
+      "sunrise": "2026-11-26T07:25:15-06:00",
+      "sunset": "2026-11-26T16:35:35-06:00",
+      "transit": "2026-11-26T12:00:25-06:00",
+      "civilTwilightBegin": "2026-11-26T06:52:40-06:00",
+      "civilTwilightEnd": "2026-11-26T17:08:10-06:00",
+      "nauticalTwilightBegin": "2026-11-26T06:16:20-06:00",
+      "nauticalTwilightEnd": "2026-11-26T17:44:30-06:00",
+      "astronomicalTwilightBegin": "2026-11-26T05:41:13-06:00",
+      "astronomicalTwilightEnd": "2026-11-26T18:19:38-06:00"
+    },
+    "nwr": {
+      "transmitter": "KEC65",
+      "sameCode": "027053",
+      "areaBroadcast": "https://api.weather.gov/radio/KEC65/broadcast",
+      "pointBroadcast": "https://api.weather.gov/points/44.9778,-93.265/radio"
+    }
+  }
+}

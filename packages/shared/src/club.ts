@@ -18,6 +18,7 @@ import {
   channelKeySchema,
   hasLatLonPair,
   idSchema,
+  DISPLAY_NAME_MAX,
   initialsSchema,
   inviteTokenSchema,
   latitudeSchema,
@@ -94,7 +95,7 @@ export type ClubSecret = z.infer<typeof ClubSecretSchema>;
 // Members ------------------------------------------------------------------------
 
 const memberProfile = {
-  displayName: trimmedText(40),
+  displayName: trimmedText(DISPLAY_NAME_MAX),
   initials: initialsSchema,
   /** Meshtastic node number of the member's radio. */
   nodeId: uint32Schema.optional(),

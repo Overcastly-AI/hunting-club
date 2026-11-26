@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, opacity, radii, sizes, spacing, textStyles } from '../../theme';
 import type { LatLon } from '@huntclub/mesh';
+import type { WeatherDisplay } from '../../weather/display';
 import { ConditionsPanel } from './ConditionsPanel';
 
 type Props = {
@@ -10,10 +11,11 @@ type Props = {
   onGroupPress: () => void;
   conditionsPlace: LatLon | null;
   now: number;
+  weather: WeatherDisplay;
 };
 
 /** Party or club button beside the conditions panel. */
-export function TopBar({ groupLabel, onGroupPress, conditionsPlace, now }: Props) {
+export function TopBar({ groupLabel, onGroupPress, conditionsPlace, now, weather }: Props) {
   return (
     <View style={styles.bar}>
       <Pressable
@@ -27,7 +29,7 @@ export function TopBar({ groupLabel, onGroupPress, conditionsPlace, now }: Props
           {groupLabel}
         </Text>
       </Pressable>
-      <ConditionsPanel place={conditionsPlace} now={now} />
+      <ConditionsPanel place={conditionsPlace} now={now} weather={weather} />
     </View>
   );
 }
