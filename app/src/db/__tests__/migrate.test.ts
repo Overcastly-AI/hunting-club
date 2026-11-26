@@ -4,6 +4,7 @@ import { migrations } from '../migrations';
 import type { Migration } from '../types';
 
 const EXPECTED_TABLES = [
+  'app_state',
   'areas',
   'check_ins',
   'groups',

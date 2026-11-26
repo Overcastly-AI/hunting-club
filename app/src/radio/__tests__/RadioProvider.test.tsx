@@ -2,28 +2,23 @@ import { MeshClient } from '@huntclub/mesh';
 import { FakeAir, FakeRadio, seededRandom } from '@huntclub/mesh/testing';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
-import { backgroundSpy, memoryStore, RADIO_A, RADIO_B } from '../../test-utils/radioFixtures';
+import { RADIO_A, RADIO_B } from '../../test-utils/radioFixtures';
+import { renderWithRadio } from '../../test-utils/renderWithRadio';
 import { radioCopy } from '../copy';
-import { RadioProvider, useRadio } from '../RadioProvider';
+import { useRadio } from '../RadioProvider';
 import { RadioStatus } from '../ui/RadioStatus';
 import { RadioTestPanel } from '../ui/RadioTestPanel';
 
 const REMEMBERED = { peripheralId: 'AA:BB:CC:DD:EE:FF', name: 'Meshtastic 3c4d', pairedAt: 1 };
 
-async function renderPhone(radio: FakeRadio, store = memoryStore(REMEMBERED)) {
-  const background = backgroundSpy();
-  await render(
-    <RadioProvider
-      store={store}
-      background={background}
-      createTransport={() => radio}
-      clientOptions={{ random: seededRandom(1), pacingMs: 0 }}
-    >
+function renderPhone(radio: FakeRadio, remembered: typeof REMEMBERED | null = REMEMBERED) {
+  return renderWithRadio(
+    <>
       <RadioStatus />
       <RadioTestPanel />
-    </RadioProvider>,
+    </>,
+    { radio, remembered },
   );
-  return { background, store };
 }
 
 describe('RadioProvider', () => {
@@ -36,7 +31,7 @@ describe('RadioProvider', () => {
   });
 
   it('shows no radio and disables sending when none is remembered', async () => {
-    await renderPhone(new FakeRadio(RADIO_A), memoryStore(null));
+    await renderPhone(new FakeRadio(RADIO_A), null);
 
     expect(await screen.findByText(radioCopy.link.none)).toBeTruthy();
     expect(screen.getByRole('button', { name: radioCopy.test.send })).toBeDisabled();
