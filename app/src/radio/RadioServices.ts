@@ -9,7 +9,6 @@ import {
   OverdueMonitor,
   PartyService,
   ReceiptService,
-  FREE_PARTY_MAX_MEMBERS,
   type CoreConfig,
   type CoreContext,
   type PartyStore,
@@ -160,10 +159,10 @@ export class RadioServices {
       audience,
       ...withNames,
       groupSize: () => {
-        // A free party: the others in it, never more than the cap allows (a
-        // radio refused as over capacity was heard, but isn't in the party).
+        // A free party: the others in it (a radio refused as over capacity was
+        // heard, but is never a member).
         const party = this.party.current;
-        if (!club && party) return Math.min(party.size, FREE_PARTY_MAX_MEMBERS) - 1;
+        if (!club && party) return party.size - 1;
         // Otherwise everyone else our radio knows on the channel.
         return [...client.nodes.keys()].filter((n) => n !== client.myNodeNum).length;
       },
