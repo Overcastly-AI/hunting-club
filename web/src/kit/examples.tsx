@@ -1,8 +1,8 @@
 // Every UI component in every state: the kit page (Kit.tsx) draws these, and the axe test
 // (components/ui/__tests__/axe.test.tsx) checks each one. Sample data is for the kit only.
 import {
+  ClipboardList,
   CreditCard,
-  Crosshair,
   Download,
   MapPin,
   Pencil,
@@ -227,7 +227,7 @@ function Stats() {
       <StatGrid aria-label="Club at a glance">
         <StatTile label="Members" value="12" icon={Users} href="#/_kit" hint="2 guest passes" />
         <StatTile label="Stands" value="8" icon={MapPin} href="#/_kit" />
-        <StatTile label="Harvests" value="0" icon={Crosshair} hint="This season" />
+        <StatTile label="Harvests" value="0" icon={ClipboardList} hint="This season" />
         <StatTile
           label="Subscription"
           value="Active"
@@ -309,7 +309,7 @@ function Tables() {
         rows={[]}
         rowKey={(m) => m.email}
         empty={
-          <EmptyState icon={Crosshair} title="No shared harvests this season" titleAs="h3">
+          <EmptyState icon={ClipboardList} title="No shared harvests this season" titleAs="h3">
             Members share a harvest from the app after they check out.
           </EmptyState>
         }
