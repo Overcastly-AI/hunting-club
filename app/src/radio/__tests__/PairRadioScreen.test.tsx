@@ -1,15 +1,10 @@
 import { MESHTASTIC_BLE } from '@huntclub/mesh';
-import { FakeRadio, seededRandom } from '@huntclub/mesh/testing';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, screen } from '@testing-library/react-native';
 
-import { PERMISSION_BUTTONS } from '../../permissions/askPermission';
-import { resetBluetoothPermissionForTests } from '../../permissions/bluetooth';
-import { answerAlerts } from '../../test-utils/alerts';
-import { fakeBle, resetFakeBle } from '../../test-utils/fakeBleManager';
-import { backgroundSpy, memoryStore, RADIO_A } from '../../test-utils/radioFixtures';
-import { resetBleStartedForTests } from '../bleManager';
+import { fakeBle } from '../../test-utils/fakeBleManager';
+import { renderWithRadio } from '../../test-utils/renderWithRadio';
+import { resetBluetoothForTests } from '../../test-utils/resetBluetooth';
 import { radioCopy } from '../copy';
-import { RadioProvider } from '../RadioProvider';
 import { PairRadioScreen } from '../ui/PairRadioScreen';
 
 jest.mock(
@@ -17,26 +12,11 @@ jest.mock(
   () => jest.requireActual('../../test-utils/fakeBleManager').fakeBleManagerModule,
 );
 
-beforeEach(() => {
-  resetFakeBle();
-  resetBleStartedForTests();
-  resetBluetoothPermissionForTests();
-  answerAlerts(PERMISSION_BUTTONS.continue);
-});
+beforeEach(resetBluetoothForTests);
 
 async function renderScreen() {
-  const store = memoryStore();
   const onDone = jest.fn();
-  await render(
-    <RadioProvider
-      store={store}
-      background={backgroundSpy()}
-      createTransport={() => new FakeRadio(RADIO_A)}
-      clientOptions={{ random: seededRandom(1), pacingMs: 0 }}
-    >
-      <PairRadioScreen onDone={onDone} />
-    </RadioProvider>,
-  );
+  const { store } = await renderWithRadio(<PairRadioScreen onDone={onDone} />);
   return { store, onDone };
 }
 

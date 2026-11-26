@@ -1,5 +1,5 @@
 import { CheckInMode } from '@huntclub/mesh';
-import { FakeAir, FakeRadio, seededRandom } from '@huntclub/mesh/testing';
+import { FakeAir, FakeRadio } from '@huntclub/mesh/testing';
 import { act, render, screen, waitFor } from '@testing-library/react-native';
 import { useContext, useEffect } from 'react';
 
@@ -16,9 +16,10 @@ import { CheckInRadioContext, type CheckInRadio } from '../../checkin/CheckInRad
 import { createMapDataStore } from '../../map/dataSource';
 import { SafetyRadioContext, type SafetyRadio } from '../../safety/SafetyRadio';
 import { helpProgress } from '../../safety/wording';
-import { backgroundSpy, memoryStore, RADIO_A, RADIO_B } from '../../test-utils/radioFixtures';
+import { RADIO_A, RADIO_B } from '../../test-utils/radioFixtures';
+import { renderWithRadio } from '../../test-utils/renderWithRadio';
 import { radioCopy } from '../copy';
-import { RadioProvider, useRadio } from '../RadioProvider';
+import { useRadio } from '../RadioProvider';
 import { RadioStatus } from '../ui/RadioStatus';
 
 const REMEMBERED = { peripheralId: 'AA:BB:CC:DD:EE:FF', name: 'Meshtastic 3c4d', pairedAt: 1 };
@@ -40,24 +41,21 @@ function Probe({ onChange }: { onChange: (contexts: Contexts) => void }) {
   return null;
 }
 
-async function renderPhone(radio: FakeRadio, seed: number, store = memoryStore(REMEMBERED)) {
-  const background = backgroundSpy();
+async function renderPhone(
+  radio: FakeRadio,
+  seed: number,
+  remembered: typeof REMEMBERED | null = REMEMBERED,
+) {
   const contexts: Contexts = { checkIn: null, safety: null, chat: null };
   const mapStore = createMapDataStore();
-  const view = await render(
-    <RadioProvider
-      store={store}
-      background={background}
-      createTransport={() => radio}
-      clientOptions={{ random: seededRandom(seed), pacingMs: 0 }}
-      services={{ receipts: { jitterMs: 0 } }}
-      mapStore={mapStore}
-    >
+  const phone = await renderWithRadio(
+    <>
       <RadioStatus />
       <Probe onChange={(next) => Object.assign(contexts, next)} />
-    </RadioProvider>,
+    </>,
+    { radio, remembered, seed, mapStore, services: { receipts: { jitterMs: 0 } } },
   );
-  return { background, contexts, mapStore, view };
+  return { ...phone, contexts, mapStore };
 }
 
 describe('RadioProvider', () => {
@@ -70,7 +68,7 @@ describe('RadioProvider', () => {
   });
 
   it('gives the screens no radio when none is remembered', async () => {
-    const { contexts } = await renderPhone(new FakeRadio(RADIO_A), 1, memoryStore(null));
+    const { contexts } = await renderPhone(new FakeRadio(RADIO_A), 1, null);
 
     expect(await screen.findByText(radioCopy.link.none)).toBeTruthy();
     expect(contexts).toEqual({ checkIn: null, safety: null, chat: null });

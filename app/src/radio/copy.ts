@@ -15,6 +15,7 @@ export const radioCopy = {
     connecting: 'Connecting…',
     connectedTo: (name: string) => `Connected to ${name}`,
     done: 'Done',
+    setUpLater: 'Set up later',
     disconnect: 'Disconnect',
     failed: 'Could not connect. Check the PIN and try again.',
     tryAgain: 'Try again',
