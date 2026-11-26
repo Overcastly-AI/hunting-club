@@ -1,0 +1,26 @@
+{
+  "name": "@huntclub/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pure TypeScript hunting domain logic (check-in, overdue, Ask for a Hand, receipts, party rules) on top of @huntclub/mesh.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "license": "UNLICENSED",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "jest",
+    "lint": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@huntclub/mesh": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/jest": "30.0.0",
+    "jest": "~30.5.2",
+    "ts-jest": "^29.4.15",
+    "typescript": "~6.0.3"
+  }
+}
