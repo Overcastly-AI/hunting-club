@@ -82,8 +82,11 @@ export const APP_ICONS = [
   { file: 'favicon.png', size: 48, mark: {} },
 ] as const satisfies readonly { file: string; size: number; mark: LogoMarkOptions }[];
 
+/** The SVG favicon's file name at the site root (the public site writes it from the mark). */
+export const FAVICON_SVG = 'favicon.svg';
+
 /**
- * The web page's /favicon.ico (web/public, served as is): the rounded mark at the sizes
+ * The site's /favicon.ico (site/public, served as is): the rounded mark at the sizes
  * browsers and crawlers ask for, packed into one ICO by the same icons script.
  */
 export const FAVICON_ICO = {

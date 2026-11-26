@@ -1,4 +1,10 @@
-import { CHECKOUT_RETURN_PATHS, JOIN_PATH, LEGAL_DOCS, LEGAL_PATHS } from '@huntclub/shared';
+import {
+  ADMIN_PATH,
+  CHECKOUT_RETURN_PATHS,
+  JOIN_PATH,
+  LEGAL_DOCS,
+  LEGAL_PATHS,
+} from '@huntclub/shared';
 import { lazy, Suspense, type ReactNode } from 'react';
 import type { WebClubServices } from './cloud';
 import { Loading } from './components/Loading';
@@ -14,9 +20,9 @@ const CheckoutReturn = lazy(() =>
 );
 
 /**
- * The page's real paths (WEB_PAGE_PATHS) need no sign-in; `/` is the club admin, with
- * hash routes. CloudFront serves index.html for every page path, so any other path lands
- * here too and gets Page not found.
+ * The page's real paths (WEB_PAGE_PATHS) need no sign-in; ADMIN_PATH (/app/) is the club
+ * admin, with hash routes. The public site owns every other path; one that still lands
+ * here gets Page not found.
  */
 export function Root(props: WebClubServices & { location: Pick<Location, 'pathname' | 'href'> }) {
   const { location, ...services } = props;
@@ -48,7 +54,7 @@ export function Root(props: WebClubServices & { location: Pick<Location, 'pathna
         <Legal doc={LEGAL_DOCS[legal]} />
       </Page>
     );
-  if (path !== '/' && path !== ADMIN_INDEX)
+  if (!isAdminPath(path))
     return (
       <Page>
         <NotFound />
@@ -61,8 +67,9 @@ export function Root(props: WebClubServices & { location: Pick<Location, 'pathna
   );
 }
 
-/** The admin's own file name, which also opens the admin. */
-const ADMIN_INDEX = '/index.html';
+/** The admin (ADMIN_PATH, served at /app/ with hash routes) and anything CloudFront sends under it. */
+const ADMIN_ROOT = ADMIN_PATH.replace(/\/$/, '');
+const isAdminPath = (path: string) => path === ADMIN_ROOT || path.startsWith(`${ADMIN_ROOT}/`);
 
 function Page(props: { children: ReactNode }) {
   return (

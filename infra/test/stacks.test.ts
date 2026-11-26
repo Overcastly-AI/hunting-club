@@ -17,8 +17,15 @@ import {
 import { dev } from '../config/dev';
 import { CLUB_API_TABLE_ACTIONS, MAP_PACK_BUILDER_TABLE_ACTIONS } from '../src/stacks/api-stack';
 import { buildApp } from '../src/app';
-import { ROBOTS_FILE, robotsTxt, webPageRewriteSource } from '../src/web-pages';
-import { CDK_CONTEXT, synthTemplates } from './helpers';
+import {
+  ADMIN_PREFIX,
+  NOINDEX_HEADER,
+  NOT_FOUND_OBJECT,
+  ROBOTS_FILE,
+  robotsTxt,
+  webPageRewriteSource,
+} from '../src/web-pages';
+import { CDK_CONTEXT, synthTemplates, WEB_DIST_FIXTURE } from './helpers';
 
 const templates = synthTemplates();
 /** The club table ARN as CDK synthesizes it (partition token, explicit account/region). */
@@ -155,21 +162,78 @@ describe('web stack', () => {
   const deployments = (tpl = t) =>
     Object.values(tpl.findResources('Custom::CDKBucketDeployment')).map((r) => r.Properties);
 
-  it('deploys the web page: hashed assets cached for a year, pages never cached', () => {
-    const [assets, pages] = deployments();
-    expect(deployments()).toHaveLength(3);
-    expect(assets).toMatchObject({
+  it('deploys the site at the root and the admin under /app/: assets for a year, pages never cached', () => {
+    const byId = (id: string) =>
+      Object.entries(t.findResources('Custom::CDKBucketDeployment')).find(([key]) =>
+        key.startsWith(id),
+      )![1].Properties;
+    expect(deployments()).toHaveLength(5);
+    const year = { 'cache-control': 'public, max-age=31536000, immutable' };
+    expect(byId('SiteAssets')).toMatchObject({
       Prune: false,
       Include: ['assets/*'],
       Exclude: ['*'],
-      SystemMetadata: { 'cache-control': 'public, max-age=31536000, immutable' },
+      SystemMetadata: year,
     });
-    expect(pages).toMatchObject({
+    expect(byId('SitePages')).toMatchObject({
       Prune: true,
-      // Map packs are written by the builder Lambda; a web deploy must never prune them.
-      Exclude: ['assets/*', '.well-known/*', ROBOTS_FILE, `${MAP_PACKS_PREFIX}*`],
+      // The admin, map packs (written by the builder Lambda) and the other deployments'
+      // files must never be pruned by a site deploy.
+      Exclude: [
+        'assets/*',
+        `${ADMIN_PREFIX}*`,
+        '.well-known/*',
+        ROBOTS_FILE,
+        `${MAP_PACKS_PREFIX}*`,
+      ],
       SystemMetadata: { 'cache-control': 'no-cache' },
       DistributionPaths: ['/*'],
+    });
+    expect(byId('AdminAssets')).toMatchObject({
+      DestinationBucketKeyPrefix: ADMIN_PREFIX,
+      Prune: false,
+      Include: ['assets/*'],
+      SystemMetadata: year,
+    });
+    expect(byId('AdminPages')).toMatchObject({
+      DestinationBucketKeyPrefix: ADMIN_PREFIX,
+      Prune: true,
+      Exclude: ['assets/*'],
+      SystemMetadata: { 'cache-control': 'no-cache' },
+      DistributionPaths: [`/${ADMIN_PREFIX}*`],
+    });
+  });
+
+  it('answers a missing path with the 404 page and a real 404 status', () => {
+    t.hasResourceProperties('AWS::CloudFront::Distribution', {
+      DistributionConfig: Match.objectLike({
+        CustomErrorResponses: [404, 403].map((ErrorCode) => ({
+          ErrorCode,
+          ResponseCode: 404,
+          ResponsePagePath: NOT_FOUND_OBJECT,
+          ErrorCachingMinTTL: 60,
+        })),
+      }),
+    });
+  });
+
+  it('keeps the security headers, and tells search engines to stay out of dev', () => {
+    t.hasResourceProperties('AWS::CloudFront::ResponseHeadersPolicy', {
+      ResponseHeadersPolicyConfig: Match.objectLike({
+        SecurityHeadersConfig: Match.objectLike({
+          ContentTypeOptions: { Override: true },
+          FrameOptions: { FrameOption: 'SAMEORIGIN', Override: true },
+          ReferrerPolicy: { ReferrerPolicy: 'strict-origin-when-cross-origin', Override: true },
+          StrictTransportSecurity: Match.objectLike({ AccessControlMaxAgeSec: 31536000 }),
+        }),
+        CustomHeadersConfig: {
+          Items: [{ Header: NOINDEX_HEADER.header, Value: NOINDEX_HEADER.value, Override: true }],
+        },
+      }),
+    });
+    const indexable = synthTemplates({ searchIndexing: true }).web;
+    indexable.hasResourceProperties('AWS::CloudFront::ResponseHeadersPolicy', {
+      ResponseHeadersPolicyConfig: Match.objectLike({ CustomHeadersConfig: Match.absent() }),
     });
   });
 
@@ -182,10 +246,16 @@ describe('web stack', () => {
     });
   });
 
-  it('refuses to synthesize without a web build', () => {
+  it('refuses to synthesize without a web or site build', () => {
     expect(() =>
       buildApp(dev, new App(), { webDistPath: join(__dirname, 'no-such-build') }),
     ).toThrow(/npm run build -w @huntclub\/web/);
+    expect(() =>
+      buildApp(dev, new App(), {
+        webDistPath: WEB_DIST_FIXTURE,
+        siteDistPath: join(__dirname, 'no-such-build'),
+      }),
+    ).toThrow(/npm run build -w @huntclub\/site/);
   });
 
   it('publishes no universal-link files until the app IDs are known', () => {
@@ -198,7 +268,7 @@ describe('web stack', () => {
     const withLinks = synthTemplates({
       appLinks: { appleTeamId: 'ABCDE12345', androidSha256CertFingerprints: ['AA:BB'] },
     }).web;
-    expect(deployments(withLinks)).toHaveLength(4);
+    expect(deployments(withLinks)).toHaveLength(6);
     withLinks.hasResourceProperties('Custom::CDKBucketDeployment', {
       SystemMetadata: Match.objectLike({ 'content-type': 'application/json' }),
       Prune: false,

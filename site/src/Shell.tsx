@@ -1,4 +1,4 @@
-import { colors, logoMarkSvg } from '@huntclub/design';
+import { colors, FAVICON_ICO, FAVICON_SVG, logoMarkSvg } from '@huntclub/design';
 import { APP_NAME, SAFETY_NOTE } from '@huntclub/shared';
 import type { ReactNode } from 'react';
 import {
@@ -8,8 +8,6 @@ import {
   NAV_LINKS,
   SIGN_IN,
   type SiteLink,
-  type SitePath,
-  type SiteRoute,
 } from './routes';
 
 /** Meshtastic's trademark notice: required wherever the name is used. */
@@ -22,33 +20,46 @@ export interface PageAssets {
   readonly css: string;
 }
 
-/** A whole page: head from the registry entry, then header, main content and footer. */
-export function Document(props: {
-  route: SiteRoute & { path: SitePath };
-  assets: PageAssets;
-  children: ReactNode;
-}) {
-  const { route, assets } = props;
-  const url = canonicalUrl(route.path);
+/** What a page's head says about it (from the route registry). */
+export interface PageMeta {
+  readonly title: string;
+  readonly description: string;
+  /** Registered pages: canonical URL and og:url. Pages without one are noindex. */
+  readonly path?: string;
+  /** The page's one inline script, if any (HASH_FORWARD_SCRIPT on the home page). */
+  readonly script?: string;
+}
+
+/** A whole page: head from the registry, then header, main content and footer. */
+export function Document(props: { meta: PageMeta; assets: PageAssets; children: ReactNode }) {
+  const { meta, assets } = props;
+  const url = meta.path === undefined ? undefined : canonicalUrl(meta.path);
   return (
     <html lang="en">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>{route.title}</title>
-        <meta name="description" content={route.description} />
-        <link rel="canonical" href={url} />
-        <meta property="og:type" content="website" />
-        <meta property="og:site_name" content={APP_NAME} />
-        <meta property="og:title" content={route.title} />
-        <meta property="og:description" content={route.description} />
-        <meta property="og:url" content={url} />
-        <meta name="twitter:card" content="summary" />
+        <title>{meta.title}</title>
+        <meta name="description" content={meta.description} />
+        {url ? (
+          <>
+            <link rel="canonical" href={url} />
+            <meta property="og:type" content="website" />
+            <meta property="og:site_name" content={APP_NAME} />
+            <meta property="og:title" content={meta.title} />
+            <meta property="og:description" content={meta.description} />
+            <meta property="og:url" content={url} />
+            <meta name="twitter:card" content="summary" />
+          </>
+        ) : (
+          <meta name="robots" content="noindex" />
+        )}
         <meta name="theme-color" content={colors.surface} />
-        <link rel="icon" href="/favicon.ico" sizes="48x48" />
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="icon" href={`/${FAVICON_ICO.file}`} sizes="48x48" />
+        <link rel="icon" type="image/svg+xml" href={`/${FAVICON_SVG}`} />
         <link rel="preload" as="font" type="font/woff2" href={assets.fontUrl} crossOrigin="" />
         <style dangerouslySetInnerHTML={{ __html: assets.css }} />
+        {meta.script ? <script dangerouslySetInnerHTML={{ __html: meta.script }} /> : null}
       </head>
       <body>
         <a className="skip-link" href="#main">

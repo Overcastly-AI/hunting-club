@@ -1,20 +1,32 @@
 import { colors } from '@huntclub/design';
-import { API_PATHS, WEB_PAGE_PATHS } from '@huntclub/shared';
+import { ADMIN_PATH, API_PATHS, BUILD_VERSION_URL, WEB_PAGE_PATHS } from '@huntclub/shared';
+import { NOT_FOUND_PAGE, sitemapXml, SITEMAP_FILE } from '@huntclub/site/routes';
 import { dev } from '../config/dev';
-import { cloudFor, formatSmoke, runSmoke, UNKNOWN_PAGE_PATH, type SmokeFetch } from '../src/smoke';
-import { robotsTxt } from '../src/web-pages';
+import {
+  cloudFor,
+  formatSmoke,
+  runSmoke,
+  SMOKE_REDIRECTS,
+  UNKNOWN_PAGE_PATH,
+  type SmokeFetch,
+} from '../src/smoke';
+import { NOINDEX_HEADER, robotsTxt } from '../src/web-pages';
 
 const SITE = `https://${dev.domainName}`;
-/** The head the Vite build writes (web/site-head.ts), then the app root. */
-const INDEX = [
+/** The head the site's Shell writes, then one H1. */
+const HOME = [
   '<!doctype html><head><title>Hunt Club Mesh</title>',
   '<meta name="description" content="Off-grid hunting.">',
   `<meta name="theme-color" content="${colors.surface}">`,
   '<link rel="icon" href="/favicon.ico" sizes="48x48">',
   '<link rel="icon" type="image/svg+xml" href="/favicon.svg">',
-  '</head><div id="root"></div>',
+  '</head><body><h1>Hunt Club Mesh</h1></body>',
 ].join('');
-const PAGE_PATHS = ['/', ...WEB_PAGE_PATHS, UNKNOWN_PAGE_PATH];
+/** The admin's page (web/dist index.html under ADMIN_PATH). */
+const ADMIN = '<!doctype html><head><title>Club admin</title></head><div id="root"></div>';
+const NOT_FOUND = `<!doctype html><head><title>${NOT_FOUND_PAGE.title}</title></head>`;
+const ADMIN_PATHS = [ADMIN_PATH, ...WEB_PAGE_PATHS];
+const HTML = { 'content-type': 'text/html' };
 
 /** A healthy deployment as the checks expect it; `override` breaks one URL. */
 function fakeDev(override: Record<string, number> = {}): {
@@ -31,8 +43,17 @@ function fakeDev(override: Record<string, number> = {}): {
       headers: { get: (n: string) => headers[n.toLowerCase()] ?? null },
       text: async () => body,
     });
-    if (PAGE_PATHS.some((p) => url === `${SITE}${p}`)) {
-      return reply(200, INDEX, { 'content-type': 'text/html' });
+    if (url === `${SITE}/`) {
+      return reply(200, HOME, { ...HTML, 'x-robots-tag': NOINDEX_HEADER.value });
+    }
+    if (ADMIN_PATHS.some((p) => url === `${SITE}${p}`)) return reply(200, ADMIN, HTML);
+    const redirect = Object.entries(SMOKE_REDIRECTS).find(([from]) => url === `${SITE}${from}`);
+    if (redirect) return reply(301, '', { location: redirect[1] });
+    if (url === `${SITE}${BUILD_VERSION_URL}`) {
+      return reply(200, '{"buildId":"b1"}', { 'cache-control': 'no-cache' });
+    }
+    if (url === `${SITE}/${SITEMAP_FILE}`) {
+      return reply(200, sitemapXml('2026-11-26'), { 'content-type': 'application/xml' });
     }
     if (url === `${SITE}/favicon.svg`)
       return reply(200, '<svg/>', { 'content-type': 'image/svg+xml' });
@@ -40,7 +61,7 @@ function fakeDev(override: Record<string, number> = {}): {
     if (url === `${SITE}/robots.txt`) {
       return reply(200, robotsTxt(dev), { 'content-type': 'text/plain; charset=utf-8' });
     }
-    if (url.startsWith(SITE)) return reply(404);
+    if (url.startsWith(SITE)) return reply(404, NOT_FOUND, HTML);
     if (url === `${cloud.clubApiUrl}${API_PATHS.myClubs}`) {
       if (method === 'OPTIONS') {
         const origin = init.headers?.origin;
@@ -82,10 +103,50 @@ describe('dev smoke check', () => {
     expect(formatSmoke('dev', results)).toMatch(/1 of \d+ checks failed$/);
   });
 
-  it('fails when a page path is not rewritten to the page', async () => {
-    const { fetch } = fakeDev({ [`${SITE}${UNKNOWN_PAGE_PATH}`]: 403 });
+  it('fails an unknown path answered with 200 instead of the 404 page', async () => {
+    const { fetch } = fakeDev({ [`${SITE}${UNKNOWN_PAGE_PATH}`]: 200 });
     const failed = (await runSmoke(dev, fetch)).filter((r) => !r.ok);
-    expect(failed.map((r) => r.name)).toEqual([`page path ${UNKNOWN_PAGE_PATH} serves the page`]);
+    expect(failed.map((r) => r.name)).toEqual([
+      `unknown path ${UNKNOWN_PAGE_PATH} is the 404 page`,
+    ]);
+  });
+
+  it('fails when a real admin path is not rewritten to the admin', async () => {
+    const path = WEB_PAGE_PATHS[0];
+    const { fetch } = fakeDev({ [`${SITE}${path}`]: 404 });
+    const failed = (await runSmoke(dev, fetch)).filter((r) => !r.ok);
+    expect(failed.map((r) => r.name)).toEqual([`page path ${path} serves the admin`]);
+  });
+
+  it('fails a redirect that serves the page instead', async () => {
+    const { fetch } = fakeDev({ [`${SITE}/index.html`]: 200 });
+    const failed = (await runSmoke(dev, fetch)).filter((r) => !r.ok);
+    expect(failed.map((r) => r.detail)).toEqual(['GET /index.html → 200']);
+  });
+
+  it('fails dev without the noindex header, and checks every redirect', async () => {
+    const { fetch } = fakeDev();
+    const stripped: SmokeFetch = async (url, init) => {
+      const res = await fetch(url, init);
+      return url === `${SITE}/` ? { ...res, headers: { get: () => null } } : res;
+    };
+    const results = await runSmoke(dev, stripped);
+    expect(results.filter((r) => !r.ok).map((r) => r.name)).toContain('site serves the home page');
+    for (const from of Object.keys(SMOKE_REDIRECTS)) {
+      expect(results.some((r) => r.name.startsWith(`${from} redirects`))).toBe(true);
+    }
+  });
+
+  it('fails when the admin version file is missing', async () => {
+    const { fetch } = fakeDev({ [`${SITE}${BUILD_VERSION_URL}`]: 404 });
+    const failed = (await runSmoke(dev, fetch)).filter((r) => !r.ok);
+    expect(failed.map((r) => r.name)).toEqual([`${BUILD_VERSION_URL} is served uncached`]);
+  });
+
+  it('fails when the sitemap is missing', async () => {
+    const { fetch } = fakeDev({ [`${SITE}/${SITEMAP_FILE}`]: 404 });
+    const failed = (await runSmoke(dev, fetch)).filter((r) => !r.ok);
+    expect(failed.map((r) => r.name)).toEqual([`/${SITEMAP_FILE} lists the site`]);
   });
 
   it('fails a missing file answered with 403 instead of 404', async () => {

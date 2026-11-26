@@ -1,5 +1,6 @@
 import { buildVersion } from '../../build-version';
-import { BUILD_ID_GLOBAL, BUILD_VERSION_FILE, newerBuildIsLive } from '../buildVersion';
+import { BUILD_VERSION_FILE, BUILD_VERSION_URL } from '@huntclub/shared/app';
+import { BUILD_ID_GLOBAL, newerBuildIsLive } from '../buildVersion';
 
 const served = (body: unknown, ok = true) =>
   vi.fn(async () => ({ ok, json: async () => body }) as Response) as unknown as typeof fetch;
@@ -13,7 +14,8 @@ describe('newerBuildIsLive', () => {
   it('asks for the version file past every cache', async () => {
     const fetchFn = served({ buildId: 'a' });
     await newerBuildIsLive('a', fetchFn);
-    expect(fetchFn).toHaveBeenCalledWith(`/${BUILD_VERSION_FILE}`, { cache: 'no-store' });
+    expect(fetchFn).toHaveBeenCalledWith(BUILD_VERSION_URL, { cache: 'no-store' });
+    expect(BUILD_VERSION_URL).toBe('/app/version.json');
   });
 
   it.each([

@@ -11,13 +11,23 @@ import type { Construct } from 'constructs';
 import { MAP_PACKS_PREFIX } from '@huntclub/shared/maps';
 import type { EnvConfig } from '../../config';
 import { LOG_RETENTION } from '../constructs/node-lambda';
-import { ROBOTS_FILE, robotsTxt, WELL_KNOWN_PREFIX, webPageRewriteSource } from '../web-pages';
+import {
+  ADMIN_PREFIX,
+  NOINDEX_HEADER,
+  NOT_FOUND_OBJECT,
+  ROBOTS_FILE,
+  robotsTxt,
+  WELL_KNOWN_PREFIX,
+  webPageRewriteSource,
+} from '../web-pages';
 import { wellKnownFiles } from '../well-known';
 
 export interface WebStackProps extends StackProps {
   readonly config: EnvConfig;
-  /** Built web admin page (`npm run build -w @huntclub/web` → web/dist). */
+  /** Built club admin (`npm run build -w @huntclub/web` → web/dist), served under /app/. */
   readonly webDistPath: string;
+  /** Built public site (`npm run build -w @huntclub/site` → site/dist), served at the root. */
+  readonly siteDistPath: string;
 }
 
 /** Vite puts fingerprinted files here; they never change, so they cache for a year. */
@@ -27,8 +37,9 @@ const WELL_KNOWN = `${WELL_KNOWN_PREFIX}*`;
 const MAP_PACKS = `${MAP_PACKS_PREFIX}*`;
 
 /**
- * The web admin page (web/dist) and universal-link files: a private S3 bucket behind
- * CloudFront (origin access control, HTTPS only) at the environment's domain.
+ * The public site (site/dist, at the root), the club admin (web/dist, under /app/) and the
+ * universal-link files: one private S3 bucket behind CloudFront (origin access control,
+ * HTTPS only) at the environment's domain.
  */
 export class WebStack extends Stack {
   readonly bucket: s3.Bucket;
@@ -46,15 +57,34 @@ export class WebStack extends Stack {
       removalPolicy: RemovalPolicy.RETAIN,
     });
 
-    // Pay-per-request (no always-on compute): index.html for every page path (SPA fallback).
+    // Pay-per-request (no always-on compute): the allowlist and redirects from the site's
+    // route registry (see web-pages.ts).
     const webPages = new cloudfront.Function(this, 'WebPageRewrite', {
-      comment: 'Serve index.html for every path without a file extension',
+      comment: 'Site pages, the admin under /app/, and redirects (from the route registry)',
       runtime: cloudfront.FunctionRuntime.JS_2_0,
       code: cloudfront.FunctionCode.fromInline(webPageRewriteSource()),
     });
 
+    // The managed SECURITY_HEADERS values, plus X-Robots-Tag where search engines must stay out.
+    const headers = new cloudfront.ResponseHeadersPolicy(this, 'Headers', {
+      comment: `${config.domainName} security headers`,
+      securityHeadersBehavior: {
+        contentTypeOptions: { override: true },
+        frameOptions: { frameOption: cloudfront.HeadersFrameOption.SAMEORIGIN, override: true },
+        referrerPolicy: {
+          referrerPolicy: cloudfront.HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
+          override: true,
+        },
+        strictTransportSecurity: { accessControlMaxAge: Duration.days(365), override: true },
+        xssProtection: { protection: true, modeBlock: true, override: true },
+      },
+      ...(config.searchIndexing
+        ? {}
+        : { customHeadersBehavior: { customHeaders: [{ ...NOINDEX_HEADER, override: true }] } }),
+    });
+
     this.distribution = new cloudfront.Distribution(this, 'Distribution', {
-      comment: `${config.domainName} web admin page`,
+      comment: `${config.domainName} public site and club admin`,
       domainNames: [config.domainName],
       certificate: acm.Certificate.fromCertificateArn(this, 'Certificate', config.certificateArn),
       defaultRootObject: 'index.html',
@@ -70,11 +100,19 @@ export class WebStack extends Stack {
         }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
-        responseHeadersPolicy: cloudfront.ResponseHeadersPolicy.SECURITY_HEADERS,
+        responseHeadersPolicy: headers,
         functionAssociations: [
           { function: webPages, eventType: cloudfront.FunctionEventType.VIEWER_REQUEST },
         ],
       },
+      // A missing file (S3 404, or 403 if listing were ever denied) is the branded 404 page,
+      // with a real 404 status: no soft 404s.
+      errorResponses: [404, 403].map((httpStatus) => ({
+        httpStatus,
+        responseHttpStatus: 404,
+        responsePagePath: NOT_FOUND_OBJECT,
+        ttl: Duration.minutes(1),
+      })),
     });
 
     const zone = route53.HostedZone.fromHostedZoneAttributes(this, 'Zone', {
@@ -90,32 +128,58 @@ export class WebStack extends Stack {
       retention: LOG_RETENTION,
       removalPolicy: RemovalPolicy.DESTROY,
     });
-    const site = s3deploy.Source.asset(props.webDistPath);
+    const immutable = [
+      s3deploy.CacheControl.setPublic(),
+      s3deploy.CacheControl.maxAge(Duration.days(365)),
+      s3deploy.CacheControl.immutable(),
+    ];
 
+    // The public site at the root: fingerprinted files cached for a year, pages never.
+    const site = s3deploy.Source.asset(props.siteDistPath);
     new s3deploy.BucketDeployment(this, 'SiteAssets', {
       destinationBucket: this.bucket,
       sources: [site],
       exclude: ['*'],
       include: [HASHED_ASSETS],
-      cacheControl: [
-        s3deploy.CacheControl.setPublic(),
-        s3deploy.CacheControl.maxAge(Duration.days(365)),
-        s3deploy.CacheControl.immutable(),
-      ],
+      cacheControl: immutable,
       prune: false,
       logGroup: deployLogs,
     });
-
     new s3deploy.BucketDeployment(this, 'SitePages', {
       destinationBucket: this.bucket,
       sources: [site],
-      // Excluded keys are never pruned: hashed assets, universal-link files, robots.txt and
-      // map packs stay.
-      exclude: [HASHED_ASSETS, WELL_KNOWN, ROBOTS_FILE, MAP_PACKS],
+      // Excluded keys are never pruned: hashed assets, the admin, universal-link files,
+      // robots.txt and map packs stay.
+      exclude: [HASHED_ASSETS, `${ADMIN_PREFIX}*`, WELL_KNOWN, ROBOTS_FILE, MAP_PACKS],
       cacheControl: [s3deploy.CacheControl.noCache()],
       prune: true,
       distribution: this.distribution,
       distributionPaths: ['/*'],
+      logGroup: deployLogs,
+    });
+
+    // The club admin under /app/: the same split, inside its own prefix.
+    const admin = s3deploy.Source.asset(props.webDistPath);
+    new s3deploy.BucketDeployment(this, 'AdminAssets', {
+      destinationBucket: this.bucket,
+      destinationKeyPrefix: ADMIN_PREFIX,
+      sources: [admin],
+      exclude: ['*'],
+      include: [HASHED_ASSETS],
+      cacheControl: immutable,
+      prune: false,
+      logGroup: deployLogs,
+    });
+    new s3deploy.BucketDeployment(this, 'AdminPages', {
+      destinationBucket: this.bucket,
+      destinationKeyPrefix: ADMIN_PREFIX,
+      sources: [admin],
+      exclude: [HASHED_ASSETS],
+      cacheControl: [s3deploy.CacheControl.noCache()],
+      // Prunes only under app/.
+      prune: true,
+      distribution: this.distribution,
+      distributionPaths: [`/${ADMIN_PREFIX}*`],
       logGroup: deployLogs,
     });
 

@@ -1,13 +1,18 @@
 // The route registry: the one list of public pages. Navigation, the footer, canonical
-// URLs, Open Graph meta and the prerender list come from here (and, later, sitemap.xml
-// and the CloudFront allowlist). Add a page here and it is built, linked and tested.
-import { LEGAL_PATHS, WEB_DOMAINS } from '@huntclub/shared/app';
+// URLs, Open Graph meta, the prerender list, sitemap.xml, robots.txt rules and the
+// CloudFront allowlist and redirects (infra/src/web-pages.ts) all come from here. Add a
+// page here and it is built, linked, served and tested.
+import {
+  ADMIN_PATH,
+  CHECKOUT_RETURN_PATHS,
+  JOIN_PATH,
+  LEGAL_PATHS,
+  WEB_DOMAINS,
+  WEB_PAGE_PATHS,
+} from '@huntclub/shared/app';
 
 /** Where the site is served. Dev only so far; a production domain is added here. */
 export const SITE_ORIGIN = `https://${WEB_DOMAINS.dev}`;
-
-/** The club admin (the web app), linked as "Sign in". */
-export const ADMIN_PATH = '/app/';
 
 export interface SiteRoute {
   /** Absolute path, no trailing slash except the home page. */
@@ -67,6 +72,59 @@ export const FOOTER_LINKS: readonly SiteLink[] = [
 
 /** The canonical URL of a registered page. */
 export const canonicalUrl = (path: string) => `${SITE_ORIGIN}${path}`;
+
+/**
+ * The branded not-found page. CloudFront serves it for any missing path with a 404
+ * status; it is never indexed and has no canonical URL.
+ */
+export const NOT_FOUND_PAGE = {
+  file: '404.html',
+  title: 'Page not found · Hunt Club Mesh',
+  description:
+    'This page does not exist. Go to the Hunt Club Mesh home page, or sign in to the club admin.',
+} as const;
+
+/**
+ * Real paths the club admin (web/, under ADMIN_PATH) still answers: /join, the Checkout
+ * return pages, Privacy and Terms. CloudFront sends them to the admin's index.html.
+ */
+export const ADMIN_PAGE_PATHS: readonly string[] = WEB_PAGE_PATHS;
+
+/** Permanent redirects (301): old and guessable addresses. */
+export const REDIRECTS: Readonly<Record<string, string>> = {
+  '/index.html': '/',
+  '/login': ADMIN_PATH,
+  '/sign-in': ADMIN_PATH,
+};
+
+/** Never search results: the admin, invites and the Checkout return pages (robots.txt). */
+export const NOINDEX_PATHS: readonly string[] = [
+  ADMIN_PATH,
+  JOIN_PATH,
+  ...Object.values(CHECKOUT_RETURN_PATHS),
+];
+
+/** sitemap.xml: every registered page (all indexable), with the build date. */
+export function sitemapXml(lastmod: string): string {
+  const urls = ROUTES.map(
+    (r) => `  <url><loc>${canonicalUrl(r.path)}</loc><lastmod>${lastmod}</lastmod></url>`,
+  );
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ...urls,
+    '</urlset>',
+    '',
+  ].join('\n');
+}
+
+export const SITEMAP_FILE = 'sitemap.xml';
+
+/**
+ * The one script the site ships, inlined on the home page only: an old admin bookmark
+ * (/#/roster, from when the admin lived at /) goes on to the admin (/app/#/roster).
+ */
+export const HASH_FORWARD_SCRIPT = `if(location.hash.indexOf('#/')===0)location.replace('${ADMIN_PATH}'+location.hash)`;
 
 /** Where a page is written in dist: `/` → index.html, `/clubs` → clubs/index.html. */
 export const outputFile = (path: string) =>
