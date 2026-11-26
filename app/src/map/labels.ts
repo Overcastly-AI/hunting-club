@@ -1,5 +1,6 @@
 import { STAND_TYPE_LABELS } from '../domain/stands';
-import { describeAge, positionAge, classifyFreshness } from './freshness';
+import { describeAge, elapsedMs } from '../domain/time';
+import { classifyFreshness } from './freshness';
 import type { HunterOnMap, HunterPlace, OpenStandOnMap } from './types';
 
 /** Shown under a hunter who is walking. */
@@ -26,7 +27,7 @@ export function placeLabel(place: HunterPlace): string {
 
 /** Screen-reader label, for example "Creek Stand, Dale, updated 2 minutes ago". */
 export function hunterAccessibilityLabel(hunter: HunterOnMap, now: number): string {
-  const age = positionAge(hunter.heardAt, now);
+  const age = elapsedMs(hunter.heardAt, now);
   const parts = [
     placeLabel(hunter.place),
     hunter.displayName,

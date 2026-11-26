@@ -10,15 +10,15 @@ import { HaloText } from './HaloText';
 
 type Props = {
   position: LatLon;
-  /** Where the wind blows from, in degrees. No cone until wind is known. */
-  windFromDeg?: number;
+  /** Where the wind blows from, in degrees. No cone while calm or unknown. */
+  windFromDeg?: number | null;
 };
 
 const PULSE_MS = 1800;
 
 /** Your orange dot with a pulse, and your scent cone pointing downwind. */
 export function YouMarker({ position, windFromDeg }: Props) {
-  const showScent = windFromDeg !== undefined;
+  const showScent = windFromDeg !== undefined && windFromDeg !== null;
   return (
     <>
       {showScent ? <ScentCone position={position} windFromDeg={windFromDeg} /> : null}

@@ -1,5 +1,6 @@
 import {
   destination,
+  distanceMeters,
   downwindBearing,
   metersPerPoint,
   scaleBar,
@@ -41,5 +42,13 @@ describe('scent cone', () => {
     const north = destination(origin, 0, 1000);
     expect(north.lon).toBeCloseTo(origin.lon, 6);
     expect((north.lat - origin.lat) * 111_195).toBeCloseTo(1000, -1);
+  });
+});
+
+describe('distanceMeters', () => {
+  it('is zero for the same point and inverts destination()', () => {
+    const origin = { lat: 44.9778, lon: -93.265 };
+    expect(distanceMeters(origin, origin)).toBe(0);
+    expect(distanceMeters(origin, destination(origin, 63, 12_345))).toBeCloseTo(12_345, 3);
   });
 });

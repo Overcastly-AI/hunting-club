@@ -1,3 +1,5 @@
+import { DAY_MS } from '../domain/time';
+
 /**
  * Sunrise and sunset computed on the device, offline, with the NOAA/Wikipedia
  * "sunrise equation" (accurate to about a minute at hunting latitudes).
@@ -6,7 +8,6 @@
  */
 
 const DEG = Math.PI / 180;
-const MS_PER_DAY = 86_400_000;
 const J1970 = 2440587.5;
 const J2000 = 2451545;
 /** Standard altitude of the sun's centre at sunrise/sunset: refraction plus solar radius. */
@@ -22,8 +23,8 @@ export type SunTimes =
   /** The sun does not rise on this day (far north in winter). */
   | { kind: 'polarNight' };
 
-const toJulian = (ms: number) => ms / MS_PER_DAY + J1970;
-const fromJulian = (jd: number) => new Date((jd - J1970) * MS_PER_DAY);
+const toJulian = (ms: number) => ms / DAY_MS + J1970;
+const fromJulian = (jd: number) => new Date((jd - J1970) * DAY_MS);
 
 /**
  * Sunrise and sunset for a calendar day at a place.

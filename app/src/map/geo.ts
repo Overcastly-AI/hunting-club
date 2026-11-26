@@ -4,7 +4,7 @@ const EARTH_RADIUS_M = 6_371_008.8;
 const EARTH_CIRCUMFERENCE_M = 40_075_016.686;
 const DEG = Math.PI / 180;
 const FOOT_M = 0.3048;
-const MILE_M = 1609.344;
+export const MILE_M = 1609.344;
 
 /** Ground metres per screen point at a MapLibre (512 px based) zoom. */
 export function metersPerPoint(lat: number, zoom: number): number {
@@ -79,4 +79,14 @@ export function scentConeRing(origin: LatLon, windFromDeg: number): [number, num
 /** Where to place the "Your scent" label: two-thirds of the way along the cone. */
 export function scentLabelPosition(origin: LatLon, windFromDeg: number): LatLon {
   return destination(origin, downwindBearing(windFromDeg), (SCENT_CONE.lengthMeters * 2) / 3);
+}
+
+/** Great-circle distance between two points in metres. */
+export function distanceMeters(a: LatLon, b: LatLon): number {
+  const dPhi = (b.lat - a.lat) * DEG;
+  const dLambda = (b.lon - a.lon) * DEG;
+  const h =
+    Math.sin(dPhi / 2) ** 2 +
+    Math.cos(a.lat * DEG) * Math.cos(b.lat * DEG) * Math.sin(dLambda / 2) ** 2;
+  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
 }

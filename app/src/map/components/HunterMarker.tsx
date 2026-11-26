@@ -1,7 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { colors, opacity, sizes, spacing, textStyles } from '../../theme';
-import { classifyFreshness, describeAge, positionAge, type Freshness } from '../freshness';
+import { describeAge, elapsedMs } from '../../domain/time';
+import { classifyFreshness, type Freshness } from '../freshness';
 import { hunterAccessibilityLabel, placeLabel } from '../labels';
 import type { HunterOnMap } from '../types';
 import { HaloText } from './HaloText';
@@ -20,7 +21,7 @@ const RING: Record<Freshness, { borderColor: string; borderStyle: 'solid' | 'das
  * or area name (or "On the move") and how long ago they were heard.
  */
 export function HunterMarker({ hunter, now }: Props) {
-  const age = positionAge(hunter.heardAt, now);
+  const age = elapsedMs(hunter.heardAt, now);
   const freshness = classifyFreshness(age);
   return (
     <View
