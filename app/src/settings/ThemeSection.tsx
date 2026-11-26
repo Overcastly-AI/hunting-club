@@ -5,17 +5,10 @@ import {
   makeStyles,
   spacing,
   textStyles,
+  THEME_PREFERENCE_LABELS,
   THEME_PREFERENCES,
   useThemePreference,
-  type ThemePreference,
 } from '../theme';
-
-/** Word for each theme choice. */
-export const THEME_PREFERENCE_LABELS: Record<ThemePreference, string> = {
-  system: 'System',
-  dark: 'Dark',
-  light: 'Light',
-};
 
 /** Settings → Theme: follow the phone, or always dark or light. Saved on this phone. */
 export function ThemeSection() {

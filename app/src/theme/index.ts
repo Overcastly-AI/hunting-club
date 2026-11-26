@@ -48,7 +48,7 @@ export type {
   ThemeColorToken,
   ThemePreference,
 } from '@huntclub/design';
-export { THEME_PREFERENCES } from '@huntclub/design';
+export { THEME_PREFERENCE_LABELS, THEME_PREFERENCES } from '@huntclub/design';
 
 /**
  * Static tokens. `colors` and `boundary` here are the map's own colours (markers,

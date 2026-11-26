@@ -1,5 +1,5 @@
 import { darkTheme } from '@huntclub/design';
-import { STAND_TYPES } from '@huntclub/shared';
+import { STAND_TYPE_ICON_NAMES, STAND_TYPES } from '@huntclub/shared';
 import { render, screen } from '@testing-library/react-native';
 import type { ReactTestRendererJSON } from 'react-test-renderer';
 
@@ -8,7 +8,7 @@ import {
   LayersIcon,
   LocateIcon,
   NorthIcon,
-  STAND_TYPE_ICONS,
+  STAND_ICON_COMPONENTS,
   StandTypeIcon,
   WindArrowIcon,
 } from '../icons';
@@ -29,9 +29,17 @@ function drawnIcons(): Node[] {
 }
 
 describe('icons (Lucide)', () => {
-  it('has a distinct icon for every stand type', () => {
-    const icons = STAND_TYPES.map((type) => STAND_TYPE_ICONS[type].displayName);
-    expect(icons).toEqual(['TreePine', 'ArrowUpFromLine', 'Tent']);
+  it.each(STAND_TYPES)('draws the shared Lucide icon for stand type %s', (type) => {
+    expect(STAND_ICON_COMPONENTS[STAND_TYPE_ICON_NAMES[type]].displayName).toBe(
+      STAND_TYPE_ICON_NAMES[type],
+    );
+  });
+
+  it('gives every stand type its own icon', () => {
+    const icons = new Set(
+      STAND_TYPES.map((type) => STAND_ICON_COMPONENTS[STAND_TYPE_ICON_NAMES[type]]),
+    );
+    expect(icons.size).toBe(STAND_TYPES.length);
   });
 
   it('draws control icons in the theme text colour at the icon size, hidden from screen readers', async () => {

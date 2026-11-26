@@ -12,6 +12,7 @@ import { radii, space, spacing } from '../../src/sizes';
 import {
   THEME_ATTRIBUTE,
   THEME_CONTRAST_RULES,
+  THEME_PREFERENCE_LABELS,
   THEME_PREFERENCES,
   THEME_STORAGE_KEY,
   themes,
@@ -195,5 +196,13 @@ describe('type, spacing, radii and motion', () => {
     expect(root).toContain(
       '@media (prefers-reduced-motion: reduce) { :root { --motion-fast: 0ms; --motion-base: 0ms; } }',
     );
+  });
+});
+
+describe('theme choice labels', () => {
+  it('names every choice in one word, each different', () => {
+    const labels = THEME_PREFERENCES.map((p) => THEME_PREFERENCE_LABELS[p]);
+    expect(labels).toEqual(['System', 'Dark', 'Light']);
+    expect(Object.keys(THEME_PREFERENCE_LABELS).sort()).toEqual([...THEME_PREFERENCES].sort());
   });
 });

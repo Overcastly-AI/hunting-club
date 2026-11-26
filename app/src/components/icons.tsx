@@ -1,4 +1,4 @@
-import type { StandType } from '@huntclub/shared';
+import { STAND_TYPE_ICON_NAMES, type StandType, type StandTypeIconName } from '@huntclub/shared';
 import {
   ArrowUp,
   ArrowUpFromLine,
@@ -61,15 +61,18 @@ export function WindArrowIcon({ towardDeg, color }: IconProps & { towardDeg: num
   );
 }
 
-/** One Lucide icon per stand type (the club admin uses the same three). */
-export const STAND_TYPE_ICONS = {
-  tree_stand: TreePine,
-  ladder: ArrowUpFromLine,
-  ground_blind: Tent,
-} as const satisfies Record<StandType, LucideIcon>;
+/**
+ * lucide-react-native component for each stand-type icon name. The choice of icon per
+ * stand type is STAND_TYPE_ICON_NAMES in @huntclub/shared, shared with the club admin.
+ */
+export const STAND_ICON_COMPONENTS = {
+  TreePine,
+  ArrowUpFromLine,
+  Tent,
+} as const satisfies Record<StandTypeIconName, LucideIcon>;
 
 /** Tree stand: a pine. Ladder: an arrow up from the ground. Ground blind: a tent. */
 export function StandTypeIcon({ type, color }: IconProps & { type: StandType }) {
-  const Icon = STAND_TYPE_ICONS[type];
+  const Icon = STAND_ICON_COMPONENTS[STAND_TYPE_ICON_NAMES[type]];
   return <Icon {...DRAW} color={useIconColor(color)} />;
 }
