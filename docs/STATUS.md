@@ -21,6 +21,10 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 | Budget | `hunt-club-mesh-monthly`, $5/month, alerts 50/80/100% |
 | Tags | Project=hunt-club-mesh, Env=dev |
 | Deploys | Grok Bot runs `cdk deploy` from the repo when a request says "deploy" (after synth + diff checks) |
+| Data layer owner | CloudFormation stack `HuntClubMeshDataDev`, built by Grok Bot at the owner's direction (06:32 UTC), Retain policies. **The CDK references these, never defines them.** |
+| DynamoDB table | `hunt-club-mesh-dev` (arn:aws:dynamodb:us-east-1:054825383623:table/hunt-club-mesh-dev), PK/SK (S), GSI1 = GSI1PK/GSI1SK (ALL), on-demand, PITR off, deletion protection on, TTL `expiresAt` (Request #2) |
+| Cognito user pool | `us-east-1_0W2YbjVht` (Essentials, email username, first factors PASSWORD + EMAIL_OTP; the app uses EMAIL_OTP only), default email sender (~50/day; SES later per owner) |
+| Cognito app client | `5dn1jcrnef1v6cfv6da0i7qtne` (public, ALLOW_USER_AUTH + refresh); web client via Request #2 |
 
 **Reading Grok Bot replies:** always open the full thread with `get_thread`. Search previews show stale message counts and miss replies.
 
@@ -28,6 +32,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 | # | Sent | Request | Status | Result |
 |---|---|---|---|---|
+| 2 | 2026-11-26 | Enable TTL `expiresAt` on the table; add web app client to the user pool | Sent 06:36 UTC | |
 | 1 | 2026-11-26 | Dev subdomain: Route 53 hosted zone, delegation, ACM wildcard cert | **Done** 06:07 UTC (verified NS via public DNS) | See "AWS environment" below |
 
 ## How the project runs
