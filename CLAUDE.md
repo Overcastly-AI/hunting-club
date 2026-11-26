@@ -5,6 +5,7 @@ Free for hunters (parties up to 3); clubs pay a subscription for the cloud/admin
 Source of truth: docs/SPEC.md. Read it before starting any milestone.
 
 ## Rules
+- Must run on both iOS and Android with equal features. Handle both platforms' permissions, Bluetooth and background behaviour; never ship a platform-only feature.
 - Offline-first: every field feature must work with no internet.
 - Stay wire-compatible with stock Meshtastic firmware. No custom firmware.
 - Members never see channels, keys, presets or regions outside Advanced settings.
