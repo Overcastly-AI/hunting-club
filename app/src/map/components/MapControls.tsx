@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, opacity, radii, sizes, spacing, textStyles } from '../../theme';
-import { LayersIcon, LocateIcon, NorthIcon } from './icons';
+import { LayersIcon, LocateIcon, NorthIcon } from '../../components/icons';
 
 type Props = { onLayers: () => void; onNorthUp: () => void; onCenterOnMe: () => void };
 

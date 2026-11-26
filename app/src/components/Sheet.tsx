@@ -2,8 +2,8 @@ import type { ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button } from '../../components/Button';
-import { colors, radii, spacing, textStyles } from '../../theme';
+import { Button } from './Button';
+import { colors, radii, spacing, textStyles } from '../theme';
 
 type Props = { visible: boolean; title: string; onClose: () => void; children: ReactNode };
 

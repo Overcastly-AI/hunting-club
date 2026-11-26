@@ -13,8 +13,8 @@ import {
   type Bounds,
   type DetailLevel,
 } from '../tiles';
-import { Choice } from './Choice';
-import { Sheet } from './Sheet';
+import { Choice } from '../../components/Choice';
+import { Sheet } from '../../components/Sheet';
 
 type LayerChoice = BasemapId | 'both';
 

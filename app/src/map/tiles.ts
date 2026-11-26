@@ -12,6 +12,8 @@ const TILE_ZOOM_OFFSET = Math.log2(512 / USGS_TILE_SIZE);
  * Offline download limits. USGS publishes no bulk-download policy for these
  * services, so we stay modest: a hunting property, not a state.
  * - Map zoom 15 reaches the deepest cached USGS level (16), about 2.4 m per pixel.
+ *   Level 17+ returns 404 on both services (checked 2026-11-26), so a higher
+ *   map zoom would only add failing requests; stand-level detail is level 16.
  * - At most 6,000 tiles and 150 MB per download (per layer).
  */
 export const DOWNLOAD_LIMITS = {

@@ -4,7 +4,7 @@ import { colors, radii, sizes, spacing, textStyles } from '../../theme';
 import { OPEN_STAND, openStandAccessibilityLabel } from '../labels';
 import type { OpenStandOnMap } from '../types';
 import { HaloText } from './HaloText';
-import { StandTypeIcon } from './icons';
+import { StandTypeIcon } from '../../components/icons';
 
 /** A club stand nobody is in: rounded square with the stand-type icon, name and "Open". */
 export function OpenStandMarker({ stand }: { stand: OpenStandOnMap }) {

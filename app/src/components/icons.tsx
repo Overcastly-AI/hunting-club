@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
-import type { StandType } from '../../domain/stands';
-import { colors, sizes } from '../../theme';
+import type { StandType } from '../domain/stands';
+import { colors, sizes } from '../theme';
 
 /**
  * Small icons drawn with views (no icon font or SVG dependency). Every

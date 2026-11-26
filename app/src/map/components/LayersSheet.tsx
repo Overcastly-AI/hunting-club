@@ -5,8 +5,8 @@ import { colors, spacing, textStyles } from '../../theme';
 import { BASEMAP_IDS, BASEMAPS, basemapBySource, type BasemapId } from '../basemaps';
 import type { MapPack } from '../mapPacks';
 import { formatBytes } from '../tiles';
-import { Choice } from './Choice';
-import { Sheet } from './Sheet';
+import { Choice } from '../../components/Choice';
+import { Sheet } from '../../components/Sheet';
 
 type Props = {
   visible: boolean;
