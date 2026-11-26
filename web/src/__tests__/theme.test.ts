@@ -1,8 +1,11 @@
+import { APP_DESCRIPTION, APP_NAME } from '@huntclub/shared/app';
+import { FAVICON_FILE, siteHeadTags } from '../../site-head';
 import {
   MIN_TEXT_CONTRAST,
   colors,
   contrastRatio,
   fontSize,
+  logoMarkSvg,
   sizes,
   textScale,
 } from '@huntclub/design';
@@ -54,5 +57,23 @@ describe('web theme from @huntclub/design', () => {
     for (const [fg, bg] of pairs) {
       expect(contrastRatio(colors[fg], colors[bg])).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
     }
+  });
+});
+
+describe('page head and favicon', () => {
+  it('take the name, description and theme color from the shared sources', () => {
+    const attrs = siteHeadTags().map((t) => ('attrs' in t ? t.attrs : { title: t.children }));
+    expect(attrs).toContainEqual({ title: APP_NAME });
+    expect(attrs).toContainEqual({ name: 'description', content: APP_DESCRIPTION });
+    expect(attrs).toContainEqual({ name: 'theme-color', content: colors.surface });
+    expect(attrs).toContainEqual(
+      expect.objectContaining({ rel: 'icon', href: `/${FAVICON_FILE}` }),
+    );
+  });
+
+  it('draws the logo only in token colors', () => {
+    const used = logoMarkSvg().match(/#[0-9A-Fa-f]{6}/g) ?? [];
+    expect(used.length).toBeGreaterThan(0);
+    for (const color of used) expect(Object.values(colors)).toContain(color);
   });
 });

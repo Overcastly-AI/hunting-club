@@ -1,9 +1,13 @@
+import { useDocumentTitle } from '../title';
+
 /** Where Stripe Checkout sends the admin back to (CHECKOUT_RETURN_PATHS). */
 export function CheckoutReturn(props: { outcome: 'done' | 'cancel' }) {
   const done = props.outcome === 'done';
+  const title = done ? 'Payment received' : 'Payment cancelled';
+  useDocumentTitle(title);
   return (
     <section aria-labelledby="checkout-title">
-      <h1 id="checkout-title">{done ? 'Payment received' : 'Payment cancelled'}</h1>
+      <h1 id="checkout-title">{title}</h1>
       <p>
         {done
           ? 'Thank you. Club features turn on as soon as Stripe confirms the payment, usually within a minute.'

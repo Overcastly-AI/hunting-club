@@ -11,7 +11,7 @@ import type { Construct } from 'constructs';
 import { MAP_PACKS_PREFIX } from '@huntclub/shared/maps';
 import type { EnvConfig } from '../../config';
 import { LOG_RETENTION } from '../constructs/node-lambda';
-import { webPageRewriteSource } from '../web-pages';
+import { ROBOTS_FILE, robotsTxt, WELL_KNOWN_PREFIX, webPageRewriteSource } from '../web-pages';
 import { wellKnownFiles } from '../well-known';
 
 export interface WebStackProps extends StackProps {
@@ -22,7 +22,7 @@ export interface WebStackProps extends StackProps {
 
 /** Vite puts fingerprinted files here; they never change, so they cache for a year. */
 const HASHED_ASSETS = 'assets/*';
-const WELL_KNOWN = '.well-known/*';
+const WELL_KNOWN = `${WELL_KNOWN_PREFIX}*`;
 /** Club map packs, written by the map-pack builder Lambda (never pruned by web deploys). */
 const MAP_PACKS = `${MAP_PACKS_PREFIX}*`;
 
@@ -46,9 +46,9 @@ export class WebStack extends Stack {
       removalPolicy: RemovalPolicy.RETAIN,
     });
 
-    // Pay-per-request (no always-on compute): index.html for the join and Checkout pages.
+    // Pay-per-request (no always-on compute): index.html for every page path (SPA fallback).
     const webPages = new cloudfront.Function(this, 'WebPageRewrite', {
-      comment: 'Serve index.html for the web page paths (WEB_PAGE_PATHS)',
+      comment: 'Serve index.html for every path without a file extension',
       runtime: cloudfront.FunctionRuntime.JS_2_0,
       code: cloudfront.FunctionCode.fromInline(webPageRewriteSource()),
     });
@@ -63,7 +63,11 @@ export class WebStack extends Stack {
       // North America and Europe edges only: the cheapest price class.
       priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
       defaultBehavior: {
-        origin: origins.S3BucketOrigin.withOriginAccessControl(this.bucket),
+        // LIST lets S3 answer a missing file with 404 instead of 403. Listing itself is
+        // unreachable: `/` is the default root object and query strings are not forwarded.
+        origin: origins.S3BucketOrigin.withOriginAccessControl(this.bucket, {
+          originAccessLevels: [cloudfront.AccessLevel.READ, cloudfront.AccessLevel.LIST],
+        }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
         responseHeadersPolicy: cloudfront.ResponseHeadersPolicy.SECURITY_HEADERS,
@@ -105,12 +109,25 @@ export class WebStack extends Stack {
     new s3deploy.BucketDeployment(this, 'SitePages', {
       destinationBucket: this.bucket,
       sources: [site],
-      // Excluded keys are never pruned: hashed assets, universal-link files and map packs stay.
-      exclude: [HASHED_ASSETS, WELL_KNOWN, MAP_PACKS],
+      // Excluded keys are never pruned: hashed assets, universal-link files, robots.txt and
+      // map packs stay.
+      exclude: [HASHED_ASSETS, WELL_KNOWN, ROBOTS_FILE, MAP_PACKS],
       cacheControl: [s3deploy.CacheControl.noCache()],
       prune: true,
       distribution: this.distribution,
       distributionPaths: ['/*'],
+      logGroup: deployLogs,
+    });
+
+    // Per environment: dev disallows crawling.
+    new s3deploy.BucketDeployment(this, 'Robots', {
+      destinationBucket: this.bucket,
+      sources: [s3deploy.Source.data(ROBOTS_FILE, robotsTxt(config))],
+      contentType: 'text/plain; charset=utf-8',
+      cacheControl: [s3deploy.CacheControl.maxAge(Duration.hours(1))],
+      prune: false,
+      distribution: this.distribution,
+      distributionPaths: [`/${ROBOTS_FILE}`],
       logGroup: deployLogs,
     });
 

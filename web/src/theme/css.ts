@@ -72,6 +72,8 @@ p { margin: 0 0 var(--space-md); }
 a { color: var(--color-text); }
 :focus-visible { outline: 3px solid var(--color-accent); outline-offset: 2px; }
 .layout { max-width: 960px; margin: 0 auto; padding: var(--space-lg) var(--space-md); }
+.not-found { display: grid; justify-items: center; text-align: center; gap: var(--space-sm);
+  padding: var(--space-xl) 0; }
 .nav { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-bottom: var(--space-lg); }
 .nav a { ${textStyleCss(textScale.label)}; display: inline-flex; align-items: center;
   min-height: var(--tap-min); padding: 0 var(--space-md); border-radius: var(--radius-control);

@@ -5,11 +5,11 @@
   "description": "Club web admin page (Vite + React), served from S3 + CloudFront by infra's Web stack.",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
+    "dev": "vite --configLoader runner",
+    "build": "tsc --noEmit && vite build --configLoader runner",
+    "preview": "vite preview --configLoader runner",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --configLoader runner"
   },
   "dependencies": {
     "@huntclub/design": "*",

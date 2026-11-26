@@ -5,7 +5,7 @@ import { radioCopy } from './src/radio/copy.ts';
 // Constants-only subpath of the shared design tokens (Expo's config loader reads it).
 import { colors } from '@huntclub/design/colors';
 // App identifiers, shared with infra (universal-link files): one source of truth.
-import { APP_ID, URL_SCHEME } from '@huntclub/shared/app';
+import { APP_ID, APP_NAME, URL_SCHEME } from '@huntclub/shared/app';
 
 /**
  * EAS project id: the one place it lives. The owner runs `eas init` once (docs/IOS_BUILD.md)
@@ -53,7 +53,7 @@ const CAMERA_USAGE =
   'Hunt Club Mesh uses the camera only to scan party and club QR codes. No photos are taken or saved.';
 
 const config: ExpoConfig = {
-  name: 'Hunt Club Mesh',
+  name: APP_NAME,
   slug: 'hunt-club-mesh',
   scheme: URL_SCHEME,
   version: '0.1.0',
