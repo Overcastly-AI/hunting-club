@@ -26,3 +26,9 @@ export const PARTITION_PREFIXES = {
   subscription: 'SUBSCRIPTION#',
   stripeEvent: 'STRIPE_EVENT#',
 } as const;
+
+/** Every key attribute above is a string ('S' in DynamoDB and CDK's AttributeType). */
+export const KEY_ATTRIBUTE_TYPE = 'S';
+
+/** Every GSI projects all attributes. */
+export const GSI_PROJECTION = 'ALL';

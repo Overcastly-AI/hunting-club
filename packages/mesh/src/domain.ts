@@ -2,11 +2,11 @@
  * Domain enums that travel over the mesh.
  *
  * Each enum has a numeric wire code (used in app-port messages) and a stable
- * string key (used in SQLite / Supabase columns, e.g. `check_ins.mode`).
+ * string key (used in SQLite columns and the club API, e.g. `check_ins.mode`).
  *
  * CheckInMode is defined here (check-ins never reach the cloud). Harvest sex is
- * stored in Supabase, so its keys come from the SQL enum via @huntclub/shared;
- * this file only adds the frozen wire codes.
+ * stored in the club cloud data, so its keys come from @huntclub/shared (the
+ * hand-written domain enums); this file only adds the frozen wire codes.
  */
 import { HARVEST_SEXES, type HarvestSex as HarvestSexKey } from '@huntclub/shared';
 
@@ -29,9 +29,9 @@ export const CHECK_IN_MODE_KEYS = {
 export type CheckInModeKey = (typeof CHECK_IN_MODE_KEYS)[CheckInMode];
 
 /**
- * Wire codes for harvest sex, keyed by the database enum (`harvest_sex`).
+ * Wire codes for harvest sex, keyed by HARVEST_SEXES from @huntclub/shared.
  * These are protocol values: never renumber or reuse one. `satisfies` makes the
- * typecheck fail if a value is added to or removed from the SQL enum without a
+ * typecheck fail if a value is added to or removed from the shared enum without a
  * code here; a unit test pins the numbers.
  */
 export const HARVEST_SEX_CODES = {
