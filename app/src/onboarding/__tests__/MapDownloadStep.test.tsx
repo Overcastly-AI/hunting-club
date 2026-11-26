@@ -2,19 +2,21 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { distanceMeters } from '../../map/geo';
 import type { DownloadRequest } from '../../map/offline';
-import { ensureLocationPermission } from '../../permissions/location';
 import { radioCopy } from '../../radio/copy';
+import { answerPermissionAlerts } from '../../test-utils/alerts';
+import { placePhone } from '../../test-utils/fakeMapLibre';
 import { onboardingCopy } from '../copy';
 import { MapDownloadStep, ONBOARDING_MAP_RADIUS_M } from '../MapDownloadStep';
 
 jest.mock(
-  '../../permissions/location',
-  () => jest.requireActual('../../test-utils/fakeLocation').fakeLocationModule,
+  '@maplibre/maplibre-react-native',
+  () => jest.requireActual('../../test-utils/fakeMapLibre').fakeMapLibreModule,
 );
+
+beforeEach(() => answerPermissionAlerts());
 
 const copy = onboardingCopy.map;
 const HERE = { lat: 40.79, lon: -77.86 };
-const locate = jest.mocked(ensureLocationPermission);
 
 async function renderStep() {
   const onNext = jest.fn();
@@ -25,7 +27,7 @@ async function renderStep() {
 
 describe('MapDownloadStep', () => {
   it('downloads the area around the hunter, then continues', async () => {
-    locate.mockResolvedValue(HERE);
+    placePhone(HERE);
     const { onNext, onDownload } = await renderStep();
 
     await fireEvent.press(screen.getByRole('button', { name: copy.findArea }));
@@ -47,7 +49,7 @@ describe('MapDownloadStep', () => {
   });
 
   it('explains when location is unavailable and still lets the hunter move on', async () => {
-    locate.mockResolvedValue(null);
+    placePhone(null);
     const { onNext, onDownload } = await renderStep();
 
     await fireEvent.press(screen.getByRole('button', { name: copy.findArea }));

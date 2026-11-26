@@ -11,12 +11,19 @@ import { spacing } from '../theme';
 import { onboardingCopy } from './copy';
 import { MapDownloadStep } from './MapDownloadStep';
 import { NameStep } from './NameStep';
+import { PermissionsStep } from './PermissionsStep';
 
 /**
- * Onboarding steps in order (spec: Screens → 5. Onboarding). The
- * permissions step goes before 'map' once its modules are on main.
+ * Onboarding steps in order (spec: Screens → 5. Onboarding).
  */
-export const ONBOARDING_STEPS = ['welcome', 'pairRadio', 'party', 'name', 'map'] as const;
+export const ONBOARDING_STEPS = [
+  'welcome',
+  'pairRadio',
+  'party',
+  'name',
+  'permissions',
+  'map',
+] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 
 type Props = {
@@ -36,6 +43,9 @@ export function OnboardingScreen({ onFinish, profile, onProfile, onDownloadMap }
 
   if (step === 'map') {
     return <MapDownloadStep onNext={next} onDownload={onDownloadMap} />;
+  }
+  if (step === 'permissions') {
+    return <PermissionsStep onNext={next} />;
   }
   if (step === 'name') {
     return <NameStep initial={profile} onNext={(p) => void onProfile(p).then(next)} />;
