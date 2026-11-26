@@ -13,10 +13,7 @@ import {
   CLUB_PRICING,
   type ClubApiClient,
   emailCodeRules,
-  LEGAL_DRAFT_NOTICE,
   LEGAL_PATHS,
-  privacyPolicy,
-  termsOfUse,
   ClubApiRequestError,
   JOIN_PATH,
   WEB_DOMAINS,
@@ -523,22 +520,6 @@ describe('pages on their own paths (no sign-in)', () => {
     for (const path of [ADMIN_PATH, '/app', '/app/index.html']) {
       const { unmount } = render(<Root {...services} location={at(path)} />);
       expect(await screen.findByText(/not available yet/)).toBeTruthy();
-      unmount();
-    }
-  });
-
-  it('shows Privacy and Terms from the shared copy, marked as drafts', async () => {
-    for (const [path, doc] of [
-      [LEGAL_PATHS.privacy, privacyPolicy],
-      [LEGAL_PATHS.terms, termsOfUse],
-    ] as const) {
-      const { unmount } = render(<Root {...services} location={at(path)} />);
-      expect(await screen.findByRole('heading', { level: 1, name: doc.title })).toBeTruthy();
-      expect(screen.getByRole('note').textContent).toBe(LEGAL_DRAFT_NOTICE);
-      for (const section of doc.sections) {
-        expect(screen.getByRole('heading', { level: 2, name: section.heading })).toBeTruthy();
-      }
-      expect(document.title).toBe(pageTitle(doc.title));
       unmount();
     }
   });

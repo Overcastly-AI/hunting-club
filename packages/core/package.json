@@ -16,7 +16,8 @@
     "lint": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@huntclub/mesh": "0.1.0"
+    "@huntclub/mesh": "0.1.0",
+    "@huntclub/shared": "*"
   },
   "devDependencies": {
     "@types/jest": "30.0.0",

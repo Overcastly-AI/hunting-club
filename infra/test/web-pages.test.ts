@@ -51,14 +51,14 @@ describe('site and admin routing (CloudFront Function)', () => {
     expect(servedAs(BUILD_VERSION_URL)).toBe(BUILD_VERSION_URL);
   });
 
-  it('serves the admin for /join, the Checkout return pages, Privacy and Terms', () => {
-    for (const uri of [
-      JOIN_PATH,
-      ...Object.values(CHECKOUT_RETURN_PATHS),
-      ...Object.values(LEGAL_PATHS),
-    ]) {
+  it('serves the admin for /join and the Checkout return pages', () => {
+    for (const uri of [JOIN_PATH, ...Object.values(CHECKOUT_RETURN_PATHS)]) {
       expect(servedAs(uri)).toBe(ADMIN_PAGE_OBJECT);
     }
+  });
+
+  it('serves Privacy and Terms from the public site, at the paths the stores link to', () => {
+    for (const uri of Object.values(LEGAL_PATHS)) expect(servedAs(uri)).toBe(`${uri}/index.html`);
   });
 
   it('redirects old and guessable addresses with a 301', () => {
