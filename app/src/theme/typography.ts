@@ -32,18 +32,29 @@ export function archivo(weight: FontWeight, width: FontWidth = fontWidth.normal)
   } as const satisfies TextStyle;
 }
 
-function textStyle(entry: TextScaleEntry) {
+/** The React Native style for one textScale entry, typed exactly from that entry. */
+type TextStyleFor<E extends TextScaleEntry> = ReturnType<typeof archivo> & {
+  fontSize: E['size'];
+} & (E extends { lineHeight: infer L } ? { lineHeight: L } : unknown);
+
+function textStyle<E extends TextScaleEntry>(entry: E): TextStyleFor<E> {
   return {
     ...archivo(entry.weight, entry.width),
     fontSize: entry.size,
     ...(entry.lineHeight === undefined ? {} : { lineHeight: entry.lineHeight }),
-  } satisfies TextStyle;
+  } as TextStyleFor<E>;
 }
 
 /** Ready-made React Native text styles, one per entry of the shared textScale. */
 export const textStyles = Object.fromEntries(
   Object.entries(textScale).map(([name, entry]) => [name, textStyle(entry)]),
-) as { readonly [K in keyof typeof textScale]: ReturnType<typeof textStyle> };
+) as { readonly [K in keyof typeof textScale]: TextStyleFor<(typeof textScale)[K]> };
+
+/**
+ * Largest system text size the app follows (spec: support up to 200%). Pass it
+ * as `maxFontSizeMultiplier` wherever text must stay inside a fixed layout.
+ */
+export const maxFontScale = 2;
 
 /** Dark outline behind all text drawn on the map (map-halo token, 3 px). */
 export const mapTextHalo = {

@@ -1,7 +1,6 @@
+import { DAY_MS, HOUR_MS, MINUTE_MS } from '@huntclub/core';
+
 /** How long ago something happened, in words. Freshness rules live in @huntclub/core. */
-const MINUTE = 60_000;
-const HOUR = 60 * MINUTE;
-const DAY = 24 * HOUR;
 
 function plural(count: number, word: string): string {
   return `${count} ${word}${count === 1 ? '' : 's'}`;
@@ -13,15 +12,15 @@ function plural(count: number, word: string): string {
  */
 export function describeAge(ageMs: number): { short: string; spoken: string } {
   const age = Math.max(0, ageMs);
-  if (age < MINUTE) return { short: 'Just now', spoken: 'just now' };
-  if (age < HOUR) {
-    const minutes = Math.floor(age / MINUTE);
+  if (age < MINUTE_MS) return { short: 'Just now', spoken: 'just now' };
+  if (age < HOUR_MS) {
+    const minutes = Math.floor(age / MINUTE_MS);
     return { short: `${minutes} min ago`, spoken: `${plural(minutes, 'minute')} ago` };
   }
-  if (age < DAY) {
-    const hours = Math.floor(age / HOUR);
+  if (age < DAY_MS) {
+    const hours = Math.floor(age / HOUR_MS);
     return { short: `${hours} hr ago`, spoken: `${plural(hours, 'hour')} ago` };
   }
-  const days = Math.floor(age / DAY);
+  const days = Math.floor(age / DAY_MS);
   return { short: `${plural(days, 'day')} ago`, spoken: `${plural(days, 'day')} ago` };
 }

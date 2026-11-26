@@ -13,7 +13,7 @@ import {
 } from '@huntclub/design';
 
 import { fontSources } from './fonts';
-import { archivo, mapTextHalo, textStyles } from './typography';
+import { archivo, mapTextHalo, maxFontScale, textStyles } from './typography';
 
 export {
   archivo,
@@ -26,6 +26,7 @@ export {
   fontWeight,
   fontWidth,
   mapTextHalo,
+  maxFontScale,
   opacity,
   radii,
   sizes,

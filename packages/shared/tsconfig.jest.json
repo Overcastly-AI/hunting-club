@@ -1,0 +1,7 @@
+{
+  "extends": "../mesh/tsconfig.jest.json",
+  "compilerOptions": {
+    "rootDir": ".."
+  },
+  "include": ["src"]
+}

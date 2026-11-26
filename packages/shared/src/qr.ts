@@ -1,22 +1,22 @@
-import QRCode from 'qrcode';
+import { create, type QRCodeErrorCorrectionLevel } from 'qrcode';
 
 /**
- * A QR code as a grid of modules: the single encoder for every QR the project shows
- * (party and club invites). Each platform draws the grid itself: the web page as SVG,
- * the app (later) with react-native-svg. Kept out of the package index so code that
- * never shows a QR doesn't bundle the encoder: import from '@huntclub/shared/qr'.
+ * The one QR encoder (app Party/Club QR, web admin invite page). Medium error
+ * correction survives a scratched phone screen or a printed sheet in the rain.
  */
-export interface QrMatrix {
-  /** Modules per side (21 for version 1, +4 per version). */
-  readonly size: number;
-  isDark(row: number, column: number): boolean;
-}
+export const QR_ERROR_CORRECTION: QRCodeErrorCorrectionLevel = 'M';
 
-/**
- * Error correction level M (about 15% damage tolerated): a good fit for a code shown on
- * a phone or printed in the clubhouse, without making long invite links too dense.
- */
+/** Modules a QR scanner needs blank around the code. */
+export const QR_QUIET_ZONE_MODULES = 4;
+
+/** Square QR module matrix: `rows[row][col]` is true for a dark module. */
+export type QrMatrix = { size: number; rows: boolean[][] };
+
+/** Encodes `text` as a QR code; renderers draw the dark modules. */
 export function qrMatrix(text: string): QrMatrix {
-  const { size, data } = QRCode.create(text, { errorCorrectionLevel: 'M' }).modules;
-  return { size, isDark: (row, column) => data[row * size + column] === 1 };
+  const { modules } = create(text, { errorCorrectionLevel: QR_ERROR_CORRECTION });
+  const rows = Array.from({ length: modules.size }, (_, row) =>
+    Array.from({ length: modules.size }, (_, col) => Boolean(modules.get(row, col))),
+  );
+  return { size: modules.size, rows };
 }

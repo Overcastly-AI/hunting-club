@@ -19,6 +19,8 @@ type Props = {
   disabled?: boolean;
   /** Why it's disabled, read and shown under the control. */
   disabledReason?: string;
+  /** Orange for the main action; gold for Ask for a Hand. */
+  tone?: 'primary' | 'help';
 };
 
 /**
@@ -26,7 +28,13 @@ type Props = {
  * out. Screen-reader users confirm with the standard activate gesture
  * (double-tap); dragging isn't possible for them.
  */
-export function SlideToConfirm({ label, onConfirm, disabled, disabledReason }: Props) {
+export function SlideToConfirm({
+  label,
+  onConfirm,
+  disabled,
+  disabledReason,
+  tone = 'primary',
+}: Props) {
   const [travel, setTravel] = useState(0);
   const [x] = useState(() => new Animated.Value(0));
   // The pan responder is created once; it reads the latest props and track size from these refs.
@@ -82,7 +90,11 @@ export function SlideToConfirm({ label, onConfirm, disabled, disabledReason }: P
         <Animated.View
           {...pan.panHandlers}
           testID="slide-thumb"
-          style={[styles.thumb, { transform: [{ translateX: travel > 0 ? x : 0 }] }]}
+          style={[
+            styles.thumb,
+            tone === 'help' && styles.helpThumb,
+            { transform: [{ translateX: travel > 0 ? x : 0 }] },
+          ]}
         >
           <View style={styles.chevron} />
         </Animated.View>
@@ -124,6 +136,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  helpThumb: { backgroundColor: colors.help },
   chevron: {
     width: CHEVRON,
     height: CHEVRON,

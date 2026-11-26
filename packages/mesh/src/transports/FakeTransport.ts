@@ -550,6 +550,10 @@ export class FakeRadio implements Transport {
       case 'setChannel':
         this.channels[v.value.index] = v.value;
         break;
+      case 'setOwner':
+        this.user.longName = v.value.longName;
+        this.user.shortName = v.value.shortName;
+        break;
       case 'setConfig':
         if (v.value.payloadVariant.case)
           this.config[v.value.payloadVariant.case] = v.value.payloadVariant.value;

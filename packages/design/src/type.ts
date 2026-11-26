@@ -18,11 +18,15 @@ export const fontWeight = {
   extraBold: 800,
 } as const;
 
+/** Design D's narrow width: the sheet title and any text that must fit a tight panel. */
+const NARROW_WIDTH = 82;
+
 /** Widths as a percentage of normal (`wdth` axis). The spec allows 75–100. */
 export const fontWidth = {
   normal: 100,
+  narrow: NARROW_WIDTH,
   /** Bottom sheet title. */
-  sheetTitle: 82,
+  sheetTitle: NARROW_WIDTH,
 } as const;
 
 /** Axis ranges allowed by the design system. */
@@ -48,6 +52,12 @@ export const fontSize = {
   bodyLarge: 17,
   /** Bottom sheet title. */
   sheetTitle: 25,
+  /** Clubhouse board: details read from across a room (place, since when). */
+  boardDetail: 24,
+  /** Clubhouse board: names and section headings read from across a room. */
+  boardName: 32,
+  /** Clubhouse board: the club name and clock. */
+  boardTitle: 40,
 } as const;
 
 /** One named text style: font axes, size and (optionally) line height, in px. */
@@ -64,7 +74,14 @@ export const textScale = {
   body: { weight: fontWeight.medium, size: fontSize.body, lineHeight: 22 },
   bodyLarge: { weight: fontWeight.medium, size: fontSize.bodyLarge, lineHeight: 24 },
   label: { weight: fontWeight.semiBold, size: fontSize.body, lineHeight: 22 },
-  tabLabel: { weight: fontWeight.semiBold, size: fontSize.tabLabel },
+  /** `label` at the narrow width, for panels that must not truncate (map conditions). */
+  labelNarrow: {
+    weight: fontWeight.semiBold,
+    width: fontWidth.narrow,
+    size: fontSize.body,
+    lineHeight: 22,
+  },
+  tabLabel: { weight: fontWeight.semiBold, size: fontSize.tabLabel, lineHeight: 20 },
   mapLabel: { weight: fontWeight.bold, size: fontSize.mapLabelMin },
   markerName: { weight: fontWeight.extraBold, size: fontSize.markerName },
   sheetTitle: {
@@ -72,6 +89,14 @@ export const textScale = {
     width: fontWidth.sheetTitle,
     size: fontSize.sheetTitle,
     lineHeight: 30,
+  },
+  boardDetail: { weight: fontWeight.semiBold, size: fontSize.boardDetail, lineHeight: 32 },
+  boardName: { weight: fontWeight.extraBold, size: fontSize.boardName, lineHeight: 40 },
+  boardTitle: {
+    weight: fontWeight.extraBold,
+    width: fontWidth.narrow,
+    size: fontSize.boardTitle,
+    lineHeight: 48,
   },
 } as const satisfies Record<string, TextScaleEntry>;
 

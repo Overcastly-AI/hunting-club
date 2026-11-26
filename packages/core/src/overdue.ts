@@ -24,7 +24,7 @@ import {
   type Unsubscribe,
 } from '@huntclub/mesh';
 import type { CheckInBoard, CheckInController, MemberCheckIn, OpenCheckIn } from './checkIn';
-import { CORE_CONFIG, MINUTE_MS, type CoreConfig } from './config';
+import { CORE_CONFIG, DAY_MS, MINUTE_MS, type CoreConfig } from './config';
 import { SUN, type SunApi } from './sun';
 import {
   randomFraction,
@@ -33,8 +33,6 @@ import {
   type CoreContext,
   type ResolvedContext,
 } from './context';
-
-const DAY_MS = 86_400_000;
 
 /**
  * When a check-in becomes overdue: the first sunset + grace after the

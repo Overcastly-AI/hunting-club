@@ -7,7 +7,9 @@ import {
   type MeshClientEvents,
 } from '@huntclub/mesh';
 
-import { MINUTES, NOW } from '../../test-utils/mapFixtures';
+import { MINUTE_MS } from '@huntclub/core';
+
+import { NOW } from '../../test-utils/mapFixtures';
 import { createMapDataStore } from '../dataSource';
 import { UNNAMED_STAND } from '../labels';
 import {
@@ -53,7 +55,7 @@ const checkIn = (
   node: n,
   mode,
   checkInId: n,
-  since: NOW - 30 * MINUTES,
+  since: NOW - 30 * MINUTE_MS,
   ...extra,
 });
 
@@ -105,7 +107,7 @@ describe('buildMapData', () => {
     );
     expect(data.hunters[0]).toMatchObject({
       position: pin,
-      heardAt: NOW - 30 * MINUTES,
+      heardAt: NOW - 30 * MINUTE_MS,
       place: { kind: 'spot' },
     });
   });

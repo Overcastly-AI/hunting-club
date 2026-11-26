@@ -1,10 +1,9 @@
+import { MINUTE_MS } from '../config';
 import { localCalendarDay, sunTimes } from '../sun';
-
-const MINUTE = 60_000;
 
 function expectNear(actual: Date, expectedIso: string, toleranceMinutes = 2) {
   const diff = Math.abs(actual.getTime() - Date.parse(expectedIso));
-  expect(diff).toBeLessThanOrEqual(toleranceMinutes * MINUTE);
+  expect(diff).toBeLessThanOrEqual(toleranceMinutes * MINUTE_MS);
 }
 
 function normal(result: ReturnType<typeof sunTimes>) {

@@ -6,6 +6,11 @@
  * Fixed product rules (the 3-person free-party cap) are not tunables and
  * live with their logic (party.ts).
  */
+/** Time units in ms: the only definitions in the repo. */
+export const MINUTE_MS = 60_000;
+export const HOUR_MS = 60 * MINUTE_MS;
+export const DAY_MS = 24 * HOUR_MS;
+
 export interface CoreConfig {
   receipts: {
     /** Receipts a single sender can trigger in a burst. */
@@ -58,18 +63,16 @@ export interface CoreConfig {
 }
 
 export const CORE_CONFIG: Readonly<CoreConfig> = {
-  receipts: { burst: 3, refillMs: 20_000, repeatMinMs: 60_000, jitterMs: 3_000 },
-  help: { initialMs: 20_000, factor: 2, maxMs: 5 * 60_000, jitter: 0.2 },
+  receipts: { burst: 3, refillMs: 20_000, repeatMinMs: MINUTE_MS, jitterMs: 3_000 },
+  help: { initialMs: 20_000, factor: 2, maxMs: 5 * MINUTE_MS, jitter: 0.2 },
   overdue: {
     graceMinutes: 30,
     selfPromptMinutes: 10,
     extendMinutes: 30,
     othersDelayMinutes: 12,
-    alertJitterMs: 60_000,
-    checkIntervalMs: 60_000,
+    alertJitterMs: MINUTE_MS,
+    checkIntervalMs: MINUTE_MS,
   },
-  checkIn: { sameOutingMs: 16 * 3_600_000 },
-  party: { discoveryMs: 30_000, lastHeardSaveMs: 5 * 60_000 },
+  checkIn: { sameOutingMs: 16 * HOUR_MS },
+  party: { discoveryMs: 30_000, lastHeardSaveMs: 5 * MINUTE_MS },
 };
-
-export const MINUTE_MS = 60_000;

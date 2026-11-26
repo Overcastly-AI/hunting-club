@@ -15,6 +15,9 @@ const SECRET_SLUGS: Record<SecretKey, string> = {
 /** Secrets the Stripe webhook Lambda may read (docs/research/stripe-and-auth.md §4). */
 export const STRIPE_WEBHOOK_SECRETS: readonly SecretKey[] = ['stripeWebhookSecret', 'stripeApiKey'];
 
+/** Secrets the club API may read (the Stripe key, only for creating Checkout Sessions). */
+export const CLUB_API_SECRETS: readonly SecretKey[] = ['stripeApiKey'];
+
 /** Env var that carries a secret's parameter NAME (never its value), e.g. STRIPE_WEBHOOK_SECRET_PARAM. */
 export function secretParameterEnvVar(key: SecretKey): string {
   return `${key.replace(/[A-Z]/g, (c) => `_${c}`).toUpperCase()}_PARAM`;
@@ -26,6 +29,10 @@ export const API_ENV = {
   tableName: 'TABLE_NAME',
   userPoolId: 'USER_POOL_ID',
   userPoolClientIds: 'USER_POOL_CLIENT_IDS',
+  /** https origin of the web admin page (Checkout returns there). */
+  webOrigin: 'WEB_ORIGIN',
+  /** JSON object: plan id → Stripe Price id. */
+  stripePrices: 'STRIPE_PRICES',
 } as const;
 
 /** SSM parameter name for a secret: `/hunt-club-mesh/<env>/<name>` (owner decision 2026-11-26). */
@@ -52,6 +59,11 @@ export interface EnvConfig {
   readonly dataStackName: string;
   /** Name of the club table; its ARN is derived from the env's account and region. */
   readonly clubTableName: string;
+  /** Stripe (test mode in dev). */
+  readonly stripe: {
+    /** Price id per plan id (club-data PLACEHOLDER_PLANS); Checkout answers 503 without one. */
+    readonly prices: Readonly<Record<string, string>>;
+  };
   readonly cognito: {
     readonly userPoolId: string;
     /** Expo app client (USER_AUTH). */
@@ -68,4 +80,11 @@ export interface EnvConfig {
     readonly appleTeamId?: string;
     readonly androidSha256CertFingerprints: readonly string[];
   };
+}
+
+/** Cognito client IDs the club API accepts, in a fixed order (app, then web once configured). */
+export function userPoolClientIds(config: { readonly cognito: EnvConfig['cognito'] }): string[] {
+  return [config.cognito.appClientId, config.cognito.webClientId].filter((id): id is string =>
+    Boolean(id),
+  );
 }

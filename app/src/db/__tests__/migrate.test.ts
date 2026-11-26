@@ -4,6 +4,7 @@ import { migrations } from '../migrations';
 import type { Migration } from '../types';
 
 const EXPECTED_TABLES = [
+  'app_state',
   'areas',
   'check_ins',
   'groups',
@@ -12,6 +13,8 @@ const EXPECTED_TABLES = [
   'map_packs',
   'members',
   'messages',
+  'paired_radio',
+  'party',
   'positions',
   'radios',
   'stands',
@@ -140,7 +143,7 @@ describe('migration 2: map pack downloads', () => {
       )
       .run();
 
-    await expect(migrate(db, migrations)).resolves.toBe(2);
+    await expect(migrate(db, migrations)).resolves.toBe(migrations.length);
 
     const row = db.raw.prepare(`SELECT * FROM map_packs WHERE id = 'p1'`).get();
     expect(row).toEqual(

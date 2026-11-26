@@ -21,9 +21,11 @@ export const dev: EnvConfig = {
   // Built by the owner's operator as CloudFormation stack HuntClubMeshDataDev (Retain).
   dataStackName: 'HuntClubMeshDataDev',
   clubTableName: 'hunt-club-mesh-dev',
+  // Test-mode Price ids, per plan. Pending: the owner/operator creates the Stripe product.
+  stripe: { prices: {} },
   cognito: {
     userPoolId: 'us-east-1_0W2YbjVht',
     appClientId: '5dn1jcrnef1v6cfv6da0i7qtne',
-    webClientId: undefined, // pending from the operator
+    webClientId: '6mpfpr6nrdqddim7trfqckegu5',
   },
 };
