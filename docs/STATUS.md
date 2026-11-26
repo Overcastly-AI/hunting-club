@@ -53,13 +53,13 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 | Task | Session | Branch / PR | Status |
 |---|---|---|---|
-| Merged | — | #1–#15, #17–#28, #30 | Free version wired end to end; onboarding welcome/pair/party/name/map download done; club backend done |
-| Onboarding (remaining: scan-to-join, permissions screen, setOwner from name) | session_01QS5dr7YPxgw1iqGybujET3 | agent/m2-ble-transport | Active |
-| App club layer #29 (sign-in, API client, join, entitlement); then club stands/areas/channel into RadioServices | session_01QS5dr3GmkJjvaYfcNrAN3b | agent/club-data | Active |
+| Merged | — | #1–#15, #17–#30, #32 | **Free version feature-complete in code** (onboarding done); club backend + app club layer done |
+| Chat history persistence + app bundle size | session_01QS5dr7YPxgw1iqGybujET3 | agent/m2-ble-transport | Active |
+| Club on radio #33; then parties inside a club (secondary channel) | session_01QS5dr3GmkJjvaYfcNrAN3b | agent/club-data | Active |
 | Weather worker | session_01QS5dr7o9U9xBRJaR86iMuW | agent/weather | Paused (#10, #27 merged) |
 | Map worker | session_01QS5dr3kB1sf3Bt86wVb3qW | agent/m4-offline-map | Paused (usage cap) |
 | CI/font/board worker | session_01QS5dr4qFtLFfyf7oVjMNAj | agent/m1-scaffold | Paused |
-| Web admin page + packages/design | session_01QS5dr5ia6B5X5renWEXyAe | agent/m2-research | Paused (usage limit hit mid-task) |
+| Web admin page + packages/design #31 (switching to shared client) | session_01QS5dr5ia6B5X5renWEXyAe | agent/m2-research | Active |
 | Mesh-sim CI #16 | session_01QS5dr5jAZ6wC472f8hsUHW | PR #16 | Paused; first real meshtasticd run failed (non-blocking) |
 
 ## Decisions log

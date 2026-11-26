@@ -25,7 +25,7 @@ import {
 } from './RadioServices';
 
 export type RadioContextValue = RadioSnapshot &
-  Pick<RadioController, 'pair' | 'reconnect' | 'forget'>;
+  Pick<RadioController, 'pair' | 'reconnect' | 'forget' | 'setOwner'>;
 
 const RadioContext = createContext<RadioContextValue | null>(null);
 
@@ -117,6 +117,7 @@ export function RadioProvider({
       pair: controller.pair,
       reconnect: controller.reconnect,
       forget: controller.forget,
+      setOwner: controller.setOwner,
     }),
     [snapshot, controller],
   );

@@ -1,26 +1,27 @@
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useState } from 'react';
 
-import { loadProfile, markOnboarded, saveProfile, type MyProfile } from '../db/appState';
+import { JOIN_ROUTE } from '../club/routes';
+import { markOnboarded } from '../db/appState';
 import { useMapPacks } from '../map/useMapPacks';
 import { OnboardingScreen } from '../onboarding/OnboardingScreen';
+import { useProfile } from '../profile/ProfileProvider';
 
 export default function OnboardingRoute() {
   const db = useSQLiteContext();
-  const [profile, setProfile] = useState<MyProfile | null>();
+  // Saving the profile also writes the name to the radio (OwnerSync).
+  const { profile, save } = useProfile();
   // Downloads started here keep going; the Map tab shows their progress.
   const { start: downloadMap } = useMapPacks();
-  useEffect(() => {
-    void loadProfile(db).then(setProfile);
-  }, [db]);
   if (profile === undefined) return null;
 
   return (
     <OnboardingScreen
       profile={profile}
-      onProfile={(p) => saveProfile(db, p)}
+      onProfile={save}
       onDownloadMap={downloadMap}
+      // Club sign-in and join, then back here to carry on.
+      onClubCode={(link) => router.push({ pathname: JOIN_ROUTE, params: { link } })}
       onFinish={() => {
         void markOnboarded(db, Date.now()).then(() => router.replace('/'));
       }}

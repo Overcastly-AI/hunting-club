@@ -15,8 +15,9 @@ import {
   useState,
 } from 'react';
 
-import { type MyProfile, loadProfile } from '../db/appState';
+import type { MyProfile } from '../db/appState';
 import type { SqlDatabase } from '../db/types';
+import { useProfile } from '../profile/ProfileProvider';
 import { ClubEntitlementContext, entitlementOf } from './entitlement';
 import type { ClubSession } from './session';
 import type { RadioClub } from '../radio/RadioServices';
@@ -89,20 +90,17 @@ export function ClubStateProvider({
   const { session, api, secrets } = services;
   const [clubs, setClubs] = useState<LocalClub[]>([]);
   const [signedIn, setSignedIn] = useState(false);
-  const [myProfile, setMyProfile] = useState<MyProfile | null>(null);
+  const myProfile: MyProfile | null = useProfile().profile ?? null;
   const [radioClub, setRadioClub] = useState<RadioClub | null>(null);
 
   const reload = useCallback(
     () =>
-      Promise.all([loadClubs(db), session.isSignedIn(), loadProfile(db)]).then(
-        async ([loaded, isSignedIn, profile]) => {
-          const radio = loaded[0] ? await loadRadioClub(db, secrets, loaded[0]) : null;
-          setClubs(loaded);
-          setSignedIn(isSignedIn);
-          setMyProfile(profile);
-          setRadioClub(radio);
-        },
-      ),
+      Promise.all([loadClubs(db), session.isSignedIn()]).then(async ([loaded, isSignedIn]) => {
+        const radio = loaded[0] ? await loadRadioClub(db, secrets, loaded[0]) : null;
+        setClubs(loaded);
+        setSignedIn(isSignedIn);
+        setRadioClub(radio);
+      }),
     [db, secrets, session],
   );
 

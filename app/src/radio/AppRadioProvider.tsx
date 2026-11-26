@@ -5,10 +5,12 @@ import { startRadioService, stopRadioService } from '../../modules/radio-service
 import { useClub } from '../club/ClubProvider';
 import { clearPairedRadio, loadPairedRadio, savePairedRadio } from '../db/pairedRadio';
 import { sqlitePartyStore } from '../db/partyStore';
+import { useProfile } from '../profile/ProfileProvider';
 import { BleTransport } from './BleTransport';
 import { radioCopy } from './copy';
 import { randomBytes } from './random';
 import type { BackgroundLink, CreateTransport, PairedRadioStore } from './RadioController';
+import { OwnerSync } from './OwnerSync';
 import { RadioProvider } from './RadioProvider';
 
 const createBleTransport: CreateTransport = (radio, { retryFirstConnect }) =>
@@ -23,7 +25,10 @@ const androidForegroundService: BackgroundLink = {
 
 const clientOptions = { random: randomBytes };
 
-/** RadioProvider wired to Bluetooth, SQLite and the Android foreground service. */
+/**
+ * RadioProvider wired to Bluetooth, SQLite and the Android foreground service.
+ * Keeps the radio's owner name in step with the hunter's profile.
+ */
 export function AppRadioProvider({ children }: { children: ReactNode }) {
   const db = useSQLiteContext();
   const store = useMemo<PairedRadioStore>(
@@ -37,6 +42,7 @@ export function AppRadioProvider({ children }: { children: ReactNode }) {
   const services = useMemo(() => ({ partyStore: sqlitePartyStore(db) }), [db]);
   // Club check-in, whole-club chat and the club channel, once the phone has joined a club.
   const { radioClub } = useClub();
+  const { profile } = useProfile();
   return (
     <RadioProvider
       store={store}
@@ -46,6 +52,7 @@ export function AppRadioProvider({ children }: { children: ReactNode }) {
       services={services}
       club={radioClub}
     >
+      <OwnerSync profile={profile} />
       {children}
     </RadioProvider>
   );
