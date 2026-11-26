@@ -1,5 +1,6 @@
+import { DISPLAY_NAME_MAX, INITIALS_MAX, type Club } from '@huntclub/shared';
 import { useState, type FormEvent } from 'react';
-import type { Club, ClubApi } from '../api/types';
+import type { ClubApi } from '../api/types';
 import { Field } from '../components/Field';
 import { Loadable } from '../components/Loadable';
 import { useAsync } from '../components/useAsync';
@@ -30,7 +31,7 @@ function ClubSummary({ club }: { club: Club }) {
     <div className="panel">
       <h2>{club.name}</h2>
       <p className="muted">
-        {club.acreage === null
+        {club.acreage === undefined
           ? 'Acreage not set'
           : `${club.acreage.toLocaleString('en-US')} acres`}
       </p>
@@ -40,13 +41,19 @@ function ClubSummary({ club }: { club: Club }) {
 
 function CreateClub(props: { api: ClubApi; onCreated: () => void }) {
   const [name, setName] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [initials, setInitials] = useState('');
   const [busy, setBusy] = useState(false);
+  const ready = [name, displayName, initials].every((v) => v.trim() !== '');
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
     try {
-      await props.api.createClub(name.trim());
+      await props.api.createClub({
+        club: { name: name.trim() },
+        admin: { displayName: displayName.trim(), initials: initials.trim().toUpperCase() },
+      });
       props.onCreated();
     } finally {
       setBusy(false);
@@ -63,7 +70,22 @@ function CreateClub(props: { api: ClubApi; onCreated: () => void }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
-      <button className="button primary" type="submit" disabled={busy || name.trim() === ''}>
+      <Field
+        label="Your name"
+        hint="Shown to club members on the map and in chat."
+        required
+        maxLength={DISPLAY_NAME_MAX}
+        value={displayName}
+        onChange={(e) => setDisplayName(e.target.value)}
+      />
+      <Field
+        label="Your initials"
+        required
+        maxLength={INITIALS_MAX}
+        value={initials}
+        onChange={(e) => setInitials(e.target.value)}
+      />
+      <button className="button primary" type="submit" disabled={busy || !ready}>
         Create club
       </button>
       <h2>Subscription</h2>

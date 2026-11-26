@@ -70,7 +70,11 @@ describe('club pages', () => {
     fireEvent.change(await screen.findByLabelText('Club name'), {
       target: { value: 'Pine Hollow' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Create club' }));
+    const create = screen.getByRole('button', { name: 'Create club' }) as HTMLButtonElement;
+    expect(create.disabled).toBe(true); // your name and initials are needed too
+    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Pat Lane' } });
+    fireEvent.change(screen.getByLabelText('Your initials'), { target: { value: 'pl' } });
+    fireEvent.click(create);
     expect(await screen.findByText('Pine Hollow')).toBeTruthy();
   });
 
@@ -85,7 +89,10 @@ describe('club pages', () => {
     expect(await screen.findByRole('img', { name: 'Club invite QR code' })).toBeTruthy();
     const link = screen.getByTestId('invite-link').textContent!;
     expect(link.startsWith(`https://${WEB_DOMAINS.dev}${JOIN_WEB_PATH}#`)).toBe(true);
-    expect(decodeJoinUrl(link).target).toMatchObject({ kind: 'club', clubId: 'club-oak-ridge' });
+    expect(decodeJoinUrl(link).target).toMatchObject({
+      kind: 'club',
+      clubId: sampleData().club!.id,
+    });
   });
 
   it('lists stands with plain-language types, and areas', async () => {

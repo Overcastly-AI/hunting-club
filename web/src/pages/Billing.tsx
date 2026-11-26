@@ -5,7 +5,7 @@ import { SUBSCRIPTION_STATUS_LABELS, formatDate } from '../format';
 
 /** Subscription status. Managing the card (Stripe customer portal) arrives in Milestone 9. */
 export function Billing(props: { api: ClubApi }) {
-  const billing = useAsync(() => props.api.getBilling(), [props.api]);
+  const billing = useAsync(() => props.api.getSubscription(), [props.api]);
 
   return (
     <section aria-labelledby="billing-title">
@@ -14,8 +14,6 @@ export function Billing(props: { api: ClubApi }) {
         {(b) =>
           b ? (
             <dl className="panel">
-              <dt className="muted">Plan</dt>
-              <dd>{b.planName}</dd>
               <dt className="muted">Status</dt>
               <dd>{SUBSCRIPTION_STATUS_LABELS[b.status]}</dd>
               <dt className="muted">Paid through</dt>

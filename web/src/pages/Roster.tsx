@@ -1,19 +1,36 @@
+import { encodeJoinUrl } from '@huntclub/mesh';
 import { useState } from 'react';
-import type { ClubApi, Invite } from '../api/types';
+import type { ClubApi } from '../api/types';
 import { Loadable } from '../components/Loadable';
 import { QrCode } from '../components/QrCode';
 import { useAsync } from '../components/useAsync';
 import { ROLE_LABELS, formatDate } from '../format';
 
+/** How long a new member invite stays valid. */
+const INVITE_DAYS = 14;
+const DAY_MS = 86_400_000;
+
 /** Members and their roles, plus a fresh invite link for new members. */
 export function Roster(props: { api: ClubApi }) {
   const members = useAsync(() => props.api.listMembers(), [props.api]);
-  const [invite, setInvite] = useState<Invite | null>(null);
+  const [invite, setInvite] = useState<{ joinUrl: string; expiresAt: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
   const makeInvite = async () => {
     setCopied(false);
-    setInvite(await props.api.createInvite());
+    const [created, channelSet] = await Promise.all([
+      props.api.createInvite({
+        role: 'member',
+        expiresAt: new Date(Date.now() + INVITE_DAYS * DAY_MS).toISOString(),
+      }),
+      props.api.getClubChannelSet(),
+    ]);
+    // The one join-link builder (@huntclub/mesh); the https form works in any camera app.
+    const target = { kind: 'club', clubId: created.clubId, inviteToken: created.token } as const;
+    setInvite({
+      joinUrl: encodeJoinUrl({ channelSet, target }, { form: 'web' }),
+      expiresAt: created.expiresAt,
+    });
   };
 
   const copy = async () => {
@@ -37,7 +54,7 @@ export function Roster(props: { api: ClubApi }) {
             </thead>
             <tbody>
               {list.map((m) => (
-                <tr key={m.id}>
+                <tr key={m.userId}>
                   <td>{m.displayName}</td>
                   <td>{ROLE_LABELS[m.role]}</td>
                   <td>{m.expiresAt ? formatDate(m.expiresAt) : '—'}</td>
