@@ -83,7 +83,9 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 - Done: radio name (#32, #37), zod locale shim (#34, −243 KB), a11y pass (#39), deploy-dev workflow (#40, waits on owner deploy-path decision).
 - Done: #42 sim CI fixed (firmware 2 s text limit; app now spaces texts), #16 closed. Screenshots skipped (needs react-native-web; not approved).
-- In progress: M12 app side (onboarding worker); map packs #41 backend → app (club-data); #41 review then web Map packs admin (web).
+- Done: #41 map packs backend (global + per-club TTL locks instead of reserved concurrency, which new accounts can't spare), #43 harvest reports (M13).
+- Active (2-worker cap): onboarding worker = M12 app side; web worker = map-packs admin PR. Paused: club-data, mesh, map, CI/board, weather.
+- Was in progress: M12 app side (onboarding worker); map packs #41 backend → app (club-data); #41 review then web Map packs admin (web).
 
 - After #4 and #5: HarvestSex single source = SQL enum → @huntclub/shared → mesh derives wire codes (assigned to the schema worker).
 - After #6: move sunrise/sunset and freshness thresholds from app/src/map into packages/core if core needs them (DRY).
