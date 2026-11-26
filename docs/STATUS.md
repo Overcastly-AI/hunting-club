@@ -27,9 +27,22 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 | Task | Session | Branch / PR | Status |
 |---|---|---|---|
 | M1: app project setup | session_01QS5dr4qFtLFfyf7oVjMNAj | agent/m1-scaffold | Started 2026-11-26 05:34 UTC |
-| M2 research: Meshtastic link + simulator | session_01QS5dr5ia6B5X5renWEXyAe | agent/m2-research | Started 2026-11-26 05:34 UTC |
+| M2 research: Meshtastic link + simulator | session_01QS5dr5ia6B5X5renWEXyAe | PR #1 | Merged 2026-11-26 05:42 UTC |
+| M2 part 1: packages/mesh client + FakeTransport | session_01QS5dr5jAZ6wC472f8hsUHW | agent/m2-mesh-client | Started 2026-11-26 05:42 UTC |
+
+## Decisions log
+
+| Date | Decision | Why |
+|---|---|---|
+| 2026-11-26 | Own thin Meshtastic client on `@meshtastic/protobufs`; no `@meshtastic/core` | Core removed upstream; needs heavy polyfills |
+| 2026-11-26 | `react-native-ble-manager` 13.x instead of ble-plx | ble-plx legacy-bridge only, rewrite stalled |
+| 2026-11-26 | Private port 314 + app-level receipts | Broadcast acks only prove one neighbour heard |
+| 2026-11-26 | Android foreground service as a small in-repo Expo module | No library provides it; avoids a dependency |
 
 ## Owner to-dos (non-blocking)
+
+- **Open or closed source (needed before the app ships):** Meshtastic protobufs are GPL-3.0 with no app exception. Closed-source app + bundled protobufs conflicts with the license; open-sourcing the app (GPL-3.0) resolves it and the cloud can stay proprietary.
+- Optional: allow running `meshtasticd --sim` in the agent environment (blocked by sandbox policy) so agents can test against a simulated radio.
 
 - Set the GitHub default branch to `main` (repo Settings → Branches).
 - Open decisions listed in `docs/SPEC.md`.
