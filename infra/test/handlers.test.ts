@@ -1,5 +1,8 @@
+// The Lambda entry points: configuration checks and the auth gate. The handlers'
+// behaviour is tested in packages/api against DynamoDB Local.
 import {
   API_ENV,
+  CLUB_API_SECRETS,
   STRIPE_WEBHOOK_SECRETS,
   secretParameterName,
   secretParameterEnvVar,
@@ -13,57 +16,57 @@ afterEach(() => {
 });
 beforeEach(() => jest.spyOn(console, 'log').mockImplementation(() => undefined));
 
-function wireApiEnv() {
+function wireEnv() {
   process.env[API_ENV.envName] = 'dev';
   process.env[API_ENV.tableName] = 'table';
   process.env[API_ENV.userPoolId] = 'us-east-1_pool';
   process.env[API_ENV.userPoolClientIds] = 'app,web';
-  for (const key of STRIPE_WEBHOOK_SECRETS) {
+  process.env[API_ENV.webOrigin] = 'https://web.test';
+  process.env[API_ENV.stripePrices] = '{}';
+  for (const key of [...CLUB_API_SECRETS, ...STRIPE_WEBHOOK_SECRETS]) {
     process.env[secretParameterEnvVar(key)] = secretParameterName('dev', key);
   }
 }
 
-const post = (headers: Record<string, string> = {}) => ({
+const request = (path: string, headers: Record<string, string> = {}) => ({
+  rawPath: path,
   headers,
-  requestContext: { http: { method: 'POST' } },
+  requestContext: { http: { method: 'GET' } },
 });
 
-describe('club-api stub', () => {
-  it('rejects requests without a bearer token', async () => {
-    wireApiEnv();
-    expect((await clubApi(post())).statusCode).toBe(401);
-    expect((await clubApi(post({ authorization: 'Basic abc' }))).statusCode).toBe(401);
+describe('club-api entry', () => {
+  it('rejects requests without a valid bearer token before touching the table', async () => {
+    wireEnv();
+    expect((await clubApi(request('/me/clubs'))).statusCode).toBe(401);
+    expect((await clubApi(request('/me/clubs', { authorization: 'Basic abc' }))).statusCode).toBe(
+      401,
+    );
+    expect(
+      (await clubApi(request('/me/clubs', { authorization: 'Bearer not.a.jwt' }))).statusCode,
+    ).toBe(401);
   });
 
-  it('answers 501 to an authenticated request', async () => {
-    wireApiEnv();
-    expect((await clubApi(post({ authorization: 'Bearer eyJ' }))).statusCode).toBe(501);
-  });
-
-  it('answers 500 and names what is missing when misconfigured', async () => {
-    wireApiEnv();
+  it('answers 503 and names what is missing when misconfigured', async () => {
+    wireEnv();
     delete process.env[API_ENV.userPoolId];
-    const res = await clubApi(post({ authorization: 'Bearer eyJ' }));
-    expect(res.statusCode).toBe(500);
-    expect(JSON.parse(res.body).missing).toEqual([API_ENV.userPoolId]);
+    const res = await clubApi(request('/me/clubs'));
+    expect(res.statusCode).toBe(503);
+    expect(JSON.parse(res.body).error).toEqual({
+      code: 'not_configured',
+      message: `missing ${API_ENV.userPoolId}`,
+    });
   });
 });
 
-describe('stripe-webhook stub', () => {
-  it('answers 501 when the table and secret names are wired up', async () => {
-    wireApiEnv();
-    expect((await stripeWebhook(post())).statusCode).toBe(501);
-  });
-
-  it('answers 500 and names what is missing when misconfigured', async () => {
-    wireApiEnv();
+describe('stripe-webhook entry', () => {
+  it('answers 503 and names what is missing when misconfigured', async () => {
+    wireEnv();
     delete process.env[API_ENV.tableName];
     delete process.env[secretParameterEnvVar('stripeWebhookSecret')];
-    const res = await stripeWebhook(post());
-    expect(res.statusCode).toBe(500);
-    expect(JSON.parse(res.body).missing).toEqual([
-      API_ENV.tableName,
-      secretParameterEnvVar('stripeWebhookSecret'),
-    ]);
+    const res = await stripeWebhook(request('/'));
+    expect(res.statusCode).toBe(503);
+    expect(JSON.parse(res.body).error.message).toBe(
+      `missing ${API_ENV.tableName}, ${secretParameterEnvVar('stripeWebhookSecret')}`,
+    );
   });
 });

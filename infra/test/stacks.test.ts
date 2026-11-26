@@ -3,8 +3,10 @@ import { GSIS, PARTITION_PREFIXES, TABLE_KEYS, TTL_ATTRIBUTE } from '@huntclub/c
 import { APP_ID } from '@huntclub/shared';
 import {
   API_ENV,
+  CLUB_API_SECRETS,
   PROJECT,
   STRIPE_WEBHOOK_SECRETS,
+  type SecretKey,
   secretParameterName,
   secretParameterEnvVar,
 } from '../config';
@@ -140,15 +142,12 @@ describe('club table keys (@huntclub/club-data)', () => {
 describe('api stack', () => {
   const t = templates.api;
 
-  const statements = () =>
-    Object.values(t.findResources('AWS::IAM::Policy')).flatMap(
-      (p) =>
-        p.Properties.PolicyDocument.Statement as {
-          Action: string | string[];
-          Resource: unknown;
-          Condition?: unknown;
-        }[],
-    );
+  type Statement = { Action: string | string[]; Resource: unknown; Condition?: unknown };
+  /** Policy statements, optionally only those attached to one Lambda's role (by logical id). */
+  const statements = (lambda?: 'ClubApi' | 'StripeWebhook') =>
+    Object.values(t.findResources('AWS::IAM::Policy'))
+      .filter((p) => !lambda || JSON.stringify(p.Properties.Roles).includes(lambda))
+      .flatMap((p) => p.Properties.PolicyDocument.Statement as Statement[]);
   const actionsOf = (s: { Action: string | string[] }) => [s.Action].flat();
 
   it('exposes both Lambdas through Function URLs, no API Gateway', () => {
@@ -169,6 +168,9 @@ describe('api stack', () => {
           [API_ENV.tableName]: dev.clubTableName,
           [API_ENV.userPoolId]: dev.cognito.userPoolId,
           [API_ENV.userPoolClientIds]: dev.cognito.appClientId,
+          [API_ENV.webOrigin]: `https://${dev.domainName}`,
+          [API_ENV.stripePrices]: JSON.stringify(dev.stripe.prices),
+          [secretParameterEnvVar('stripeApiKey')]: secretParameterName(dev.name, 'stripeApiKey'),
         },
       },
     });
@@ -198,35 +200,50 @@ describe('api stack', () => {
     t.hasResourceProperties('AWS::Lambda::Function', { Environment: { Variables: variables } });
   });
 
-  it('lets the webhook read exactly its own SSM parameters, with no wildcard', () => {
-    const ssmStatements = statements().filter((s) =>
-      actionsOf(s).some((a) => a.startsWith('ssm:')),
-    );
-    expect(ssmStatements).toHaveLength(STRIPE_WEBHOOK_SECRETS.length);
-    for (const s of ssmStatements) {
-      expect(actionsOf(s)).toContain('ssm:GetParameter');
-      expect(actionsOf(s).every((a) => a.startsWith('ssm:') && !/Put|Delete/.test(a))).toBe(true);
-    }
-    const resources = JSON.stringify(ssmStatements.map((s) => s.Resource));
-    for (const key of STRIPE_WEBHOOK_SECRETS) {
-      expect(resources).toContain(`:parameter${secretParameterName(dev.name, key)}"`);
-    }
-    expect(resources).not.toContain('parameter/*');
+  const SECRETS_BY_LAMBDA: [lambda: 'ClubApi' | 'StripeWebhook', keys: readonly SecretKey[]][] = [
+    ['ClubApi', CLUB_API_SECRETS],
+    ['StripeWebhook', STRIPE_WEBHOOK_SECRETS],
+  ];
+
+  it.each(SECRETS_BY_LAMBDA)(
+    'lets %s read exactly its own SSM parameters, no wildcard',
+    (lambda, keys) => {
+      const ssmStatements = statements(lambda).filter((s) =>
+        actionsOf(s).some((a) => a.startsWith('ssm:')),
+      );
+      expect(ssmStatements).toHaveLength(keys.length);
+      for (const s of ssmStatements) {
+        expect(actionsOf(s)).toContain('ssm:GetParameter');
+        expect(actionsOf(s).every((a) => a.startsWith('ssm:') && !/Put|Delete/.test(a))).toBe(true);
+      }
+      const resources = JSON.stringify(ssmStatements.map((s) => s.Resource));
+      for (const key of keys) {
+        expect(resources).toContain(`:parameter${secretParameterName(dev.name, key)}"`);
+      }
+      expect(resources).not.toContain('parameter/*');
+    },
+  );
+
+  it('uses no Secrets Manager', () => {
     expect(
       statements().some((s) => actionsOf(s).some((a) => a.startsWith('secretsmanager:'))),
     ).toBe(false);
   });
 
-  it('decrypts only through SSM and only for its own parameters', () => {
-    const kms = statements().filter((s) => actionsOf(s).includes('kms:Decrypt'));
-    expect(kms).toHaveLength(1);
-    expect(actionsOf(kms[0]!)).toEqual(['kms:Decrypt']);
-    const condition = JSON.stringify(kms[0]!.Condition);
-    expect(condition).toContain(`ssm.${dev.region}.amazonaws.com`);
-    for (const key of STRIPE_WEBHOOK_SECRETS) {
-      expect(condition).toContain(`parameter${secretParameterName(dev.name, key)}`);
-    }
-  });
+  it.each(SECRETS_BY_LAMBDA)(
+    'lets %s decrypt only through SSM, only its own parameters',
+    (lambda, keys) => {
+      const kms = statements(lambda).filter((s) => actionsOf(s).includes('kms:Decrypt'));
+      expect(kms).toHaveLength(1);
+      expect(actionsOf(kms[0]!)).toEqual(['kms:Decrypt']);
+      const condition = JSON.stringify(kms[0]!.Condition);
+      expect(condition).toContain(`ssm.${dev.region}.amazonaws.com`);
+      for (const key of keys) {
+        expect(condition).toContain(`parameter${secretParameterName(dev.name, key)}`);
+      }
+      expect(condition.match(/parameter\//g)).toHaveLength(keys.length);
+    },
+  );
 
   it('names parameters /hunt-club-mesh/<env>/<name>', () => {
     expect(secretParameterName('dev', 'stripeWebhookSecret')).toBe(

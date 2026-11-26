@@ -71,5 +71,9 @@ export const CLUB_API_ERRORS = [
   'conflict',
   'invalid',
   'last_admin',
+  /** A deployment setting (e.g. a plan's Stripe price) isn't configured yet. */
+  'not_configured',
+  /** Unexpected server failure; details are only in the server log. */
+  'internal',
 ] as const;
 export type ClubApiError = (typeof CLUB_API_ERRORS)[number];

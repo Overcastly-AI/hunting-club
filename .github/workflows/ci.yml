@@ -99,7 +99,7 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: DynamoDB Local tests
-        run: npm run test:db -w @huntclub/club-data
+      - name: DynamoDB Local tests (club-data, then the API handlers on top)
+        run: npm run test:db -w @huntclub/club-data -w @huntclub/api
         env:
           DYNAMODB_ENDPOINT: http://localhost:8000

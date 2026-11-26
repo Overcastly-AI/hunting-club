@@ -8,7 +8,9 @@ import type { Construct } from 'constructs';
 import { PARTITION_PREFIXES } from '@huntclub/club-data';
 import {
   API_ENV,
+  CLUB_API_SECRETS,
   STRIPE_WEBHOOK_SECRETS,
+  type SecretKey,
   secretParameterName,
   secretParameterEnvVar,
   type EnvConfig,
@@ -26,6 +28,40 @@ export function clubTableArn(stack: Stack, config: EnvConfig): string {
     resource: 'table',
     resourceName: config.clubTableName,
   });
+}
+
+/** Env vars carrying the secrets' parameter NAMES (never values). */
+function secretEnvironment(config: EnvConfig, keys: readonly SecretKey[]): Record<string, string> {
+  return Object.fromEntries(
+    keys.map((key) => [secretParameterEnvVar(key), secretParameterName(config.name, key)]),
+  );
+}
+
+/**
+ * Least privilege: the function reads exactly these SecureString parameters (created
+ * outside CDK, so values never touch the repo), and decrypts them only through SSM,
+ * only for those parameters (SSM puts the parameter ARN in the KMS encryption context).
+ */
+function grantSecretReads(fn: NodeLambda, config: EnvConfig, keys: readonly SecretKey[]) {
+  const stack = Stack.of(fn);
+  const parameters = keys.map((key) =>
+    ssm.StringParameter.fromSecureStringParameterAttributes(fn, `Secret-${key}`, {
+      parameterName: secretParameterName(config.name, key),
+    }),
+  );
+  for (const parameter of parameters) parameter.grantRead(fn.function);
+  fn.function.addToRolePolicy(
+    new iam.PolicyStatement({
+      actions: ['kms:Decrypt'],
+      resources: [stack.formatArn({ service: 'kms', resource: 'key', resourceName: '*' })],
+      conditions: {
+        StringEquals: {
+          'kms:ViaService': `ssm.${stack.region}.amazonaws.com`,
+          'kms:EncryptionContext:PARAMETER_ARN': parameters.map((p) => p.parameterArn),
+        },
+      },
+    }),
+  );
 }
 
 /** Data actions the club API needs (no Scan, no streams, no table management). */
@@ -82,8 +118,12 @@ export class ApiStack extends Stack {
         [API_ENV.tableName]: table.tableName,
         [API_ENV.userPoolId]: userPool.userPoolId,
         [API_ENV.userPoolClientIds]: clientIds.join(','),
+        [API_ENV.webOrigin]: `https://${config.domainName}`,
+        [API_ENV.stripePrices]: JSON.stringify(config.stripe.prices),
+        ...secretEnvironment(config, CLUB_API_SECRETS),
       },
     });
+    grantSecretReads(this.clubApi, config, CLUB_API_SECRETS);
     // Table and its indexes; permissions per club are enforced in the API (tested in M9).
     table.grant(this.clubApi.function, ...CLUB_API_TABLE_ACTIONS);
     // Cognito can't authorize Function URLs directly: the handler verifies the JWT.
@@ -97,39 +137,15 @@ export class ApiStack extends Stack {
     });
 
     // ---- Stripe webhook --------------------------------------------------------------
-    const webhookEnv: Record<string, string> = {
-      [API_ENV.envName]: config.name,
-      [API_ENV.tableName]: table.tableName,
-    };
-    for (const key of STRIPE_WEBHOOK_SECRETS) {
-      webhookEnv[secretParameterEnvVar(key)] = secretParameterName(config.name, key);
-    }
     this.stripeWebhook = new NodeLambda(this, 'StripeWebhook', {
       entry: 'stripe-webhook',
-      environment: webhookEnv,
+      environment: {
+        [API_ENV.envName]: config.name,
+        [API_ENV.tableName]: table.tableName,
+        ...secretEnvironment(config, STRIPE_WEBHOOK_SECRETS),
+      },
     });
-
-    // Least privilege: read exactly its SecureString parameters (created outside CDK, so
-    // values never touch the repo), and decrypt them only through SSM, only for those
-    // parameters (SSM puts the parameter ARN in the KMS encryption context).
-    const parameters = STRIPE_WEBHOOK_SECRETS.map((key) =>
-      ssm.StringParameter.fromSecureStringParameterAttributes(this, `Secret-${key}`, {
-        parameterName: secretParameterName(config.name, key),
-      }),
-    );
-    for (const parameter of parameters) parameter.grantRead(this.stripeWebhook.function);
-    this.stripeWebhook.function.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['kms:Decrypt'],
-        resources: [this.formatArn({ service: 'kms', resource: 'key', resourceName: '*' })],
-        conditions: {
-          StringEquals: {
-            'kms:ViaService': `ssm.${this.region}.amazonaws.com`,
-            'kms:EncryptionContext:PARAMETER_ARN': parameters.map((p) => p.parameterArn),
-          },
-        },
-      }),
-    );
+    grantSecretReads(this.stripeWebhook, config, STRIPE_WEBHOOK_SECRETS);
 
     // Only items whose partition key starts with a billing prefix (subscriptions, processed
     // Stripe events): IAM checks every item's partition key via dynamodb:LeadingKeys.
