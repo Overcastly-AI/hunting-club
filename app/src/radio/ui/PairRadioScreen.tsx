@@ -26,10 +26,12 @@ function openBluetoothSettings() {
 type Props = {
   /** Called after "Done" (onboarding moves on; settings goes back). */
   onDone?: () => void;
+  /** Onboarding: lets the hunter skip pairing for now. */
+  onSkip?: () => void;
 };
 
 /** Onboarding step 1 and Party/Club settings: find, pair and connect a radio. */
-export function PairRadioScreen({ onDone }: Props) {
+export function PairRadioScreen({ onDone, onSkip }: Props) {
   const { link, pairedRadio, repairNeeded, pair, forget } = useRadio();
   const [found, setFound] = useState<FoundRadio[]>([]);
   const [scanning, setScanning] = useState(false);
@@ -158,6 +160,8 @@ export function PairRadioScreen({ onDone }: Props) {
       {!linked && !scanning && readiness === 'granted' && found.length === 0 ? (
         <Text style={styles.body}>{radioCopy.pair.noneFound}</Text>
       ) : null}
+
+      {onSkip && !linked ? <Button label={radioCopy.pair.setUpLater} onPress={onSkip} /> : null}
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>{radioCopy.pin.title}</Text>

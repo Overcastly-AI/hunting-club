@@ -61,6 +61,11 @@ For the owner, with two phones (ideally one iPhone and one Android) and two Mesh
 - [ ] Put the app in the background (home screen), walk out of range and back: note whether it reconnected while in the background.
 - [ ] Force-quit the app (swipe up): expected to lose the link until reopened (iOS rule). Confirm it reconnects on reopening.
 
+## Before publishing to Google Play (Android 14+)
+
+- [ ] In Play Console → App content → **Foreground service permissions**, declare the `connectedDevice` type (`FOREGROUND_SERVICE_CONNECTED_DEVICE`). Use case: keeps the Bluetooth link to the user's LoRa radio open in the background so texts and Ask for a Hand alerts arrive with no cell service. Google asks for a short video showing the "Connected to your radio" notification while the app is in the background.
+- [ ] Without this declaration, Play rejects the release; the service itself already declares the type in the app manifest.
+
 ## Report back
 
 For each failed box, note the phone model and OS version, radio model and firmware, and what the screen said. Include rough distances for range tests.
