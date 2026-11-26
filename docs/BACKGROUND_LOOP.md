@@ -1,311 +1,250 @@
-# Background loop: wildlife at dawn (design and pipeline)
+# Background scene: wildlife at dawn (design and pipeline)
 
-Status: first draft rendered 2026-11-26. Not integrated into `site/` or `web/` yet. Outputs: `design/background/out/`.
+Status: second version, 2026-11-26. Not integrated into `site/` or `web/` yet.
+Review files: `design/background/out/review/` (three stills and a 30 s screen capture).
 
-The owner asked for a Blender rendering of wildlife (wild turkeys, white-tailed deer, birds, trees) looping silently
-behind the sign-in card and the public home page hero.
+## 1. What changed and why
 
-## 1. Short version
+The first version was a photoreal Blender render encoded as video. The owner's verdict: "this does not look
+good"; the weak part was the self-made animals pretending to be real. The owner then chose a deliberate
+illustrated style instead, with the animals still coming from the Blender rigs.
 
-- It can be built here: Blender runs headless in the container (the `bpy` 5.3.0 wheel, Cycles on 4 CPU cores).
-- The forest, light and fog are photoreal, because the forest is a CC0 360 degree photograph used as backdrop and
-  light. The animals are self-made 3D figures seen as backlit shapes in fog at 15 to 30 m. They are **not** photoreal
-  close up. No realistic rigged CC0 deer or turkey exists that we could verify. Section 9 lists what money would buy.
-- The draft is the full 10 s loop at 640 x 360, 24 fps (51 minutes of rendering). The same script renders the
-  final 1280 x 720 in about 6.7 hours on this container.
-- This changes two lines of `docs/SITE_BRIEF.md` (section 6 "No autoplay video" and section 9 "no autoplay"), and
-  the home page 600 KB transfer budget needs a stated exception for the deferred video. The owner asked for the
-  loop, so the brief should be amended in the PR that integrates it. Everything else in the brief is kept.
+So the background is now **one inline SVG with CSS animation**. No video, no poster image, no script needed to
+play it, no network request.
 
-## 2. The shot
+- Trees, ridges, fog and light are drawn by code as flat paper-cut layers.
+- The doe, buck, turkeys and crows are posed and animated on rigs in Blender, rendered as flat silhouettes
+  (white emission on black, no shading), traced to SVG paths and played frame by frame.
+- Every colour is a design token. No gradients.
 
-| | |
-|---|---|
-| Camera | Locked off, 1.5 m high (a hunter sitting against a tree), 35 mm lens (54 degrees wide), tilted up 5 degrees. It never moves. |
-| Place | Bare hardwood forest on leaf litter. No leaves on the trees, so it is deer season. |
-| Time | A few minutes after sunrise. The sun is low through the trunks at the right edge of the frame. Ground fog glows towards it. Sunrise only: nothing in the frame or the copy refers to shooting hours. |
-| Framing | The horizon sits 35% up the frame. Animals stay in the lower 45%. The upper 55% is trunks and sky and is where text goes. A wide trunk stands at the left third behind the desktop headline. |
-| Desktop text | Left half. The animals are centre and right. |
-| Mobile | A 9:16 crop of the same frames (`MOBILE_CROP_LEFT` in `config.py`) that holds the doe and the turkey path in its lower half. Text sits in the upper half. |
-| Sign-in | The card is opaque (`surfaceRaised`) and centred, so the loop only shows round it. |
+The first version's scripts and video files are removed in this commit (they stay in git history at `31d4d07`).
 
-### Palette, mapped to the tokens
+## 2. The picture
 
-The footage is graded so it sits under the dark theme instead of fighting it:
+Viewbox 1600 x 900, scaled to cover the hero and anchored at the bottom (`preserveAspectRatio="xMidYMax slice"`).
 
-- saturation 75%, a steep curve that keeps trunks and ground dark and puts the sun glow at the top, then a hard cap:
-  no pixel brighter than 40% (`PEAK` in `config.py`). The result is a blue-grey first-light look with a faint warm
-  glow, close to `surface` in the shadows;
-- over it, a flat scrim of `colors.surface` (#121416) at 40% (`SCRIM_ALPHA`). Flat, because the brief bans gradients;
-- text is `colors.text` and `colors.textSecondary`. The primary button stays `accent` with the dark label. No new
-  colours are introduced.
+| Layer, back to front | Paint (token at opacity) | Moves |
+|---|---|---|
+| Sky | `surface`, washed with `controlBorder` at 30% | no |
+| Light: three flat rings round the sun | `accent` at 6% each (they stack) | breathes slowly |
+| Sun, half behind the far ridge | `accent` at 85% | no |
+| Crows | `mapHalo` | cross the sky, wings beating |
+| Far ridge | `surface` at 45% | drifts 5 units |
+| Fog bank | `textSecondary` at 9% | drifts left |
+| Middle ridge, ten bare hardwoods, the buck | `surface` at 80% | drifts 10 units |
+| Fog bank | `textSecondary` at 9% | drifts right |
+| Near ground, four big trees, doe, turkeys | `surface`; animals `mapHalo` | drifts 18 units |
+| Fog bank | `textSecondary` at 9% | drifts left |
+| Foreground: two framing trunks, grass | `mapHalo` | drifts 30 units |
 
-### Contrast is guaranteed, not eyeballed
+The different drift per layer is the parallax: it reads as a camera breathing, 46 s each way.
 
-Because the encode caps the brightest pixel, the worst background the text can ever sit on is known: the cap grey
-under the scrim. `encode.py` clamps the grade 5% below the cap (lossy codecs ring past a clamp), then decodes every
-file it wrote and fails if any pixel is above the cap. Draft measured: 0.392 against the cap of 0.40.
+Where things sit:
+- The doe and the sun are in the middle of the picture, low. A phone shows only the middle strip, so they stay in
+  view at every width (`review/dawn-phone.jpg`).
+- Text goes in the upper left on desktop and the upper half on a phone. The left half has fewer trees for that
+  reason. Text must stay out of the innermost light ring and off the sun; both are in the bottom third, behind the
+  doe, where no layout puts text.
+- The bottom of the picture ends in `mapHalo`, next to the page's `surface`.
 
-| Scrim alpha | Worst background | `text` #FFFFFF | `textSecondary` #B8BDC2 |
+No stand, blind or hunter is shown, so the scene fits hunters at a stand, at a spot or on the move. It is sunrise;
+nothing in it refers to shooting hours.
+
+### Accent: a rule to confirm
+
+`packages/design/src/colors.ts` reserves orange for three things: you, the main action and the selected tab. The
+sun and its light are a fourth use, requested by the owner ("dawn light from the accent token used sparingly").
+It is kept small: one disc and three faint rings, and a test fails if the accent appears anywhere else in the
+scene. The comment in `colors.ts` should be updated in the integration PR if the owner confirms this use. If not,
+the sun can be painted with `text` at low opacity instead: one line in `DAWN_PAINTS`.
+
+### Contrast
+
+`DAWN_TEXT_BACKDROPS` lists the lightest things text can sit on. `dawnScene.test.ts` blends them with the
+existing `blendOver` and holds both text tokens to `MIN_TEXT_CONTRAST` (4.5:1) with `contrastRatio`.
+
+| Backdrop | Colour | `text` | `textSecondary` |
 |---|---|---|---|
-| 0.40 (planned), pixel at the cap | #444546 | 9.61:1 | 5.08:1 |
-| 0.35 | #49494A | 8.99:1 | 4.75:1 |
-| 0.30 | #4D4D4E | 8.44:1 | 4.46:1 (fails) |
-| no scrim | #666666 | 5.74:1 | 3.03:1 (fails) |
-| 0.40 with no cap (a white pixel) | #A0A1A2 | 2.59:1 | 1.37:1 (why the cap exists) |
+| Sky | #313539 | 12.36:1 | 6.53:1 |
+| Sky under two light rings | #493D36 | 10.48:1 | 5.54:1 |
 
-Typical frames are far darker than the cap, so real contrast is higher. `out/review/scrim-check.jpg` shows the poster under
-the scrim with sample text.
+No scrim is needed: the picture is dark by construction, not darkened afterwards.
 
-A darker cap with a lighter scrim was chosen over the reverse (cap 55%, scrim 60% was tried first): the worst case
-is the same, but the picture keeps more of its own contrast instead of being washed towards grey.
+## 3. The animals
 
-The cost, stated plainly: under the scrim the scene is dim. It is atmosphere, not a showpiece. If the owner wants
-the animals brighter, the option that keeps the rule is to scrim only the block behind the text (a flat panel) and
-leave the rest of the frame at the graded brightness.
-
-## 3. Motion
-
-One loop is 10 s at 24 fps (240 frames). Everything is calm; nothing moves behind the text except small, slow
-shapes.
-
-| Subject | Where | What it does |
-|---|---|---|
-| Doe | 21 m, right of centre, quartering towards the camera | Grazes with small nibbling movements. At 3 s she lifts her head, looks at the camera, flicks an ear, flicks her tail (the white flag shows), and at 6.6 s lowers her head again. |
-| Buck | 31 m, left of centre, in the fog | Stands. Slow head turn across the loop, an ear flick at 2 s, a tail flick at 8 s. Eight-point antlers. |
-| Turkeys | A file of hens crossing left to right at about 15 m | Walk at 0.6 m/s with head bob, stop and peck three times along the way. Three or four are in frame at a time. |
-| Crows | Three, high on the right | Cross from the right edge to the top edge between 1 s and 6.5 s. They stay in the right half, away from desktop text. |
-| Leaves | 70 falling leaves, 2.5 to 17 m | Drift down and tumble. Near ones are out of focus. |
-| Fog and mist | Everywhere near the ground | An even fog layer lit by the sun, with slow wisps drifting through it. |
-| Trees | The photograph | Do not move. See section 9. |
-
-Stands are not shown and no hunter is in frame, so the scene fits hunters at a stand, at a spot or on the move.
-
-## 4. How the loop seams
-
-Frame 240 would be identical to frame 0, so it is never rendered and the video simply repeats.
-
-- **Periodic motion.** Doe, buck, mist and leaves are functions of time with a whole number of cycles in 10 s. One-off
-  gestures (ear and tail flicks, the head lift) start and end inside the loop.
-- **Leaves.** Each leaf falls exactly 9 m per loop and wraps from the ground to 9 m up, which is above the frame at
-  every distance used.
-- **Crows.** Enter and leave out of frame inside the loop.
-- **Turkeys: a conveyor.** A turkey takes about 35 s to cross, longer than the loop. So the script animates one long
-  walk of 4 loops (40 s) and shows 4 copies of it, each one loop ahead of the next. At the last frame every bird
-  stands exactly where the bird in front stood at frame 0, mid-step and mid-peck included. The first bird starts out
-  of frame and the last one ends out of frame.
-- **Mist.** The noise that shapes the wisps is sampled along a circle, so it returns to its start.
-- **Check.** The draft's frames 0 and 239 were compared: the difference is one frame of motion and render noise.
-
-## 5. Assets and licences
-
-Full table with sources: `design/background/CREDITS.md`. Machine-readable: `design/background/assets.json`.
-
-| Asset | Licence |
-|---|---|
-| Poly Haven HDRI "Autumn Forest 04" (Alexander Scholten), 8k | CC0-1.0 |
-| Deer, turkeys, crows, leaves, fog, mist, shadows, animation | Self-made in `scene.py` |
-
-Nothing downloaded is stored in the repo. `scene.py fetch` downloads the HDRI (116 MB) into a cache and checks its
-SHA-256.
-
-## 6. Render and encode pipeline
+### From Blender to the page
 
 ```
-python3.13 -m venv $SCRATCH/bpyenv && $SCRATCH/bpyenv/bin/pip install bpy     # about 1 GB, keep it out of the repo
-export HCM_BG_ASSETS=$SCRATCH/assets HCM_BG_WORK=$SCRATCH/work                # optional; default ~/.cache/huntclubmesh
-$SCRATCH/bpyenv/bin/python design/background/scene.py fetch
-$SCRATCH/bpyenv/bin/python design/background/scene.py render --quality draft  # or preview, final; resumable
-python3 design/background/encode.py --quality draft
+design/background/poses.py    the rigs' solids and their motion, as plain maths (no bpy)
+design/background/rigs.py     builds them in Blender, renders each distinct pose as a mask (Cycles, CPU, 47 s total)
+design/background/trace.py    masks -> SVG paths -> packages/design/src/dawnSprites.generated.ts
+packages/design/src/dawnScene.ts   draws the scene and plays the frames
 ```
 
-| File | Role |
+Each animal is a rig of ellipsoids and tapered limbs with joints at the real places (elbow, knee, stifle, hock,
+fetlock; two neck segments; ears; tail). Legs are placed by inverse kinematics from planted feet. The masks are
+cleaned by a small grow-then-shrink before tracing, which fills the notches where two solids meet, so each outline
+reads as one animal.
+
+### Format chosen: a vector frame strip
+
+All distinct frames of an animal sit side by side as SVG paths behind a one-frame window. A stepped CSS animation
+slides the right frame into the window. Why this and not the others:
+
+| Option | Verdict |
 |---|---|
-| `design/background/config.py` | The one place for loop length, fps, sizes, poster frame, crop, grade, cap, scrim and budgets. Both scripts import it. Colour tokens are read from `packages/design/src/colors.ts`, never retyped. |
-| `design/background/scene.py` | Builds the scene and renders PNG frames. Cycles, CPU, adaptive sampling, Open Image Denoise, AgX. |
-| `design/background/encode.py` | Grades, crops, encodes, measures the peak pixel, checks the budgets, writes `out/manifest.json`. |
-| `design/background/assets.json`, `CREDITS.md` | Asset manifest and credits. |
+| **Traced SVG path frames in a strip (chosen)** | Crisp at any size and any pixel density. Painted with a token, so a token change recolours it. Pauses and stops with plain CSS (`animation-play-state`, `prefers-reduced-motion`). Held poses and repeated cycles are stored once. No request, no decode. |
+| Raster sprite strip (PNG or WebP mask) | About the same bytes, but soft on high-density screens unless shipped at 2x or 3x, and it is an extra request. |
+| Animated WebP or AVIF | Cannot be paused by CSS (WCAG 2.2.2 would need an image swap), cannot be kept in step with the walk across the screen, colour is baked in. |
 
-The pipeline follows the owner's `hunting-appeal` renderer (`huntkit/viz3d`): headless `bpy` in a scratch venv, the
-same Cycles settings, a Poly Haven HDRI as backdrop and light, and an asset manifest with SHA-256. Its hunter figure
-(MakeHuman through MPFB 2, CC0) has no animal equivalent, so the animals are built from primitives. That same
-figure could put a hunter in a later version of the shot.
+Tracing uses only Pillow and numpy, which were already in the container. Nothing was installed for it (no
+potrace, no OpenCV). Blender is the `bpy` 5.3.0 wheel in a scratch venv, as before, and is only needed to change
+the animals: the generated path file is committed, so a normal build needs neither Blender nor Python.
 
-EEVEE is not available: it needs a GPU or EGL, and the container has neither. Cycles on CPU is the only renderer.
+### Sizes
 
-### Measured render times (4 CPU cores, no GPU)
-
-| Quality | Size | Samples | Per frame | 240 frames |
+| Clip | Loop | Frames at 12 fps | Distinct paths stored | Path data |
 |---|---|---|---|---|
-| draft | 640 x 360 | 24 | 12.7 s (mean of 239) | 51 min (measured) |
-| preview | 960 x 540 | 48 | 58 s (one frame measured) | about 3.9 h |
-| final | 1280 x 720 | 48 | 100 s (one frame measured) | about 6.7 h |
+| Doe | 16 s | 192 | 83 | 89,066 bytes |
+| Buck | 18 s | 216 | 103 | 115,345 bytes |
+| Walking turkey | 1 s | 12 | 12 | 8,738 bytes |
+| Feeding turkey | 8 s | 96 | 72 | 43,581 bytes |
+| Crow | 0.5 s | 6 | 6 | 1,916 bytes |
 
-Why the final is 1280 x 720 and not 1920 x 1080: the 8k HDRI gives about 1,230 photograph pixels across this lens,
-so 720p is all the real detail there is, and the frame sits under a scrim. The browser scales it to the hero. A
-true 1080p master needs the 16k HDRI (430 MB, same CC0 asset) and roughly 15 hours here; a machine with a GPU would
-cut that to well under an hour. `QUALITY` and `DESKTOP_SIZE` in `config.py` are the only lines to change.
+Whole scene, as inlined in the page: **373,251 bytes, 73,179 bytes gzipped** (test budget: 90,000 gzipped). It
+replaces the first version's 1.5 MB mobile video, 3 MB desktop video and poster images.
 
-### Encodes
+The committed generator input `dawnSprites.generated.ts` is 262,145 bytes.
 
-| Output | Codec | Settings |
+If it must be smaller: the buck is 45% of the path data and is the smallest animal on screen. Halving his
+frame rate or coarsening his outline (`TOLERANCE` in `trace.py`) would take roughly 10 KB gzipped off.
+
+### Motion
+
+Drawn on twos (12 frames a second), the usual cadence for hand-drawn animal animation. What was done so it does not
+read stiff:
+
+- **Easing with anticipation and settle.** A head lift starts with a small dip, travels on a smooth curve and
+  rings out for three quarters of a second after it arrives. Flicks go out fast and come back slower.
+- **Weight shifts.** Feet are planted by inverse kinematics. The doe's body moves back about 2 cm over her feet as
+  her head comes up and forward again as it goes down; a stamp drops the body a little.
+- **Holds.** Animals stand still between moves, as real ones do.
+- **Bird head stabilisation.** A walking turkey's head stays fixed in the world while the body walks under it, then
+  darts forward to the next hold, twice per cycle. This is what makes a walking bird read as a bird.
+- **No foot slide.** The page moves each walking turkey exactly one stride per walk cycle, at that bird's own
+  scale. A test checks it (and caught a 6% slide in the first build).
+- **Offset timing.** Loop lengths are 16 s (doe), 18 s (buck), 8 s (feeding turkeys, the second one 3.4 s out of
+  step), 1 s (walk) and 0.5 s (wingbeat), so the animals never move in unison and the whole picture repeats only
+  after minutes.
+
+| Animal | What it does |
+|---|---|
+| Doe | Browses with small nibbles; lifts her head; ear flicks; two tail flicks; lowers her head; one foreleg stamp. |
+| Buck | Stands alert; drops his head to scent the ground; raises it; ear flick; stamp; tail flick; tests the air. |
+| Two feeding turkeys | Three pecks of different depth; head up to look round; a shuffle of one foot; another peck. |
+| Two walking turkeys | Cross left to right in 84 s, one behind the other, with head darts and body bob. |
+| Three crows | Cross the sky right to left in 52 s, two together and one later. |
+
+## 4. Accessibility
+
+- Decorative: `aria-hidden="true"`, `focusable="false"`, no text, no information.
+- `prefers-reduced-motion: reduce` turns every animation off inside the SVG's own stylesheet. The still that
+  remains is a chosen frame (doe with her head up, turkeys mid-stride): `review/dawn-reduced-motion.jpg`.
+- WCAG 2.2.2 (Pause, Stop, Hide): the motion runs longer than 5 s, so the page shows a real `<button>` with the
+  word label "Pause background" (then "Play background"), at least 48 px high, with the standard focus ring. It
+  toggles `DAWN_PAUSED_CLASS` on the `<svg>`. It is hidden under reduced motion, where nothing moves.
+- WCAG 2.3.1: nothing flashes.
+
+## 5. Integration plan
+
+Small PRs, in this order.
+
+### 5.1 Shared pieces (one source each)
+
+| Piece | Where | State |
 |---|---|---|
-| `loop-desktop.webm`, `loop-mobile.webm` | AV1 (SVT-AV1) in WebM | CRF 28, preset 5, one keyframe per loop, no audio track |
-| `loop-desktop.mp4`, `loop-mobile.mp4` | H.264 High (x264), yuv420p | CRF 20, preset slow, `+faststart`, no audio track |
-| `poster*.avif / .webp / .jpg` | libaom still / libwebp / MJPEG | Frame 120 (5.0 s): doe's head up |
+| The scene | `@huntclub/design/dawnScene`: `dawnSceneSvg()`, `DAWN_PAUSED_CLASS`, `DAWN_VIEW`, `DAWN_PAINTS` | Done. A subpath export on purpose: the main entry of `@huntclub/design` does not re-export it, so the mobile app's bundle does not carry 260 KB of paths. |
+| Button labels "Pause background" / "Play background" | `packages/shared`, next to `signInCopy` | To do. The review page has them as sample strings only. |
+| The pause behaviour | One small framework-free function in `packages/design` (suggest `dawnControl.ts`): given the `<svg>` and the `<button>`, toggle the class, swap the label, set `aria-pressed`, remember the choice in `sessionStorage`. `site/` inlines it, `web/` calls it from an effect. | To do, about 15 lines. |
+| CSS for placement | `.dawn { position: absolute; inset: 0; width: 100%; height: 100% }` inside a `position: relative; overflow: hidden` hero. | In the review page; move to the shared stylesheet. |
 
-## 7. File sizes
-
-Draft, measured (`design/background/out/manifest.json`):
-
-| File | Size | Bytes |
-|---|---|---|
-| `loop-desktop.webm` (AV1) | 640 x 360, 24 fps, 10 s | 70,848 |
-| `loop-desktop.mp4` (H.264) | 640 x 360, 24 fps, 10 s | 201,180 |
-| `loop-mobile.webm` (AV1) | 390 x 694, 24 fps, 10 s | 54,627 |
-| `loop-mobile.mp4` (H.264) | 390 x 694, 24 fps, 10 s | 273,137 |
-| `poster.avif` / `.webp` / `.jpg` | 640 x 360 | 3,232 / 7,512 / 13,262 |
-| `poster-mobile.avif` / `.webp` / `.jpg` | 390 x 694 | 2,732 / 6,110 / 12,221 |
-| `review/` (4 JPEGs for people, not shipped) | | 338,322 |
-| Whole `out/` folder | | about 1.0 MB |
-
-The mobile draft is cropped from a 202 pixel wide strip of the draft and scaled up, so it is soft. The final mobile
-file is cropped from the 720p master (406 pixels wide), which is the right size for it.
-
-Final sizes are an estimate until the final render exists. The footage is a locked camera with fog, which compresses
-well: expect about 0.3 to 0.5 MB (AV1) and 1 to 1.5 MB (H.264) for desktop 720p, and about 0.15 to 0.25 MB (AV1) and
-0.6 to 0.9 MB (H.264) for mobile. `encode.py` fails the build if a file is over its budget (1.5 MB mobile, 3 MB desktop), so
-the answer to a miss is a higher CRF, not a silent overrun.
-
-The brief's poster budget (150 KB at 390 wide) is met with a wide margin.
-
-## 8. Integration plan
-
-Not done in this branch. Small PRs in this order.
-
-### 8.1 Tokens and copy (packages, one source each)
-
-- `packages/design`: add `backgroundLoop = { scrimAlpha: 0.4, peak: 0.4 }` and make `design/background/config.py`
-  read both from there, the way it already reads the colours. Add a contrast test with the existing helpers:
-  `contrastRatio(colors.text, blendOver(colors.surface, capGrey, scrimAlpha)) >= MIN_TEXT_CONTRAST`, the same for
-  `textSecondary`, where `capGrey` is the cap as a grey. Add a test that reads the shipped
-  `manifest.json` and fails if `peak_srgb.measured` is above the cap.
-- `packages/shared`: the two button labels, "Pause background" and "Play background", next to `signInCopy`.
-- One framework-free module (suggest `packages/design/src/backgroundLoop.ts`) exports the markup builder and the
-  small controller below. `site/` inlines it; `web/` calls it from a React effect. No second copy.
-
-### 8.2 Markup
+### 5.2 Site home page hero (`site/`, prerendered)
 
 ```html
-<div class="bg-loop" aria-hidden="true">
-  <picture>
-    <source media="(max-width: 599px)" type="image/avif" srcset="/media/poster-mobile.<hash>.avif">
-    <source media="(max-width: 599px)" type="image/webp" srcset="/media/poster-mobile.<hash>.webp">
-    <source type="image/avif" srcset="/media/poster.<hash>.avif">
-    <source type="image/webp" srcset="/media/poster.<hash>.webp">
-    <img src="/media/poster.<hash>.jpg" alt="" width="1280" height="720" fetchpriority="high" decoding="async">
-  </picture>
-  <video muted loop playsinline preload="none" tabindex="-1" disablepictureinpicture disableremoteplayback hidden></video>
-</div>
-<div class="bg-scrim"></div>
-<!-- page content -->
-<button class="button bg-pause" type="button" hidden>Pause background</button>
+<section class="hero">
+  <!-- output of dawnSceneSvg(), inlined at build time -->
+  <div class="hero-copy"> h1, lead, primary action </div>
+  <button class="button dawn-pause" type="button" aria-pressed="false">Pause background</button>
+</section>
 ```
 
-- The poster `<img>` is the LCP element: in the HTML, not lazy, `fetchpriority="high"`, with width and height so
-  CLS stays 0. Preload it with `<link rel="preload" as="image" imagesrcset=...>` on the home page.
-- The `<video>` has no `src`, no `<source>` and no `autoplay` attribute in the HTML, so a browser with JavaScript
-  off, a crawler, or Lighthouse's LCP pass never requests it.
-- `.bg-loop` is `position: absolute; inset: 0; overflow: hidden`; image and video are `object-fit: cover` with
-  `object-position` set so the doe stays in view. `.bg-scrim` is the same box filled with
-  `rgb(from var(--color-surface) r g b / <scrimAlpha>)` from the token (or the equivalent generated value).
-- The video sits on top of the poster and is shown only once it can play, so there is no flash.
+- The scene is in the HTML, so it paints with the first render. There is no LCP image any more: the LCP element
+  is the headline text. CLS stays 0 because the hero has a fixed minimum height and the SVG is absolutely placed.
+- With JavaScript off the scene still animates and still honours reduced motion; only the pause button needs the
+  script, so render the button from the script (or with `hidden` until the script runs).
+- Budget: 73 KB gzipped of the home page's 600 KB, in the HTML document. No exception to the brief's budget is
+  needed now. JS added: the pause function only.
+- The brief's "No autoplay video" (section 6) and "no autoplay" (section 9) stand: this is not video. Section 6
+  says "Motion: none required; if used, respect prefers-reduced-motion", which this does. Section 6 also says "no
+  gradients" (kept) and puts photography in the hero: the brief's hero image line should be updated to say the
+  hero is this scene.
+- Home page only. Not `/clubs`, `/pricing`, `/download`, `/privacy` in Phase 1.
 
-### 8.3 Controller (about 0.6 KB, inline, runs after `load`)
+### 5.3 Web sign-in (`web/src/pages/SignIn.tsx`)
+
+- Render the scene as the first child of `.auth` with `dangerouslySetInnerHTML={{ __html: dawnSceneSvg() }}` in a
+  memoised wrapper (the string is static and comes from our own package, no user input), and the pause button
+  after the card. `.auth` gets `position: relative; overflow: hidden`.
+- `.auth-card` stays opaque `surfaceRaised`. `.auth-footer` text sits on the dark foreground band; add that pair
+  to the contrast test (`textSecondary` on `mapHalo`).
+- Import from `@huntclub/design/dawnScene` inside the lazily loaded sign-in chunk only, so signed-in pages do not
+  download it.
+- **Never on `/join`.** `web/src/pages/Join.tsx` must not import it. Add a test that renders Join and finds no
+  element with class `dawn`, and a bundle check that the Join chunk does not contain `dawnSprites`.
+
+### 5.4 Checks to add with the integration
+
+- Lighthouse CI on `/`: Performance >= 90, LCP < 2.5 s, CLS < 0.1 with the scene in place.
+- axe on `/` and the sign-in page.
+- A low-end phone check of scroll smoothness while the scene runs (about 20 animated groups, 12 fps frame swaps).
+  If it janks, the first lever is to pause the scene when the hero is scrolled out of view.
+
+## 6. Rebuilding
 
 ```
-if prefers-reduced-motion: reduce            -> stop (poster only)
-if navigator.connection?.saveData            -> stop
-if navigator.connection?.effectiveType is slow-2g or 2g -> stop
-wait for window load, then requestIdleCallback (fallback: 1.5 s timer)
-add <source type='video/webm; codecs="av01.0.05M.08"'> then <source type="video/mp4">,
-    choosing mobile or desktop files with matchMedia("(max-width: 599px)")
-video.load(); on canplaythrough: unhide video, play()
-    if play() rejects (iOS Low Power Mode, autoplay blocked) -> hide video again, keep poster, no button
-when playing: unhide the pause button
-button: toggles pause()/play(); label switches between "Pause background" and "Play background"
-pause when the tab is hidden or the hero is scrolled out of view (IntersectionObserver); resume if not user-paused
-if prefers-reduced-motion changes to reduce while playing -> pause and hide the video
-remember a user pause in sessionStorage so it stays paused on the next page
+# only when the animals change (needs Blender):
+python3.13 -m venv $SCRATCH/bpyenv && $SCRATCH/bpyenv/bin/pip install bpy       # about 1 GB, outside the repo
+$SCRATCH/bpyenv/bin/python design/background/rigs.py                           # masks, 47 s on 4 CPU cores
+python3 design/background/trace.py                                             # rewrites dawnSprites.generated.ts
+
+# review page, stills and screen capture:
+npm run dawn:preview -w @huntclub/design
+NODE_PATH=$(npm root -g) node design/background/capture.mjs 30
+npm test -w @huntclub/design
 ```
 
-Save-Data limits, stated plainly: only Chromium browsers expose `saveData` to scripts. Safari and Firefox do not,
-and a static CloudFront site does not see the `Save-Data` request header without an edge function. On those
-browsers the protection is the deferred load (the page is complete and interactive before the first video byte),
-the 1.5 MB mobile cap, and iOS Low Power Mode refusing autoplay.
+EEVEE still cannot run here (no GPU or EGL); the masks are rendered with Cycles at 8 samples, which is only edge
+anti-aliasing because there is no light to resolve.
 
-### 8.4 Where it goes
+## 7. Honest assessment
 
-- `site/` home page hero only. Not on `/clubs`, `/pricing`, `/download`, `/privacy` in Phase 1.
-- `web/` sign-in and sign-up (`web/src/pages/SignIn.tsx`, behind `.auth`). The `.auth-card` stays opaque. The
-  `.auth-footer` text sits on the scrim, so it is covered by the contrast test.
-- **Never on `/join`.** `web/src/pages/Join.tsx` must not import the module. Add a test that renders Join and
-  asserts no `video`, no `picture` and no `/media/` URL in the output, and keep `/media/` out of anything `/join`
-  preloads.
-- Both platforms: this is web only (site and club admin). The iOS and Android apps do not get it, and neither
-  loses a feature. Free users still never call the backend: the files are static, on the same CloudFront origin.
-- Files are served once, from `/media/` with content-hashed names and `Cache-Control: immutable`, and used by both
-  `site/` and `/app/`.
+- It looks deliberate now: a title card, not a failed photograph. The composition, light and trees hold up.
+- The animals are clearly a deer, a buck, turkeys and crows, and they move believably. They are still built from
+  simple solids, so up close the hind legs and hooves are simplified and a hunter will see that the doe's shape is
+  a sketch of a whitetail, not a portrait. At the size they are drawn this reads as style.
+- Silhouettes are dark on a dark sky by design (tokens only). On a phone in full sun the animals away from the
+  sun's light will be faint. The doe is placed against the light for that reason.
+- Trees do not sway. Fog, parallax and animals carry the motion.
 
-### 8.5 Accessibility
+## 8. Rule check
 
-- Decorative: the wrapper is `aria-hidden="true"`, the image has `alt=""`, the video is not focusable and has no
-  controls. No captions or transcript are needed because it carries no information and has no audio track.
-- WCAG 2.2.2 (Pause, Stop, Hide): the loop runs longer than 5 s, so a visible pause control is required. It is a
-  real `<button>` with the word label "Pause background" (no icon-only control), at least 48 px high, placed at the
-  bottom corner of the hero, in the tab order after the main actions, with the standard 3 px focus ring.
-- `prefers-reduced-motion: reduce`: poster only, and no button.
-- WCAG 2.3.1: nothing flashes. Motion is slow and small.
-- Lighthouse and axe: the video adds no violation as long as it stays `aria-hidden` and unfocusable.
-
-### 8.6 Performance checks to add
-
-- Lighthouse CI on `/` keeps LCP < 2.5 s and CLS < 0.1 with the loop in place (the LCP element must be the poster).
-- A test that the HTML of `/` contains no `<source>` inside the video and no `autoplay` attribute.
-- The 600 KB home page budget is measured before the deferred video. State that exception in the brief.
-
-### 8.7 Binaries and git
-
-Final files should total about 2 to 3 MB per revision (estimate, section 7). Suggest: commit posters (small) and upload videos to S3 under hashed
-names from the deploy step, with `out/manifest.json` committed as the record. If the coordinator prefers them in
-git, the sizes are in section 7.
-
-## 9. Realism gaps, stated plainly
-
-| Part | State now | What would make it real | Cost |
-|---|---|---|---|
-| Forest, light, sky | Photoreal (a photograph). It is a wood near Stuttgart, Germany, not the eastern US. It reads right, but a botanist would notice. | A CC0 HDRI shot in an eastern US hardwood stand at sunrise. None found on Poly Haven. The owner could shoot one (a 360 camera on a tripod at dawn). | $0 with the owner's camera |
-| Fog | Physically lit, convincing. | Nothing needed. | |
-| Trees moving | They do not: the backdrop is a still. Leaves, mist and animals carry the motion. | 3D hardwood trees with wind in the mid-ground. No suitable CC0 hardwoods found; paid tree libraries exist. | About $0 to $150, plus much longer renders |
-| Deer | Self-made figures from ellipsoids and tapered limbs. Right proportions and behaviour, read well as fogged, backlit shapes at 21 m and 31 m. No fur, no muscle, no skin deformation; legs and neck look thin and stiff in the 720p still (`out/review/still-720p-ungraded.jpg`). Not convincing closer than this or in front light. | A rigged, animated white-tailed deer with fur. | Search results, not verified on the product pages: about $39 to $59 for non-whitetail rigged deer in Blender format, about $299 to $399 for white-tailed deer with fur and animation (TurboSquid). Licence must allow rendered web video, which standard royalty-free licences do, but they are not CC0. |
-| Turkeys | Self-made figures. Read as turkeys in silhouette. No feathers, no fanned tail, no strut. | A rigged, animated wild turkey. | Search results, not verified: about $15 to $49 (CGTrader). Same licence note. |
-| Crows | Simple flapping shapes, a few pixels wide. Fine at that size. | Nothing needed. | |
-| Free alternative for deer | Quaternius "Ultimate Animated Animals" (CC0) has a rigged Deer and Stag with walk and eat cycles, low-poly and stylised. In fog they would read about like the self-made ones, with better walk cycles. Its download was refused from this container. | Someone downloads it by hand. | $0 |
-
-The honest summary: at the size, distance and fog used here, with the scrim on top, the loop reads as a real dawn
-forest with animals in it. It is not a nature documentary close-up, and with free assets it cannot be.
-
-Buying models, or any spend, needs the owner's approval. Nothing was bought.
-
-## 10. Rule check
-
-| Rule | How the loop keeps it |
+| Rule | How the scene keeps it |
 |---|---|
-| Theme tokens only | Scrim and text use existing tokens. No new colour. |
-| No legal shooting hours | Sunrise scene, no time shown, no copy about hours. |
-| iOS and Android parity | Web only. No app feature added or removed. |
-| Offline-first | Not a field feature. The page works with the poster alone, or with nothing. |
-| Free users never call our backend | Static files only. |
-| `/join` privacy | No loop, no extra requests, with a test. |
-| DRY | One config, one manifest, tokens read from `packages/design`, one shared module planned for site and web. |
-| No always-on compute, no spend | Rendered offline. Served from S3 and CloudFront. $0 spent. |
+| Theme tokens only | Tested: every colour in the SVG is a token. Accent use is flagged in section 2. |
+| No gradients (site brief) | Tested. |
+| No legal shooting hours | Sunrise picture, no time, no copy. |
+| iOS and Android parity | Web only (site and club admin). The app's bundle is untouched. |
+| Offline-first, free users never call the backend | Inline in the page: no request at all. |
+| `/join` privacy | Not used there; tests listed in 5.3. |
+| DRY | One scene module for site and web; sprites generated, never retyped; contrast maths reused from `contrast.ts`. |
+| Assets | Nothing third-party is in the output. `design/background/CREDITS.md`. $0 spent. |

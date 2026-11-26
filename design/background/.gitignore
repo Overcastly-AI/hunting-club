@@ -1,1 +1,4 @@
 __pycache__/
+# rebuilt by "npm run dawn:preview -w @huntclub/design"; only out/review is kept
+out/dawn-scene.svg
+out/preview.html
