@@ -50,17 +50,15 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 | Task | Session | Branch / PR | Status |
 |---|---|---|---|
-| M1: app project setup | session_01QS5dr4qFtLFfyf7oVjMNAj | PR #2 | Merged |
-| M2 research | session_01QS5dr5ia6B5X5renWEXyAe | PR #1 | Merged |
-| M2 part 1: packages/mesh | session_01QS5dr5jAZ6wC472f8hsUHW | PR #4 | Merged 06:08 UTC |
-| CI Android build + Archivo variable font + minSdk 26 | session_01QS5dr4qFtLFfyf7oVjMNAj | PR #3 | Approved; waiting on first Android CI build |
-| M8: Supabase schema, RLS, invite RPC, packages/shared | session_01QS5dr5ia6B5X5renWEXyAe | PR #5 | Approved, CI green; resolving lockfile conflict |
-| M4: offline map | session_01QS5dr3kB1sf3Bt86wVb3qW | PR #6 | Approved; moving config to app.config.ts after #3 |
-| M2 part 2: BLE transport, pairing, Android service | session_01QS5dr7YPxgw1iqGybujET3 | PR #7 (draft) | Switching to @huntclub/mesh imports; then app.config.ts after #3 |
-| Weather: NWS wind/temperature, offline cache | session_01QS5dr7o9U9xBRJaR86iMuW | agent/weather | Started 06:10 UTC (builds on #6) |
-| HarvestSex single source + Stripe/Auth research | session_01QS5dr5ia6B5X5renWEXyAe | PR #8 | Merged 06:16 UTC |
-| infra/: CDK stacks (web+CloudFront, webhook Lambda stub, ops schedules) | session_01QS5dr5ia6B5X5renWEXyAe | agent/m2-research | Started 06:15 UTC |
-| packages/core: check-in, overdue, help retries, receipts, party cap | session_01QS5dr5jAZ6wC472f8hsUHW | agent/m2-mesh-client (new PR) | Started 06:09 UTC |
+| Merged so far | — | #1–#6, #8, #9, #11–#15, #17, #18 | research, setup, CI/font, mesh, schema→DynamoDB data layer, map, core, infra, party, map polish, Check In, safety, Android CI speed-up |
+| M2 part 2: BLE transport, RadioProvider, pairing | session_01QS5dr7YPxgw1iqGybujET3 | PR #7 | Top priority: merging main, then ready |
+| Weather (NWS) | session_01QS5dr7o9U9xBRJaR86iMuW | PR #10 | Approved; resolving conflict with main |
+| Onboarding flow + QR scan | session_01QS5dr7o9U9xBRJaR86iMuW | agent/weather | Next after #10 |
+| Mesh-sim CI (real meshtasticd) + TcpTransport | session_01QS5dr5jAZ6wC472f8hsUHW | PR #16 | Waiting on first real sim run |
+| Tab bar + conditions panel layout fix | session_01QS5dr4qFtLFfyf7oVjMNAj | agent/m1-scaffold | PR opening |
+| Chat UI (M7); then wire Check In/Safety/map into RadioProvider after #7 | session_01QS5dr3kB1sf3Bt86wVb3qW | agent/m4-offline-map | In progress |
+| Web admin page + packages/design | session_01QS5dr5ia6B5X5renWEXyAe | agent/m2-research | In progress |
+| Club API + Stripe webhook Lambdas (M9) | session_01QS5dr3GmkJjvaYfcNrAN3b | agent/club-data | Started 06:52 UTC |
 
 ## Decisions log
 
