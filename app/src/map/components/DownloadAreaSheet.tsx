@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '../../components/Button';
+import { formatShortDate } from '../../conditions/clock';
 import { colors, spacing, textStyles } from '../../theme';
 import { BASEMAP_IDS, BASEMAPS, type BasemapId } from '../basemaps';
 import type { DownloadRequest } from '../offline';
@@ -50,8 +51,7 @@ export function estimateForLayers(
   };
 }
 
-const defaultName = () =>
-  `Area saved ${new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+const defaultName = () => `Area saved ${formatShortDate(new Date())}`;
 
 /** "Download the map for this area": choose layers and detail, see the size, start. */
 export function DownloadAreaSheet({

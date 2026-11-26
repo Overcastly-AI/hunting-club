@@ -2,7 +2,7 @@
 // map-pack builder); this file adds the app's download choices and wording.
 import { DOWNLOAD_LIMITS, estimatePack, type BasemapId, type Bounds } from '@huntclub/shared';
 
-export { DOWNLOAD_LIMITS, countTiles, tileXY, type Bounds } from '@huntclub/shared';
+export { DOWNLOAD_LIMITS, countTiles, formatBytes, tileXY, type Bounds } from '@huntclub/shared';
 
 export type DetailLevel = { id: string; label: string; minZoom: number; maxZoom: number };
 
@@ -27,12 +27,4 @@ export function estimateDownload(
   basemap: BasemapId,
 ): DownloadEstimate {
   return estimatePack(bounds, level.minZoom, level.maxZoom, basemap);
-}
-
-/** Size such as "12 MB" or "800 KB". */
-export function formatBytes(bytes: number): string {
-  const mb = bytes / (1024 * 1024);
-  if (mb >= 10) return `${Math.round(mb)} MB`;
-  if (mb >= 1) return `${mb.toFixed(1)} MB`;
-  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }

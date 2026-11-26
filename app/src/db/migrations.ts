@@ -265,6 +265,27 @@ CREATE TABLE chat_messages (
 CREATE INDEX chat_messages_conversation_at ON chat_messages (conversation, at);
 `;
 
+/**
+ * Club map packs downloaded to this phone (PMTiles archives the club's builder
+ * made, Milestone 12): the newest ready pack per club and tile source. The
+ * archive itself is a file in the app's documents folder (local_uri).
+ */
+const clubMapPacks = `
+CREATE TABLE club_map_packs (
+  club_id TEXT NOT NULL,
+  source TEXT NOT NULL,
+  pack_id TEXT NOT NULL,
+  bounds TEXT NOT NULL,
+  min_zoom INTEGER NOT NULL,
+  max_zoom INTEGER NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  built_at TEXT NOT NULL,
+  local_uri TEXT NOT NULL,
+  downloaded_at INTEGER NOT NULL,
+  PRIMARY KEY (club_id, source)
+);
+`;
+
 export const migrations: readonly Migration[] = [
   { version: 1, name: 'initial local schema', sql: initialSchema },
   { version: 2, name: 'map pack downloads', sql: mapPackDownloads },
@@ -275,4 +296,5 @@ export const migrations: readonly Migration[] = [
   { version: 7, name: 'free party', sql: freeParty },
   { version: 8, name: 'club membership and mesh ids', sql: clubMembership },
   { version: 9, name: 'chat history', sql: chatHistory },
+  { version: 10, name: 'club map packs', sql: clubMapPacks },
 ];

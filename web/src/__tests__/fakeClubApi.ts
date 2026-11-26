@@ -7,10 +7,15 @@ import {
   type CognitoAuth,
   CognitoAuthError,
   INVITE_TOKEN_BYTES,
+  BASEMAPS,
+  MapPackRequestSchema,
+  estimateClubPack,
+  mapPackKey,
   InviteCreateSchema,
   type Area,
   type Club,
   type Harvest,
+  type MapPack,
   type Member,
   type Plan,
   type Stand,
@@ -26,6 +31,7 @@ export interface FakeClubData {
   subscription: Subscription | null;
   plans: Plan[];
   harvests: Harvest[];
+  mapPacks: MapPack[];
 }
 
 const CLUB = '0b9c4b6e-6a43-4c55-9a1e-2f6a8f0c1a01';
@@ -70,6 +76,21 @@ function harvest(
   };
 }
 
+function packFields(n: number, source: string) {
+  const id = `5e0a3b4c-6d7e-4f8a-9b0c-1d2e3f4a5b${String(n).padStart(2, '0')}`;
+  return {
+    id,
+    clubId: CLUB,
+    bounds: [-90, 40, -89.99, 40.01] as [number, number, number, number],
+    minZoom: 8,
+    maxZoom: 15,
+    source,
+    s3Key: mapPackKey(CLUB, id),
+    createdAt: `2026-11-${10 + n}T12:00:00.000Z`,
+    updatedAt: `2026-11-${10 + n}T12:30:00.000Z`,
+  };
+}
+
 export function sampleData(): FakeClubData {
   const member = (n: number, displayName: string, initials: string, role: Member['role']) => ({
     clubId: CLUB,
@@ -96,6 +117,7 @@ export function sampleData(): FakeClubData {
       id: CLUB,
       name: 'Oak Ridge Hunt Club',
       acreage: 640,
+      boundary: square,
       region: 'US',
       overdueGraceMinutes: 30,
       ...timestamps,
@@ -142,6 +164,19 @@ export function sampleData(): FakeClubData {
       // A member who has since left the club.
       harvest(7, 9, 'Deer', 'male', '2026-12-01T15:00:00.000Z'),
     ],
+    mapPacks: [
+      {
+        ...packFields(1, 'usgs-topo'),
+        status: 'ready',
+        sizeBytes: 12 * 1024 * 1024,
+        builtAt: '2026-11-20T12:00:00.000Z',
+      },
+      {
+        ...packFields(2, 'usgs-imagery'),
+        status: 'failed',
+        reason: 'USGS did not answer',
+      },
+    ],
     plans: [
       { id: 'club_standard', name: 'Club', active: true, ...timestamps },
       { id: 'club_legacy', name: 'Old club plan', active: false, ...timestamps },
@@ -175,10 +210,24 @@ export function fakeClubClient(data: FakeClubData = sampleData()): ClubApiClient
   };
   return {
     listPlans: async () => data.plans,
-    // Map packs (admin request UI) arrive with M12; the web pages don't call these yet.
-    listMapPacks: async () => [],
-    async requestMapPack() {
-      throw new ClubApiRequestError('not_configured', 503);
+    listMapPacks: async () => data.mapPacks,
+    async requestMapPack(_clubId, request) {
+      const { basemap } = MapPackRequestSchema.parse(request);
+      // The club service's own checks: a property line, the size cap, one build at a time.
+      const { boundary } = clubOrThrow();
+      if (!boundary) throw new ClubApiRequestError('invalid', 400, 'draw the property line first');
+      const estimate = estimateClubPack(boundary, { basemap });
+      if (estimate.overLimit) throw new ClubApiRequestError('invalid', 400, 'too big');
+      if (data.mapPacks.some((p) => p.status === 'building')) {
+        throw new ClubApiRequestError('conflict', 409);
+      }
+      const n = data.mapPacks.length + 1;
+      data.mapPacks.push({
+        ...packFields(n, BASEMAPS[basemap].source),
+        status: 'building',
+        expiresAt: '2026-11-26T13:00:00.000Z',
+      });
+      return { packId: packFields(n, '').id, tiles: estimate.tiles, bytes: estimate.bytes };
     },
     listMyClubs: async () => (data.club ? [{ club: data.club, membership: admin() }] : []),
     async createClub(request) {

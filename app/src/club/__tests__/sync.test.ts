@@ -5,6 +5,7 @@ import {
   INVITE_TOKEN,
   clubJoinUrl,
   fakeClubApi,
+  mapPack,
   memorySecureStorage,
   partyJoinUrl,
 } from '../../test-utils/fakeClubApi';
@@ -125,4 +126,19 @@ it('leaves the channels out when the saved link is for another club', async () =
   await secrets.set(SECURE_KEYS.clubJoinLink, clubJoinUrl('00000000-0000-4000-8000-0000000000ff'));
   const [club] = await loadClubs(d);
   expect((await loadRadioClub(d, secrets, club!)).channelSet).toBeUndefined();
+});
+
+it('fetches the club map packs with the club, and a failed download never fails the sync', async () => {
+  const d = await db();
+  await joinClubFromLink(d, secrets, clubJoinUrl(), profile, NOW);
+  const api = fakeClubApi({ mapPacks: () => [mapPack('p1')] });
+  const files = {
+    download: jest.fn(async () => {
+      throw new Error('network');
+    }),
+    remove: jest.fn(),
+  };
+  await syncClub(d, api, CLUB_ID, NOW, { files, env: 'dev' });
+  expect(files.download).toHaveBeenCalledTimes(1);
+  expect((await loadClubs(d))[0]?.syncedAt).toBe(NOW);
 });

@@ -10,6 +10,7 @@ import { decodeJoinUrl } from '@huntclub/mesh';
 import type { ClubApiClient, MemberJoin } from '@huntclub/shared';
 
 import type { SqlDatabase } from '../db/types';
+import { type MapPackSync, syncClubMapPacks } from './mapPacks';
 import { SECURE_KEYS, type SecureStorage } from '../storage/secure';
 import { loadClubs, loadPendingInvite, saveClubSnapshot, saveJoinedClub } from './store';
 
@@ -51,6 +52,7 @@ export async function syncClub(
   api: ClubApiClient,
   clubId: string,
   now: number,
+  mapPacks?: MapPackSync,
 ): Promise<void> {
   const pending = await loadPendingInvite(db, clubId);
   const redeemed = pending
@@ -73,6 +75,12 @@ export async function syncClub(
     { club: found.club, membership: redeemed ?? found.membership, stands, areas, entitlement },
     now,
   );
+  // The club's map packs are a bonus: a failed download never fails the club sync.
+  if (mapPacks) {
+    await syncClubMapPacks(db, api, mapPacks.files, mapPacks.env, clubId, now).catch(
+      () => undefined,
+    );
+  }
 }
 
 /** Syncs every club on this phone; one club failing doesn't stop the others. */
@@ -80,10 +88,11 @@ export async function syncAllClubs(
   db: SqlDatabase,
   api: ClubApiClient,
   now: number,
+  mapPacks?: MapPackSync,
 ): Promise<{ failed: { clubId: string; error: unknown }[] }> {
   const failed: { clubId: string; error: unknown }[] = [];
   for (const club of await loadClubs(db)) {
-    await syncClub(db, api, club.id, now).catch((error: unknown) =>
+    await syncClub(db, api, club.id, now, mapPacks).catch((error: unknown) =>
       failed.push({ clubId: club.id, error }),
     );
   }

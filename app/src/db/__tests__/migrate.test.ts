@@ -10,6 +10,7 @@ const EXPECTED_TABLES = [
   'areas',
   'chat_messages',
   'check_ins',
+  'club_map_packs',
   'groups',
   'harvests',
   'help_requests',
