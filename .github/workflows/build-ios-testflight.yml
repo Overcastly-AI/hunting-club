@@ -26,8 +26,9 @@ jobs:
     timeout-minutes: 120
     env:
       # Read by app/eas.json's submit profile (ascApiKeyPath/Id/IssuerId) and by EAS
-      # build for App Store credentials. The key file never enters the checkout.
-      ASC_KEY_PATH: ${{ runner.temp }}/asc-api-key.p8
+      # build for App Store credentials. ASC_KEY_PATH is set in the key step: the
+      # runner context (runner.temp) is not available in job-level env, and using it
+      # there makes GitHub reject the whole file (a failed run on every push).
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
     steps:
@@ -45,6 +46,9 @@ jobs:
         env:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
+          # The key file lives in the runner's temp dir and never enters the checkout.
+          ASC_KEY_PATH="$RUNNER_TEMP/asc-api-key.p8"
+          echo "ASC_KEY_PATH=$ASC_KEY_PATH" >> "$GITHUB_ENV"
           umask 077
           printf '%s\n' "$ASC_KEY_P8" > "$ASC_KEY_PATH"
           chmod 600 "$ASC_KEY_PATH"
