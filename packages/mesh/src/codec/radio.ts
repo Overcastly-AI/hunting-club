@@ -7,6 +7,8 @@ export const DEFAULT_HOP_LIMIT = 3;
 /** Firmware DATA_PAYLOAD_LEN is 233; leave room for request_id/reply_id. */
 export const MAX_DATA_PAYLOAD_BYTES = 228;
 /** want_config_id nonces with special meaning in firmware; never use them for a full dump. */
+/** Firmware TX queue length (QueueStatus.maxlen on current radios). */
+export const RADIO_TX_QUEUE_SIZE = 16;
 export const SPECIAL_CONFIG_NONCES: readonly number[] = [69420, 69421];
 
 export type ToRadio = Mesh.ToRadio;

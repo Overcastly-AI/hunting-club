@@ -5,6 +5,8 @@ export * from './codec/appPort';
 export * from './codec/channelUrl';
 export * from './codec/base64url';
 export * from './provisioning';
+export * from './domain';
+export * from './ble';
 export { DedupCache, packetKey } from './dedup';
 export { defaultRandom, randomUint32, type RandomSource } from './random';
 export type { Timers } from './runtime';

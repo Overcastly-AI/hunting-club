@@ -1,5 +1,7 @@
 import {
   APP_MESSAGE_BUDGETS,
+  APP_MESSAGE_SCHEMAS,
+  FIELDS,
   APP_PROTOCOL_VERSION,
   AppCodecError,
   AppMessageType,
@@ -346,6 +348,17 @@ describe('app-port codec', () => {
         expect(() => tryDecodeAppMessage(bytes)).not.toThrow();
       }
     });
+  });
+
+  it('schemas never use a field number twice within one message type', () => {
+    for (const [type, schema] of Object.entries(APP_MESSAGE_SCHEMAS)) {
+      const numbers = ['id', 'sender', 'time', ...schema.fields].flatMap((name) => {
+        const spec = FIELDS[name as keyof typeof FIELDS];
+        return spec.kind === 'latlon' ? [spec.latNo, spec.lonNo] : [spec.no];
+      });
+      expect({ type, numbers: new Set(numbers).size }).toEqual({ type, numbers: numbers.length });
+      for (const req of schema.required) expect(schema.fields).toContain(req);
+    }
   });
 
   it('de-duplication key is sender + message id', () => {

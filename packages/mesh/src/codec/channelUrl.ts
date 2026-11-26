@@ -13,6 +13,7 @@ import { AppOnly, Channel, Config } from '../protobufs';
 import type { RandomSource } from '../random';
 import { base64UrlDecode, base64UrlEncode } from './base64url';
 import { encodeUtf8 } from '../runtime';
+import { DEFAULT_HOP_LIMIT } from './radio';
 
 export type ChannelSet = AppOnly.ChannelSet;
 export type ChannelSettings = Channel.ChannelSettings;
@@ -22,6 +23,15 @@ export const MESHTASTIC_URL_PREFIX = 'https://meshtastic.org/e/';
 export const JOIN_URL_PREFIX = 'huntclub://join';
 /** Firmware: channel names must be under 12 bytes. */
 export const MAX_CHANNEL_NAME_BYTES = 11;
+/** A radio holds up to 8 channels (index 0 = PRIMARY, 1-7 = SECONDARY). */
+export const MAX_CHANNELS = 8;
+/** PSK lengths firmware accepts: none, 1-byte shorthand, AES-128, AES-256. */
+export const VALID_PSK_LENGTHS: readonly number[] = [0, 1, 16, 32];
+/** We always generate AES-256 keys. */
+export const PARTY_PSK_BYTES = 32;
+export const PARTY_CHANNEL_NAME = 'Party';
+/** Name firmware uses for an unnamed channel on the LongFast preset (channel hash, frequency slot). */
+export const DEFAULT_CHANNEL_NAME = 'LongFast';
 /** Our hunt channel shares full-precision positions. */
 export const HUNT_POSITION_PRECISION = 32;
 
@@ -48,9 +58,11 @@ function decodeChannelSetParam(b64: string): ChannelSet {
     throw new ChannelUrlError('Channel data is not valid');
   }
   if (cs.settings.length === 0) throw new ChannelUrlError('Channel set has no channels');
-  if (cs.settings.length > 8) throw new ChannelUrlError('Channel set has more than 8 channels');
+  if (cs.settings.length > MAX_CHANNELS) {
+    throw new ChannelUrlError(`Channel set has more than ${MAX_CHANNELS} channels`);
+  }
   for (const s of cs.settings) {
-    if (![0, 1, 16, 32].includes(s.psk.length))
+    if (!VALID_PSK_LENGTHS.includes(s.psk.length))
       throw new ChannelUrlError('Channel key has an invalid length');
   }
   return cs;
@@ -146,12 +158,13 @@ export interface PartyChannelOptions {
  * hop limit 3 and full-precision positions on this channel.
  */
 export function generatePartyChannelSet(opts: PartyChannelOptions): ChannelSet {
-  const name = opts.name ?? 'Party';
+  const name = opts.name ?? PARTY_CHANNEL_NAME;
   if (encodeUtf8(name).length > MAX_CHANNEL_NAME_BYTES) {
     throw new ChannelUrlError(`Channel name must be at most ${MAX_CHANNEL_NAME_BYTES} bytes`);
   }
-  const psk = opts.random(32);
-  if (psk.length !== 32) throw new Error('Random source returned the wrong number of bytes');
+  const psk = opts.random(PARTY_PSK_BYTES);
+  if (psk.length !== PARTY_PSK_BYTES)
+    throw new Error('Random source returned the wrong number of bytes');
   return create(AppOnly.ChannelSetSchema, {
     settings: [
       {
@@ -173,7 +186,7 @@ export function defaultLoRaConfig(
     usePreset: true,
     modemPreset,
     region,
-    hopLimit: 3,
+    hopLimit: DEFAULT_HOP_LIMIT,
     txEnabled: true,
     txPower: 0,
     channelNum: 0,
@@ -186,7 +199,7 @@ export function defaultLoRaConfig(
  */
 export function channelHash(
   settings: Pick<ChannelSettings, 'name' | 'psk'>,
-  presetName = 'LongFast',
+  presetName = DEFAULT_CHANNEL_NAME,
 ): number {
   const name = settings.name || presetName;
   let h = 0;

@@ -5,7 +5,7 @@
  *   `connected` status (the radio forgets the phone on each disconnect).
  * - Keeps the radio's node DB, channels and config from the config dump.
  * - Sends through a queue that respects the radio's TX queue (QueueStatus,
- *   16 slots) and paces writes (~200 ms apart).
+ *   RADIO_TX_QUEUE_SIZE slots) and paces writes (~200 ms apart).
  * - Matches Routing acks/naks to sent packets by request_id.
  * - Drops duplicate packets by (from, packet id), and duplicate app-port
  *   messages by (sender, message id).
@@ -17,6 +17,7 @@ import { fromBinary, type MessageInitShape } from '@bufbuild/protobuf';
 import { Admin, Channel, Config, Mesh, ModuleConfig, Portnums, Telemetry } from './protobufs';
 import {
   BROADCAST_ADDR,
+  RADIO_TX_QUEUE_SIZE,
   SPECIAL_CONFIG_NONCES,
   decodeFromRadio,
   disconnectMessage,
@@ -177,8 +178,6 @@ interface Outgoing {
   timer?: TimerHandle;
 }
 
-const DEFAULT_RADIO_QUEUE = 16;
-
 export class MeshClient extends Emitter<MeshClientEvents> {
   private readonly transport: Transport;
   private readonly random: RandomSource;
@@ -216,7 +215,7 @@ export class MeshClient extends Emitter<MeshClientEvents> {
   private queue: Outgoing[] = [];
   private awaitingQueueStatus = new Map<number, Outgoing>();
   private awaitingAck = new Map<number, Outgoing>();
-  private radioFree = DEFAULT_RADIO_QUEUE;
+  private radioFree = RADIO_TX_QUEUE_SIZE;
   private lastWriteAt = Number.NEGATIVE_INFINITY;
   private writing = false;
   private pumpTimer: TimerHandle | undefined;
@@ -449,7 +448,7 @@ export class MeshClient extends Emitter<MeshClientEvents> {
       item.timer = undefined;
       this.onAccepted(item);
     }
-    this.radioFree = DEFAULT_RADIO_QUEUE;
+    this.radioFree = RADIO_TX_QUEUE_SIZE;
   }
 
   private setState(s: ClientState): void {
