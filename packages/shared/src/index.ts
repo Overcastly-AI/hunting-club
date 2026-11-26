@@ -8,3 +8,4 @@ export * from './apiClient';
 export * from './cloud';
 export * from './cognito';
 export * from './http';
+export * from './qr';

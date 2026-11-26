@@ -1,12 +1,14 @@
 import {
   bearingDeg,
   boundsAround,
+  boundsAroundPoint,
   compassWord,
   destination,
   distanceAndDirection,
   distanceMeters,
   downwindBearing,
   metersPerPoint,
+  MILE_M,
   MIN_BOUNDS_SPAN_DEG,
   scaleBar,
   scentConeRing,
@@ -93,5 +95,20 @@ describe('boundsAround', () => {
     const [west, south, east, north] = boundsAround([{ lat: 40, lon: -78 }])!;
     expect(east - west).toBeCloseTo(MIN_BOUNDS_SPAN_DEG);
     expect(north - south).toBeCloseTo(MIN_BOUNDS_SPAN_DEG);
+  });
+});
+
+describe('boundsAroundPoint', () => {
+  it('reaches the radius in every direction', () => {
+    const center = { lat: 40.79, lon: -77.86 };
+    const [west, south, east, north] = boundsAroundPoint(center, MILE_M);
+    for (const corner of [
+      { lat: north, lon: center.lon },
+      { lat: south, lon: center.lon },
+      { lat: center.lat, lon: east },
+      { lat: center.lat, lon: west },
+    ]) {
+      expect(distanceMeters(center, corner)).toBeCloseTo(MILE_M, 0);
+    }
   });
 });

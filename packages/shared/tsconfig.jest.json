@@ -1,12 +1,7 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "../mesh/tsconfig.jest.json",
   "compilerOptions": {
-    "module": "CommonJS",
-    "moduleResolution": "Node10",
-    "verbatimModuleSyntax": false,
-    "esModuleInterop": true,
-    "ignoreDeprecations": "6.0",
-    "types": ["jest", "node"],
-    "noEmit": true
-  }
+    "rootDir": ".."
+  },
+  "include": ["src"]
 }

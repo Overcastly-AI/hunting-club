@@ -1,22 +1,34 @@
 import * as SecureStore from 'expo-secure-store';
 
 /**
- * Secrets on this phone (club sign-in tokens, the party join link): the iOS Keychain /
- * Android Keystore, readable once the phone has been unlocked after boot. The one place
- * the app uses expo-secure-store. Never log the values.
+ * Secrets the app keeps on the phone (iOS Keychain, Android Keystore): the
+ * party join link, which holds the channel key, and club sign-in tokens.
+ * The one place the app reads and writes secrets. Never log the values.
  */
-const OPTIONS: SecureStore.SecureStoreOptions = {
-  keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
+export type SecureStorage = {
+  get(key: SecureKey): Promise<string | null>;
+  set(key: SecureKey, value: string): Promise<void>;
+  delete(key: SecureKey): Promise<void>;
 };
 
-export function getSecret(key: string): Promise<string | null> {
-  return SecureStore.getItemAsync(key, OPTIONS);
-}
+/** Every secret's key, in one place (letters, digits, ".", "-" and "_" only). */
+export const SECURE_KEYS = {
+  partyJoinLink: 'party.joinLink',
+  /** Club sign-in tokens (Cognito access + refresh), JSON. */
+  clubAuthTokens: 'club.authTokens',
+} as const;
+export type SecureKey = (typeof SECURE_KEYS)[keyof typeof SECURE_KEYS];
 
-export function setSecret(key: string, value: string): Promise<void> {
-  return SecureStore.setItemAsync(key, value, OPTIONS);
-}
+/**
+ * Readable after the first unlock since boot, so the radio link can restore
+ * the party in the background; kept on this phone only (no iCloud backup).
+ */
+const OPTIONS: SecureStore.SecureStoreOptions = {
+  keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
+};
 
-export function deleteSecret(key: string): Promise<void> {
-  return SecureStore.deleteItemAsync(key, OPTIONS);
-}
+export const secureStorage: SecureStorage = {
+  get: (key) => SecureStore.getItemAsync(key, OPTIONS),
+  set: (key, value) => SecureStore.setItemAsync(key, value, OPTIONS),
+  delete: (key) => SecureStore.deleteItemAsync(key, OPTIONS),
+};

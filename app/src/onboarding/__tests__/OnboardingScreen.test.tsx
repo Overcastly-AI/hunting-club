@@ -11,14 +11,25 @@ jest.mock(
   'react-native-ble-manager',
   () => jest.requireActual('../../test-utils/fakeBleManager').fakeBleManagerModule,
 );
+jest.mock(
+  '../../permissions/location',
+  () => jest.requireActual('../../test-utils/fakeLocation').fakeLocationModule,
+);
+jest.mock(
+  'react-native-safe-area-context',
+  () => jest.requireActual('react-native-safe-area-context/jest/mock').default,
+);
 
 beforeEach(resetBluetoothForTests);
 
 describe('OnboardingScreen', () => {
-  it('welcome → pair your radio, party (set up later) → name → finished', async () => {
+  it('welcome → pair your radio, party (set up later) → name → map (set up later) → finished', async () => {
     const onFinish = jest.fn();
     const onProfile = jest.fn().mockResolvedValue(undefined);
-    await renderWithRadio(<OnboardingScreen onFinish={onFinish} onProfile={onProfile} />);
+    const onDownloadMap = jest.fn();
+    await renderWithRadio(
+      <OnboardingScreen onFinish={onFinish} onProfile={onProfile} onDownloadMap={onDownloadMap} />,
+    );
 
     expect(screen.getByText(onboardingCopy.welcome.title)).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: onboardingCopy.welcome.start }));
@@ -34,6 +45,11 @@ describe('OnboardingScreen', () => {
     await fireEvent.press(screen.getByRole('button', { name: onboardingCopy.name.continue }));
 
     expect(onProfile).toHaveBeenCalledWith({ displayName: 'Jake Smith', initials: 'JS' });
+
+    expect(await screen.findByText(onboardingCopy.map.title)).toBeTruthy();
+    expect(onFinish).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByRole('button', { name: radioCopy.pair.setUpLater }));
     await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(1));
+    expect(onDownloadMap).not.toHaveBeenCalled();
   });
 });

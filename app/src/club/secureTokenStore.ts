@@ -1,16 +1,14 @@
 import type { AuthTokens } from '@huntclub/shared';
 
-import { deleteSecret, getSecret, setSecret } from '../storage/secure';
+import { SECURE_KEYS, secureStorage } from '../storage/secure';
 import type { TokenStore } from './session';
 
-const KEY = 'huntclub.club-auth';
-
-/** Club sign-in tokens in the phone's keystore (via the app's one secure-storage helper). */
+/** Club sign-in tokens in the phone's keystore (the app's one secure-storage helper). */
 export const secureTokenStore: TokenStore = {
   async load() {
-    const raw = await getSecret(KEY);
+    const raw = await secureStorage.get(SECURE_KEYS.clubAuthTokens);
     return raw ? (JSON.parse(raw) as AuthTokens) : null;
   },
-  save: (tokens) => setSecret(KEY, JSON.stringify(tokens)),
-  clear: () => deleteSecret(KEY),
+  save: (tokens) => secureStorage.set(SECURE_KEYS.clubAuthTokens, JSON.stringify(tokens)),
+  clear: () => secureStorage.delete(SECURE_KEYS.clubAuthTokens),
 };
