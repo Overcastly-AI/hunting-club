@@ -33,7 +33,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 | # | Sent | Request | Status | Result |
 |---|---|---|---|---|
-| 3 | 2026-11-26 | First CDK deploy: bootstrap + HuntClub-dev-Web + HuntClub-dev-Api (no Stripe yet) | Sent 11:01 UTC (thread 1a21783c82cc55ed) | |
+| 3 | 2026-11-26 | First CDK deploy: bootstrap + HuntClub-dev-Web + HuntClub-dev-Api (no Stripe yet) | **Partly done** 11:08 UTC: CDKToolkit bootstrapped (v34); diff clean; deploy FAILED at asset upload — Grok Bot's box reaches S3 via a VPC endpoint whose policy blocks the cdk-hnb659fds-assets bucket. Nothing else created. | Proposed fix: deploy from GitHub Actions via OIDC role (needs owner approval) |
 | 2 | 2026-11-26 | Enable TTL `expiresAt` on the table; add web app client to the user pool | **Done** 06:37 UTC | TTL enabled; web client `6mpfpr6nrdqddim7trfqckegu5` |
 | 1 | 2026-11-26 | Dev subdomain: Route 53 hosted zone, delegation, ACM wildcard cert | **Done** 06:07 UTC (verified NS via public DNS) | See "AWS environment" below |
 
@@ -106,6 +106,8 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 - Creating `hunt-club-mesh-dev` (us-east-1) failed: the owner is at the 2-active-free-projects limit; the other project is in an org this connection can't see. Waiting for the owner to pause/delete that one. Until then the schema is tested against local Postgres in CI; not blocking before M8–M10.
 
 ## Owner to-dos (non-blocking)
+
+- **Approve the deploy path (blocking the first deploy):** let Grok Bot create a GitHub Actions OIDC deploy role `hunt-club-mesh-github-deploy-dev` (trust: repo Overcastly-AI/hunting-club, GitHub environment `dev` only; may only assume the four CDK bootstrap roles). Alternatives: run `cdk deploy` from your own machine or AWS CloudShell, or allow the CDK assets bucket in Grok Bot's VPC endpoint policy.
 
 - **Stripe account (needed to take club payments, Milestone 9):** create a Stripe account in test mode. Then Grok Bot (via a numbered request) creates the test price, the SSM parameters `/hunt-club-mesh/dev/stripe-api-key` and `/hunt-club-mesh/dev/stripe-webhook-secret`, and a thin-event webhook destination pointing at the `StripeWebhookUrl` stack output.
 - **Delete one PR comment by hand** (the tool keeps re-adding an AI footer): https://github.com/Overcastly-AI/hunting-club/pull/7#issuecomment-7188280309
