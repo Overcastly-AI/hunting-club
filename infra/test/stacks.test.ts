@@ -1,3 +1,5 @@
+import { join } from 'node:path';
+import { App } from 'aws-cdk-lib';
 import { Match } from 'aws-cdk-lib/assertions';
 import { GSIS, PARTITION_PREFIXES, TABLE_KEYS, TTL_ATTRIBUTE } from '@huntclub/club-data';
 import { APP_ID } from '@huntclub/shared';
@@ -13,6 +15,7 @@ import {
 } from '../config';
 import { dev } from '../config/dev';
 import { CLUB_API_TABLE_ACTIONS } from '../src/stacks/api-stack';
+import { buildApp } from '../src/app';
 import { synthTemplates } from './helpers';
 
 const templates = synthTemplates();
@@ -32,7 +35,12 @@ describe('every stack', () => {
   it.each(Object.entries(templates))(
     '%s: Lambdas are Node 24 on arm64 with 14-day logs',
     (_, t) => {
-      for (const fn of Object.values(t.findResources('AWS::Lambda::Function'))) {
+      // Our Lambdas only: CDK's bucket-deployment helper is CDK-managed (Python); the
+      // cost guard still checks its log retention.
+      const ours = Object.entries(t.findResources('AWS::Lambda::Function')).filter(
+        ([id]) => !id.startsWith('CustomCDKBucketDeployment'),
+      );
+      for (const [, fn] of ours) {
         expect(fn.Properties.Runtime).toBe('nodejs24.x');
         expect(fn.Properties.Architectures).toEqual(['arm64']);
       }
@@ -113,14 +121,43 @@ describe('web stack', () => {
     }
   });
 
+  const deployments = (tpl = t) =>
+    Object.values(tpl.findResources('Custom::CDKBucketDeployment')).map((r) => r.Properties);
+
+  it('deploys the web page: hashed assets cached for a year, pages never cached', () => {
+    const [assets, pages] = deployments();
+    expect(deployments()).toHaveLength(2);
+    expect(assets).toMatchObject({
+      Prune: false,
+      Include: ['assets/*'],
+      Exclude: ['*'],
+      SystemMetadata: { 'cache-control': 'public, max-age=31536000, immutable' },
+    });
+    expect(pages).toMatchObject({
+      Prune: true,
+      Exclude: ['assets/*', '.well-known/*'],
+      SystemMetadata: { 'cache-control': 'no-cache' },
+      DistributionPaths: ['/*'],
+    });
+  });
+
+  it('refuses to synthesize without a web build', () => {
+    expect(() =>
+      buildApp(dev, new App(), { webDistPath: join(__dirname, 'no-such-build') }),
+    ).toThrow(/npm run build -w @huntclub\/web/);
+  });
+
   it('publishes no universal-link files until the app IDs are known', () => {
-    t.resourceCountIs('Custom::CDKBucketDeployment', 0);
+    expect(
+      deployments().filter((d) => String(d.DistributionPaths ?? '').includes('.well-known')),
+    ).toHaveLength(0);
   });
 
   it('publishes .well-known files as JSON once the team ID and fingerprints are set', () => {
     const withLinks = synthTemplates({
       appLinks: { appleTeamId: 'ABCDE12345', androidSha256CertFingerprints: ['AA:BB'] },
     }).web;
+    expect(deployments(withLinks)).toHaveLength(3);
     withLinks.hasResourceProperties('Custom::CDKBucketDeployment', {
       SystemMetadata: Match.objectLike({ 'content-type': 'application/json' }),
       Prune: false,

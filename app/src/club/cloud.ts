@@ -4,6 +4,7 @@
  */
 import {
   CLOUD_ENVIRONMENTS,
+  ClubSession,
   type CloudEnvironment,
   createClubApiClient,
   createCognitoAuth,
@@ -11,7 +12,6 @@ import {
 } from '@huntclub/shared';
 
 import { secureStorage } from '../storage/secure';
-import { ClubSession } from './session';
 import { secureTokenStore } from './secureTokenStore';
 
 /** The app talks to dev until a production environment exists. */

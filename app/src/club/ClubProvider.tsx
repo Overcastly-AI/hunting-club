@@ -3,7 +3,7 @@
  * session, and sync. Provides the cached entitlement to club-only screens.
  * Nothing here runs for a free user until they join a club or tap Sign in.
  */
-import type { ClubApiClient, MemberJoin } from '@huntclub/shared';
+import type { ClubApiClient, ClubSession, MemberJoin } from '@huntclub/shared';
 import { useSQLiteContext } from 'expo-sqlite';
 import {
   type ReactNode,
@@ -19,7 +19,6 @@ import type { MyProfile } from '../db/appState';
 import type { SqlDatabase } from '../db/types';
 import { useProfile } from '../profile/ProfileProvider';
 import { ClubEntitlementContext, entitlementOf } from './entitlement';
-import type { ClubSession } from './session';
 import type { RadioClub } from '../radio/RadioServices';
 import type { SecureStorage } from '../storage/secure';
 import { type LocalClub, loadClubs, loadRadioClub } from './store';

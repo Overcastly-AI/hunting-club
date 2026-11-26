@@ -1,8 +1,13 @@
 import { encodeJoinUrl, generatePartyChannelSet } from '@huntclub/mesh';
 import { seededRandom } from '@huntclub/mesh/testing';
-import { ClubApiRequestError, type ClubApiClient, type Member, type Stand } from '@huntclub/shared';
+import {
+  ClubApiRequestError,
+  type ClubApiClient,
+  type Member,
+  type Stand,
+  type ClubSession,
+} from '@huntclub/shared';
 
-import type { ClubSession } from '../club/session';
 import type { SecureStorage } from '../storage/secure';
 
 export const CLUB_ID = '00000000-0000-4000-8000-00000000c1ab';
@@ -67,10 +72,16 @@ export function fakeClubApi(options: { featuresUntil?: string; offline?: boolean
   const api = {
     listPlans: offline(() => []),
     listMyClubs: offline(() => (joined ? [{ club, membership: member }] : [])),
+    createClub: offline(() => {
+      throw new ClubApiRequestError('forbidden', 403);
+    }),
     getClub: offline(() => club),
     listMembers: offline(() => [member]),
     listStands: offline(() => [stand(1, 'Creek Stand'), stand(2, 'Ridge Ladder')]),
     listAreas: offline(() => []),
+    createInvite: offline(() => {
+      throw new ClubApiRequestError('forbidden', 403);
+    }),
     getEntitlement: offline(() => ({
       clubId: CLUB_ID,
       status: 'active' as const,

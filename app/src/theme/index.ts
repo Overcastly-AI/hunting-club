@@ -1,17 +1,19 @@
-import { boundary, colors } from './colors';
-import { opacity, sizes, radii, spacing } from './sizes';
-import { fontSources } from './fonts';
 import {
-  archivo,
+  boundary,
+  colors,
   fontAxisLimits,
   fontFamily,
   fontSize,
   fontWeight,
   fontWidth,
-  mapTextHalo,
-  maxFontScale,
-  textStyles,
-} from './typography';
+  opacity,
+  radii,
+  sizes,
+  spacing,
+} from '@huntclub/design';
+
+import { fontSources } from './fonts';
+import { archivo, mapTextHalo, maxFontScale, textStyles } from './typography';
 
 export {
   archivo,
@@ -31,8 +33,7 @@ export {
   spacing,
   textStyles,
 };
-export type { FontWeight, FontWidth } from './typography';
-export type { ColorToken } from './colors';
+export type { ColorToken, FontWeight, FontWidth } from '@huntclub/design';
 
 export const theme = {
   colors,

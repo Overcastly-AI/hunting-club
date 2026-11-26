@@ -14,11 +14,17 @@ import { wellKnownFiles } from '../well-known';
 
 export interface WebStackProps extends StackProps {
   readonly config: EnvConfig;
+  /** Built web admin page (`npm run build -w @huntclub/web` → web/dist). */
+  readonly webDistPath: string;
 }
 
+/** Vite puts fingerprinted files here; they never change, so they cache for a year. */
+const HASHED_ASSETS = 'assets/*';
+const WELL_KNOWN = '.well-known/*';
+
 /**
- * The web admin page and universal-link files: a private S3 bucket behind CloudFront
- * (origin access control, HTTPS only) at the environment's domain.
+ * The web admin page (web/dist) and universal-link files: a private S3 bucket behind
+ * CloudFront (origin access control, HTTPS only) at the environment's domain.
  */
 export class WebStack extends Stack {
   readonly bucket: s3.Bucket;
@@ -61,6 +67,39 @@ export class WebStack extends Stack {
     new route53.ARecord(this, 'AliasA', { zone, target });
     new route53.AaaaRecord(this, 'AliasAAAA', { zone, target });
 
+    // One log group for every deployment: the deployment Lambda is a stack singleton.
+    const deployLogs = new logs.LogGroup(this, 'DeployLogs', {
+      retention: LOG_RETENTION,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+    const site = s3deploy.Source.asset(props.webDistPath);
+
+    new s3deploy.BucketDeployment(this, 'SiteAssets', {
+      destinationBucket: this.bucket,
+      sources: [site],
+      exclude: ['*'],
+      include: [HASHED_ASSETS],
+      cacheControl: [
+        s3deploy.CacheControl.setPublic(),
+        s3deploy.CacheControl.maxAge(Duration.days(365)),
+        s3deploy.CacheControl.immutable(),
+      ],
+      prune: false,
+      logGroup: deployLogs,
+    });
+
+    new s3deploy.BucketDeployment(this, 'SitePages', {
+      destinationBucket: this.bucket,
+      sources: [site],
+      // Excluded keys are never pruned: hashed assets and the universal-link files stay.
+      exclude: [HASHED_ASSETS, WELL_KNOWN],
+      cacheControl: [s3deploy.CacheControl.noCache()],
+      prune: true,
+      distribution: this.distribution,
+      distributionPaths: ['/*'],
+      logGroup: deployLogs,
+    });
+
     const files = wellKnownFiles(config.appLinks);
     if (files.length > 0) {
       new s3deploy.BucketDeployment(this, 'WellKnown', {
@@ -72,11 +111,8 @@ export class WebStack extends Stack {
         // Leave the web page's own files alone.
         prune: false,
         distribution: this.distribution,
-        distributionPaths: ['/.well-known/*'],
-        logGroup: new logs.LogGroup(this, 'WellKnownDeployLogs', {
-          retention: LOG_RETENTION,
-          removalPolicy: RemovalPolicy.DESTROY,
-        }),
+        distributionPaths: [`/${WELL_KNOWN}`],
+        logGroup: deployLogs,
       });
     }
   }

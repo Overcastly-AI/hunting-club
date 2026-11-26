@@ -1,47 +1,18 @@
 import type { TextStyle } from 'react-native';
 
-import { colors } from './colors';
-import { sizes } from './sizes';
+import {
+  colors,
+  fontFamily,
+  fontWidth,
+  sizes,
+  textScale,
+  type FontWeight,
+  type FontWidth,
+  type TextScaleEntry,
+} from '@huntclub/design';
 
-/**
- * Archivo variable font (axes `wght` and `wdth`), loaded once in the root
- * layout from `assets/fonts/Archivo-Variable.ttf` under this family name.
- */
-export const fontFamily = 'Archivo';
-
-/** Weights the design system uses. The spec allows 500–800. */
-export const fontWeight = {
-  medium: 500,
-  semiBold: 600,
-  bold: 700,
-  extraBold: 800,
-} as const;
-
-/** Design D's narrow width: the sheet title and any text that must fit a tight panel. */
-const NARROW_WIDTH = 82;
-
-/** Widths as a percentage of normal (`wdth` axis). The spec allows 75–100. */
-export const fontWidth = {
-  normal: 100,
-  narrow: NARROW_WIDTH,
-  /** Bottom sheet title. */
-  sheetTitle: NARROW_WIDTH,
-} as const;
-
-/**
- * Largest system text size the app follows (spec: support up to 200%). Pass it
- * as `maxFontSizeMultiplier` wherever text must stay inside a fixed layout.
- */
-export const maxFontScale = 2;
-
-/** Axis ranges allowed by the design system. */
-export const fontAxisLimits = {
-  weight: { min: 500, max: 800 },
-  width: { min: 75, max: 100 },
-} as const;
-
-export type FontWeight = (typeof fontWeight)[keyof typeof fontWeight];
-export type FontWidth = (typeof fontWidth)[keyof typeof fontWidth];
+// Platform-neutral type tokens (family, weights, widths, sizes, textScale) live in
+// @huntclub/design; this file only adds the React Native rendering of them.
 
 /**
  * Archivo at a given weight and width. Both axes are always set explicitly
@@ -61,55 +32,29 @@ export function archivo(weight: FontWeight, width: FontWidth = fontWidth.normal)
   } as const satisfies TextStyle;
 }
 
-/** Type sizes in px from the design system. */
-export const fontSize = {
-  /** Minimum for any text drawn on the map. */
-  mapLabelMin: 13,
-  /** Tab bar labels. */
-  tabLabel: 14,
-  /** Hunter and stand marker names. */
-  markerName: 15,
-  /** Body text, minimum. */
-  body: 16,
-  /** Body text, large. */
-  bodyLarge: 17,
-  /** Bottom sheet title. */
-  sheetTitle: 25,
-  /** Clubhouse board: details read from across a room (place, since when). */
-  boardDetail: 24,
-  /** Clubhouse board: names and section headings read from across a room. */
-  boardName: 32,
-  /** Clubhouse board: the club name and clock. */
-  boardTitle: 40,
-} as const;
+/** The React Native style for one textScale entry, typed exactly from that entry. */
+type TextStyleFor<E extends TextScaleEntry> = ReturnType<typeof archivo> & {
+  fontSize: E['size'];
+} & (E extends { lineHeight: infer L } ? { lineHeight: L } : unknown);
 
-/** Ready-made text styles. Mixed case only; no letter-spaced all-caps. */
-export const textStyles = {
-  body: { ...archivo(fontWeight.medium), fontSize: fontSize.body, lineHeight: 22 },
-  bodyLarge: { ...archivo(fontWeight.medium), fontSize: fontSize.bodyLarge, lineHeight: 24 },
-  label: { ...archivo(fontWeight.semiBold), fontSize: fontSize.body, lineHeight: 22 },
-  /** `label` at the narrow width, for panels that must not truncate (map conditions). */
-  labelNarrow: {
-    ...archivo(fontWeight.semiBold, fontWidth.narrow),
-    fontSize: fontSize.body,
-    lineHeight: 22,
-  },
-  tabLabel: { ...archivo(fontWeight.semiBold), fontSize: fontSize.tabLabel, lineHeight: 20 },
-  mapLabel: { ...archivo(fontWeight.bold), fontSize: fontSize.mapLabelMin },
-  markerName: { ...archivo(fontWeight.extraBold), fontSize: fontSize.markerName },
-  sheetTitle: {
-    ...archivo(fontWeight.extraBold, fontWidth.sheetTitle),
-    fontSize: fontSize.sheetTitle,
-    lineHeight: 30,
-  },
-  boardDetail: { ...archivo(fontWeight.semiBold), fontSize: fontSize.boardDetail, lineHeight: 32 },
-  boardName: { ...archivo(fontWeight.extraBold), fontSize: fontSize.boardName, lineHeight: 40 },
-  boardTitle: {
-    ...archivo(fontWeight.extraBold, fontWidth.narrow),
-    fontSize: fontSize.boardTitle,
-    lineHeight: 48,
-  },
-} as const satisfies Record<string, TextStyle>;
+function textStyle<E extends TextScaleEntry>(entry: E): TextStyleFor<E> {
+  return {
+    ...archivo(entry.weight, entry.width),
+    fontSize: entry.size,
+    ...(entry.lineHeight === undefined ? {} : { lineHeight: entry.lineHeight }),
+  } as TextStyleFor<E>;
+}
+
+/** Ready-made React Native text styles, one per entry of the shared textScale. */
+export const textStyles = Object.fromEntries(
+  Object.entries(textScale).map(([name, entry]) => [name, textStyle(entry)]),
+) as { readonly [K in keyof typeof textScale]: TextStyleFor<(typeof textScale)[K]> };
+
+/**
+ * Largest system text size the app follows (spec: support up to 200%). Pass it
+ * as `maxFontSizeMultiplier` wherever text must stay inside a fixed layout.
+ */
+export const maxFontScale = 2;
 
 /** Dark outline behind all text drawn on the map (map-halo token, 3 px). */
 export const mapTextHalo = {

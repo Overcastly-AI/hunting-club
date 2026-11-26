@@ -1,14 +1,29 @@
 /**
- * The signed-in club account on this phone. Free users never sign in and never call
- * the backend; this only runs when someone joins a club or taps Sign in.
- * Tokens live in the platform keystore (expo-secure-store), never in SQLite or logs.
+ * The signed-in club account (app and web admin). Free users never sign in and never
+ * call the backend; this only runs when someone joins a club, taps Sign in, or opens
+ * the web admin. Each platform supplies where tokens live: the app's keystore
+ * (expo-secure-store), the web admin's memory. Never SQLite, browser storage or logs.
  */
-import type { AuthTokens, CodeChallenge, CognitoAuth } from '@huntclub/shared';
+import type { AuthTokens, CodeChallenge, CognitoAuth } from './cognito';
 
 export interface TokenStore {
   load(): Promise<AuthTokens | null>;
   save(tokens: AuthTokens): Promise<void>;
   clear(): Promise<void>;
+}
+
+/** Tokens held in memory only (the web admin: signing in again after a reload). */
+export function memoryTokenStore(initial: AuthTokens | null = null): TokenStore {
+  let value = initial;
+  return {
+    load: async () => value,
+    save: async (tokens) => {
+      value = tokens;
+    },
+    clear: async () => {
+      value = null;
+    },
+  };
 }
 
 /** Refresh this long before the access token expires. */
