@@ -1,9 +1,14 @@
 import { CHECKOUT_RETURN_PATHS, JOIN_PATH } from '@huntclub/shared';
-import type { ReactNode } from 'react';
-import { App } from './App';
+import { lazy, Suspense, type ReactNode } from 'react';
 import type { WebClubServices } from './cloud';
-import { CheckoutReturn } from './pages/CheckoutReturn';
-import { Join } from './pages/Join';
+
+// Each entry path loads only its own code: the join page doesn't pull in the admin,
+// and the admin doesn't pull in the mesh codec until an invite is made.
+const App = lazy(() => import('./App').then((m) => ({ default: m.App })));
+const Join = lazy(() => import('./pages/Join').then((m) => ({ default: m.Join })));
+const CheckoutReturn = lazy(() =>
+  import('./pages/CheckoutReturn').then((m) => ({ default: m.CheckoutReturn })),
+);
 
 /**
  * The page's real paths (WEB_PAGE_PATHS, served as index.html by CloudFront) need no
@@ -30,9 +35,21 @@ export function Root(props: WebClubServices & { location: Pick<Location, 'pathna
         <CheckoutReturn outcome="cancel" />
       </Page>
     );
-  return <App {...services} />;
+  return (
+    <Suspense fallback={<Loading />}>
+      <App {...services} />
+    </Suspense>
+  );
+}
+
+function Loading() {
+  return <p className="muted">Loading…</p>;
 }
 
 function Page(props: { children: ReactNode }) {
-  return <main className="layout">{props.children}</main>;
+  return (
+    <main className="layout">
+      <Suspense fallback={<Loading />}>{props.children}</Suspense>
+    </main>
+  );
 }

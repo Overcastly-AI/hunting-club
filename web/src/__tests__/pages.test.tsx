@@ -156,7 +156,7 @@ describe('pages on their own paths (no sign-in)', () => {
     href: `https://${WEB_DOMAINS.dev}${pathname}${hash}`,
   });
 
-  it('hands a web club invite to the app, without showing the key', () => {
+  it('hands a web club invite to the app, without showing the key', async () => {
     const channelSet = generatePartyChannelSet({ random: defaultRandom, name: 'Club' });
     const web = encodeJoinUrl(
       {
@@ -166,7 +166,7 @@ describe('pages on their own paths (no sign-in)', () => {
       { form: 'web' },
     );
     render(<Root {...services} location={at(JOIN_PATH, web.slice(web.indexOf('#')))} />);
-    expect(screen.getByRole('heading', { name: 'Club invite' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Club invite' })).toBeTruthy();
     const open = screen.getByRole('link', { name: 'Open in the app' }).getAttribute('href')!;
     expect(open.startsWith('huntclub://')).toBe(true);
     expect(decodeJoinUrl(open)).toEqual(decodeJoinUrl(web));
@@ -174,24 +174,24 @@ describe('pages on their own paths (no sign-in)', () => {
     expect(document.body.textContent).not.toMatch(/channel|key|LongFast/i);
   });
 
-  it('explains a broken invite link', () => {
+  it('explains a broken invite link', async () => {
     render(<Root {...services} location={at(`${JOIN_PATH}/`, '#cs=nope')} />);
-    expect(screen.getByRole('alert').textContent).toMatch(/not complete/);
+    expect((await screen.findByRole('alert')).textContent).toMatch(/not complete/);
   });
 
-  it('thanks the admin after Checkout, and reassures after a cancel', () => {
+  it('thanks the admin after Checkout, and reassures after a cancel', async () => {
     const { unmount } = render(<Root {...services} location={at(CHECKOUT_RETURN_PATHS.success)} />);
-    expect(screen.getByRole('heading', { name: 'Payment received' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Payment received' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to club admin' }).getAttribute('href')).toBe(
       '/#/billing',
     );
     unmount();
     render(<Root {...services} location={at(CHECKOUT_RETURN_PATHS.cancel)} />);
-    expect(screen.getByText(/Nothing was charged/)).toBeTruthy();
+    expect(await screen.findByText(/Nothing was charged/)).toBeTruthy();
   });
 
-  it('shows the club admin on any other path', () => {
+  it('shows the club admin on any other path', async () => {
     render(<Root {...services} location={at('/')} />);
-    expect(screen.getByText(/not available yet/)).toBeTruthy();
+    expect(await screen.findByText(/not available yet/)).toBeTruthy();
   });
 });
