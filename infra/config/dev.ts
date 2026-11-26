@@ -1,3 +1,5 @@
+import { CLOUD_ENVIRONMENTS } from '@huntclub/shared/cloud';
+
 import type { EnvConfig } from './types';
 
 /**
@@ -22,9 +24,9 @@ export const dev: EnvConfig = {
   clubTableName: 'hunt-club-mesh-dev',
   // Test-mode Price ids, per plan. Pending: the owner/operator creates the Stripe product.
   stripe: { prices: {} },
+  // Public ids shared with the app and web admin (one source: @huntclub/shared/cloud).
   cognito: {
-    userPoolId: 'us-east-1_0W2YbjVht',
-    appClientId: '5dn1jcrnef1v6cfv6da0i7qtne',
-    webClientId: '6mpfpr6nrdqddim7trfqckegu5',
+    userPoolId: CLOUD_ENVIRONMENTS.dev.userPoolId,
+    appClientId: CLOUD_ENVIRONMENTS.dev.appClientId,
   },
 };

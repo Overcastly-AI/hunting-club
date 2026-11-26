@@ -5,11 +5,16 @@ import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { ClubProvider } from '../club/ClubProvider';
+import { createAppClubServices } from '../club/cloud';
 import { DATABASE_NAME, initDatabase } from '../db';
 import { AppRadioProvider } from '../radio/AppRadioProvider';
 import { colors, fontSources } from '../theme';
 
 void SplashScreen.preventAutoHideAsync();
+
+/** Club sign-in and API clients (inert for free users: nothing is called until they join). */
+const clubServices = createAppClubServices();
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts(fontSources);
@@ -27,19 +32,21 @@ export default function RootLayout() {
 
   return (
     <SQLiteProvider databaseName={DATABASE_NAME} onInit={initDatabase}>
-      <AppRadioProvider>
-        <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: colors.surface },
-            // The app is portrait; only the clubhouse board turns landscape.
-            orientation: 'portrait',
-          }}
-        >
-          <Stack.Screen name="board" options={{ orientation: 'landscape' }} />
-        </Stack>
-      </AppRadioProvider>
+      <ClubProvider services={clubServices}>
+        <AppRadioProvider>
+          <StatusBar style="light" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.surface },
+              // The app is portrait; only the clubhouse board turns landscape.
+              orientation: 'portrait',
+            }}
+          >
+            <Stack.Screen name="board" options={{ orientation: 'landscape' }} />
+          </Stack>
+        </AppRadioProvider>
+      </ClubProvider>
     </SQLiteProvider>
   );
 }

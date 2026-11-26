@@ -77,6 +77,8 @@ export const POLICIES = {
   writeMapPacks: never,
 
   readSubscription: activeAdmin,
+  /** Whether club features are open (no billing details beyond status and dates). */
+  readEntitlement: activeMember,
   /** Start a Stripe Checkout for the club. */
   manageBilling: activeAdmin,
   /** Subscriptions, Stripe events and plans. */
