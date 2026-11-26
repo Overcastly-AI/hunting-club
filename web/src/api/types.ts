@@ -6,10 +6,13 @@ import type {
   Harvest,
   Invite,
   InviteCreate,
+  MapPack,
+  MapPackRequestResponse,
   Plan,
   Member,
   Stand,
   Subscription,
+  BasemapId,
 } from '@huntclub/shared';
 
 /**
@@ -29,6 +32,10 @@ export interface ClubApi {
   getSubscription(): Promise<Subscription | null>;
   /** Harvests in the club the admin may see (theirs, plus everyone's shared ones). */
   listHarvests(): Promise<readonly Harvest[]>;
+  /** The club's offline map packs (of its property line). */
+  listMapPacks(): Promise<readonly MapPack[]>;
+  /** Starts building a pack of the property for one basemap; resolves to the estimate. */
+  requestMapPack(basemap: BasemapId): Promise<MapPackRequestResponse>;
   /** Plans on sale (active only). */
   listPlans(): Promise<readonly Plan[]>;
   /** Starts Stripe Checkout for the club; resolves to the Stripe page to open. */

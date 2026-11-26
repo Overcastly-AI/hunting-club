@@ -3,6 +3,7 @@ import type { ClubApi } from './api/types';
 import type { WebClubServices } from './cloud';
 import { Billing } from './pages/Billing';
 import { Harvests } from './pages/Harvests';
+import { MapPacks } from './pages/MapPacks';
 import { MyClub } from './pages/MyClub';
 import { SignIn } from './pages/SignIn';
 import { StandsAndAreas } from './pages/StandsAndAreas';
@@ -20,6 +21,7 @@ export const PAGES = [
     render: (api: ClubApi) => <StandsAndAreas api={api} />,
   },
   { path: 'harvests', label: 'Harvests', render: (api: ClubApi) => <Harvests api={api} /> },
+  { path: 'maps', label: 'Map packs', render: (api: ClubApi) => <MapPacks api={api} /> },
   { path: 'billing', label: 'Billing', render: (api: ClubApi) => <Billing api={api} /> },
 ] as const satisfies readonly {
   path: string;
