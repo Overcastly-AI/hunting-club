@@ -42,3 +42,4 @@ coverage/
 .DS_Store
 .idea/
 .vscode/
+cdk.out/
