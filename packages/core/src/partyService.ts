@@ -22,7 +22,6 @@ import {
   decodeJoinUrl,
   encodeJoinUrl,
   generatePartyChannelSet,
-  planFromChannelSet,
   type ChannelSet,
   type HeardEvent,
   type JoinLinkForm,
@@ -32,6 +31,7 @@ import { CORE_CONFIG, type CoreConfig } from './config';
 import { resolveContext, type CoreContext, type ResolvedContext } from './context';
 import { FREE_PARTY_MAX_MEMBERS, PartyFullError, canJoinParty } from './party';
 import type { PartyMember, PartyStore, StoredParty } from './partyStore';
+import { ChannelApplyError, applyChannelSet } from './radioChannels';
 
 /** Random bytes in a party id (base64url, 8 characters). */
 export const PARTY_ID_BYTES = 6;
@@ -232,22 +232,12 @@ export class PartyService extends Emitter<PartyServiceEvents> {
   }
 
   private async provision(channelSet: ChannelSet): Promise<void> {
-    const { client } = this.ctx;
-    if (!client.isReady) {
-      throw new PartyError('radio-not-connected', 'Connect your radio first');
+    try {
+      await applyChannelSet(this.ctx.client, channelSet);
+    } catch (error) {
+      if (error instanceof ChannelApplyError) throw new PartyError(error.code, error.message);
+      throw error;
     }
-    const results = await Promise.all(
-      client.provision(planFromChannelSet(channelSet)).map((h) => h.result),
-    );
-    const failed = results.find((r) => r.status !== 'acked' && r.status !== 'sent');
-    if (failed) {
-      throw new PartyError(
-        'radio-rejected',
-        `The radio did not accept the settings (${failed.status})`,
-      );
-    }
-    // The radio may reboot to apply them; MeshClient re-runs the handshake.
-    await client.waitUntilReady();
   }
 
   private view(p: StoredParty): PartyView {

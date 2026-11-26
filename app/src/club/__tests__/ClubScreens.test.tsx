@@ -7,7 +7,13 @@ import { saveProfile } from '../../db/appState';
 import { migrate } from '../../db/migrate';
 import { migrations } from '../../db/migrations';
 import { createTestDatabase } from '../../test-utils/nodeSqlite';
-import { clubJoinUrl, fakeClubApi, fakeSession, partyJoinUrl } from '../../test-utils/fakeClubApi';
+import {
+  clubJoinUrl,
+  fakeClubApi,
+  fakeSession,
+  memorySecureStorage,
+  partyJoinUrl,
+} from '../../test-utils/fakeClubApi';
 import { ClubSection } from '../ClubSection';
 import { ProfileProvider } from '../../profile/ProfileProvider';
 import { type ClubServices, ClubStateProvider } from '../ClubProvider';
@@ -35,7 +41,11 @@ async function setup(services: ClubServices) {
 
 it('shows how to join when the phone has no club (free user: no API calls)', async () => {
   const api = fakeClubApi();
-  const { wrap } = await setup({ session: fakeSession(false), api });
+  const { wrap } = await setup({
+    session: fakeSession(false),
+    api,
+    secrets: memorySecureStorage(),
+  });
   await render(wrap(<ClubSection now={() => NOW} />));
   expect(await screen.findByText(clubCopy.section.none)).toBeTruthy();
   expect(screen.getByText(clubCopy.section.signIn)).toBeTruthy();
@@ -43,16 +53,36 @@ it('shows how to join when the phone has no club (free user: no API calls)', asy
 });
 
 it('shows a club joined offline as pending until sign-in', async () => {
-  const { db, wrap } = await setup({ session: fakeSession(false), api: fakeClubApi() });
-  await joinClubFromLink(db, clubJoinUrl(), { displayName: 'Max', initials: 'MX' }, NOW);
+  const { db, wrap } = await setup({
+    session: fakeSession(false),
+    api: fakeClubApi(),
+    secrets: memorySecureStorage(),
+  });
+  await joinClubFromLink(
+    db,
+    memorySecureStorage(),
+    clubJoinUrl(),
+    { displayName: 'Max', initials: 'MX' },
+    NOW,
+  );
   await render(wrap(<ClubSection now={() => NOW} />));
   expect(await screen.findByText(clubCopy.section.pending)).toBeTruthy();
 });
 
 it('when signed in, syncs on open and shows club mode with features on', async () => {
   const api = fakeClubApi({ featuresUntil: '2027-09-01T00:00:00.000Z' });
-  const { db, wrap } = await setup({ session: fakeSession(true), api });
-  await joinClubFromLink(db, clubJoinUrl(), { displayName: 'Max', initials: 'MX' }, NOW);
+  const { db, wrap } = await setup({
+    session: fakeSession(true),
+    api,
+    secrets: memorySecureStorage(),
+  });
+  await joinClubFromLink(
+    db,
+    memorySecureStorage(),
+    clubJoinUrl(),
+    { displayName: 'Max', initials: 'MX' },
+    NOW,
+  );
   await render(wrap(<ClubSection now={() => NOW} />));
   expect(await screen.findByText('Oak Ridge')).toBeTruthy();
   expect(screen.getByText(clubCopy.section.role.member)).toBeTruthy();
@@ -62,7 +92,11 @@ it('when signed in, syncs on open and shows club mode with features on', async (
 
 it('joins from a Club QR code with a name and initials', async () => {
   const api = fakeClubApi();
-  const { db, wrap } = await setup({ session: fakeSession(false), api });
+  const { db, wrap } = await setup({
+    session: fakeSession(false),
+    api,
+    secrets: memorySecureStorage(),
+  });
   await render(wrap(<JoinClubScreen url={clubJoinUrl()} onDone={jest.fn()} />));
   await fireEvent.changeText(screen.getByLabelText(clubCopy.join.name), 'Max');
   await fireEvent.changeText(screen.getByLabelText(clubCopy.join.initials), 'mx');
@@ -77,7 +111,11 @@ it('joins from a Club QR code with a name and initials', async () => {
 });
 
 it('prefills the join form with the name from onboarding', async () => {
-  const { db, wrap } = await setup({ session: fakeSession(false), api: fakeClubApi() });
+  const { db, wrap } = await setup({
+    session: fakeSession(false),
+    api: fakeClubApi(),
+    secrets: memorySecureStorage(),
+  });
   await saveProfile(db, { displayName: 'Maxine', initials: 'MX' });
   await render(wrap(<JoinClubScreen url={clubJoinUrl()} onDone={jest.fn()} />));
   expect(await screen.findByDisplayValue('Maxine')).toBeTruthy();
@@ -85,7 +123,11 @@ it('prefills the join form with the name from onboarding', async () => {
 });
 
 it('sends party QR codes and other links elsewhere', async () => {
-  const { wrap } = await setup({ session: fakeSession(false), api: fakeClubApi() });
+  const { wrap } = await setup({
+    session: fakeSession(false),
+    api: fakeClubApi(),
+    secrets: memorySecureStorage(),
+  });
   const { rerender } = await render(
     wrap(<JoinClubScreen url={partyJoinUrl()} onDone={jest.fn()} />),
   );

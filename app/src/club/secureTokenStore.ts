@@ -1,7 +1,6 @@
-import type { AuthTokens } from '@huntclub/shared';
+import type { AuthTokens, TokenStore } from '@huntclub/shared';
 
 import { SECURE_KEYS, secureStorage } from '../storage/secure';
-import type { TokenStore } from '@huntclub/shared';
 
 /** Club sign-in tokens in the phone's keystore (the app's one secure-storage helper). */
 export const secureTokenStore: TokenStore = {

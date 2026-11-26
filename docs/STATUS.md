@@ -33,6 +33,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 | # | Sent | Request | Status | Result |
 |---|---|---|---|---|
+| 3 | 2026-11-26 | First CDK deploy: bootstrap + HuntClub-dev-Web + HuntClub-dev-Api (no Stripe yet) | Sent 11:01 UTC (thread 1a21783c82cc55ed) | |
 | 2 | 2026-11-26 | Enable TTL `expiresAt` on the table; add web app client to the user pool | **Done** 06:37 UTC | TTL enabled; web client `6mpfpr6nrdqddim7trfqckegu5` |
 | 1 | 2026-11-26 | Dev subdomain: Route 53 hosted zone, delegation, ACM wildcard cert | **Done** 06:07 UTC (verified NS via public DNS) | See "AWS environment" below |
 

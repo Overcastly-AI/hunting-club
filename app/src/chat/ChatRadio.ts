@@ -12,6 +12,7 @@ import type { Audience } from '../domain/audience';
 import { memberIdentity, type MapNames, type MapNode } from '../map/meshMapData';
 import { placeOf } from '../map/place';
 import {
+  chatItemId,
   directConversation,
   groupConversation,
   type ChatItem,
@@ -67,7 +68,8 @@ function systemItem(radio: ChatRadio, message: AppMessage, at: number): ChatItem
   const species = message.type === AppMessageType.HarvestShare ? message.species : undefined;
   return {
     kind: 'system',
-    id: `app:${message.sender}:${message.id}`,
+    id: chatItemId('system', message.sender, message.id),
+    messageId: message.id,
     conversation: groupConversation('party'),
     event,
     from: message.sender,
@@ -95,7 +97,8 @@ export function connectChat(
       const place = placeNow(radio, event.from);
       store.add({
         kind: 'text',
-        id: `text:${event.from}:${event.packetId}`,
+        id: chatItemId('text', event.from, event.packetId),
+        messageId: event.packetId,
         conversation,
         from: event.from,
         fromName: nameOf(radio, event.from),
@@ -145,7 +148,8 @@ export function sendChat(
   const me = radio.client.myNodeNum;
   const item: ChatItem = {
     kind: 'text',
-    id: `text:${me}:${handle.id}`,
+    id: chatItemId('text', me, handle.id),
+    messageId: handle.id,
     conversation,
     from: me,
     fromName: 'You',

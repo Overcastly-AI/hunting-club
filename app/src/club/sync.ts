@@ -10,6 +10,7 @@ import { decodeJoinUrl } from '@huntclub/mesh';
 import type { ClubApiClient, MemberJoin } from '@huntclub/shared';
 
 import type { SqlDatabase } from '../db/types';
+import { SECURE_KEYS, type SecureStorage } from '../storage/secure';
 import { loadClubs, loadPendingInvite, saveClubSnapshot, saveJoinedClub } from './store';
 
 export class NotAClubLinkError extends Error {
@@ -22,15 +23,17 @@ export class NotAClubLinkError extends Error {
 /** Saves the club from a Club QR code / invite link. Returns the club id. */
 export async function joinClubFromLink(
   db: SqlDatabase,
+  secrets: Pick<SecureStorage, 'set'>,
   url: string,
   profile: MemberJoin,
   now: number,
 ): Promise<string> {
   const link = decodeJoinUrl(url);
   if (link.target.kind !== 'club') throw new NotAClubLinkError();
+  // The link holds the club channel key: keystore only, never SQLite or logs.
+  await secrets.set(SECURE_KEYS.clubJoinLink, url);
   await saveJoinedClub(db, {
     clubId: link.target.clubId,
-    channelKey: link.channelSet.settings[0]?.psk ?? null,
     inviteToken: link.target.inviteToken,
     displayName: profile.displayName,
     initials: profile.initials,
