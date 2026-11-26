@@ -7,6 +7,7 @@ import {
 } from '@huntclub/shared';
 import { lazy, Suspense, type ReactNode } from 'react';
 import type { WebClubServices } from './cloud';
+import { useHasSession } from './components/BackToApp';
 import { Loading } from './components/Loading';
 
 // Each entry path loads only its own code: the join page doesn't pull in the admin,
@@ -26,6 +27,7 @@ const CheckoutReturn = lazy(() =>
  */
 export function Root(props: WebClubServices & { location: Pick<Location, 'pathname' | 'href'> }) {
   const { location, ...services } = props;
+  const signedIn = useHasSession(services.session);
   const path = location.pathname.length > 1 ? location.pathname.replace(/\/+$/, '') : '/';
   if (path === JOIN_PATH)
     return (
@@ -51,13 +53,13 @@ export function Root(props: WebClubServices & { location: Pick<Location, 'pathna
   if (legal)
     return (
       <Page>
-        <Legal doc={LEGAL_DOCS[legal]} />
+        <Legal doc={LEGAL_DOCS[legal]} signedIn={signedIn} />
       </Page>
     );
   if (!isAdminPath(path))
     return (
       <Page>
-        <NotFound />
+        <NotFound signedIn={signedIn} />
       </Page>
     );
   return (

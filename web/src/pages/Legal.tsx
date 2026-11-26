@@ -1,9 +1,9 @@
-import { ADMIN_PATH } from '@huntclub/shared/app';
 import { LEGAL_DRAFT_NOTICE, type LegalDoc } from '@huntclub/shared';
+import { BackToApp } from '../components/BackToApp';
 import { useDocumentTitle } from '../title';
 
 /** Privacy or Terms, from the shared copy (@huntclub/shared legal), marked as a draft. */
-export function Legal(props: { doc: LegalDoc }) {
+export function Legal(props: { doc: LegalDoc; signedIn: boolean }) {
   const { doc } = props;
   useDocumentTitle(doc.title);
   return (
@@ -21,9 +21,7 @@ export function Legal(props: { doc: LegalDoc }) {
           ))}
         </section>
       ))}
-      <a className="button" href={ADMIN_PATH}>
-        Back to sign in
-      </a>
+      <BackToApp signedIn={props.signedIn} />
     </article>
   );
 }
