@@ -4,7 +4,9 @@
  * `createClubData(options)` returns every operation bound to one table. Each
  * operation takes the calling `Actor` first and enforces the rules in authz.ts.
  */
-import { type ClubDataOptions, createCtx, type Ctx } from './db';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { type ClubDataOptions, createCtx, type Ctx, DOCUMENT_CLIENT_OPTIONS } from './db';
 import * as billing from './repository/billing';
 import * as clubs from './repository/clubs';
 import * as harvests from './repository/harvests';
@@ -83,6 +85,13 @@ export function createClubData(options: ClubDataOptions): ClubData {
   ) as ClubData;
 }
 
+/** Production: the club data layer on a real table, with the default AWS credentials. */
+export function clubDataForTable(tableName: string): ClubData {
+  const client = DynamoDBDocumentClient.from(new DynamoDBClient({}), DOCUMENT_CLIENT_OPTIONS);
+  return createClubData({ client, tableName });
+}
+
+export { seedDevClub, UAT_CLUB, type DevSeedInput, type DevSeedResult } from './seed/devClub';
 export { ANONYMOUS, SERVICE, userActor, type Actor } from './actor';
 export { POLICIES, can, isActiveMembership, type Access, type Policy } from './authz';
 export { DOCUMENT_CLIENT_OPTIONS, type ClubDataOptions } from './db';

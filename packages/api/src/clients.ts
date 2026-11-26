@@ -1,18 +1,10 @@
 /** Production clients, built once per container by the Lambda entry points in infra/. */
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
-import { type ClubData, createClubData, DOCUMENT_CLIENT_OPTIONS } from '@huntclub/club-data';
 import Stripe from 'stripe';
 import type { MapPackBuild } from '@huntclub/shared';
 import { stripeApi, type StripeApi } from './billing';
 import type { ThinEvent } from './stripeWebhook';
-
-export function clubDataForTable(tableName: string): ClubData {
-  const client = DynamoDBDocumentClient.from(new DynamoDBClient({}), DOCUMENT_CLIENT_OPTIONS);
-  return createClubData({ client, tableName });
-}
 
 /** Stripe pinned to the SDK's API version (2026-11-18.endive for stripe-node 23). */
 export function connectStripe(apiKey: string): {

@@ -45,3 +45,4 @@ coverage/
 cdk.out/
 cdk-outputs.json
 .bundle-test-*/
+.run-ts/

@@ -1,5 +1,5 @@
 {
-  "app": "node scripts/run-ts.mjs bin/app.ts",
+  "app": "node ../scripts/run-ts.mjs bin/app.ts",
   "watch": {
     "include": []
   },
