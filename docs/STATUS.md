@@ -81,14 +81,20 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 | Secret | Secrets Manager name | Sent | Rotated |
 |---|---|---|---|
 
-## Supabase
+## Database
 
-- Org "Grok Bot" (dtbdseniylkmipccqskx), free plan. Project `desk` (jvanxotplnwddodwxxcx) belongs to the owner's trading desk: **never modify, pause or delete it.**
+- **Decision (coordinator, 2026-11-26): DynamoDB (on-demand, single table) + Cognito (email OTP), all in AWS.** Replaces Supabase: no free-project limit, no pausing, $0 on the always-free tier, managed by Grok Bot via CDK. Permissions move from Postgres RLS into the Lambda API (tested against DynamoDB Local). Grok Bot informed 06:24 UTC.
+- The Postgres schema in `supabase/` (PR #5) is superseded: its RLS test cases are ported to API permission tests, then `supabase/` and `database.yml` are removed. `@huntclub/shared` becomes hand-written schemas (single source for StandType, HarvestSex, etc.), no longer generated from SQL.
+
+### Supabase (history)
+
+- **Owner rule (2026-11-26): the coordinator makes database decisions and proceeds without asking.**
+- Org "Grok Bot" (dtbdseniylkmipccqskx), free plan. Project `desk` (jvanxotplnwddodwxxcx) belongs to the owner's trading desk: it must stay. **Never modify, pause or delete desk's existing schemas, tables, functions, auth settings or API settings.**
+- Plan (coordinator decision): run the hunt club database side by side inside the `desk` project in its own isolated schema `huntclub` (no changes to desk's `public`/`private` objects), until a dedicated free project is available; then move it with pg_dump of that schema. First step: read-only inventory of desk's schemas for name clashes (blocked 06:22 UTC by Supabase API "Bad Gateway"; retry).
 - Creating `hunt-club-mesh-dev` (us-east-1) failed: the owner is at the 2-active-free-projects limit; the other project is in an org this connection can't see. Waiting for the owner to pause/delete that one. Until then the schema is tested against local Postgres in CI; not blocking before M8–M10.
 
 ## Owner to-dos (non-blocking)
 
-- Pause or delete the free Supabase project in the other organization (not `desk`), then tell the coordinator to create `hunt-club-mesh-dev`.
 
 - **Open or closed source (needed before the app ships):** Meshtastic protobufs are GPL-3.0 with no app exception. Closed-source app + bundled protobufs conflicts with the license; open-sourcing the app (GPL-3.0) resolves it and the cloud can stay proprietary.
 - Optional: allow running `meshtasticd --sim` in the agent environment (blocked by sandbox policy) so agents can test against a simulated radio.
