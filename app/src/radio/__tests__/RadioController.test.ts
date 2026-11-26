@@ -1,45 +1,13 @@
 import { FakeAir, FakeRadio, seededRandom } from '@huntclub/mesh/testing';
 
-import type { PairedRadio } from '../../db/pairedRadio';
 import {
-  RadioController,
-  textStatusFor,
-  type BackgroundLink,
-  type PairedRadioStore,
-  type RadioSnapshot,
-} from '../RadioController';
-
-const RADIO_A = { nodeNum: 0x1a2b3c4d, longName: 'Jake radio', shortName: 'JK' };
-const RADIO_B = { nodeNum: 0x0badf00d, longName: 'Sam radio', shortName: 'SM' };
-
-function memoryStore(
-  initial: PairedRadio | null = null,
-): PairedRadioStore & { value: PairedRadio | null } {
-  return {
-    value: initial,
-    async load() {
-      return this.value;
-    },
-    async save(radio) {
-      this.value = radio;
-    },
-    async clear() {
-      this.value = null;
-    },
-  };
-}
-
-function backgroundSpy(): BackgroundLink & { running: boolean } {
-  return {
-    running: false,
-    start() {
-      this.running = true;
-    },
-    stop() {
-      this.running = false;
-    },
-  };
-}
+  backgroundSpy,
+  FOUND_RADIO,
+  memoryStore,
+  RADIO_A,
+  RADIO_B,
+} from '../../test-utils/radioFixtures';
+import { RadioController, textStatusFor, type RadioSnapshot } from '../RadioController';
 
 /** One phone: a controller whose transport is the given FakeRadio. */
 function phone(radio: FakeRadio, store = memoryStore(), seed = 1) {
@@ -71,14 +39,12 @@ function until(
   });
 }
 
-const FOUND = { id: 'AA:BB:CC:DD:EE:FF', name: 'Meshtastic 3c4d', rssi: -60 };
-
 describe('RadioController with the mesh FakeRadio', () => {
   it('pairs, reads radio info and channels, remembers the radio and starts the background link', async () => {
     const radio = new FakeRadio(RADIO_A);
     const { controller, store, background } = phone(radio);
 
-    await controller.pair(FOUND);
+    await controller.pair(FOUND_RADIO);
     const s = await until(controller, (x) => x.link === 'ready' && x.radio !== null);
 
     expect(s.radio).toEqual(
@@ -91,7 +57,11 @@ describe('RadioController with the mesh FakeRadio', () => {
       }),
     );
     expect(s.channels).toEqual([{ index: 0, name: 'Test', primary: true }]);
-    expect(store.value).toEqual({ peripheralId: FOUND.id, name: FOUND.name, pairedAt: 1_000 });
+    expect(store.value).toEqual({
+      peripheralId: FOUND_RADIO.id,
+      name: FOUND_RADIO.name,
+      pairedAt: 1_000,
+    });
     expect(s.pairedRadio).toEqual(store.value);
     expect(background.running).toBe(true);
     await controller.dispose();
@@ -124,8 +94,8 @@ describe('RadioController with the mesh FakeRadio', () => {
     new FakeAir().attach(a, b);
     const phoneA = phone(a, memoryStore(), 1);
     const phoneB = phone(b, memoryStore(), 2);
-    await phoneA.controller.pair(FOUND);
-    await phoneB.controller.pair({ ...FOUND, id: '11:22:33:44:55:66' });
+    await phoneA.controller.pair(FOUND_RADIO);
+    await phoneB.controller.pair({ ...FOUND_RADIO, id: '11:22:33:44:55:66' });
     await until(phoneA.controller, (x) => x.link === 'ready');
     await until(phoneB.controller, (x) => x.link === 'ready');
 
@@ -151,7 +121,7 @@ describe('RadioController with the mesh FakeRadio', () => {
   it('shows the link dropping and the handshake re-running after the radio comes back', async () => {
     const radio = new FakeRadio(RADIO_A);
     const { controller } = phone(radio);
-    await controller.pair(FOUND);
+    await controller.pair(FOUND_RADIO);
     await until(controller, (x) => x.link === 'ready');
 
     radio.dropLink();
@@ -168,7 +138,7 @@ describe('RadioController with the mesh FakeRadio', () => {
     jest.spyOn(radio, 'connect').mockRejectedValueOnce(new Error('Wrong PIN'));
     const { controller, store, background } = phone(radio);
 
-    await expect(controller.pair(FOUND)).rejects.toThrow('Wrong PIN');
+    await expect(controller.pair(FOUND_RADIO)).rejects.toThrow('Wrong PIN');
 
     expect(store.value).toBeNull();
     expect(controller.getSnapshot().pairedRadio).toBeNull();
@@ -179,7 +149,7 @@ describe('RadioController with the mesh FakeRadio', () => {
   it('forgets the radio: disconnects, clears storage and stops the background link', async () => {
     const radio = new FakeRadio(RADIO_A);
     const { controller, store, background } = phone(radio);
-    await controller.pair(FOUND);
+    await controller.pair(FOUND_RADIO);
     await until(controller, (x) => x.link === 'ready');
 
     await controller.forget();
@@ -205,7 +175,7 @@ describe('RadioController with the mesh FakeRadio', () => {
       createTransport: () => transport,
       clientOptions: { random: seededRandom(3) },
     });
-    await controller.pair(FOUND);
+    await controller.pair(FOUND_RADIO);
     await until(controller, (x) => x.link === 'ready');
 
     radio.dropLink();
