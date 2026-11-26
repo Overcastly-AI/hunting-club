@@ -1,8 +1,19 @@
 import { boundary, colors } from './colors';
-import { sizes, radii, spacing } from './sizes';
-import { fontFamily, fontSize, textStyles } from './typography';
+import { opacity, sizes, radii, spacing } from './sizes';
+import { fontFamily, fontSize, mapTextHalo, textStyles } from './typography';
 
-export { boundary, colors, fontFamily, fontSize, radii, sizes, spacing, textStyles };
+export {
+  boundary,
+  colors,
+  fontFamily,
+  fontSize,
+  mapTextHalo,
+  opacity,
+  radii,
+  sizes,
+  spacing,
+  textStyles,
+};
 export type { ColorToken } from './colors';
 
 export const theme = {
@@ -11,7 +22,9 @@ export const theme = {
   fontFamily,
   fontSize,
   textStyles,
+  mapTextHalo,
   sizes,
+  opacity,
   radii,
   spacing,
 } as const;
