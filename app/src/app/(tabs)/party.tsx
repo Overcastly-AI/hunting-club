@@ -6,11 +6,13 @@ import { Screen } from '../../components/Screen';
 import { radioCopy } from '../../radio/copy';
 import { PAIR_RADIO_ROUTE } from '../../radio/routes';
 import { RadioStatus } from '../../radio/ui/RadioStatus';
+import { SafetyNote } from '../../safety/components/SafetyNote';
 import { colors, spacing, textStyles } from '../../theme';
 
 export default function PartyScreen() {
   return (
     <Screen title="Party" description="Start a party or scan a Party QR code to hunt together.">
+      <SafetyNote />
       <View style={styles.section}>
         <Text accessibilityRole="header" style={styles.heading}>
           {radioCopy.settingsEntry}

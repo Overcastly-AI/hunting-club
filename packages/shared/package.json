@@ -2,7 +2,7 @@
   "name": "@huntclub/shared",
   "version": "0.0.0",
   "private": true,
-  "description": "Domain types and constants shared by the app, web admin, infra and Lambdas.",
+  "description": "Domain types, constants and validation schemas shared by the app, web admin, infra and Lambdas.",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
@@ -11,9 +11,10 @@
     "./app": "./src/app.ts"
   },
   "scripts": {
-    "gen:db-types": "../../supabase/scripts/db.sh reset && node scripts/gen-db-types.mjs",
-    "typecheck": "tsc --noEmit",
-    "test": "node --test scripts/*.test.mjs"
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "typescript": "~6.0.3"

@@ -1,15 +1,15 @@
 import { StyleSheet, Text, type TextProps } from 'react-native';
 
-import { colors, mapTextHalo, textStyles } from '../../theme';
+import { colors, mapTextHalo, maxFontScale, textStyles } from '../../theme';
 
-/** Map labels follow the system text size up to 200% (spec), then stop so markers stay on the map. */
-export const MAP_TEXT_MAX_SCALE = 2;
-
-/** Text drawn on the map: at least 13 px with the dark map-halo outline. */
+/**
+ * Text drawn on the map: at least 13 px with the dark map-halo outline. Follows
+ * the system text size up to `maxFontScale`, then stops so markers stay on the map.
+ */
 export function HaloText({ style, ...props }: TextProps) {
   return (
     <Text
-      maxFontSizeMultiplier={MAP_TEXT_MAX_SCALE}
+      maxFontSizeMultiplier={maxFontScale}
       {...props}
       style={[styles.text, style, mapTextHalo]}
     />

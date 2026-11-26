@@ -53,7 +53,7 @@ export function nodeDisplayName(node: Pick<MapNode, 'user'> | undefined, num: nu
   return node?.user?.longName?.trim() || node?.user?.shortName?.trim() || nodeTag(num);
 }
 
-function nodePosition(node: MapNode): (LatLon & { heardAt: number }) | undefined {
+export function nodePosition(node: MapNode): (LatLon & { heardAt: number }) | undefined {
   const p = node.position;
   if (p?.latitudeI === undefined || p.longitudeI === undefined) return undefined;
   if (p.latitudeI === 0 && p.longitudeI === 0) return undefined; // no GPS fix
@@ -63,7 +63,7 @@ function nodePosition(node: MapNode): (LatLon & { heardAt: number }) | undefined
   return { lat: p.latitudeI / 1e7, lon: p.longitudeI / 1e7, heardAt: seconds * SECOND_MS };
 }
 
-function identity(node: MapNode | undefined, num: number, names: MapNames) {
+export function memberIdentity(node: MapNode | undefined, num: number, names: MapNames) {
   const known = names.member?.(num);
   if (known) return known;
   const shortName = node?.user?.shortName?.trim();
@@ -82,7 +82,7 @@ function hunterFrom(
   if (!at) return undefined;
   return {
     id: String(checkIn.node),
-    ...identity(node, checkIn.node, names),
+    ...memberIdentity(node, checkIn.node, names),
     position: { lat: at.lat, lon: at.lon },
     heardAt: at.heardAt,
     place: placeOf(checkIn, names),

@@ -16,7 +16,7 @@ import type { ClubArea, ClubStand } from './placement';
  * until then the context is null and the UI says to connect a radio.
  */
 export type CheckInRadio = {
-  checkIns: Pick<CheckInController, 'current' | 'checkIn' | 'checkOut' | 'on'>;
+  checkIns: Pick<CheckInController, 'current' | 'checkIn' | 'checkOut' | 'extend' | 'on'>;
   audience: Audience;
   /** Overdue grace time (club: admin-set). */
   graceMinutes: number;
@@ -83,6 +83,13 @@ export function useCheckInActions(radio: CheckInRadio | null) {
         : false,
     [radio, run],
   );
+  const extend = useCallback(
+    () =>
+      radio
+        ? run(() => radio.checkIns.extend(), 'Telling your party you’re staying out…', 'Extended')
+        : false,
+    [radio, run],
+  );
   const checkOut = useCallback(
     () =>
       radio
@@ -90,5 +97,5 @@ export function useCheckInActions(radio: CheckInRadio | null) {
         : false,
     [radio, run],
   );
-  return { checkIn, checkOut, status };
+  return { checkIn, checkOut, extend, status };
 }
