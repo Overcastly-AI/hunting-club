@@ -80,3 +80,13 @@ export function scentConeRing(origin: LatLon, windFromDeg: number): [number, num
 export function scentLabelPosition(origin: LatLon, windFromDeg: number): LatLon {
   return destination(origin, downwindBearing(windFromDeg), (SCENT_CONE.lengthMeters * 2) / 3);
 }
+
+/** Great-circle distance in metres. */
+export function distanceMeters(a: LatLon, b: LatLon): number {
+  const phi1 = a.lat * DEG;
+  const phi2 = b.lat * DEG;
+  const dPhi = (b.lat - a.lat) * DEG;
+  const dLambda = (b.lon - a.lon) * DEG;
+  const h = Math.sin(dPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) ** 2;
+  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
+}
