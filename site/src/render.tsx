@@ -18,11 +18,20 @@ const html = (meta: PageMeta, assets: PageAssets, content: ReactNode) =>
 export function renderPage(path: SitePath, assets: PageAssets): string {
   const route = ROUTES.find((r) => r.path === path);
   if (!route) throw new Error(`No route ${path}`);
+  // The home page: the old-bookmark forward, and the hero's dawn scene stylesheet and pause script.
+  const home =
+    path === '/'
+      ? {
+          blockingScriptSrc: assets.forwardScriptUrl,
+          scriptSrc: assets.dawn.scriptUrl,
+          pageCssUrl: assets.dawn.cssUrl,
+        }
+      : {};
   const meta: PageMeta = {
     ...route,
     ogImage: ogImagePath(path),
     ...(STRUCTURED_DATA[path] ? { structuredData: STRUCTURED_DATA[path] } : {}),
-    ...(path === '/' ? { blockingScriptSrc: assets.forwardScriptUrl } : {}),
+    ...home,
   };
   return html(meta, assets, PAGE_CONTENT[path]());
 }

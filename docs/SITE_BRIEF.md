@@ -160,7 +160,7 @@ HOME (/)
  Title (<=60): "Hunt Club Mesh: hunting app that works with no cell service"
  Meta description (<=160): "Share a live map, text and check in with your hunting party or club using a small radio. No cell service needed. Free for parties of up to 3."
  Section order:
- 1 Hero. H1: "Hunt together, even with no cell service." Subhead: "Hunt Club Mesh links your phone to a small radio so your party or club can see each other on one map, send texts and check in. Free for parties of up to 3." CTAs: primary "Get the free app" (-> /download); text link "Run a hunting club? See club plans" (-> /clubs). Microcopy: "iPhone and Android. No account needed. Works with Meshtastic radios (sold separately)." Image: real photo of hunters at dawn, one holding a phone, blaze orange visible; overlaid or beside it, a phone screenshot of the live map (Design D) with 2 to 3 hunter markers and freshness rings. Alt: describe the scene and the map.
+ 1 Hero. H1: "Hunt together, even with no cell service." Subhead: "Hunt Club Mesh links your phone to a small radio so your party or club can see each other on one map, send texts and check in. Free for parties of up to 3." CTAs: primary "Get the free app" (-> /download); text link "Run a hunting club? See club plans" (-> /clubs). Microcopy: "iPhone and Android. No account needed. Works with Meshtastic radios (sold separately)." Image: the illustrated dawn scene (@huntclub/design dawnScene, docs/BACKGROUND_LOOP.md) replaces the photo: an inline SVG behind the hero text, decorative (aria-hidden, no alt), slow CSS animation that stops for prefers-reduced-motion and has a 48px "Pause background" button. It is not a video, so the "No autoplay video" rule below still holds. The headline stays the LCP element. Home page only.
  2 Trust strip (one line, 3 items): "Works with no cell service" / "Your location is shared only while you're checked in" / "No account for hunters".
  3 How it works (3 steps, numbered, each with a small screenshot): 1 "Pair your radio. Scan once, no settings." 2 "Start a party or join with a QR code." 3 "Hunt. See the map, check in, send a text."
  4 What you get (6 cards, 2 columns desktop, 1 mobile, each a plain sentence): Live map that works offline; Check in your way ("At a stand, at a spot or on the move"); Ask for a Hand ("Pings your party or club when you need help"); Overdue alert ("If you are not back after sunset plus a grace time, your party gets an alert"); Chat with quick replies; Private harvest log ("Private unless you share it"). Include wind, sunrise and sunset, scent cone as one line of card 1. Each card links to /features#anchor.
@@ -172,7 +172,7 @@ HOME (/)
  10 FAQ preview (4 questions) + "All questions" link.
  11 Final CTA band (light variant): "Ready for your next sit?" Buttons: "Get the free app", "Start a club".
  12 Footer.
- Mobile at 390px: single column, 20px side padding (350px content). H1 40/44, subhead 18/28. Hero order: text, CTA (full width, 62px tall), secondary link (48px tap), then image 350x440 (4:5 crop). Screenshots in how-it-works stack under each step text at full width. Cards 1 column with 16px gap. No carousels. Section spacing 64px. Header shrinks to 56px. Optional (Nice): a sticky bottom bar "Get the free app" that appears after the hero scrolls away, 56px tall, hides when the footer is visible.
+ Mobile at 390px: single column, 20px side padding (350px content). H1 40/44, subhead 18/28. Hero order: text, CTA (full width, 62px tall), secondary link (48px tap), with the dawn scene behind them (its sun and brightest light below the text). Screenshots in how-it-works stack under each step text at full width. Cards 1 column with 16px gap. No carousels. Section spacing 64px. Header shrinks to 56px. Optional (Nice): a sticky bottom bar "Get the free app" that appears after the hero scrolls away, 56px tall, hides when the footer is visible.
 
 PRICING (/pricing)
  Title: "Pricing: free app, one plan for clubs | Hunt Club Mesh" (53)
@@ -233,7 +233,7 @@ Spacing and layout
 - Motion: none required; if used, respect prefers-reduced-motion. No autoplay video.
 
 Imagery (real, not stock-looking; budget this before building)
-- Photography: 1 hero (hunters at dawn, phone in hand, blaze orange; no gore, no kill shots in the hero), 2 to 3 supporting (radio in a hand on a pack strap, solar repeater on a post, clubhouse board on a wall, ground blind or stand). Need the owner's photos or a commissioned shoot; model releases for faces. TBD source.
+- Photography: no hero photo (the illustrated dawn scene is the hero); 2 to 3 supporting (radio in a hand on a pack strap, solar repeater on a post, clubhouse board on a wall, ground blind or stand). Need the owner's photos or a commissioned shoot; model releases for faces. TBD source.
 - Screenshots: real, not mockups: Map (Design D), check-in sheet, chat, party QR; web: roster, stands and areas, harvest report, billing; the board on a tablet. Use the dev seed club for web shots. Device frames minimal; add one-line captions.
 - Diagrams: phone <-> radio <-> radio <-> phone as simple SVG (no emoji).
 - Formats: AVIF with WebP and JPEG fallback via <picture>; srcset 390/780/1200/1600; hero max 150KB at 390w; screenshots WebP; SVG for logo and diagrams; OG 1200x630 JPEG under 300KB.
@@ -263,7 +263,7 @@ Target queries (map one page each; do not stuff): "hunting app no cell service" 
 Core Web Vitals and budgets (mobile, field data p75 once live; lab first)
 - LCP < 2.5s (aim < 1.8s lab on throttled 4G), CLS < 0.1 (aim 0), INP < 200ms (a mostly static site should be < 100ms).
 - Budgets per page: JS <= 30KB gzip (Phase 1 target: 0KB except analytics, about 1KB), CSS <= 25KB gzip inlined or one render-blocking file, total transfer for the home page <= 600KB, fonts: the existing Archivo Latin woff2 preloaded with font-display swap and a size-adjusted fallback to avoid layout shift.
-- Hero image: no lazy loading, fetchpriority="high", correct sizes; all other images lazy with width/height. No carousels, no sliders, no chat widgets, no cookie banner, no third-party fonts.
+- Hero: the dawn scene is inline SVG in the HTML (no image request; its CSS is a hashed file linked from the home page only), so the headline is the LCP element; all images lazy with width/height. No carousels, no sliders, no chat widgets, no cookie banner, no third-party fonts.
 - CI: Lighthouse CI on /, /pricing, /clubs, /download (mobile): Performance >= 90, Accessibility 100, Best practices >= 95, SEO 100; fail the build below that. Cache rule: HTML no-cache plus invalidation; immutable assets.
 
 ======================================================================

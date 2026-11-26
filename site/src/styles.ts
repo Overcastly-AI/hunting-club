@@ -63,8 +63,11 @@ section { padding: var(--space-xl) 0; }
 /* Accent is under 3:1 on the light background, so a primary button there keeps a dark edge. */
 .band-light .button.primary { color: var(--color-surface); background: var(--color-accent); border-color: var(--color-text-on-light); }
 .band-light :focus-visible { outline-color: var(--color-link-on-light); }
-.hero { position: relative; overflow: hidden; padding: var(--space-xl) 0 calc(var(--space-xl) * 2); }
-/* The home hero's background slot (HERO_ART_SLOT): decorative, behind the content. */
+/* The minimum height grows with the width so the dawn scene's sun and its brightest light stay
+   below the hero's text and buttons (the scene covers the hero, anchored at the bottom). */
+.hero { position: relative; overflow: hidden; padding: var(--space-xl) 0 calc(var(--space-xl) * 2);
+  min-height: min(calc(17rem + 24vw), 56rem); }
+/* The home hero's background slot (HERO_ART_SLOT): the dawn scene, decorative, behind the content. */
 .hero-art { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
 .hero > .wrap { position: relative; z-index: 1; }
 .feature { display: grid; gap: var(--space-lg); align-items: center; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); }

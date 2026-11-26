@@ -1,4 +1,6 @@
-import { APP_NAME, FREE_PARTY_MAX_MEMBERS } from '@huntclub/shared';
+import { DAWN_PAUSE_BUTTON_CLASS } from '@huntclub/design/dawnControl';
+import { dawnSceneSvg } from '@huntclub/design/dawnScene';
+import { APP_NAME, dawnPauseCopy, FREE_PARTY_MAX_MEMBERS } from '@huntclub/shared';
 import { FAQ_PREVIEW } from '../faq';
 import { FEATURE_GROUPS } from '../features';
 import { GET_THE_APP, HOME_SECTIONS, PAGE_PATHS } from '../routes';
@@ -19,9 +21,10 @@ const STEPS = [
 ] as const;
 
 /**
- * Where the animated hero background goes (built separately): an empty, decorative layer
- * behind the hero's content. Anything placed here must stay aria-hidden and keep the
- * hero text's contrast.
+ * The decorative layer behind the hero's content: the dawn scene (@huntclub/design/dawnScene),
+ * inlined at build time. Its CSS is in the home page's own hashed stylesheet; the pause button
+ * starts hidden and the home page's small script shows and wires it. Anything placed here must
+ * stay aria-hidden and keep the hero text's contrast. Home page only.
  */
 export const HERO_ART_SLOT = 'hero-art';
 
@@ -29,7 +32,12 @@ export function Home() {
   return (
     <>
       <section className="hero">
-        <div className={HERO_ART_SLOT} aria-hidden="true" />
+        {/* Static markup from our own package (no user input), so inlining it is safe. */}
+        <div
+          className={HERO_ART_SLOT}
+          aria-hidden="true"
+          dangerouslySetInnerHTML={{ __html: dawnSceneSvg() }}
+        />
         <div className="wrap">
           <h1>Keep track of your hunting party with no cell service</h1>
           <p className="lead">
@@ -46,6 +54,14 @@ export function Home() {
             </a>
           </div>
         </div>
+        <button
+          className={`button ${DAWN_PAUSE_BUTTON_CLASS}`}
+          type="button"
+          aria-pressed="false"
+          hidden
+        >
+          {dawnPauseCopy.pause}
+        </button>
       </section>
 
       <section className="band-light">

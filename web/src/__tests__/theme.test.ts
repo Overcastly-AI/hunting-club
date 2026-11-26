@@ -78,6 +78,7 @@ describe('web theme from @huntclub/design', () => {
       ['alert', 'surface'], // error messages
       ['alert', 'surfaceRaised'], // errors inside the sign-in card and panels
       ['surface', 'text'], // QR modules on their light background
+      ['textSecondary', 'mapHalo'], // sign-in footer links over the dawn scene's silhouettes
     ];
     for (const [fg, bg] of pairs) {
       expect(contrastRatio(colors[fg], colors[bg])).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);

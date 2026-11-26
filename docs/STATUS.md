@@ -114,6 +114,10 @@ Owner rule (2026-11-26): Grok Bot runs UAT and reviews UI decisions by email. Ev
 
 | Date | Thread / subject | Finding | Decision | PR |
 |---|---|---|---|---|
+| 2026-11-26 | UI redesign 22:03 (owner: "UI is trash") | Full admin + app redesign: tokens (dark + light), primitives/_kit, shell (sidebar/rail/tabs), page rebuilds, polish, Expo restyle. Brief: docs/UI_REDESIGN.md (P1a) | Accepted, phased P1a→P5. Pushback: 48px min (no 40px sm), sign-in keeps dawn scene, no Crosshair icon, map colours unchanged. First deploy (P1+P2) by 2026-11-28 | P1a in progress |
+| 2026-11-26 | UI 21:59 (nav cue, billing dates, focus ring, tables, code copy) | Admin polish | Superseded by redesign (P2/P3) | — |
+| 2026-11-26 | Site 22:00 (CSP smoke, trial CTA, 404 shell, contrast, /download beta, pricing cards, phone header, claims) | Public site | Accepted; worker auditing and fixing | ui-review-notes-2200 |
+| 2026-11-26 | Owner | Dawn scene background on home and sign-in | Shipped; deer + ridge path fixes deferred | #74 |
 | 2026-11-26 | UI review 19:41 (signed-in, seeded club) | Roster copy, Signed in as, focus ring, nav <640px, Stands headings, Harvests export hint | Accepted | club-data PR A |
 | 2026-11-26 | UI review 19:41 | Billing plan/price/dates/grace + Manage subscription (portal); My club summary; map-pack estimate without property line; wider tables; email until display name | Accepted | club-data PR B |
 | 2026-11-26 | UI review 19:41 | Unknown hash routes; aria-current | Already fixed | #66 |
