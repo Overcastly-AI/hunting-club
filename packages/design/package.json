@@ -11,9 +11,16 @@
     "./colors": "./src/colors.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.scripts.json",
+    "test": "jest",
+    "icons": "node ../../scripts/run-ts.mjs scripts/icons.ts"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "2.6.2",
+    "@types/jest": "30.0.0",
+    "@types/node": "^22.20.7",
+    "jest": "~30.5.2",
+    "ts-jest": "^29.4.15",
     "typescript": "~6.0.3"
   }
 }
