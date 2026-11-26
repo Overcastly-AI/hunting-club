@@ -12,13 +12,30 @@ const CheckoutReturn = lazy(() =>
 );
 
 /**
+ * The component kit (/app/#/_kit): every UI component in every state, for development and
+ * review. Only `vite dev` and `npm run build:kit` (mode "kit") include it; a production
+ * build drops this branch and never emits the kit's code.
+ */
+const KIT_ENABLED = import.meta.env.DEV || import.meta.env.MODE === 'kit';
+export const KIT_HASH = '#/_kit';
+const Kit = KIT_ENABLED ? lazy(() => import('./kit/Kit').then((m) => ({ default: m.Kit }))) : null;
+
+/**
  * The page's real paths (WEB_PAGE_PATHS) need no sign-in; ADMIN_PATH (/app/) is the club
  * admin, with hash routes. The public site owns every other path; one that still lands
  * here gets Page not found.
  */
-export function Root(props: WebClubServices & { location: Pick<Location, 'pathname' | 'href'> }) {
+export function Root(
+  props: WebClubServices & { location: Pick<Location, 'pathname' | 'href'> & { hash?: string } },
+) {
   const { location, ...services } = props;
   const path = location.pathname.length > 1 ? location.pathname.replace(/\/+$/, '') : '/';
+  if (Kit && isAdminPath(path) && location.hash === KIT_HASH)
+    return (
+      <Suspense fallback={<Loading />}>
+        <Kit />
+      </Suspense>
+    );
   if (path === CHECKOUT_RETURN_PATHS.success)
     return (
       <Page>

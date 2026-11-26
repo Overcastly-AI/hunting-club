@@ -1,4 +1,4 @@
-import { idSchema, userIdSchema } from '../fields';
+import { idSchema, INITIALS_MAX, suggestInitials, userIdSchema } from '../fields';
 
 it('accepts real Cognito subs, including ones without RFC 9562 variant bits', () => {
   // A dev pool sub whose 4th group starts with "f" (failed z.uuid(); seed:dev, Request #9).
@@ -19,4 +19,22 @@ it('still rejects anything that is not 8-4-4-4-12 hex', () => {
 
 it('keeps our own ids as RFC UUIDs', () => {
   expect(idSchema.safeParse(crypto.randomUUID()).success).toBe(true);
+});
+
+describe('suggestInitials', () => {
+  it.each([
+    ['Jake Smith', 'JS'],
+    ['  jake   smith ', 'JS'],
+    ['Mary Ann Lee Jones', 'MAL'],
+    ['Jake', 'J'],
+    ['Élodie Ørsted', 'ÉØ'],
+    ['"Bud" O’Neil', 'BO'],
+    ['', ''],
+  ])('%j → %j', (name, initials) => {
+    expect(suggestInitials(name)).toBe(initials);
+  });
+
+  it('never suggests more than the shared limit', () => {
+    expect(suggestInitials('a b c d e f').length).toBe(INITIALS_MAX);
+  });
 });

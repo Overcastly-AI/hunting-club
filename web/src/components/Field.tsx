@@ -1,8 +1,10 @@
-import { useId, type InputHTMLAttributes } from 'react';
+import type { InputHTMLAttributes } from 'react';
+import { useFieldIds } from './ui/fieldIds';
 
 /**
  * A labelled text input: the label is always visible, never a placeholder only. `error`
  * shows under the input and marks it invalid (aria-invalid, aria-describedby).
+ * The current pages' look; the redesign's Field is ./ui/Field (pages move to it in P3).
  */
 export function Field(
   props: {
@@ -12,21 +14,13 @@ export function Field(
   } & InputHTMLAttributes<HTMLInputElement>,
 ) {
   const { label, hint, error, ...input } = props;
-  const id = useId();
-  const hintId = `${id}-hint`;
-  const errorId = `${id}-error`;
-  const describedBy = [hint ? hintId : '', error ? errorId : ''].filter(Boolean).join(' ');
+  const { control, hintId, errorId } = useFieldIds(hint, error);
   return (
     <div className="field">
-      <label htmlFor={id} className="text-label">
+      <label htmlFor={control.id} className="text-label">
         {label}
       </label>
-      <input
-        id={id}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy || undefined}
-        {...input}
-      />
+      <input {...control} {...input} />
       {hint ? (
         <span id={hintId} className="muted">
           {hint}

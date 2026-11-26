@@ -21,7 +21,7 @@ export const rem = (px: number) => `${px / ROOT_FONT_PX}rem`;
 const kebab = (name: string) => name.replace(/[A-Z]|\d+/g, (c) => `-${c.toLowerCase()}`);
 
 /** Below this width the compact type sizes apply (phones). */
-const COMPACT_MEDIA = `(max-width: ${breakpoints.tablet - 1}px)`;
+export const COMPACT_MEDIA = `(max-width: ${breakpoints.tablet - 1}px)`;
 
 /** CSS custom properties for every design token, e.g. `--color-surface-raised`. */
 export function tokenVariables(): Record<string, string> {
