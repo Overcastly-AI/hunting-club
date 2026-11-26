@@ -15,7 +15,7 @@ import type { RandomSource } from '../random';
 import { base64UrlDecode, base64UrlEncode } from './base64url';
 import { encodeUtf8 } from '../runtime';
 import { ChannelUrlError } from './channelUrlError';
-import { JOIN_PARAMS, JOIN_URL_PREFIX, type JoinKind, joinKindOf } from './joinKind';
+import { cleanClubName, JOIN_PARAMS, JOIN_URL_PREFIX, type JoinKind, joinKindOf } from './joinKind';
 import { parseQuery } from './query';
 import { DEFAULT_HOP_LIMIT } from './radio';
 
@@ -90,7 +90,13 @@ export function decodeChannelSetUrl(url: string): { channelSet: ChannelSet; add:
 /** What a Hunt Club join QR code carries besides the channels. */
 export type JoinTarget =
   | { kind: Extract<JoinKind, 'party'>; partyId: string }
-  | { kind: Extract<JoinKind, 'club'>; clubId: string; inviteToken: string };
+  | {
+      kind: Extract<JoinKind, 'club'>;
+      clubId: string;
+      inviteToken: string;
+      /** Shown on the invite page ("Join Oak Ridge"). Optional: older links have none. */
+      clubName?: string;
+    };
 
 export interface JoinLink {
   channelSet: ChannelSet;
@@ -138,6 +144,11 @@ export function encodeJoinUrl(
       [JOIN_PARAMS.club, link.target.clubId],
       [JOIN_PARAMS.invite, link.target.inviteToken],
     );
+    if (link.target.clubName !== undefined) {
+      const name = cleanClubName(link.target.clubName);
+      if (!name) throw new ChannelUrlError('Club name is empty or too long');
+      params.push([JOIN_PARAMS.clubName, name]);
+    }
   }
   const encoded = params.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
   if ((opts.form ?? 'app') === 'app') return `${JOIN_URL_PREFIX}?${encoded}`;
@@ -170,10 +181,12 @@ export function decodeJoinUrl(url: string): JoinLink {
   if (kind === 'party')
     return { channelSet, target: { kind, partyId: params.get(JOIN_PARAMS.party)! } };
   if (kind === 'club') {
+    const clubName = cleanClubName(params.get(JOIN_PARAMS.clubName));
     const target = {
       kind,
       clubId: params.get(JOIN_PARAMS.club)!,
       inviteToken: params.get(JOIN_PARAMS.invite)!,
+      ...(clubName ? { clubName } : {}),
     };
     return { channelSet, target };
   }

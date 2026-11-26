@@ -4,6 +4,7 @@ import { APP_NAME, dawnPauseCopy, FREE_PARTY_MAX_MEMBERS } from '@huntclub/share
 import { FAQ_PREVIEW } from '../faq';
 import { FEATURE_GROUPS } from '../features';
 import { GET_THE_APP, HOME_SECTIONS, PAGE_PATHS } from '../routes';
+import { HERO_WITH_ART_CLASS } from '../styles';
 
 const STEPS = [
   {
@@ -31,7 +32,7 @@ export const HERO_ART_SLOT = 'hero-art';
 export function Home() {
   return (
     <>
-      <section className="hero">
+      <section className={`hero ${HERO_WITH_ART_CLASS}`}>
         {/* Static markup from our own package (no user input), so inlining it is safe. */}
         <div
           className={HERO_ART_SLOT}

@@ -6,6 +6,7 @@
 // counters). Field groups are plain objects spread into each schema, so every rule
 // is written once.
 import { z } from 'zod';
+import { CLUB_NAME_MAX } from './limits';
 import { BILLING_INTERVALS } from './pricing';
 import {
   HarvestSexSchema,
@@ -60,7 +61,7 @@ export type PlanPut = z.input<typeof PlanPutSchema>;
 // Clubs ------------------------------------------------------------------------
 
 const clubEditable = {
-  name: trimmedText(80),
+  name: trimmedText(CLUB_NAME_MAX),
   acreage: z.number().min(0).optional(),
   boundary: polygonSchema.optional(),
   region: regionSchema,

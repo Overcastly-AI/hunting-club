@@ -5,6 +5,8 @@ import { channelSetWithKey, decodeJoinUrl, encodeJoinUrl, type JoinTarget } from
 import { renderJoin } from '../render';
 import { showInvite } from '../join/show';
 import { JOIN_HOOKS, JOIN_QR_LABEL, JOIN_STATES } from '../join/states';
+import { JOIN_INVALID_HEADING, JOIN_INVALID_NEXT_STEP } from '../pages/Join';
+import { CLUB_NAME_MAX } from '@huntclub/shared/limits';
 import { JOIN_PAGE } from '../routes';
 
 const SCRIPT = '/assets/join-test.js';
@@ -79,19 +81,59 @@ describe('the /join script', () => {
     expect(page.text).not.toMatch(/not complete/);
   });
 
-  it('says an incomplete invite is not complete, with no app link or QR code', () => {
-    const page = open('https://example.com/join#cs=AAAA');
+  it.each([
+    ['an incomplete invite', 'https://example.com/join#cs=AAAA'],
+    ['no invite at all', 'https://example.com/join'],
+    ['a fragment that is not an invite', 'https://example.com/join#hello'],
+  ])('says %s is missing or invalid, with one next step and no app link or QR', (_what, href) => {
+    const page = open(href);
     expect(page.state).toBe('invalid');
-    expect(page.heading).toBe('This invite link is not complete');
+    expect(page.heading).toBe(JOIN_INVALID_HEADING);
+    expect(page.text).toContain(JOIN_INVALID_NEXT_STEP);
+    expect(page.text).not.toMatch(/You're invited|Install the app/);
     expect(document.querySelector('[role="alert"]')?.closest('[hidden]')).toBeNull();
     expect(page.open).toBeNull();
     expect(page.qr).toBeNull();
+    // One next step: no buttons or links in the visible content besides the shell's own.
+    const visibleLinks = [...document.querySelectorAll('.join a, .join button')].filter(
+      (el) => !el.closest('[hidden]'),
+    );
+    expect(visibleLinks).toEqual([]);
+  });
+});
+
+describe('the club name on /join', () => {
+  const club = { kind: 'club', clubId: 'club-1', inviteToken: 'ab'.repeat(32) } as const;
+  const linkFor = (clubName?: string) =>
+    encodeJoinUrl(
+      { channelSet, target: clubName === undefined ? club : { ...club, clubName } },
+      { form: 'web' },
+    );
+
+  it('says "Join <club name>" when the link names the club', () => {
+    const page = open(linkFor('Oak Ridge Hunt Club'));
+    expect(page.state).toBe('club');
+    expect(page.heading).toBe('Join Oak Ridge Hunt Club');
   });
 
-  it('reads as a general invite when opened with no invite', () => {
-    const page = open('https://example.com/join');
-    expect(page.state).toBe('generic');
-    expect(page.open).toBeNull();
-    expect(page.text).toMatch(/Install the app/);
+  it('keeps the generic heading for an old link without the name', () => {
+    expect(open(linkFor()).heading).toBe('Join your hunting club');
+  });
+
+  it('shows a malicious name as plain text, never as markup', () => {
+    const evil = '<img src=x onerror="window.pwned=1"><b>Oak</b>';
+    const page = open(linkFor(evil));
+    expect(page.heading).toBe(`Join ${evil}`);
+    const h1 = document.querySelector('h1')!;
+    expect(h1.querySelector('img, b, script')).toBeNull();
+    expect((window as unknown as { pwned?: number }).pwned).toBeUndefined();
+  });
+
+  it('ignores a name that is too long, and strips control characters', () => {
+    const base = linkFor();
+    expect(open(`${base}&name=${'x'.repeat(CLUB_NAME_MAX + 1)}`).heading).toBe(
+      'Join your hunting club',
+    );
+    expect(open(`${base}&name=Oak%E2%80%AE%0ARidge`).heading).toBe('Join Oak Ridge');
   });
 });
