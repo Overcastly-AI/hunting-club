@@ -1,22 +1,22 @@
 /**
- * Domain enums that travel over the mesh. This is their single source of
- * truth: the app's database and UI import these instead of retyping them.
+ * Domain enums that travel over the mesh.
  *
  * Each enum has a numeric wire code (used in app-port messages) and a stable
  * string key (used in SQLite / Supabase columns, e.g. `check_ins.mode`).
+ *
+ * CheckInMode is defined here (check-ins never reach the cloud). Harvest sex is
+ * stored in Supabase, so its keys come from the SQL enum via @huntclub/shared;
+ * this file only adds the frozen wire codes.
  */
+import { HARVEST_SEXES, type HarvestSex as HarvestSexKey } from '@huntclub/shared';
+
+export { HARVEST_SEXES, type HarvestSexKey };
 
 export enum CheckInMode {
   Stand = 1,
   Area = 2,
   Spot = 3,
   Moving = 4,
-}
-
-export enum HarvestSex {
-  Unknown = 0,
-  Male = 1,
-  Female = 2,
 }
 
 /** Database / JSON keys for CheckInMode (matches `check_ins.mode`). */
@@ -28,21 +28,33 @@ export const CHECK_IN_MODE_KEYS = {
 } as const satisfies Record<CheckInMode, string>;
 export type CheckInModeKey = (typeof CHECK_IN_MODE_KEYS)[CheckInMode];
 
-/** Database / JSON keys for HarvestSex. */
-export const HARVEST_SEX_KEYS = {
-  [HarvestSex.Unknown]: 'unknown',
-  [HarvestSex.Male]: 'male',
-  [HarvestSex.Female]: 'female',
-} as const satisfies Record<HarvestSex, string>;
-export type HarvestSexKey = (typeof HARVEST_SEX_KEYS)[HarvestSex];
+/**
+ * Wire codes for harvest sex, keyed by the database enum (`harvest_sex`).
+ * These are protocol values: never renumber or reuse one. `satisfies` makes the
+ * typecheck fail if a value is added to or removed from the SQL enum without a
+ * code here; a unit test pins the numbers.
+ */
+export const HARVEST_SEX_CODES = {
+  unknown: 0,
+  male: 1,
+  female: 2,
+} as const satisfies Record<HarvestSexKey, number>;
+/** A harvest-sex wire code (0 = unknown, the omitted default). */
+export type HarvestSex = (typeof HARVEST_SEX_CODES)[HarvestSexKey];
 
 /** Inverts a code → key table, so the reverse mapping is derived, never retyped. */
 function invert<K extends number, V extends string>(table: Record<K, V>): Record<V, K> {
   return Object.fromEntries(Object.entries(table).map(([k, v]) => [v, Number(k)])) as Record<V, K>;
 }
 
+/** Inverts a key → code table (the opposite direction of `invert`). */
+function invertCodes<K extends string, V extends number>(table: Record<K, V>): Record<V, K> {
+  return Object.fromEntries(Object.entries(table).map(([k, v]) => [v, k])) as Record<V, K>;
+}
+
 export const CHECK_IN_MODE_BY_KEY = invert(CHECK_IN_MODE_KEYS);
-export const HARVEST_SEX_BY_KEY = invert(HARVEST_SEX_KEYS);
+/** Wire code → database key for harvest sex. */
+export const HARVEST_SEX_KEYS = invertCodes(HARVEST_SEX_CODES);
 
 /** Values of a numeric TypeScript enum (skips the reverse-mapping keys). */
 export function enumValues<E extends Record<string, string | number>>(e: E): number[] {

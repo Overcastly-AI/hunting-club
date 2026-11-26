@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   overline: { ...textStyles.body, color: colors.textSecondary },
-  title: { ...textStyles.sheetTitle, color: colors.text, width: '82%' },
+  title: { ...textStyles.sheetTitle, color: colors.text },
   since: { ...textStyles.body, color: colors.textSecondary },
   row: { flexDirection: 'row', gap: spacing.sm },
   flex: { flex: 1 },
