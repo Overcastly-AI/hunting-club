@@ -123,8 +123,9 @@ Everything that matters in the field travels over the LoRa mesh, with no server 
 |---|---|---|
 | App | React Native with Expo (dev build), TypeScript | One codebase for iOS and Android |
 | Mobile builds | EAS Build (free tier) for iOS and Android; local Android builds in CI | iOS builds need macOS; EAS avoids paying for a Mac. No AWS Mac instances (24-hour minimum billing) |
-| Bluetooth | react-native-ble-plx | Mature BLE library for the Meshtastic BLE service |
-| Mesh protocol | Official Meshtastic TypeScript packages (protobufs, core) with a custom BLE transport | Wire compatibility with stock radios; no hand-written protocol code |
+| Bluetooth | react-native-ble-manager 13.x (New Architecture TurboModule, Expo plugin) | ble-plx is legacy-bridge only and its rewrite has stalled; ble-plx stays the fallback. See `docs/research/meshtastic.md` |
+| Mesh protocol | `@meshtastic/protobufs` 2.8.x + `@bufbuild/protobuf`, with our own thin client in `packages/mesh` | `@meshtastic/core` and its transports were removed upstream; the BLE protocol is ~300 lines we can unit-test |
+| Android background link | Small in-repo Expo module for a `connectedDevice` foreground service | No library provides it; avoids another dependency |
 | Maps | MapLibre React Native with offline packs | Free, open source, works fully offline |
 | Basemap data | USGS topo and imagery services (free); per-club PMTiles/MBTiles pack (Club) | Public domain in the US |
 | Local data | SQLite (expo-sqlite) | Offline-first storage and queueing |
@@ -168,6 +169,16 @@ Everything that matters in the field travels over the LoRa mesh, with no server 
 
 Use stock Meshtastic channels, positions and text messages. Put the hunting-specific data in compact app messages on the private app port, which stock clients ignore. Bandwidth is tiny, so every message type has a size and rate budget.
 
+**Implementation notes** (details and sources: `docs/research/meshtastic.md`)
+
+- BLE carries raw `ToRadio`/`FromRadio` protobuf bytes (no serial framing). Handshake: connect, request MTU 512 (Android), subscribe to fromNum, write `want_config_id`, drain fromRadio until empty; drain again on every fromNum notify. **Re-run the handshake after every reconnect.**
+- `packages/mesh` is pure TypeScript (no React Native imports) behind a `Transport` interface, tested in Node with a `FakeTransport` (scripted radio + two-node in-memory loopback). The app provides a `BleTransport`; a `TcpTransport` for `meshtasticd --sim` is for dev/CI only.
+- All app messages use **private port 314**, with a version byte and a message-type byte inside the payload. Payloads ≤ 200 bytes.
+- Provisioning always writes explicit settings: `device.rebroadcast_mode = ALL` (CORE_PORTNUMS_ONLY drops private ports in firmware 2.7+), hunt channel `position_precision = 32` and `0` on other channels (missing = no positions in 2.7+), device role CLIENT.
+- Radio GPS: `position_broadcast_secs` 120–300 with smart position on. Whether to rewrite radio config per check-in mode (flash writes, possible reboot) is decided after real-radio testing; until then use one setting (120 s + smart).
+- One phone per radio at a time. The UI needs a "Forget and re-pair" helper for lost Bluetooth bonds.
+- Record each radio's firmware version; parse unknown `FromRadio` variants leniently.
+
 **Channels and onboarding**
 
 - **Free party:** the phone that starts the party generates a primary channel with a random 256-bit key, picks the region from GPS (US: 915 MHz) and a default modem preset (LongFast). The Party QR code shares it. Max 3 people.
@@ -184,7 +195,8 @@ Use stock Meshtastic channels, positions and text messages. Put the hunting-spec
 | Text | Text message (stock) | User sends | 200 characters max, enforced in UI |
 | CheckIn | Private app port | Check in or change mode (stand, area, spot, on the move) | Under 40 bytes, request ack |
 | CheckOut | Private app port | Check out | Under 40 bytes, request ack |
-| HelpRequest | Private app port | Ask for a Hand | Under 60 bytes, request ack, retry until acked |
+| HelpRequest | Private app port | Ask for a Hand | Under 60 bytes, retry until at least one Receipt |
+| Receipt | Private app port | On receiving a Text, CheckIn or HelpRequest | Under 20 bytes; de-duplicated, rate-limited |
 | HarvestShare | Private app port | Hunter chooses to share | Under 80 bytes |
 | StandListVersion | Private app port | Admin edits stands or areas (club) | Version number only; full list syncs via cloud |
 | OverdueAlert | Private app port | Board or phone detects overdue | Under 40 bytes |
@@ -192,7 +204,7 @@ Use stock Meshtastic channels, positions and text messages. Put the hunting-spec
 **Rules**
 
 - Encode app messages as small protobufs with: message ID, sender node ID, timestamp, mode, stand or area ID or pin location, and payload. De-duplicate on message ID.
-- Show delivery state in the UI (for example, "Delivered to 5 of 6") using Meshtastic acks.
+- Show delivery state in the UI (for example, "Delivered to 5 of 6") using **app-level receipts** on our port: a firmware ack on a broadcast only proves one neighbour heard it. Receipts are de-duplicated and rate-limited to protect airtime. Ask for a Hand retries until at least one receipt arrives.
 - Mark positions as stale in the UI: solid ring under 2 min, dashed between 2 and 10 min, faded after that.
 - Keep the hop limit at the Meshtastic default (3) and avoid chatty updates. Airtime is shared by everyone in range.
 - Prefer GPS or radio time over the phone clock for timestamps.
@@ -350,7 +362,7 @@ The app is free to download and free to use for individual hunters and parties o
 2. **Club member limits** per plan, and whether hunting parties inside a club are capped.
 3. **Clubhouse board:** Board mode in the app, or a separate web page using Web Serial.
 4. **Lapsed clubs:** how many days to keep club data after cancellation ([N]).
-5. **Open or closed source** (decides the GPL question above).
+5. **Open or closed source.** Research found the Meshtastic `.proto` files and every Meshtastic JS package are GPL-3.0 with no app exception. A closed-source app bundling them conflicts with the license; the cloud can stay proprietary either way. **Must be decided before the app ships** (development continues meanwhile).
 
 ## Build plan
 
