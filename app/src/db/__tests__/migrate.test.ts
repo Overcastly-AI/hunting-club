@@ -1,4 +1,4 @@
-import { createTestDatabase } from '../../test-utils/nodeSqlite';
+import { createMigratedTestDatabase, createTestDatabase } from '../../test-utils/nodeSqlite';
 import { assertMigrationsOrdered, getSchemaVersion, migrate } from '../migrate';
 import { migrations } from '../migrations';
 import type { Migration } from '../types';
@@ -84,14 +84,8 @@ describe('migrate', () => {
 });
 
 describe('initial schema constraints', () => {
-  async function migratedDb() {
-    const db = createTestDatabase();
-    await migrate(db, migrations);
-    return db;
-  }
-
   it('allows only one open check-in per member', async () => {
-    const db = await migratedDb();
+    const db = await createMigratedTestDatabase();
     const insert = db.raw.prepare(
       `INSERT INTO check_ins (id, member_id, mode, checked_in_at, checked_out_at, updated_at)
        VALUES (?, 'm1', 'moving', 1, ?, 1)`,
@@ -102,7 +96,7 @@ describe('initial schema constraints', () => {
   });
 
   it('limits message bodies to 200 characters', async () => {
-    const db = await migratedDb();
+    const db = await createMigratedTestDatabase();
     const insert = db.raw.prepare(
       `INSERT INTO messages (id, channel, sender, body, sent_at) VALUES (?, 'party', 's', ?, 1)`,
     );
@@ -111,7 +105,7 @@ describe('initial schema constraints', () => {
   });
 
   it('keeps harvests private by default', async () => {
-    const db = await migratedDb();
+    const db = await createMigratedTestDatabase();
     db.raw
       .prepare(
         `INSERT INTO harvests (id, member_id, species, harvested_at, updated_at)
@@ -123,7 +117,7 @@ describe('initial schema constraints', () => {
   });
 
   it('accepts only the check-in modes from the spec', async () => {
-    const db = await migratedDb();
+    const db = await createMigratedTestDatabase();
     const insert = db.raw.prepare(
       `INSERT INTO check_ins (id, member_id, mode, checked_in_at, updated_at)
        VALUES (?, ?, ?, 1, 1)`,
@@ -132,5 +126,42 @@ describe('initial schema constraints', () => {
       insert.run(`c${i}`, `m${i}`, mode);
     }
     expect(() => insert.run('bad', 'm9', 'driving')).toThrow(/CHECK/);
+  });
+});
+
+describe('migration 2: map pack downloads', () => {
+  const v1 = migrations.slice(0, 1);
+
+  it('upgrades a version 1 database and keeps existing map packs', async () => {
+    const db = createTestDatabase();
+    await migrate(db, v1);
+    db.raw
+      .prepare(
+        `INSERT INTO map_packs (id, bounds, min_zoom, max_zoom, source) VALUES ('p1', '[0,0,1,1]', 8, 15, 'usgs-topo')`,
+      )
+      .run();
+
+    await expect(migrate(db, migrations)).resolves.toBe(migrations.length);
+
+    const row = db.raw.prepare(`SELECT * FROM map_packs WHERE id = 'p1'`).get();
+    expect(row).toEqual(
+      expect.objectContaining({
+        source: 'usgs-topo',
+        name: 'Downloaded area',
+        status: 'complete',
+        tile_count: null,
+        created_at: 0,
+      }),
+    );
+  });
+
+  it('accepts only known download statuses', async () => {
+    const db = await createMigratedTestDatabase();
+    const insert = db.raw.prepare(
+      `INSERT INTO map_packs (id, bounds, min_zoom, max_zoom, source, status) VALUES (?, '[0,0,1,1]', 8, 15, 'usgs-topo', ?)`,
+    );
+    insert.run('a', 'downloading');
+    insert.run('b', 'failed');
+    expect(() => insert.run('c', 'paused')).toThrow(/CHECK/);
   });
 });

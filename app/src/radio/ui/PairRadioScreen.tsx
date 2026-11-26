@@ -3,10 +3,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '../../components/Button';
+import { ensureBluetoothPermission, type BluetoothReadiness } from '../../permissions/bluetooth';
 import { Screen } from '../../components/Screen';
-import { colors, radii, sizes, spacing, textStyles } from '../../theme';
+import { colors, opacity, radii, sizes, spacing, textStyles } from '../../theme';
 import { radioCopy } from '../copy';
-import { requestRadioPermissions, type RadioPermissionState } from '../permissions';
 import { useRadio } from '../RadioProvider';
 import { scanForRadios, type FoundRadio } from '../scan';
 import { signalLabel } from '../signal';
@@ -34,16 +34,16 @@ export function PairRadioScreen({ onDone }: Props) {
   const [scanning, setScanning] = useState(false);
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
-  const [permission, setPermission] = useState<RadioPermissionState | null>(null);
+  const [readiness, setReadiness] = useState<BluetoothReadiness | null>(null);
   const stopScan = useRef<(() => void) | null>(null);
 
   useEffect(() => () => stopScan.current?.(), []);
 
   const findRadios = useCallback(async () => {
     setFailed(false);
-    const state = await requestRadioPermissions();
-    setPermission(state);
-    if (state.status !== 'granted') return;
+    const state = await ensureBluetoothPermission();
+    setReadiness(state);
+    if (state !== 'granted') return;
     stopScan.current?.();
     setFound([]);
     setScanning(true);
@@ -98,21 +98,10 @@ export function PairRadioScreen({ onDone }: Props) {
         </View>
       ) : null}
 
-      {permission && permission.status !== 'granted' ? (
+      {readiness === 'bluetoothOff' ? (
         <View style={styles.card}>
-          <Text style={styles.body}>
-            {permission.status === 'bluetoothOff'
-              ? radioCopy.permissions.bluetoothOff
-              : permission.status === 'blocked'
-                ? radioCopy.permissions.blocked
-                : radioCopy.permissions.bluetooth}
-          </Text>
-          {permission.status === 'blocked' ? (
-            <Button
-              label={radioCopy.permissions.openSettings}
-              onPress={() => void Linking.openSettings()}
-            />
-          ) : null}
+          <Text style={styles.body}>{radioCopy.permissions.bluetoothOff}</Text>
+          <Button label={radioCopy.repair.openSettings} onPress={openBluetoothSettings} />
         </View>
       ) : null}
 
@@ -159,7 +148,7 @@ export function PairRadioScreen({ onDone }: Props) {
         </View>
       ) : null}
 
-      {!linked && !scanning && permission?.status === 'granted' && found.length === 0 ? (
+      {!linked && !scanning && readiness === 'granted' && found.length === 0 ? (
         <Text style={styles.body}>{radioCopy.pair.noneFound}</Text>
       ) : null}
 
@@ -207,7 +196,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.control,
     backgroundColor: colors.surfaceRaised,
   },
-  pressed: { opacity: 0.7 },
+  pressed: { opacity: opacity.pressed },
   radioText: { flex: 1, gap: spacing.xs },
   radioName: { ...textStyles.label, color: colors.text },
   action: { ...textStyles.label, color: colors.text },

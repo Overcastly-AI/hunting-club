@@ -1,55 +1,82 @@
-import { Pressable, StyleSheet, Text, type PressableProps } from 'react-native';
+import type { ReactNode } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, radii, sizes, spacing, textStyles } from '../theme';
+import { colors, opacity, radii, sizes, spacing, textStyles } from '../theme';
 
-type Props = Omit<PressableProps, 'children' | 'style'> & {
+/**
+ * - primary: orange, for the one main action on a screen.
+ * - secondary: raised dark button.
+ * - help: gold outline, for Ask for a Hand only.
+ */
+export type ButtonVariant = 'primary' | 'secondary' | 'help';
+
+type Props = {
   label: string;
-  /** `primary` is orange: use it only for the screen's main action. */
-  variant?: 'primary' | 'secondary';
+  /** Second line under the label, for example "Pings your party". */
+  detail?: string;
+  variant?: ButtonVariant;
+  onPress: () => void;
+  disabled?: boolean;
+  accessibilityHint?: string;
+  icon?: ReactNode;
 };
 
-/** Word-labelled button; at least 48 px tall (primary: 62 px). */
-export function Button({ label, variant = 'secondary', disabled, ...rest }: Props) {
+export function Button({
+  label,
+  detail,
+  variant = 'secondary',
+  onPress,
+  disabled,
+  accessibilityHint,
+  icon,
+}: Props) {
+  const variantStyle = styles[variant];
+  const textColor =
+    variant === 'primary'
+      ? styles.primaryText
+      : variant === 'help'
+        ? styles.helpText
+        : styles.secondaryText;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={detail ? `${label}. ${detail}` : label}
+      accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
+      onPress={onPress}
       style={({ pressed }) => [
         styles.base,
-        variant === 'primary' ? styles.primary : styles.secondary,
-        (pressed || disabled) && styles.dimmed,
+        variantStyle,
+        (pressed || disabled) && { opacity: opacity.pressed },
       ]}
-      {...rest}
     >
-      <Text style={styles.label}>{label}</Text>
+      {icon}
+      <View style={styles.texts}>
+        <Text style={[styles.label, textColor]}>{label}</Text>
+        {detail ? <Text style={[styles.detail, textColor]}>{detail}</Text> : null}
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: sizes.minTapTarget,
-    paddingHorizontal: spacing.md,
+    minHeight: sizes.primaryButtonMinHeight,
     borderRadius: radii.primaryButton,
+    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing.sm,
   },
-  primary: {
-    minHeight: sizes.primaryButtonMinHeight,
-    backgroundColor: colors.accent,
-  },
-  secondary: {
-    backgroundColor: colors.surfaceRaised,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  dimmed: {
-    opacity: 0.6,
-  },
-  label: {
-    ...textStyles.label,
-    color: colors.text,
-  },
+  texts: { alignItems: 'center' },
+  primary: { backgroundColor: colors.accent },
+  secondary: { backgroundColor: colors.surfaceRaised },
+  help: { borderWidth: sizes.hairline, borderColor: colors.help, backgroundColor: colors.surface },
+  label: { ...textStyles.label, fontSize: textStyles.bodyLarge.fontSize },
+  detail: { ...textStyles.body },
+  primaryText: { color: colors.surface },
+  secondaryText: { color: colors.text },
+  helpText: { color: colors.help },
 });

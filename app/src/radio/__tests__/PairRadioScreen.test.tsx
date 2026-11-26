@@ -2,6 +2,9 @@ import { MESHTASTIC_BLE } from '@huntclub/mesh';
 import { FakeRadio, seededRandom } from '@huntclub/mesh/testing';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
+import { PERMISSION_BUTTONS } from '../../permissions/askPermission';
+import { resetBluetoothPermissionForTests } from '../../permissions/bluetooth';
+import { answerAlerts } from '../../test-utils/alerts';
 import { fakeBle, resetFakeBle } from '../../test-utils/fakeBleManager';
 import { backgroundSpy, memoryStore, RADIO_A } from '../../test-utils/radioFixtures';
 import { resetBleStartedForTests } from '../bleManager';
@@ -17,6 +20,8 @@ jest.mock(
 beforeEach(() => {
   resetFakeBle();
   resetBleStartedForTests();
+  resetBluetoothPermissionForTests();
+  answerAlerts(PERMISSION_BUTTONS.continue);
 });
 
 async function renderScreen() {

@@ -144,6 +144,18 @@ CREATE TABLE map_packs (
 `;
 
 /**
+ * Offline map downloads (Milestone 4). `map_packs.id` is the MapLibre offline
+ * pack ID. `bounds` is JSON [west, south, east, north]; zooms are map zooms.
+ */
+const mapPackDownloads = `
+ALTER TABLE map_packs ADD COLUMN name TEXT NOT NULL DEFAULT 'Downloaded area';
+ALTER TABLE map_packs ADD COLUMN tile_count INTEGER;
+ALTER TABLE map_packs ADD COLUMN status TEXT NOT NULL DEFAULT 'complete'
+  CHECK (status IN ('downloading', 'complete', 'failed'));
+ALTER TABLE map_packs ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0;
+`;
+
+/**
  * The radio this phone is paired with, so the app reconnects to it on launch.
  * One row at most: one phone talks to one radio at a time.
  */
@@ -158,5 +170,6 @@ CREATE TABLE paired_radio (
 
 export const migrations: readonly Migration[] = [
   { version: 1, name: 'initial local schema', sql: initialSchema },
-  { version: 2, name: 'paired radio', sql: pairedRadio },
+  { version: 2, name: 'map pack downloads', sql: mapPackDownloads },
+  { version: 3, name: 'paired radio', sql: pairedRadio },
 ];

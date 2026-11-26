@@ -7,8 +7,9 @@ export type SqlValue = string | number | null | Uint8Array;
 
 export interface SqlDatabase {
   execAsync(source: string): Promise<void>;
-  getFirstAsync<T>(source: string, ...params: SqlValue[]): Promise<T | null>;
   runAsync(source: string, ...params: SqlValue[]): Promise<unknown>;
+  getFirstAsync<T>(source: string, ...params: SqlValue[]): Promise<T | null>;
+  getAllAsync<T>(source: string, ...params: SqlValue[]): Promise<T[]>;
   withTransactionAsync(task: () => Promise<void>): Promise<void>;
 }
 

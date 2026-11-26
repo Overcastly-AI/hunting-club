@@ -56,19 +56,6 @@ export const radioCopy = {
     /** iOS system prompt (NSBluetoothAlwaysUsageDescription), set in app.config.ts. */
     iosBluetoothUsage:
       'Hunt Club Mesh uses Bluetooth to talk to your radio, so you can text and share your location with your party without cell service.',
-    title: 'Allow Bluetooth',
-    bluetooth:
-      'Hunt Club Mesh uses Bluetooth to talk to your radio. It does not use Bluetooth to find your location.',
-    nearbyDevices:
-      'Android calls this “Nearby devices”. It lets the app find and connect to your radio.',
-    location:
-      'Older Android phones need location access to find Bluetooth radios. Your location is only shared while you are checked in.',
-    notifications:
-      'Lets the app show “Connected to your radio” while it keeps the link open in the background.',
-    allow: 'Allow',
-    notNow: 'Not now',
-    blocked: 'Bluetooth is turned off for this app. Turn it on in Settings to pair your radio.',
-    openSettings: 'Open Settings',
     bluetoothOff: 'Bluetooth is off. Turn it on to use your radio.',
   },
   service: {
