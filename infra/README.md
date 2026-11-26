@@ -60,3 +60,24 @@ One-time setup by the owner (GitHub repo settings):
 - **Variable** `AWS_DEPLOY_ROLE_ARN` = the ARN of the IAM role `hunt-club-mesh-github-deploy-dev` (Settings → Secrets and variables → Actions → Variables; a repository or `dev` environment variable). It is not a secret.
 
 The role (created outside this repo by the owner's operator) trusts the GitHub OIDC provider for this repo's `dev` environment only (this org uses an ID-based subject: `repo:Overcastly-AI@282247350/hunting-club@1472690296:environment:dev`), and may only assume the CDK bootstrap roles (`cdk-hnb659fds-*`). After a first deploy, copy `ClubApiUrl` from the summary into `CLOUD_ENVIRONMENTS.dev.clubApiUrl` in `@huntclub/shared/cloud`.
+
+## Dev test club
+
+A "UAT Test Club" for UI work in dev, seeded by the AWS operator from **CloudShell** (dev
+account, `us-east-1`; CloudShell's credentials are used). It makes the given Cognito user
+the admin, gives the club features for 90 days from the run, and adds a property line, one
+area and three stands. It is idempotent: running it again refreshes the entitlement and
+the property line and adds only what is missing. It refuses any environment but dev.
+
+```sh
+git clone https://github.com/Overcastly-AI/hunting-club.git && cd hunting-club
+npm ci
+npm run seed:dev -w @huntclub/club-data -- \
+  --env dev --table hunt-club-mesh-dev \
+  --admin-sub <the user's Cognito sub> --email <the user's email>
+```
+
+The user's `sub` is on their Cognito user page (user pool `us-east-1_0W2YbjVht` → Users).
+The email only sets the admin's display name and initials; nothing else is stored. The
+table is `clubTableName` in `config/dev.ts`. The seed lives in
+`packages/club-data/src/seed/` and uses the club-data repository functions.

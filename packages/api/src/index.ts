@@ -13,7 +13,8 @@ export {
 } from './http';
 export { readSecureParameter } from './secrets';
 export { createStripeWebhook, type StripeWebhookDeps, type ThinEvent } from './stripeWebhook';
-export { clubDataForTable, connectStripe, mapPackStarter, mapPackUploader } from './clients';
+export { clubDataForTable } from '@huntclub/club-data';
+export { connectStripe, mapPackStarter, mapPackUploader } from './clients';
 export {
   MapPackBuildError,
   buildMapPack,
