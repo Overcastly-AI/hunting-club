@@ -1,0 +1,35 @@
+name: Smoke dev
+
+# Read-only checks of the deployed dev site, club API and Stripe webhook
+# (`npm run smoke -- dev`). Public endpoints only: no AWS credentials, no secrets,
+# no writes, no sign-ups, no email. Run by hand, or at the end of Deploy dev.
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Smoke check dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Smoke check
+        shell: bash # -o pipefail: the check's exit code survives tee
+        run: |
+          echo '### Smoke check (dev)' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          npm run --silent smoke -- dev | tee -a "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

@@ -9,6 +9,7 @@ export {
   type FunctionUrlEvent,
   type FunctionUrlResult,
   type Handler,
+  headerOf,
 } from './http';
 export { readSecureParameter } from './secrets';
 export { createStripeWebhook, type StripeWebhookDeps, type ThinEvent } from './stripeWebhook';

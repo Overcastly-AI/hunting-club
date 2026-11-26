@@ -11,6 +11,8 @@ export interface CloudEnvironment {
   readonly webClientId?: string;
   /** Club API Function URL (no trailing slash); set once deployed. */
   readonly clubApiUrl?: string;
+  /** Stripe webhook Function URL (no trailing slash); set once deployed. */
+  readonly stripeWebhookUrl?: string;
 }
 
 export const CLOUD_ENVIRONMENTS = {
@@ -20,6 +22,7 @@ export const CLOUD_ENVIRONMENTS = {
     appClientId: '5dn1jcrnef1v6cfv6da0i7qtne',
     webClientId: '6mpfpr6nrdqddim7trfqckegu5',
     clubApiUrl: 'https://cmiavlwk3hqfou64bhxdbinhvm0rkxuj.lambda-url.us-east-1.on.aws',
+    stripeWebhookUrl: 'https://ehbje6gqn4puhaukhpcke7drja0rajrt.lambda-url.us-east-1.on.aws',
   },
 } as const satisfies Record<string, CloudEnvironment>;
 

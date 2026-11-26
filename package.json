@@ -14,7 +14,8 @@
     "lint": "npm run lint --workspaces --if-present && prettier --check .",
     "format": "prettier --write .",
     "test": "npm test --workspaces --if-present",
-    "synth": "npm run build -w @huntclub/web && npm run synth -w @huntclub/infra"
+    "synth": "npm run build -w @huntclub/web && npm run synth -w @huntclub/infra",
+    "smoke": "npm run smoke -w @huntclub/infra --"
   },
   "devDependencies": {
     "prettier": "^3.10.1"

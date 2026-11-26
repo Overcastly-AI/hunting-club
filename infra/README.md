@@ -40,6 +40,19 @@ Select an environment with `-c env=<name>` (default `dev`).
 2. AWS credentials through GitHub OIDC (`aws-actions/configure-aws-credentials`, pinned to a commit). No AWS keys or secrets are stored in GitHub.
 3. `cdk deploy HuntClub-dev-Web HuntClub-dev-Api --app cdk.out --require-approval never` (exactly the synthesized assembly).
 4. Stack outputs (`ClubApiUrl`, `StripeWebhookUrl`) printed to the run's job summary.
+5. Optionally (on by default) the smoke check below, as a second job.
+
+### Smoke check
+
+`npm run smoke -- dev` (or **Actions → Smoke dev**) makes read-only requests to the deployed environment and exits non-zero if any check fails. URLs come from `CLOUD_ENVIRONMENTS` and the env config. It checks:
+
+- The site serves `index.html`, and every `WEB_PAGE_PATHS` deep link gets the same page, while unknown paths are not rewritten.
+- Each `/.well-known` file matches what `wellKnownFiles` publishes, or is absent when it isn't published yet.
+- The club API answers `401 not_authenticated` without a token.
+- CORS preflight is allowed from the web origin and refused from any other origin.
+- The Stripe webhook refuses an unsigned POST with a 4xx.
+
+No writes, no sign-ups, no email, no credentials.
 
 One-time setup by the owner (GitHub repo settings):
 
