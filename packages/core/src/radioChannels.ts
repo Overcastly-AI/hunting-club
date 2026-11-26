@@ -18,13 +18,26 @@ export class ChannelApplyError extends Error {
   }
 }
 
-export async function applyChannelSet(client: MeshClient, channelSet: ChannelSet): Promise<void> {
+/**
+ * Writes `channelSet` to our radio. With `under`, that set's primary channel stays
+ * first (index 0, e.g. the club's) and `channelSet`'s channels follow it as
+ * secondaries (e.g. a party inside the club); radio settings come from `under`.
+ */
+export async function applyChannelSet(
+  client: MeshClient,
+  channelSet: ChannelSet,
+  opts: { under?: ChannelSet } = {},
+): Promise<void> {
   if (!client.isReady) {
     throw new ChannelApplyError('radio-not-connected', 'Connect your radio first');
   }
-  const results = await Promise.all(
-    client.provision(planFromChannelSet(channelSet)).map((h) => h.result),
-  );
+  const plan = opts.under
+    ? {
+        ...planFromChannelSet(opts.under),
+        channels: [...opts.under.settings.slice(0, 1), ...channelSet.settings],
+      }
+    : planFromChannelSet(channelSet);
+  const results = await Promise.all(client.provision(plan).map((h) => h.result));
   const failed = results.find((r) => r.status !== 'acked' && r.status !== 'sent');
   if (failed) {
     throw new ChannelApplyError(
