@@ -62,11 +62,20 @@ describe('club-api entry', () => {
 });
 
 describe('stripe-webhook entry', () => {
+  it('refuses an unsigned request with 400 before reading any secret', async () => {
+    wireEnv();
+    // Even with no configuration at all, an unsigned request gets a plain 400.
+    delete process.env[API_ENV.tableName];
+    const res = await stripeWebhook(request('/'));
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error.code).toBe('invalid');
+  });
+
   it('answers 503 and names what is missing when misconfigured', async () => {
     wireEnv();
     delete process.env[API_ENV.tableName];
     delete process.env[secretParameterEnvVar('stripeWebhookSecret')];
-    const res = await stripeWebhook(request('/'));
+    const res = await stripeWebhook(request('/', { 'stripe-signature': 't=1,v1=x' }));
     expect(res.statusCode).toBe(503);
     expect(JSON.parse(res.body).error.message).toBe(
       `missing ${API_ENV.tableName}, ${secretParameterEnvVar('stripeWebhookSecret')}`,

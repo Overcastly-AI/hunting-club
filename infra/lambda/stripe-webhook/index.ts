@@ -5,6 +5,7 @@ import {
   connectStripe,
   createStripeWebhook,
   errorResponse,
+  headerOf,
   lazyHandler,
   missingEnv,
   readSecureParameter,
@@ -40,6 +41,8 @@ const run = lazyHandler(async () => {
 });
 
 export const handler = async (event: FunctionUrlEvent) => {
+  // Unsigned requests are refused before anything else: no secrets read, no table touched.
+  if (!headerOf(event, 'stripe-signature')) return errorResponse('invalid', 'missing signature');
   const missing = missingEnv(REQUIRED_ENV);
   if (missing.length > 0) return errorResponse('not_configured', `missing ${missing.join(', ')}`);
   return run(event);

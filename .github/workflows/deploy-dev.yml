@@ -6,6 +6,11 @@ name: Deploy dev
 # and may only assume the CDK bootstrap roles (cdk-hnb659fds-*). See README "Deploying dev".
 on:
   workflow_dispatch:
+    inputs:
+      smoke:
+        description: Run the read-only smoke check after deploying
+        type: boolean
+        default: true
 
 permissions:
   id-token: write # OIDC token for AWS
@@ -69,3 +74,9 @@ jobs:
             echo "| --- | --- | --- |"
             jq -r 'to_entries[] | .key as $s | .value | to_entries[] | "| \($s) | \(.key) | \(.value) |"' cdk-outputs.json
           } >> "$GITHUB_STEP_SUMMARY"
+
+  smoke:
+    name: Smoke check
+    needs: deploy
+    if: inputs.smoke
+    uses: ./.github/workflows/smoke-dev.yml
