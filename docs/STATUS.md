@@ -33,13 +33,13 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 | # | Sent | Request | Status | Result |
 |---|---|---|---|---|
-| 3 | 2026-11-26 | First CDK deploy: bootstrap + HuntClub-dev-Web + HuntClub-dev-Api (no Stripe yet) | Sent 11:01 UTC (thread 1a21783c82cc55ed) | |
+| 3 | 2026-11-26 | First CDK deploy: bootstrap + HuntClub-dev-Web + HuntClub-dev-Api (no Stripe yet) | **Partly done** 11:08 UTC: CDKToolkit bootstrapped (v34); diff clean; deploy FAILED at asset upload — Grok Bot's box reaches S3 via a VPC endpoint whose policy blocks the cdk-hnb659fds-assets bucket. Nothing else created. | Proposed fix: deploy from GitHub Actions via OIDC role (needs owner approval) |
 | 2 | 2026-11-26 | Enable TTL `expiresAt` on the table; add web app client to the user pool | **Done** 06:37 UTC | TTL enabled; web client `6mpfpr6nrdqddim7trfqckegu5` |
 | 1 | 2026-11-26 | Dev subdomain: Route 53 hosted zone, delegation, ACM wildcard cert | **Done** 06:07 UTC (verified NS via public DNS) | See "AWS environment" below |
 
 ## How the project runs
 
-- **Usage limit (2026-11-26):** 7 workers + coordinator hit the plan's 5-hour usage limit at ~06:55 UTC; everything stopped until the 09:30 reset. Run at most 3 workers at a time, prioritise merges, and keep worker messages short.
+- **Usage limit (2026-11-26):** 7 workers + coordinator hit the plan's 5-hour usage limit at ~06:55 UTC; everything stopped until the 09:30 reset. Run at most 3 workers at a time, prioritise merges, and keep worker messages short. Hit again at 11:41 UTC with 3 workers (reset 14:30). **Now at most 2 workers** (club-data on #41, onboarding on M12 app side); web worker paused with M13 + map-packs admin pushed to agent/m2-research.
 
 - The owner delegated full control to the coordinator (2026-11-26). Hard limits that still need the owner: spending money beyond free tiers and the dev DNS zone, deleting the owner's data, emails to anyone but the owner.
 - Coordinator session: `session_01QS5dr3XTYjo26Gf4MeA3GC`. Wakes hourly at :34 via scheduled task `trig_01SRzKhjqQDZWWfR6krcCifn`: checks Grok Bot email, workers and PRs; reviews and merges; starts the next tasks.
@@ -47,7 +47,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 - **Never leave a worker idle (owner rule):** the moment a worker finishes or stops, give it the next task (reuse the idle session) or start a new one. Timed wake-ups are only a backup; worker messages are the main signal.
 - Workers: separate cloud sessions, up to ~5 at a time on non-overlapping files, one task each, branch `agent/<task>`, PR into `main`. Playbook: `docs/AGENTS.md`.
 - **Email is checked every 30 minutes** (owner rule): hourly check-in at :34 (`trig_01SRzKhjqQDZWWfR6krcCifn`) plus an email check at :04 (`trig_01RboB5HqcNxpdXgKpAZU6YK`), both opening every thread in full.
-- Daily status email to the owner around 13:00 UTC, subject starting "Hunt Club Mesh status" (never "Grok Bot", which is reserved for AWS requests).
+- Daily status email to the owner around 13:00 UTC, subject starting "Hunt Club Mesh status" (never "Grok Bot", which is reserved for AWS requests). Last sent: 2026-11-26 14:40 UTC (late: usage limit).
 - Commits authored as `Overcastly-AI <282247350+Overcastly-AI@users.noreply.github.com>`.
 
 ## Workers
@@ -73,13 +73,15 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 | 2026-11-26 | App IDs `com.overcastly.huntclub` (iOS and Android) | Owner's GitHub org; hard to change after store upload |
 | 2026-11-26 | DRY with no shortcuts (owner rule) | One source of truth; shared code in `packages/` |
 | 2026-11-26 | Android foreground service as a small in-repo Expo module | No library provides it; avoids a dependency |
+| 2026-11-26 | Map packs (#41): deps `@aws-sdk/client-lambda`, `@aws-sdk/client-s3` (runtime-provided) and `pmtiles` (devDep, tests) approved | Builder Lambda needs them; no runtime cost |
+| 2026-11-26 | Map packs public on CloudFront at unguessable UUID URLs | Public-domain USGS tiles; signed URLs not worth the cost yet |
+| 2026-11-26 | Map pack builds: status building/ready/failed, one in flight per club, builder concurrency 1, tile cap derived from rate × timeout | Stay gentle with USGS and inside the 900 s Lambda limit |
 
 ## Backlog (coordinator)
 
-- Radio name: push the hunter's name/initials to the radio with set_owner (weather worker's module, then onboarding).
-- App bundle grew 3.4 → 4.1 MB after #22; check whether zod is tree-shaken in the app.
-- Investigate PR #16's failing meshtasticd sim job.
-- Re-take screenshots after the wiring to verify layout fixes.
+- Done: radio name (#32, #37), zod locale shim (#34, −243 KB), a11y pass (#39), deploy-dev workflow (#40, waits on owner deploy-path decision).
+- Done: #42 sim CI fixed (firmware 2 s text limit; app now spaces texts), #16 closed. Screenshots skipped (needs react-native-web; not approved).
+- In progress: M12 app side (onboarding worker); map packs #41 backend → app (club-data); #41 review then web Map packs admin (web).
 
 - After #4 and #5: HarvestSex single source = SQL enum → @huntclub/shared → mesh derives wire codes (assigned to the schema worker).
 - After #6: move sunrise/sunset and freshness thresholds from app/src/map into packages/core if core needs them (DRY).
@@ -106,6 +108,8 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 - Creating `hunt-club-mesh-dev` (us-east-1) failed: the owner is at the 2-active-free-projects limit; the other project is in an org this connection can't see. Waiting for the owner to pause/delete that one. Until then the schema is tested against local Postgres in CI; not blocking before M8–M10.
 
 ## Owner to-dos (non-blocking)
+
+- **Approve the deploy path (blocking the first deploy):** let Grok Bot create a GitHub Actions OIDC deploy role `hunt-club-mesh-github-deploy-dev` (trust: repo Overcastly-AI/hunting-club, GitHub environment `dev` only; may only assume the four CDK bootstrap roles). Alternatives: run `cdk deploy` from your own machine or AWS CloudShell, or allow the CDK assets bucket in Grok Bot's VPC endpoint policy.
 
 - **Stripe account (needed to take club payments, Milestone 9):** create a Stripe account in test mode. Then Grok Bot (via a numbered request) creates the test price, the SSM parameters `/hunt-club-mesh/dev/stripe-api-key` and `/hunt-club-mesh/dev/stripe-webhook-secret`, and a thin-event webhook destination pointing at the `StripeWebhookUrl` stack output.
 - **Delete one PR comment by hand** (the tool keeps re-adding an AI footer): https://github.com/Overcastly-AI/hunting-club/pull/7#issuecomment-7188280309

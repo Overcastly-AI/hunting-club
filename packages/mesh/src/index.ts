@@ -8,6 +8,7 @@ export * from './provisioning';
 export * from './owner';
 export * from './domain';
 export * from './ble';
+export * from './firmware';
 export { DedupCache, packetKey } from './dedup';
 export { defaultRandom, randomUint32, type RandomSource } from './random';
 export { defaultTimers, type TimerHandle, type Timers } from './runtime';

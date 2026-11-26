@@ -2,3 +2,4 @@
 export * from './transports/FakeTransport';
 export { seededRandom } from './testing/seededRandom';
 export * from './testing/fixtures';
+export * from './testing/framedRadio';

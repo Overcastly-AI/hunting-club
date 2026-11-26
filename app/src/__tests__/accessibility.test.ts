@@ -69,6 +69,26 @@ describe('accessibility rules from docs/SPEC.md', () => {
     }
   });
 
+  it('lets text wrap and grow on every screen outside the map (names, times, places)', () => {
+    // Map labels are one line by design (they sit on markers); the tab bar caps
+    // its labels at TAB_LABEL_MAX_LINES (checked above). Everything else wraps.
+    const allowed = new Set([join(SRC, 'app/(tabs)/_layout.tsx')]);
+    const offenders = tsxFiles(SRC)
+      .filter((file) => !file.startsWith(join(SRC, 'map')) && !allowed.has(file))
+      .flatMap((file) => {
+        const source = readFileSync(file, 'utf8');
+        return [
+          /numberOfLines=/.test(source) && 'cuts text to a number of lines',
+          /adjustsFontSizeToFit/.test(source) && 'shrinks text to fit',
+          /allowFontScaling=\{false\}/.test(source) && 'ignores the text size setting',
+          /maxFontSizeMultiplier=/.test(source) && 'caps the text size',
+        ]
+          .filter(Boolean)
+          .map((problem) => `${relative(SRC, file)} ${problem}`);
+      });
+    expect(offenders).toEqual([]);
+  });
+
   it('sets clubhouse board text at 24 px or more, readable from across a room', () => {
     for (const size of [fontSize.boardDetail, fontSize.boardName, fontSize.boardTitle]) {
       expect(size).toBeGreaterThanOrEqual(24);

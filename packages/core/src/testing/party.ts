@@ -4,7 +4,7 @@
  */
 import type { CalendarDay, SunApi } from '../sun';
 import { connectedMesh, NODES, seededRandom } from '@huntclub/mesh/testing';
-import type { FakeAirOptions, FakeRadio } from '@huntclub/mesh/testing';
+import type { FakeAirOptions, FakeRadio, FakeRadioOptions } from '@huntclub/mesh/testing';
 import {
   HUNTCLUB_PORT,
   generatePartyChannelSet,
@@ -12,6 +12,7 @@ import {
   type AppMessage,
   type AppMessageType,
   type MeshClient,
+  type MeshClientOptions,
 } from '@huntclub/mesh';
 import type { FakeAir } from '@huntclub/mesh/testing';
 import { CheckInBoard, CheckInController } from '../checkIn';
@@ -65,6 +66,9 @@ export async function party(
     air?: FakeAirOptions;
     receipts?: Partial<ReceiptPolicy>;
     clubModes?: boolean;
+    /** Extra options for every phone's MeshClient and every FakeRadio. */
+    client?: Partial<MeshClientOptions>;
+    radio?: Partial<FakeRadioOptions>;
   } = {},
 ): Promise<{ phones: Phone[]; air: Awaited<ReturnType<typeof connectedMesh>>['air'] }> {
   const nodes = [NODES.alice, NODES.bob, NODES.carol, NODES.dave].slice(0, opts.size ?? 3);
@@ -72,13 +76,14 @@ export async function party(
     nodes.map((nodeNum) =>
       opts.separateChannels
         ? {
+            ...opts.radio,
             nodeNum,
             channels: generatePartyChannelSet({ random: seededRandom(nodeNum), name: 'Solo' })
               .settings,
           }
-        : { nodeNum },
+        : { ...opts.radio, nodeNum },
     ),
-    opts.air ? { air: opts.air } : {},
+    { ...(opts.air ? { air: opts.air } : {}), ...(opts.client ? { client: opts.client } : {}) },
   );
   const phones = mesh.clients.map((client, i) => {
     const ctx = { client, random: seededRandom(nodes[i]! ^ 0x5eed) };
