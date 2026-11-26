@@ -1,7 +1,7 @@
 // The admin's component library (docs/UI_REDESIGN.md section 6). Styles: ./styles, shipped
 // in the global stylesheet file. Every state is on the dev-only kit page (src/kit).
 export { Avatar } from './Avatar';
-export { Badge, STATUSES, StatusPill, TONES, type Status, type Tone } from './Badge';
+export { Badge, STATUSES, StatusPill, type Status } from './Badge';
 export { Banner, type BannerTone } from './Banner';
 export {
   BUTTON_VARIANTS,

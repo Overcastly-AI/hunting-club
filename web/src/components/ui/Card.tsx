@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cx } from './cx';
-import { ICON } from './sizes';
+import { ICON_SIZE } from '@huntclub/design';
 
 type Heading = 'h2' | 'h3';
 
@@ -55,7 +55,7 @@ export function StatTile(props: {
   const body = (
     <>
       <span className="ui-stat-tile__label">
-        {Icon ? <Icon size={ICON.sm} aria-hidden /> : null}
+        {Icon ? <Icon size={ICON_SIZE.sm} aria-hidden /> : null}
         {props.label}
       </span>
       <span className="ui-stat-tile__value text-stat">{props.value}</span>

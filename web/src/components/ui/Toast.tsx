@@ -2,7 +2,8 @@ import * as RadixToast from '@radix-ui/react-toast';
 import { CircleAlert, CircleCheck, Info, X, type LucideIcon } from 'lucide-react';
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 import { Button } from './Button';
-import { ICON, TOAST_DURATION_MS } from './sizes';
+import { ICON_SIZE } from '@huntclub/design';
+import { TOAST_DURATION_MS } from './sizes';
 
 export type ToastTone = 'success' | 'danger' | 'info';
 
@@ -59,7 +60,7 @@ export function ToastProvider(props: { children: ReactNode }) {
               type={t.tone === 'danger' ? 'foreground' : 'background'}
               onOpenChange={(open) => (open ? undefined : remove(t.id))}
             >
-              <Icon className="ui-toast__icon" size={ICON.md} aria-hidden />
+              <Icon className="ui-toast__icon" size={ICON_SIZE.md} aria-hidden />
               <div className="ui-toast__body" {...(t.tone === 'danger' ? DANGER_BODY : {})}>
                 <RadixToast.Title className="ui-toast__title">{t.title}</RadixToast.Title>
                 {t.description ? (

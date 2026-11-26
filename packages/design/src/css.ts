@@ -2,7 +2,13 @@
 // page retypes a value. Plain strings: no DOM code here.
 import { colors, lightColors } from './colors';
 import { breakpoints, motion, radii, sizes, spacing } from './sizes';
-import { THEME_ATTRIBUTE, THEME_STORAGE_KEY, themes, type Theme } from './theme';
+import {
+  THEME_ATTRIBUTE,
+  THEME_STORAGE_KEY,
+  themes,
+  type Theme,
+  type ThemeColorToken,
+} from './theme';
 import {
   fontAxisLimits,
   fontFamily,
@@ -57,6 +63,9 @@ export function rootVariablesCss(): string {
  * `--theme-shadow-card`, `--theme-scrim`, … and `--theme-color-scheme` (`dark` or `light`),
  * which a page applies with `color-scheme: var(--theme-color-scheme)` when it adopts the theme.
  */
+/** The CSS variable of one theme colour: `themeVar('successTint')` → `var(--theme-success-tint)`. */
+export const themeVar = (token: ThemeColorToken) => `var(--theme-${kebab(token)})`;
+
 export function themeVariables(theme: Theme): Record<string, string> {
   const vars: Record<string, string> = {};
   for (const [name, value] of Object.entries({ ...theme.colors, ...theme.effects })) {

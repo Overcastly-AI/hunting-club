@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { cx } from './cx';
 import { useFieldIds, type FieldControlProps } from './fieldIds';
-import { ICON } from './sizes';
+import { ICON_SIZE } from '@huntclub/design';
 
 const FieldContext = createContext<FieldControlProps | null>(null);
 
@@ -42,7 +42,7 @@ export function Field(props: {
       ) : null}
       {props.error ? (
         <span id={errorId} className="ui-field__error">
-          <CircleAlert size={ICON.sm} aria-hidden />
+          <CircleAlert size={ICON_SIZE.sm} aria-hidden />
           {props.error}
         </span>
       ) : null}
@@ -89,7 +89,7 @@ export function Select(
           </option>
         ))}
       </select>
-      <ChevronDown size={ICON.md} aria-hidden />
+      <ChevronDown size={ICON_SIZE.md} aria-hidden />
     </span>
   );
 }

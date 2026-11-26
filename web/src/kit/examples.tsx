@@ -11,6 +11,7 @@ import {
   Trash2,
   Users,
 } from 'lucide-react';
+import { STATUS_TONES } from '@huntclub/design';
 import { BILLING_INTERVALS, CLUB_PRICING, type BillingInterval } from '@huntclub/shared/pricing';
 import { useState, type ReactNode } from 'react';
 import {
@@ -43,7 +44,6 @@ import {
   Tabs,
   Textarea,
   ThemeToggle,
-  TONES,
   Tooltip,
   useToast,
   type Status,
@@ -445,7 +445,7 @@ function Badges() {
       </Row>
       <Label>Badge tones</Label>
       <Row>
-        {TONES.map((t) => (
+        {STATUS_TONES.map((t) => (
           <Badge key={t} tone={t}>
             {t[0]!.toUpperCase() + t.slice(1)}
           </Badge>

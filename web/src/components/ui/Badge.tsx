@@ -12,13 +12,10 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { ICON } from './sizes';
-
-export const TONES = ['success', 'warning', 'danger', 'info', 'neutral'] as const;
-export type Tone = (typeof TONES)[number];
+import { ICON_SIZE, type StatusTone } from '@huntclub/design';
 
 /** Each tone's icon when the caller gives none: status is never colour alone. */
-export const TONE_ICONS: Record<Tone, LucideIcon> = {
+export const TONE_ICONS: Record<StatusTone, LucideIcon> = {
   success: CircleCheck,
   warning: TriangleAlert,
   danger: CircleAlert,
@@ -27,11 +24,11 @@ export const TONE_ICONS: Record<Tone, LucideIcon> = {
 };
 
 /** Icon and word on the tone's tint (each pair is in the contrast test). */
-export function Badge(props: { tone: Tone; icon?: LucideIcon; children: ReactNode }) {
+export function Badge(props: { tone: StatusTone; icon?: LucideIcon; children: ReactNode }) {
   const Icon = props.icon ?? TONE_ICONS[props.tone];
   return (
     <span className={`ui-badge ui-badge--${props.tone}`}>
-      <Icon size={ICON.sm} aria-hidden />
+      <Icon size={ICON_SIZE.sm} aria-hidden />
       {props.children}
     </span>
   );
@@ -47,7 +44,7 @@ export const STATUSES = {
   new: { tone: 'info', icon: Sparkles, label: 'New' },
   member: { tone: 'neutral', icon: User, label: 'Member' },
   inactive: { tone: 'neutral', icon: CircleMinus, label: 'Inactive' },
-} as const satisfies Record<string, { tone: Tone; icon: LucideIcon; label: string }>;
+} as const satisfies Record<string, { tone: StatusTone; icon: LucideIcon; label: string }>;
 export type Status = keyof typeof STATUSES;
 
 /** A Badge for one of the admin's statuses: Active, Trial, Past due, Admin, Member, … */

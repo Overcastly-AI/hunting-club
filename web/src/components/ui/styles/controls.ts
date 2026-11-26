@@ -1,10 +1,9 @@
 // Button, Field (Input, Select, Textarea), Checkbox, Switch, RadioGroup and Segmented.
-import { space } from '@huntclub/design';
-import { BUTTON_HEIGHT, BUTTON_PADDING, ICON, type ButtonSize } from '../sizes';
+import { BUTTON_HEIGHT, BUTTON_PADDING, ICON_SIZE, space, type ButtonSize } from '@huntclub/design';
 import { color, focusRing, gap, PHONE, TAP, text, transition, visuallyHidden } from './shared';
 
 /** While loading, the spinner takes an icon slot; the padding shrinks so the width holds. */
-const busyPadding = (size: ButtonSize) => BUTTON_PADDING[size] - (ICON.md + space[2]) / 2;
+const busyPadding = (size: ButtonSize) => BUTTON_PADDING[size] - (ICON_SIZE.md + space[2]) / 2;
 
 const buttonSizes = (Object.keys(BUTTON_HEIGHT) as ButtonSize[])
   .map(
@@ -40,7 +39,7 @@ ${buttonSizes}
 .ui-button--tertiary:disabled, .ui-button--link:disabled, .ui-button--tertiary[aria-disabled='true'],
   .ui-button--link[aria-disabled='true'] { background: transparent; border-color: transparent; }
 .ui-button[aria-busy='true'] { cursor: progress; }
-.ui-spinner { width: ${ICON.md}px; height: ${ICON.md}px; flex: none; border-radius: var(--radius-full);
+.ui-spinner { width: ${ICON_SIZE.md}px; height: ${ICON_SIZE.md}px; flex: none; border-radius: var(--radius-full);
   border: 2px solid currentColor; border-right-color: transparent; animation: ui-spin 800ms linear infinite; }
 @keyframes ui-spin { to { transform: rotate(360deg); } }
 `;
@@ -74,8 +73,8 @@ const field = `
 const choice = `
 .ui-check, .ui-radio { display: flex; align-items: flex-start; gap: ${gap(3)}; min-height: ${TAP};
   padding: ${gap(3)} 0; cursor: pointer; color: ${color('text')}; }
-.ui-check__box { position: relative; flex: none; width: ${ICON.lg}px; height: ${ICON.lg}px; }
-.ui-check__input, .ui-radio__input { appearance: none; margin: 0; width: ${ICON.lg}px; height: ${ICON.lg}px; flex: none;
+.ui-check__box { position: relative; flex: none; width: ${ICON_SIZE.lg}px; height: ${ICON_SIZE.lg}px; }
+.ui-check__input, .ui-radio__input { appearance: none; margin: 0; width: ${ICON_SIZE.lg}px; height: ${ICON_SIZE.lg}px; flex: none;
   border: 1px solid ${color('border-control')}; background: ${color('surface-2')}; cursor: pointer;
   ${transition('background-color', 'border-color')} }
 .ui-check__input { border-radius: var(--radius-sm); }
@@ -101,13 +100,13 @@ const switchCss = `
 .ui-switch { display: inline-flex; align-items: center; gap: ${gap(3)}; min-height: ${TAP}; cursor: pointer;
   color: ${color('text')}; position: relative; }
 .ui-switch__input { ${visuallyHidden} }
-.ui-switch__track { flex: none; position: relative; width: 44px; height: ${ICON.lg + space[1]}px;
+.ui-switch__track { flex: none; position: relative; width: 44px; height: ${ICON_SIZE.lg + space[1]}px;
   border-radius: var(--radius-full); border: 1px solid ${color('border-control')}; background: ${color('surface-3')};
   ${transition('background-color', 'border-color')} }
-.ui-switch__thumb { position: absolute; top: 3px; left: 3px; width: ${ICON.md}px; height: ${ICON.md}px;
+.ui-switch__thumb { position: absolute; top: 3px; left: 3px; width: ${ICON_SIZE.md}px; height: ${ICON_SIZE.md}px;
   border-radius: var(--radius-full); background: ${color('text-secondary')}; ${transition('translate', 'background-color')} }
 .ui-switch__input:checked + .ui-switch__track { background: ${color('accent')}; border-color: ${color('accent-border')}; }
-.ui-switch__input:checked + .ui-switch__track .ui-switch__thumb { translate: ${ICON.md - space[1]}px 0;
+.ui-switch__input:checked + .ui-switch__track .ui-switch__thumb { translate: ${ICON_SIZE.md - space[1]}px 0;
   background: ${color('on-accent')}; }
 .ui-switch__input:focus-visible + .ui-switch__track { outline: 2px solid ${color('focus-ring')}; outline-offset: 2px; }
 .ui-switch__input:disabled + .ui-switch__track { border-color: ${color('border-subtle')}; }

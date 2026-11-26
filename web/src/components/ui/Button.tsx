@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, MouseEvent, ReactNode, Ref } from 'react';
 import { cx } from './cx';
-import { ICON, type ButtonSize } from './sizes';
+import { ICON_SIZE, type ButtonSize } from '@huntclub/design';
 import { Tooltip } from './Tooltip';
 
 /**
@@ -72,7 +72,7 @@ export function Button(props: ButtonProps) {
   } = props;
   // `label` exists only on the icon-only form.
   const { label, ...native } = rest as typeof rest & { label?: string };
-  const lead = loading ? <Spinner /> : Icon ? <Icon size={ICON.md} aria-hidden /> : null;
+  const lead = loading ? <Spinner /> : Icon ? <Icon size={ICON_SIZE.md} aria-hidden /> : null;
   const button = (
     <button
       {...native}
@@ -108,7 +108,7 @@ export function ButtonLink(
   const { variant, size, icon: Icon, block, className, children, ...anchor } = props;
   return (
     <a {...anchor} className={buttonClass({ variant, size, block, className })}>
-      {Icon ? <Icon size={ICON.md} aria-hidden /> : null}
+      {Icon ? <Icon size={ICON_SIZE.md} aria-hidden /> : null}
       {children}
     </a>
   );

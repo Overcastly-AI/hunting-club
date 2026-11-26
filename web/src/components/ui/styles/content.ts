@@ -1,5 +1,12 @@
 // Card, StatTile, DataTable, EmptyState, Skeleton, Badge, Avatar, Banner and PageHeader.
-import { AVATAR, ICON, TABLE_ROW_HEIGHT, type AvatarSize } from '../sizes';
+import {
+  ICON_SIZE,
+  STATUS_TONE_COLORS,
+  STATUS_TONES,
+  themeVar,
+  type StatusTone,
+} from '@huntclub/design';
+import { AVATAR, TABLE_ROW_HEIGHT, type AvatarSize } from '../sizes';
 import {
   color,
   DESKTOP,
@@ -77,7 +84,7 @@ ${PHONE} {
 const emptyState = `
 .ui-empty { display: grid; justify-items: center; text-align: center; gap: ${gap(3)}; padding: ${gap(10)} ${gap(4)};
   color: ${color('text')}; }
-.ui-empty__icon { display: grid; place-items: center; width: ${ICON.empty * 2}px; height: ${ICON.empty * 2}px;
+.ui-empty__icon { display: grid; place-items: center; width: ${ICON_SIZE.empty * 2}px; height: ${ICON_SIZE.empty * 2}px;
   border-radius: var(--radius-full); background: ${color('surface-2')}; color: ${color('text-secondary')};
   margin-bottom: ${gap(2)}; }
 .ui-empty__title { ${text('title3')}; margin: 0; }
@@ -98,15 +105,23 @@ const skeleton = `
 .ui-skeleton-group { display: grid; gap: ${gap(2)}; }
 `;
 
+/** `.block--tone` rules: each tone's text and icon colour on its background (STATUS_TONE_COLORS). */
+const toneCss = (block: string, tones: readonly StatusTone[]) =>
+  tones
+    .map((tone) => {
+      const { foreground, background } = STATUS_TONE_COLORS[tone];
+      return `.${block}--${tone} { background: ${themeVar(background)}; color: ${themeVar(foreground)}; }`;
+    })
+    .join('\n');
+
+/** Banners have no neutral tone. */
+const BANNER_TONES = STATUS_TONES.filter((t) => t !== 'neutral');
+
 const badge = `
 .ui-badge { ${text('badge')}; display: inline-flex; align-items: center; gap: ${gap(1)}; padding: 2px ${gap(2)};
   border-radius: var(--radius-full); white-space: nowrap; vertical-align: middle; }
 .ui-badge svg { flex: none; }
-.ui-badge--success { background: ${color('success-tint')}; color: ${color('success')}; }
-.ui-badge--warning { background: ${color('warning-tint')}; color: ${color('warning')}; }
-.ui-badge--danger { background: ${color('danger-tint')}; color: ${color('danger')}; }
-.ui-badge--info { background: ${color('info-tint')}; color: ${color('info')}; }
-.ui-badge--neutral { background: ${color('surface-2')}; color: ${color('text-secondary')}; }
+${toneCss('ui-badge', STATUS_TONES)}
 `;
 
 const avatarSizes = (Object.keys(AVATAR) as AvatarSize[])
@@ -133,10 +148,7 @@ const banner = `
 .ui-banner__title { ${text('label')}; margin: 0; }
 .ui-banner__text { ${text('body')}; margin: 0; }
 .ui-banner__action { flex: none; align-self: center; }
-.ui-banner--success { background: ${color('success-tint')}; color: ${color('success')}; }
-.ui-banner--warning { background: ${color('warning-tint')}; color: ${color('warning')}; }
-.ui-banner--danger { background: ${color('danger-tint')}; color: ${color('danger')}; }
-.ui-banner--info { background: ${color('info-tint')}; color: ${color('info')}; }
+${toneCss('ui-banner', BANNER_TONES)}
 `;
 
 const pageHeader = `

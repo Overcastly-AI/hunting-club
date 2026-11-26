@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { ICON } from './sizes';
+import { ICON_SIZE } from '@huntclub/design';
 
 /**
  * What an empty list or page says instead of "No X yet.": a 48 px icon, a title (title-3),
@@ -19,7 +19,7 @@ export function EmptyState(props: {
   return (
     <div className="ui-empty">
       <span className="ui-empty__icon">
-        <Icon size={ICON.empty} strokeWidth={1.5} aria-hidden />
+        <Icon size={ICON_SIZE.empty} strokeWidth={1.5} aria-hidden />
       </span>
       <Title className="ui-empty__title">{props.title}</Title>
       {props.children ? <p className="ui-empty__body">{props.children}</p> : null}

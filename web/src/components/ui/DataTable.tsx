@@ -1,7 +1,7 @@
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { cx } from './cx';
-import { ICON } from './sizes';
+import { ICON_SIZE } from '@huntclub/design';
 import { Skeleton } from './Skeleton';
 
 export interface TableColumn<R> {
@@ -138,7 +138,7 @@ export function DataTable<R>(props: {
                   {c.sortValue ? (
                     <button type="button" className="ui-table__sort" onClick={() => toggle(c.key)}>
                       {c.header}
-                      <SortIcon size={ICON.sm} aria-hidden />
+                      <SortIcon size={ICON_SIZE.sm} aria-hidden />
                     </button>
                   ) : (
                     c.header

@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import { TONE_ICONS, type Tone } from './Badge';
-import { ICON } from './sizes';
+import { ICON_SIZE, type StatusTone } from '@huntclub/design';
+import { TONE_ICONS } from './Badge';
 
-export type BannerTone = Exclude<Tone, 'neutral'>;
+export type BannerTone = Exclude<StatusTone, 'neutral'>;
 
 /**
  * An inline message in a page or card: icon, optional title, text and one action. All text
@@ -20,7 +20,7 @@ export function Banner(props: {
   const role = props.live ? (props.tone === 'danger' ? 'alert' : 'status') : undefined;
   return (
     <div className={`ui-banner ui-banner--${props.tone}`} role={role}>
-      <Icon className="ui-banner__icon" size={ICON.md} aria-hidden />
+      <Icon className="ui-banner__icon" size={ICON_SIZE.md} aria-hidden />
       <div className="ui-banner__body">
         {props.title ? <p className="ui-banner__title">{props.title}</p> : null}
         <p className="ui-banner__text">{props.children}</p>

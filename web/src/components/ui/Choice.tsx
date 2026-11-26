@@ -1,7 +1,7 @@
 import { Check, type LucideIcon } from 'lucide-react';
 import { useId, type InputHTMLAttributes, type ReactNode } from 'react';
 import { cx } from './cx';
-import { ICON } from './sizes';
+import { ICON_SIZE } from '@huntclub/design';
 
 type NativeCheckbox = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'children'>;
 
@@ -18,7 +18,7 @@ export function Checkbox(props: NativeCheckbox & { label: ReactNode; hint?: Reac
           className="ui-check__input"
           aria-describedby={hint ? hintId : undefined}
         />
-        <Check className="ui-check__icon" size={ICON.md} strokeWidth={3} aria-hidden />
+        <Check className="ui-check__icon" size={ICON_SIZE.md} strokeWidth={3} aria-hidden />
       </span>
       <span className="ui-check__text">
         <span className="ui-check__label">{label}</span>
@@ -105,7 +105,7 @@ function ChoiceGroup<V extends string>(
               {radio}
               {o.preview ? <span className="ui-segment__preview">{o.preview}</span> : null}
               <span className="ui-segment__row">
-                {Icon ? <Icon size={ICON.md} aria-hidden /> : null}
+                {Icon ? <Icon size={ICON_SIZE.md} aria-hidden /> : null}
                 {o.label}
               </span>
             </label>
