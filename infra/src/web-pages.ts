@@ -1,49 +1,96 @@
-import { MAP_PACKS_PREFIX } from '@huntclub/shared/maps';
+import { ADMIN_PATH } from '@huntclub/shared/app';
+import {
+  ADMIN_PAGE_PATHS,
+  NOINDEX_PATHS,
+  NOT_FOUND_PAGE,
+  outputFile,
+  REDIRECTS,
+  ROUTES,
+  SITEMAP_FILE,
+} from '@huntclub/site/routes';
 import type { EnvConfig } from '../config';
 
-/** The page that answers every page path (the web app routes it, or shows Page not found). */
-export const WEB_PAGE_OBJECT = '/index.html';
+/** The club admin's page in the bucket (web/dist, deployed under ADMIN_PATH). */
+export const ADMIN_PREFIX = ADMIN_PATH.slice(1); // "app/"
+export const ADMIN_PAGE_OBJECT = `${ADMIN_PATH}index.html`;
 
-/** Universal-link files: no file extension, but files, never the page. */
+/** Universal-link files: no file extension, but files, never pages. */
 export const WELL_KNOWN_PREFIX = '.well-known/';
 
-/** Key prefixes in the site bucket that are always files, whatever their names look like. */
-export const FILE_PREFIXES = [WELL_KNOWN_PREFIX, MAP_PACKS_PREFIX] as const;
+/** The branded not-found page CloudFront serves, with a 404 status, for any missing path. */
+export const NOT_FOUND_OBJECT = `/${NOT_FOUND_PAGE.file}`;
+
+/** Public site pages by path → their object in the bucket (from the site's route registry). */
+export function sitePageObjects(): Record<string, string> {
+  return Object.fromEntries(ROUTES.map((r) => [r.path, `/${outputFile(r.path)}`]));
+}
 
 /**
- * Source of the CloudFront Function (viewer request, JS runtime 2.0) behind the SPA
- * fallback: every path whose last segment has no file extension is a page path and gets
- * index.html (200), so a deep link or a mistyped path reaches the web app, which shows the
- * page or Page not found. Paths with an extension (hashed assets, favicon.svg, robots.txt)
- * and FILE_PREFIXES go to S3 unchanged, so a missing file is a real 404. `/` is left to the
- * distribution's default root object. Join links keep their data in the URL fragment,
- * which never reaches CloudFront.
+ * Source of the CloudFront Function (viewer request, JS runtime 2.0). An allowlist
+ * generated from the site's route registry, in this order:
+ * 1. REDIRECTS (301): /index.html → /, /login and /sign-in → the admin.
+ * 2. The admin: /app → /app/ (301); /app/ and any extensionless path under it → its
+ *    index.html (hash routes); its files (/app/assets/…) pass through.
+ * 3. A trailing slash anywhere else → 301 to the path without it.
+ * 4. A registered site page → its <path>/index.html.
+ * 5. A real path the admin still answers (/join, /checkout/*, /privacy, /terms) → the
+ *    admin's index.html.
+ * Anything else goes to S3 as is: a missing key is a 404, which the distribution answers
+ * with the 404 page. Join links keep their data in the URL fragment, which never
+ * reaches CloudFront.
  */
 export function webPageRewriteSource(): string {
-  const prefixes = FILE_PREFIXES.map((p) => `/${p}`);
+  const adminRoot = ADMIN_PATH.replace(/\/$/, '');
+  const adminPages = Object.fromEntries(ADMIN_PAGE_PATHS.map((p) => [p, true]));
   return [
-    `var FILE_PREFIXES = ${JSON.stringify(prefixes)};`,
+    `var REDIRECTS = ${JSON.stringify(REDIRECTS)};`,
+    `var SITE = ${JSON.stringify(sitePageObjects())};`,
+    `var ADMIN_PAGES = ${JSON.stringify(adminPages)};`,
+    `var ADMIN_ROOT = ${JSON.stringify(adminRoot)};`,
+    `var ADMIN_INDEX = ${JSON.stringify(ADMIN_PAGE_OBJECT)};`,
+    'function redirect(to) {',
+    "  return { statusCode: 301, statusDescription: 'Moved Permanently', headers: { location: { value: to } } };",
+    '}',
     'function handler(event) {',
     '  var request = event.request;',
     '  var uri = request.uri;',
-    "  if (uri === '/') return request;",
-    '  for (var i = 0; i < FILE_PREFIXES.length; i++) {',
-    '    if (uri.indexOf(FILE_PREFIXES[i]) === 0) return request;',
+    '  if (REDIRECTS[uri]) return redirect(REDIRECTS[uri]);',
+    "  if (uri === ADMIN_ROOT) return redirect(ADMIN_ROOT + '/');",
+    "  if (uri.indexOf(ADMIN_ROOT + '/') === 0) {",
+    "    if (uri.split('/').pop().indexOf('.') === -1) request.uri = ADMIN_INDEX;",
+    '    return request;',
     '  }',
-    "  var last = uri.replace(/\\/+$/, '').split('/').pop();",
-    `  if (last.indexOf('.') === -1) request.uri = ${JSON.stringify(WEB_PAGE_OBJECT)};`,
+    "  if (uri.length > 1 && uri.charAt(uri.length - 1) === '/') {",
+    "    return redirect(uri.replace(/\\/+$/, '') || '/');",
+    '  }',
+    '  if (SITE[uri]) {',
+    '    request.uri = SITE[uri];',
+    '    return request;',
+    '  }',
+    '  if (ADMIN_PAGES[uri] === true) request.uri = ADMIN_INDEX;',
     '  return request;',
     '}',
   ].join('\n');
 }
 
 /**
- * robots.txt for an environment: only an environment marked indexable may be crawled;
- * every other one (dev) disallows everything.
+ * robots.txt for an environment. Dev disallows everything (and sends X-Robots-Tag). An
+ * indexable environment allows the site but not the admin, invites or Checkout pages,
+ * and points at the sitemap.
  */
-export function robotsTxt(config: Pick<EnvConfig, 'searchIndexing'>): string {
-  return ['User-agent: *', config.searchIndexing ? 'Allow: /' : 'Disallow: /', ''].join('\n');
+export function robotsTxt(config: Pick<EnvConfig, 'searchIndexing' | 'domainName'>): string {
+  const lines = config.searchIndexing
+    ? [
+        'Allow: /',
+        ...NOINDEX_PATHS.map((p) => `Disallow: ${p}`),
+        `Sitemap: https://${config.domainName}/${SITEMAP_FILE}`,
+      ]
+    : ['Disallow: /'];
+  return ['User-agent: *', ...lines, ''].join('\n');
 }
 
 /** robots.txt's key in the site bucket. */
 export const ROBOTS_FILE = 'robots.txt';
+
+/** Header that keeps a non-indexable environment (dev) out of search results. */
+export const NOINDEX_HEADER = { header: 'X-Robots-Tag', value: 'noindex, nofollow' } as const;

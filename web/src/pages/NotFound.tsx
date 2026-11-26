@@ -1,3 +1,4 @@
+import { ADMIN_PATH } from '@huntclub/shared/app';
 import { useDocumentTitle } from '../title';
 
 export const NOT_FOUND_TITLE = 'Page not found';
@@ -9,7 +10,7 @@ export function NotFound() {
     <section className="not-found" aria-labelledby="not-found-title">
       <h1 id="not-found-title">{NOT_FOUND_TITLE}</h1>
       <p className="muted">This page does not exist. Check the link, or go back and sign in.</p>
-      <a className="button primary" href="/">
+      <a className="button primary" href={ADMIN_PATH}>
         Back to sign in
       </a>
     </section>

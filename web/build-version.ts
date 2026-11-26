@@ -2,7 +2,8 @@
 // so an open tab can tell when a newer build is live (src/buildVersion.ts).
 import { randomUUID } from 'node:crypto';
 import type { Plugin } from 'vite';
-import { BUILD_ID_GLOBAL, BUILD_VERSION_FILE } from './src/buildVersion';
+import { BUILD_VERSION_FILE } from '@huntclub/shared/app';
+import { BUILD_ID_GLOBAL } from './src/buildVersion';
 
 export function buildVersion(buildId: string = randomUUID()): Plugin {
   return {

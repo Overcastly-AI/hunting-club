@@ -1,10 +1,11 @@
 import { APP_DESCRIPTION, APP_NAME } from '@huntclub/shared/app';
-import { FAVICON_FILE, siteHeadTags } from '../../site-head';
+import { siteHeadTags } from '../../site-head';
 import {
   MIN_TEXT_CONTRAST,
   MIN_UI_CONTRAST,
   colors,
   contrastRatio,
+  FAVICON_SVG,
   fontSize,
   lightColors,
   logoMarkSvg,
@@ -90,9 +91,7 @@ describe('page head and favicon', () => {
     expect(attrs).toContainEqual({ title: APP_NAME });
     expect(attrs).toContainEqual({ name: 'description', content: APP_DESCRIPTION });
     expect(attrs).toContainEqual({ name: 'theme-color', content: colors.surface });
-    expect(attrs).toContainEqual(
-      expect.objectContaining({ rel: 'icon', href: `/${FAVICON_FILE}` }),
-    );
+    expect(attrs).toContainEqual(expect.objectContaining({ rel: 'icon', href: `/${FAVICON_SVG}` }));
   });
 
   it('draws the logo only in token colors', () => {
