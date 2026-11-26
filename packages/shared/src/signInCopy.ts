@@ -24,9 +24,6 @@ export function emailCodeRules(kind: CodeChallenge['kind']): EmailCodeRules {
   return CODE_RULES[kind];
 }
 
-/** Longest code any challenge expects: inputs never cut a pasted code shorter than this. */
-export const EMAIL_CODE_MAX_LENGTH = Math.max(SIGN_UP_CODE_LENGTH, EMAIL_OTP_CODE_LENGTH);
-
 export const signInCopy = {
   title: 'Sign in',
   intro: 'We email you a code. No password to remember.',

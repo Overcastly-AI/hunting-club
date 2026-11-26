@@ -1,6 +1,5 @@
 import {
   codeDigits,
-  EMAIL_CODE_MAX_LENGTH,
   emailCodeRules,
   EMAIL_OTP_CODE_LENGTH,
   SIGN_UP_CODE_LENGTH,
@@ -14,7 +13,7 @@ describe('emailed code rules', () => {
       length: EMAIL_OTP_CODE_LENGTH,
       validFor: '3 minutes',
     });
-    expect([SIGN_UP_CODE_LENGTH, EMAIL_OTP_CODE_LENGTH, EMAIL_CODE_MAX_LENGTH]).toEqual([6, 8, 8]);
+    expect([SIGN_UP_CODE_LENGTH, EMAIL_OTP_CODE_LENGTH]).toEqual([6, 8]);
   });
 
   it('word the copy per kind, and never name a fixed length up front', () => {
