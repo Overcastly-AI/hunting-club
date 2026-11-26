@@ -35,4 +35,11 @@ describe('theme usage', () => {
       .sort();
     expect(importers).toEqual(STATIC_COLOR_FILES);
   });
+
+  it('never fades a disabled control (faded text drops under 4.5:1 in the light theme)', () => {
+    const offenders = sourceFiles(SRC, /\.tsx$/)
+      .filter((file) => /disabled\)?\s*&&\s*\{\s*opacity/.test(readFileSync(file, 'utf8')))
+      .map((file) => relative(SRC, file));
+    expect(offenders).toEqual([]);
+  });
 });

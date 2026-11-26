@@ -5,3 +5,4 @@ export * from './sizes';
 export * from './type';
 export * from './logo';
 export * from './css';
+export * from './components';

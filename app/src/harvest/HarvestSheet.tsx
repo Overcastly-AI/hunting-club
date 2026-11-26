@@ -8,7 +8,7 @@ import { Button } from '../components/Button';
 import { OptionButtons } from '../components/OptionButtons';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { Sheet } from '../components/Sheet';
-import { TextField } from '../components/TextField';
+import { Field } from '../components/Field';
 import { makeStyles, textStyles } from '../theme';
 import {
   COMMON_SPECIES,
@@ -61,8 +61,8 @@ export function HarvestSheet({ visible, onClose }: Props) {
         selected={COMMON_SPECIES.find((s) => s === draft.species.trim())}
         onPress={(species) => setDraft((d) => ({ ...d, species }))}
       />
-      <TextField
-        placeholder="Species"
+      <Field
+        label="Species"
         value={draft.species}
         onChangeText={(species) => setDraft((d) => ({ ...d, species }))}
       />
@@ -75,8 +75,8 @@ export function HarvestSheet({ visible, onClose }: Props) {
       <Text style={styles.body}>
         {where ? `Where: ${where} (from your check-in)` : 'Where: not checked in'}
       </Text>
-      <TextField
-        placeholder="Notes (optional)"
+      <Field
+        label="Notes (optional)"
         value={draft.notes}
         onChangeText={(notes) => setDraft((d) => ({ ...d, notes }))}
         multiline

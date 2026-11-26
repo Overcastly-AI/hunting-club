@@ -35,10 +35,10 @@ async function signInWith(challenge: CodeChallenge) {
       </ClubStateProvider>
     </ProfileProvider>,
   );
-  await fireEvent.changeText(screen.getByPlaceholderText(signInCopy.email), challenge.email);
+  await fireEvent.changeText(screen.getByLabelText(signInCopy.email), challenge.email);
   await fireEvent.press(screen.getByRole('button', { name: signInCopy.sendCode }));
   await waitFor(() => expect(session.requestCode).toHaveBeenCalled());
-  const field = await screen.findByPlaceholderText(signInCopy.code);
+  const field = await screen.findByLabelText(signInCopy.code);
   return { session, onDone, field };
 }
 

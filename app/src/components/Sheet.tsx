@@ -49,6 +49,6 @@ const useStyles = makeStyles((theme) => ({
     padding: spacing.md,
     gap: spacing.md,
   },
-  title: { ...textStyles.sheetTitle, color: theme.colors.text },
+  title: { ...textStyles.title2, color: theme.colors.text },
   content: { gap: spacing.md },
 }));
