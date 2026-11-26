@@ -73,6 +73,9 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 | 2026-11-26 | App IDs `com.overcastly.huntclub` (iOS and Android) | Owner's GitHub org; hard to change after store upload |
 | 2026-11-26 | DRY with no shortcuts (owner rule) | One source of truth; shared code in `packages/` |
 | 2026-11-26 | Android foreground service as a small in-repo Expo module | No library provides it; avoids a dependency |
+| 2026-11-26 | Map packs (#41): deps `@aws-sdk/client-lambda`, `@aws-sdk/client-s3` (runtime-provided) and `pmtiles` (devDep, tests) approved | Builder Lambda needs them; no runtime cost |
+| 2026-11-26 | Map packs public on CloudFront at unguessable UUID URLs | Public-domain USGS tiles; signed URLs not worth the cost yet |
+| 2026-11-26 | Map pack builds: status building/ready/failed, one in flight per club, builder concurrency 1, tile cap derived from rate × timeout | Stay gentle with USGS and inside the 900 s Lambda limit |
 
 ## Backlog (coordinator)
 
