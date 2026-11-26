@@ -7,14 +7,15 @@ npm test          # Jest in Node, multi-phone scenarios over mesh's FakeAir
 npm run typecheck
 ```
 
-| Module             | What                                                                                                                                                                                  |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `checkIn.ts`       | `CheckInController`: our check-in, one open at a time, mode switching without check-out, CheckIn/CheckOut messages, `sharingLocation`. `CheckInBoard`: everyone else's open check-ins |
-| `overdue.ts`       | `overdueAt()` (sunset + grace, default 30 min) and `OverdueMonitor` (us and others, one OverdueAlert per check-in, jittered so one phone speaks for the party)                        |
-| `help.ts`          | `HelpRequester`: Ask for a Hand. Retries with the same message id until the first Receipt or `cancel()`, with airtime-aware backoff                                                   |
-| `receipts.ts`      | `ReceiptService` (de-duplicated, per-sender rate-limited, jittered receipts) and `DeliveryTracker` ("Delivered to N of M")                                                            |
-| `party.ts`         | `FREE_PARTY_MAX_MEMBERS` (3), `canJoinParty`, `assertCanJoinParty`, `shouldShowPartyQr`                                                                                               |
-| `testing/party.ts` | Test harness: a party of phones on one FakeAir with the core services running                                                                                                         |
+| Module             | What                                                                                                                                                                                                                                                                                 |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `config.ts`        | `CORE_CONFIG`: every tunable in one place                                                                                                                                                                                                                                            |
+| `checkIn.ts`       | `CheckInController`: our check-in, one open at a time, mode switching without check-out, CheckIn/CheckOut messages, `sharingLocation`. `CheckInBoard`: everyone else's open check-ins                                                                                                |
+| `overdue.ts`       | `overdueAt()` (sunset + grace, or a later extension) and `OverdueMonitor`. At our own deadline it prompts first (`selfPrompt`; answer with `extend()` or check-out) and alerts after `selfPromptMinutes` of silence. Other phones wait `othersDelayMinutes`, then one of them alerts |
+| `help.ts`          | `HelpRequester`: Ask for a Hand. Retries with the same message id until the first Receipt or `cancel()`, with airtime-aware backoff                                                                                                                                                  |
+| `receipts.ts`      | `ReceiptService` (de-duplicated, per-sender rate-limited, jittered receipts) and `DeliveryTracker` ("Delivered to N of M")                                                                                                                                                           |
+| `party.ts`         | `FREE_PARTY_MAX_MEMBERS` (3), `canJoinParty`, `assertCanJoinParty`, `shouldShowPartyQr`                                                                                                                                                                                              |
+| `testing/party.ts` | Test harness: a party of phones on one FakeAir with the core services running                                                                                                                                                                                                        |
 
 All tunables (receipt rate limits, help backoff, overdue grace, prompt and wait times) live in one object, `CORE_CONFIG` in `config.ts`; services accept partial overrides.
 
