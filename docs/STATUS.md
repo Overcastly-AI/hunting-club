@@ -76,10 +76,8 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 ## Backlog (coordinator)
 
-- Radio name: push the hunter's name/initials to the radio with set_owner (weather worker's module, then onboarding).
-- App bundle grew 3.4 → 4.1 MB after #22; check whether zod is tree-shaken in the app.
-- Investigate PR #16's failing meshtasticd sim job.
-- Re-take screenshots after the wiring to verify layout fixes.
+- Done: radio name (#32, #37), zod locale shim (#34, −243 KB), a11y pass (#39), deploy-dev workflow (#40, waits on owner deploy-path decision).
+- In progress: #16 sim fix + fresh screenshots (onboarding worker); map packs #41 backend → app (club-data); #41 review then web Map packs admin (web).
 
 - After #4 and #5: HarvestSex single source = SQL enum → @huntclub/shared → mesh derives wire codes (assigned to the schema worker).
 - After #6: move sunrise/sunset and freshness thresholds from app/src/map into packages/core if core needs them (DRY).
