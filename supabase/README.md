@@ -44,6 +44,8 @@ values from `@huntclub/shared` (`Tables<'stands'>`, `STAND_TYPES`, `REDEEM_INVIT
 - Harvests: the hunter's own rows always; the rest of the club only while `shared`.
 - The service role (webhook and provisioning Lambdas) is the only writer of `clubs` (create and delete),
   `subscriptions`, `map_packs`, `plans` and `stripe_events`.
+- Stands and areas get a `mesh_id` (uint32, per club and table, from 1, never reused) that the radio
+  protocol sends instead of the UUID. The server assigns it; clients can't set or change it.
 - All membership checks go through `private.is_club_member()` / `private.is_club_admin()`.
 - Joining uses `public.redeem_invite(token, display_name, initials)`, which checks expiry, use
   count, subscription status and the plan's member limit in one locked transaction.

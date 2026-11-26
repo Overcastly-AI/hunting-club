@@ -10,6 +10,7 @@ export type Database = {
         Row: {
           id: string;
           club_id: string;
+          mesh_id: number;
           name: string;
           boundary: Json;
           notes: string | null;
@@ -20,6 +21,7 @@ export type Database = {
         Insert: {
           id?: string;
           club_id: string;
+          mesh_id?: number;
           name: string;
           boundary: Json;
           notes?: string | null;
@@ -30,6 +32,7 @@ export type Database = {
         Update: {
           id?: string;
           club_id?: string;
+          mesh_id?: number;
           name?: string;
           boundary?: Json;
           notes?: string | null;
@@ -373,6 +376,7 @@ export type Database = {
         Row: {
           id: string;
           club_id: string;
+          mesh_id: number;
           area_id: string | null;
           name: string;
           type: Database['public']['Enums']['stand_type'];
@@ -386,6 +390,7 @@ export type Database = {
         Insert: {
           id?: string;
           club_id: string;
+          mesh_id?: number;
           area_id?: string | null;
           name: string;
           type: Database['public']['Enums']['stand_type'];
@@ -399,6 +404,7 @@ export type Database = {
         Update: {
           id?: string;
           club_id?: string;
+          mesh_id?: number;
           area_id?: string | null;
           name?: string;
           type?: Database['public']['Enums']['stand_type'];

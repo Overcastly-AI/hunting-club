@@ -188,19 +188,26 @@ select private.track_updated_at('public.invites');
 create table public.areas (
   id uuid primary key default gen_random_uuid(),
   club_id uuid not null references public.clubs (id) on delete cascade,
+  -- Short numeric id sent over the radio instead of the UUID (packages/mesh app port).
+  -- Assigned by private.assign_mesh_id(); the default is replaced on insert.
+  mesh_id bigint not null default 0 check (mesh_id between 1 and 4294967295),
   name text not null check (length(btrim(name)) between 1 and 60),
   boundary jsonb not null check (private.is_geojson_polygon(boundary)),
   notes text check (length(notes) <= 500),
   active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (id, club_id)
+  unique (id, club_id),
+  unique (club_id, mesh_id)
 );
 select private.track_updated_at('public.areas');
 
 create table public.stands (
   id uuid primary key default gen_random_uuid(),
   club_id uuid not null references public.clubs (id) on delete cascade,
+  -- Short numeric id sent over the radio instead of the UUID (packages/mesh app port).
+  -- Assigned by private.assign_mesh_id(); the default is replaced on insert.
+  mesh_id bigint not null default 0 check (mesh_id between 1 and 4294967295),
   area_id uuid,
   name text not null check (length(btrim(name)) between 1 and 60),
   type public.stand_type not null,
@@ -211,11 +218,47 @@ create table public.stands (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (id, club_id),
+  unique (club_id, mesh_id),
   check (private.is_valid_lat_lon(lat, lon)),
   -- The area must belong to the same club.
   foreign key (area_id, club_id) references public.areas (id, club_id) on delete set null (area_id)
 );
 select private.track_updated_at('public.stands');
+
+-- ---------------------------------------------------------------------------
+-- Radio ids for stands and areas: per club, per table, starting at 1, never
+-- reused (a radio holding an old id must not resolve it to a new stand), and
+-- never set or changed by clients.
+-- ---------------------------------------------------------------------------
+
+create table private.mesh_id_counters (
+  club_id uuid not null references public.clubs (id) on delete cascade,
+  table_name name not null,
+  last_value bigint not null check (last_value between 1 and 4294967295),
+  primary key (club_id, table_name)
+);
+
+create function private.assign_mesh_id() returns trigger
+language plpgsql security definer
+set search_path = ''
+as $$
+begin
+  if tg_op = 'INSERT' then
+    insert into private.mesh_id_counters as c (club_id, table_name, last_value)
+    values (new.club_id, tg_table_name, 1)
+    on conflict (club_id, table_name) do update set last_value = c.last_value + 1
+    returning c.last_value into new.mesh_id;
+  elsif (new.mesh_id, new.club_id) is distinct from (old.mesh_id, old.club_id) then
+    raise exception 'mesh_id and club_id cannot change' using errcode = '42501';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger assign_mesh_id before insert or update on public.areas
+  for each row execute function private.assign_mesh_id();
+create trigger assign_mesh_id before insert or update on public.stands
+  for each row execute function private.assign_mesh_id();
 
 -- Only harvests a member chose to share with the club live here (SPEC "Cloud tables").
 -- "shared" lets the hunter withdraw a share without deleting the record.
