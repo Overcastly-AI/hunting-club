@@ -14,6 +14,7 @@ import { seededRandom } from '../testing/seededRandom';
 import {
   SIM_ENABLED,
   SIM_IS_FAKE,
+  clientLogs,
   connectClient,
   nextEvent,
   report,
@@ -36,7 +37,7 @@ suite('meshtasticd --sim', () => {
 
   async function connectAll() {
     await Promise.all(clients.map((c) => c.close().catch(() => {})));
-    clients = await Promise.all(nodes.map((n, i) => connectClient(n, 100 + i)));
+    clients = await Promise.all(nodes.map((n) => connectClient(n)));
   }
 
   beforeAll(async () => {
@@ -49,6 +50,12 @@ suite('meshtasticd --sim', () => {
   });
 
   afterAll(async () => {
+    // Client-side view of every send (ids, ports, queue status, states), for diagnosing CI runs.
+    for (const [node, lines] of clientLogs) {
+      report(
+        `client log ${node} (last ${Math.min(lines.length, 80)} lines):\n  ${lines.slice(-80).join('\n  ')}`,
+      );
+    }
     await Promise.all(clients.map((c) => c.close().catch(() => {})));
     await stopSim();
   });
@@ -270,6 +277,9 @@ suite('meshtasticd --sim', () => {
         } finally {
           offs.forEach((off) => off());
           report(`dedup: B heard ${heard.length} packets: ${heard.join(' ')}`);
+          for (const [i, c] of clients.entries()) {
+            report(`client ${i}: state ${c.state}, ${c.pendingCount} queued`);
+          }
         }
       },
     );

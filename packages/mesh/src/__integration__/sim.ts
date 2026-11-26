@@ -8,7 +8,6 @@
 import { MeshClient } from '../MeshClient';
 import { FakeAir, FakeRadio } from '../transports/FakeTransport';
 import { NODES } from '../testing/fixtures';
-import { seededRandom } from '../testing/seededRandom';
 import { tcpTransport } from '../node/tcp';
 import { serveFakeRadioTcp, type FakeRadioServer } from '../node/fakeServer';
 
@@ -47,17 +46,33 @@ export async function stopSim(): Promise<void> {
   fakeServers = [];
 }
 
-/** A connected, handshaken client (retries while meshtasticd restarts). */
-export async function connectClient(
-  node: SimNode,
-  seed: number,
-  readyTimeoutMs = 90_000,
-): Promise<MeshClient> {
+/** Recent client log lines per node (ids, ports, sizes, states; never bodies). */
+export const clientLogs = new Map<string, string[]>();
+
+/**
+ * A connected, handshaken client (retries while meshtasticd restarts).
+ * Real firmware remembers (from, packet id) across connections, so packet
+ * ids must come from a real random source, not a seeded one that restarts
+ * with every new client.
+ */
+export async function connectClient(node: SimNode, readyTimeoutMs = 90_000): Promise<MeshClient> {
+  const key = `${node.host}:${node.port}`;
+  const lines = clientLogs.get(key) ?? [];
+  clientLogs.set(key, lines);
+  const t0 = Date.now();
+  const log = (event: string, details?: Record<string, string | number | boolean>) => {
+    lines.push(
+      `+${((Date.now() - t0) / 1000).toFixed(1)}s ${event} ${details ? JSON.stringify(details) : ''}`,
+    );
+    if (lines.length > 300) lines.shift();
+  };
   const client = new MeshClient({
     transport: tcpTransport({ ...node, reconnect: { initialMs: 500, maxMs: 5_000 } }),
-    random: seededRandom(seed),
     handshakeTimeoutMs: 15_000,
+    log,
   });
+  client.on('queueStatus', (q) => log('queueStatus', q));
+  client.on('state', (st) => log('state', { state: st }));
   const deadline = Date.now() + readyTimeoutMs;
   for (;;) {
     try {
