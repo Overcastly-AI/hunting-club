@@ -9,6 +9,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@huntclub/api": "*",
     "@huntclub/club-data": "*",
     "@huntclub/shared": "*",
     "aws-cdk-lib": "2.278.0",

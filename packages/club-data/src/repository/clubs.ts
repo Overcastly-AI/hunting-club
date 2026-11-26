@@ -1,12 +1,11 @@
 import {
   type Club,
-  ClubCreateSchema,
+  ClubCreateRequestSchema,
   ClubSchema,
   type ClubSecret,
   ClubSecretSchema,
   ClubUpdateSchema,
   type Member,
-  MemberJoinSchema,
   MemberSchema,
   userIdSchema,
 } from '@huntclub/shared';
@@ -32,9 +31,8 @@ import { memberItem } from './members';
 import { SEAT_ATTRS, initialSeats } from './seats';
 
 /** The provisioning Lambda's input: the club plus its first admin. */
-export const ClubProvisionSchema = z.strictObject({
-  club: ClubCreateSchema,
-  admin: MemberJoinSchema.extend({ userId: userIdSchema }),
+export const ClubProvisionSchema = ClubCreateRequestSchema.extend({
+  admin: ClubCreateRequestSchema.shape.admin.extend({ userId: userIdSchema }),
 });
 export type ClubProvision = z.input<typeof ClubProvisionSchema>;
 

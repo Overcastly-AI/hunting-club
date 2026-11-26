@@ -10,7 +10,8 @@ import { CORE_CONFIG } from '../config';
 import { FREE_PARTY_MAX_MEMBERS, PartyFullError } from '../party';
 import { PartyError, PartyService, SOLO_CHANNEL_NAME } from '../partyService';
 import { MemoryPartyStore } from '../partyStore';
-import { MIN, T0, party, type Phone } from '../testing/party';
+import { MINUTE_MS } from '../config';
+import { T0, party, type Phone } from '../testing/party';
 
 beforeEach(() => jest.useFakeTimers({ now: T0 }));
 afterEach(() => jest.useRealTimers());
@@ -102,7 +103,7 @@ describe('party lifecycle', () => {
     await settle(a!.party.create());
     await settle(b!.party.join(a!.party.qrLink()!));
     const firstHeard = a!.party.current!.members[0]!.lastHeard;
-    await tick(10 * MIN);
+    await tick(10 * MINUTE_MS);
     b!.checkIns.checkIn({ mode: CheckInMode.Moving });
     await tick(1000);
     expect(a!.party.current!.members[0]!.lastHeard).toBeGreaterThan(firstHeard);

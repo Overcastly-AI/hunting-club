@@ -15,7 +15,7 @@ export const FRESHNESS_THRESHOLDS_MS = {
 
 export type Freshness = 'fresh' | 'stale' | 'faded';
 
-/** Age of a position in ms; a timestamp from the future counts as just heard. */
+/** Time since `heardAt` in ms (a position, a forecast fetch); a timestamp from the future counts as just now. */
 export function positionAge(heardAt: number, now: number): number {
   return Math.max(0, now - heardAt);
 }

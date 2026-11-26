@@ -1,4 +1,5 @@
-import { sunLine, sunPhrases, sunSentence, UNKNOWN_VALUE } from '../components/ConditionsPanel';
+import { UNKNOWN_VALUE } from '../../conditions/display';
+import { sunLine, sunPhrases, sunSentence } from '../components/ConditionsPanel';
 
 describe('sunPhrases', () => {
   it('keeps each time on one line: no breakable spaces inside a phrase', () => {

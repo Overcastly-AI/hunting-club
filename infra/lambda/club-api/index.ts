@@ -1,23 +1,54 @@
-// Club API (Lambda Function URL). STUB until Milestone 9: it enforces that every request
-// carries a bearer token and that the deployment wired its configuration, then answers
-// 501. Milestone 9 verifies the Cognito JWT (signature, issuer = the user pool, client id
-// in USER_POOL_CLIENT_IDS, token_use = access) before any table access.
-import { API_ENV } from '../../config/types';
-import { jsonResponse, missingEnv, type FunctionUrlEvent, type FunctionUrlResult } from '../http';
+// Club API Lambda (Function URL). Configuration comes from the env vars the ApiStack
+// sets (API_ENV); the handler itself lives in @huntclub/api.
+import {
+  clubDataForTable,
+  cognitoVerifier,
+  connectStripe,
+  createClubApi,
+  errorResponse,
+  lazyHandler,
+  missingEnv,
+  readSecureParameter,
+  type FunctionUrlEvent,
+} from '@huntclub/api';
+import { CHECKOUT_RETURN_PATHS } from '@huntclub/shared/app';
+import { API_ENV, CLUB_API_SECRETS, secretParameterEnvVar } from '../../config/types';
 
+const STRIPE_KEY_PARAM = secretParameterEnvVar('stripeApiKey');
 const REQUIRED_ENV = [
   API_ENV.envName,
   API_ENV.tableName,
   API_ENV.userPoolId,
   API_ENV.userPoolClientIds,
+  API_ENV.webOrigin,
+  API_ENV.stripePrices,
+  ...CLUB_API_SECRETS.map(secretParameterEnvVar),
 ];
 
-export const handler = async (event: FunctionUrlEvent): Promise<FunctionUrlResult> => {
+const env = (name: string) => process.env[name] ?? '';
+
+const run = lazyHandler(async () => {
+  const webOrigin = env(API_ENV.webOrigin);
+  let stripe: ReturnType<typeof connectStripe> | undefined;
+  return createClubApi({
+    data: clubDataForTable(env(API_ENV.tableName)),
+    verifier: cognitoVerifier({
+      userPoolId: env(API_ENV.userPoolId),
+      clientIds: env(API_ENV.userPoolClientIds).split(','),
+    }),
+    // The Stripe key is read only when an admin starts Checkout.
+    stripe: async () =>
+      (stripe ??= connectStripe(await readSecureParameter(env(STRIPE_KEY_PARAM)))).api,
+    checkout: {
+      prices: JSON.parse(env(API_ENV.stripePrices)) as Record<string, string>,
+      successUrl: `${webOrigin}${CHECKOUT_RETURN_PATHS.success}`,
+      cancelUrl: `${webOrigin}${CHECKOUT_RETURN_PATHS.cancel}`,
+    },
+  });
+});
+
+export const handler = async (event: FunctionUrlEvent) => {
   const missing = missingEnv(REQUIRED_ENV);
-  if (missing.length > 0) return jsonResponse(500, { error: 'misconfigured', missing });
-
-  const auth = event.headers?.authorization ?? '';
-  if (!/^Bearer \S+$/.test(auth)) return jsonResponse(401, { error: 'unauthorized' });
-
-  return jsonResponse(501, { error: 'not_implemented', detail: 'Club API arrives in Milestone 9' });
+  if (missing.length > 0) return errorResponse('not_configured', `missing ${missing.join(', ')}`);
+  return run(event);
 };

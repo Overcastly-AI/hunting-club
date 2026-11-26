@@ -1,0 +1,297 @@
+/**
+ * Club API (Lambda Function URL): JSON routes over @huntclub/club-data. Every route
+ * but GET /plans needs a Cognito access token; permissions are club-data's authz.
+ * Bodies are validated with the @huntclub/shared schemas (by club-data, or here for
+ * API-only request shapes). Errors: `{ error: { code, message } }` (ApiErrorBody).
+ */
+import {
+  ANONYMOUS,
+  ClubDataError,
+  type ClubData,
+  SERVICE,
+  type Actor,
+  userActor,
+} from '@huntclub/club-data';
+import {
+  CheckoutRequestSchema,
+  ClubCreateRequestSchema,
+  type ClubSecret,
+  type ClubSecretResponse,
+  ClubSecretPutRequestSchema,
+  RedeemInviteRequestSchema,
+} from '@huntclub/shared';
+import type { z } from 'zod';
+import type { TokenVerifier } from './auth';
+import { type CheckoutConfig, createCheckout, type StripeApi } from './billing';
+import { errorResponse, toErrorResponse } from './errors';
+import {
+  bearerToken,
+  type FunctionUrlEvent,
+  type Handler,
+  jsonResponse,
+  logLine,
+  methodOf,
+  rawBody,
+} from './http';
+import { matchRoute, type Route } from './router';
+
+export interface ClubApiDeps {
+  data: ClubData;
+  verifier: TokenVerifier;
+  /** Stripe for Checkout; resolved lazily so other routes never read the API key. */
+  stripe: () => Promise<StripeApi>;
+  checkout: CheckoutConfig;
+}
+
+interface Ctx {
+  actor: Actor;
+  /** Parsed JSON body (undefined when empty). */
+  body: unknown;
+  deps: ClubApiDeps;
+}
+
+/** Validates an API-only request body; failures are `invalid`. */
+function parse<S extends z.ZodType>(schema: S, body: unknown): z.output<S> {
+  const result = schema.safeParse(body);
+  if (!result.success) throw new ClubDataError('invalid', result.error.issues[0]?.message);
+  return result.data;
+}
+
+/** Entity inputs go straight to club-data, which validates them with the shared schemas. */
+const input = <T>(body: unknown) => body as T;
+
+const secretJson = (s: ClubSecret): ClubSecretResponse => ({
+  ...s,
+  channelKey: Buffer.from(s.channelKey).toString('base64'),
+});
+
+/** CRUD routes for one club collection with the same shape (stands, areas, harvests). */
+function collectionRoutes<Create, Update>(
+  segment: string,
+  ops: {
+    list: (actor: Actor, clubId: string) => Promise<unknown>;
+    create: (actor: Actor, clubId: string, input: Create) => Promise<unknown>;
+    update: (actor: Actor, clubId: string, id: string, patch: Update) => Promise<unknown>;
+    remove: (actor: Actor, clubId: string, id: string) => Promise<void>;
+  },
+): Route<Ctx>[] {
+  const base = `/clubs/:clubId/${segment}`;
+  return [
+    { method: 'GET', path: base, handle: (c, p) => ops.list(c.actor, p.clubId!) },
+    {
+      method: 'POST',
+      path: base,
+      status: 201,
+      handle: (c, p) => ops.create(c.actor, p.clubId!, input(c.body)),
+    },
+    {
+      method: 'PATCH',
+      path: `${base}/:id`,
+      handle: (c, p) => ops.update(c.actor, p.clubId!, p.id!, input(c.body)),
+    },
+    {
+      method: 'DELETE',
+      path: `${base}/:id`,
+      status: 204,
+      handle: (c, p) => ops.remove(c.actor, p.clubId!, p.id!),
+    },
+  ];
+}
+
+function routes(data: ClubData): Route<Ctx>[] {
+  return [
+    { method: 'GET', path: '/plans', access: 'public', handle: () => data.listPlans(ANONYMOUS) },
+
+    // Clubs
+    { method: 'GET', path: '/me/clubs', handle: (c) => data.listMyClubs(c.actor) },
+    {
+      method: 'POST',
+      path: '/clubs',
+      status: 201,
+      // Provisioning: the caller becomes the first admin. Features stay locked until
+      // the Stripe webhook records an entitled subscription.
+      handle: (c) => {
+        const req = parse(ClubCreateRequestSchema, c.body);
+        const userId = c.actor.kind === 'user' ? c.actor.userId : '';
+        return data.createClub(SERVICE, { club: req.club, admin: { ...req.admin, userId } });
+      },
+    },
+    { method: 'GET', path: '/clubs/:clubId', handle: (c, p) => data.getClub(c.actor, p.clubId!) },
+    {
+      method: 'PATCH',
+      path: '/clubs/:clubId',
+      handle: (c, p) => data.updateClub(c.actor, p.clubId!, input(c.body)),
+    },
+
+    // Roster
+    {
+      method: 'GET',
+      path: '/clubs/:clubId/members',
+      handle: (c, p) => data.listMembers(c.actor, p.clubId!),
+    },
+    {
+      method: 'POST',
+      path: '/clubs/:clubId/members',
+      status: 201,
+      handle: (c, p) => data.addMember(c.actor, p.clubId!, input(c.body)),
+    },
+    {
+      method: 'PATCH',
+      path: '/clubs/:clubId/members/:userId',
+      handle: (c, p) => data.updateMemberProfile(c.actor, p.clubId!, p.userId!, input(c.body)),
+    },
+    {
+      method: 'PUT',
+      path: '/clubs/:clubId/members/:userId/access',
+      handle: (c, p) => data.setMemberAccess(c.actor, p.clubId!, p.userId!, input(c.body)),
+    },
+    {
+      method: 'DELETE',
+      path: '/clubs/:clubId/members/:userId',
+      status: 204,
+      handle: (c, p) => data.removeMember(c.actor, p.clubId!, p.userId!),
+    },
+
+    // Invites
+    {
+      method: 'GET',
+      path: '/clubs/:clubId/invites',
+      handle: (c, p) => data.listInvites(c.actor, p.clubId!),
+    },
+    {
+      method: 'POST',
+      path: '/clubs/:clubId/invites',
+      status: 201,
+      handle: (c, p) => data.createInvite(c.actor, p.clubId!, input(c.body)),
+    },
+    {
+      method: 'DELETE',
+      path: '/clubs/:clubId/invites/:inviteId',
+      status: 204,
+      handle: (c, p) => data.deleteInvite(c.actor, p.clubId!, p.inviteId!),
+    },
+    {
+      method: 'POST',
+      path: '/invites/redeem',
+      handle: (c) => {
+        const { token, ...profile } = parse(RedeemInviteRequestSchema, c.body);
+        return data.redeemInvite(c.actor, token, profile);
+      },
+    },
+
+    // Places and harvests (mesh ids are assigned by club-data)
+    ...collectionRoutes('stands', {
+      list: data.listStands,
+      create: data.createStand,
+      update: data.updateStand,
+      remove: data.deleteStand,
+    }),
+    ...collectionRoutes('areas', {
+      list: data.listAreas,
+      create: data.createArea,
+      update: data.updateArea,
+      remove: data.deleteArea,
+    }),
+    ...collectionRoutes('harvests', {
+      list: data.listHarvests,
+      create: data.createHarvest,
+      update: data.updateHarvest,
+      remove: data.deleteHarvest,
+    }),
+    {
+      method: 'GET',
+      path: '/clubs/:clubId/map-packs',
+      handle: (c, p) => data.listMapPacks(c.actor, p.clubId!),
+    },
+
+    // Radio key (admins only; base64 in JSON)
+    {
+      method: 'GET',
+      path: '/clubs/:clubId/secret',
+      handle: async (c, p) => secretJson(await data.getClubSecret(c.actor, p.clubId!)),
+    },
+    {
+      method: 'PUT',
+      path: '/clubs/:clubId/secret',
+      handle: async (c, p) => {
+        const { channelKey } = parse(ClubSecretPutRequestSchema, c.body);
+        const key = Uint8Array.from(Buffer.from(channelKey, 'base64'));
+        return secretJson(await data.setClubSecret(c.actor, p.clubId!, key));
+      },
+    },
+
+    // Billing
+    {
+      method: 'GET',
+      path: '/clubs/:clubId/subscription',
+      handle: (c, p) => data.getSubscription(c.actor, p.clubId!),
+    },
+    {
+      method: 'POST',
+      path: '/clubs/:clubId/checkout',
+      handle: async (c, p) => {
+        const club = await data.getBillableClub(c.actor, p.clubId!);
+        const { planId } = parse(CheckoutRequestSchema, c.body);
+        const plan = (await data.listPlans(ANONYMOUS)).find((pl) => pl.id === planId);
+        if (!plan) throw new ClubDataError('invalid', 'unknown plan');
+        const priceId = c.deps.checkout.prices[planId];
+        if (!priceId) throw new ClubDataError('not_configured', 'no Stripe price for this plan');
+        const url = await createCheckout(await c.deps.stripe(), {
+          clubId: club.id,
+          planId,
+          priceId,
+          config: c.deps.checkout,
+        });
+        return { url };
+      },
+    },
+  ];
+}
+
+function parseJson(event: FunctionUrlEvent): unknown {
+  const text = rawBody(event).toString('utf8');
+  if (text.trim() === '') return undefined;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    throw new ClubDataError('invalid', 'body is not JSON');
+  }
+}
+
+export function createClubApi(deps: ClubApiDeps): Handler {
+  const table = routes(deps.data);
+  return async (event) => {
+    const method = methodOf(event);
+    const path = event.rawPath ?? '/';
+    const match = matchRoute(table, method, path);
+    let status = 0;
+    try {
+      if (!match.route) {
+        status = match.methodNotAllowed ? 405 : 404;
+        return match.methodNotAllowed
+          ? { ...errorResponse('not_found', 'method not allowed'), statusCode: 405 }
+          : errorResponse('not_found', 'no such route');
+      }
+      let actor: Actor = ANONYMOUS;
+      if (match.route.access !== 'public') {
+        const token = bearerToken(event);
+        const sub = token ? await deps.verifier.verify(token).catch(() => undefined) : undefined;
+        if (!sub) throw new ClubDataError('not_authenticated', 'a valid access token is required');
+        actor = userActor(sub);
+      }
+      const result = await match.route.handle(
+        { actor, body: parseJson(event), deps },
+        match.params,
+      );
+      status = match.route.status ?? 200;
+      return status === 204 ? jsonResponse(204) : jsonResponse(status, result);
+    } catch (error) {
+      const response = toErrorResponse(error);
+      status = response.statusCode;
+      return response;
+    } finally {
+      // Route pattern, not the raw path: ids stay out of the logs.
+      logLine({ msg: 'club-api', method, route: match.route?.path ?? 'unmatched', status });
+    }
+  };
+}

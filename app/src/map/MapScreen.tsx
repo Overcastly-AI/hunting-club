@@ -34,6 +34,7 @@ import type { LatLon } from '@huntclub/mesh';
 import { placeOf } from './place';
 import { useMapPacks } from './useMapPacks';
 import { useYourLocation } from './useYourLocation';
+import { useConditions } from '../weather/useConditions';
 
 /** Start over the continental US until we know where you are. */
 const INITIAL_VIEW = { center: [-96, 39] as [number, number], zoom: 3.5 };
@@ -88,6 +89,7 @@ export function MapScreen({ dataSource }: Props) {
   }, []);
 
   const conditionsPlace = you ?? (view.zoom >= CONDITIONS_MIN_ZOOM ? view.center : null);
+  const weather = useConditions(conditionsPlace, now);
 
   return (
     <View style={styles.root}>
@@ -100,8 +102,8 @@ export function MapScreen({ dataSource }: Props) {
       >
         <Camera ref={cameraRef} initialViewState={INITIAL_VIEW} />
         <MapLayers data={data} alerts={alerts} now={now} />
-        {/* Wind arrives with the forecast milestone; until then no scent cone. */}
-        {you ? <YouMarker position={you} /> : null}
+        {/* No scent cone while the wind is calm or unknown. */}
+        {you ? <YouMarker position={you} windFromDeg={weather.windFromDeg} /> : null}
       </Map>
 
       <SafeAreaView
@@ -115,6 +117,7 @@ export function MapScreen({ dataSource }: Props) {
             onGroupPress={() => router.navigate('/party')}
             conditionsPlace={conditionsPlace}
             now={now}
+            weather={weather}
           />
           <MeshStatusLine status={data.mesh} now={now} onPress={() => router.navigate('/party')} />
         </View>

@@ -3,9 +3,9 @@ import {
   type OfflinePack,
   type OfflinePackStatus,
 } from '@maplibre/maplibre-react-native';
-import { Directory, File, Paths } from 'expo-file-system';
 
 import type { SqlDatabase } from '../db/types';
+import { writeDocument } from '../storage/documents';
 import { BASEMAPS, basemapBySource, basemapStyle, type BasemapId } from './basemaps';
 import {
   deleteMapPack,
@@ -34,12 +34,12 @@ function configure() {
   configured = true;
 }
 
-async function offlineStyleUrl(basemap: BasemapId): Promise<string> {
-  const folder = new Directory(Paths.document, STYLE_FOLDER);
-  folder.create({ idempotent: true, intermediates: true });
-  const file = new File(folder, `${BASEMAPS[basemap].source}.json`);
-  await file.write(JSON.stringify(basemapStyle(basemap)));
-  return file.uri;
+function offlineStyleUrl(basemap: BasemapId): Promise<string> {
+  return writeDocument(
+    STYLE_FOLDER,
+    `${BASEMAPS[basemap].source}.json`,
+    JSON.stringify(basemapStyle(basemap)),
+  );
 }
 
 export type DownloadProgress = {

@@ -4,6 +4,7 @@
  * plans (the checkout page shows them before sign-in).
  */
 import {
+  ClubSchema,
   type Plan,
   PlanPutSchema,
   PlanSchema,
@@ -74,6 +75,14 @@ export async function getSubscription(
   const sub = await getEntity(ctx, SubscriptionSchema, keys.subscription(clubId));
   if (!sub) throw notFound();
   return sub;
+}
+
+/** The club an admin may buy a subscription for (Stripe Checkout). */
+export async function getBillableClub(ctx: Ctx, actor: Actor, clubId: string) {
+  await authorizeClub(ctx, actor, clubId, 'manageBilling');
+  const club = await getEntity(ctx, ClubSchema, keys.club(clubId));
+  if (!club) throw notFound();
+  return club;
 }
 
 export type ApplyStripeEventResult = 'applied' | 'duplicate';

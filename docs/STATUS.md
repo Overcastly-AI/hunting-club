@@ -53,15 +53,14 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 | Task | Session | Branch / PR | Status |
 |---|---|---|---|
-| Merged so far | — | #1–#6, #8, #9, #11–#15, #17, #18 | research, setup, CI/font, mesh, schema→DynamoDB data layer, map, core, infra, party, map polish, Check In, safety, Android CI speed-up |
-| M2 part 2: BLE transport, RadioProvider, pairing | session_01QS5dr7YPxgw1iqGybujET3 | PR #7 | Top priority: merging main, then ready |
-| Weather (NWS) | session_01QS5dr7o9U9xBRJaR86iMuW | PR #10 | Approved; resolving conflict with main |
-| Onboarding flow + QR scan | session_01QS5dr7o9U9xBRJaR86iMuW | agent/weather | Next after #10 |
-| Mesh-sim CI (real meshtasticd) + TcpTransport | session_01QS5dr5jAZ6wC472f8hsUHW | PR #16 | Waiting on first real sim run |
-| Tab bar + conditions panel layout fix | session_01QS5dr4qFtLFfyf7oVjMNAj | agent/m1-scaffold | PR opening |
-| Chat UI (M7); then wire Check In/Safety/map into RadioProvider after #7 | session_01QS5dr3kB1sf3Bt86wVb3qW | agent/m4-offline-map | In progress |
-| Web admin page + packages/design | session_01QS5dr5ia6B5X5renWEXyAe | agent/m2-research | In progress |
-| Club API + Stripe webhook Lambdas (M9) | session_01QS5dr3GmkJjvaYfcNrAN3b | agent/club-data | Started 06:52 UTC |
+| Merged | — | #1–#9, #11–#15, #17–#25 | Free version functionally complete except onboarding; club backend (data, API, webhook, infra) done |
+| Onboarding (name ✓ #26, permissions, party/QR, map download) | session_01QS5dr7YPxgw1iqGybujET3 | agent/m2-ble-transport | Active |
+| App club layer (Cognito sign-in, API client, join club, entitlement) | session_01QS5dr3GmkJjvaYfcNrAN3b | agent/club-data | Active |
+| Weather #10, then setOwner + camera/notification permission modules | session_01QS5dr7o9U9xBRJaR86iMuW | agent/weather | Active (small) |
+| Map worker | session_01QS5dr3kB1sf3Bt86wVb3qW | agent/m4-offline-map | Paused (usage cap) |
+| CI/font/board worker | session_01QS5dr4qFtLFfyf7oVjMNAj | agent/m1-scaffold | Paused |
+| Web admin page + packages/design | session_01QS5dr5ia6B5X5renWEXyAe | agent/m2-research | Paused (usage limit hit mid-task) |
+| Mesh-sim CI #16 | session_01QS5dr5jAZ6wC472f8hsUHW | PR #16 | Paused; first real meshtasticd run failed (non-blocking) |
 
 ## Decisions log
 
@@ -75,6 +74,11 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 | 2026-11-26 | Android foreground service as a small in-repo Expo module | No library provides it; avoids a dependency |
 
 ## Backlog (coordinator)
+
+- Radio name: push the hunter's name/initials to the radio with set_owner (weather worker's module, then onboarding).
+- App bundle grew 3.4 → 4.1 MB after #22; check whether zod is tree-shaken in the app.
+- Investigate PR #16's failing meshtasticd sim job.
+- Re-take screenshots after the wiring to verify layout fixes.
 
 - After #4 and #5: HarvestSex single source = SQL enum → @huntclub/shared → mesh derives wire codes (assigned to the schema worker).
 - After #6: move sunrise/sunset and freshness thresholds from app/src/map into packages/core if core needs them (DRY).

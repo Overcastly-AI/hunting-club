@@ -1,21 +1,20 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { SUN } from '@huntclub/core';
-
-import { formatClockTime } from '../../conditions/clock';
-import { colors, radii, sizes, spacing, textStyles } from '../../theme';
 import type { LatLon } from '@huntclub/mesh';
 
-/** Shown for values not known yet (wind and temperature until the forecast milestone). */
-export const UNKNOWN_VALUE = '—';
+import { WindArrowIcon } from '../../components/icons';
+import { formatClockTime } from '../../conditions/clock';
+import { UNKNOWN_VALUE } from '../../conditions/display';
+import { colors, radii, sizes, spacing, textStyles } from '../../theme';
+import { UNKNOWN_WEATHER, type WeatherDisplay } from '../../weather/display';
 
 type Props = {
   /** Where to compute sunrise and sunset; null until the map knows where it is. */
   place: LatLon | null;
   now: number;
-  /** Wind and temperature arrive with the forecast milestone. */
-  wind?: string;
-  temperature?: string;
+  /** Wind and temperature from useConditions; "—" until a forecast covers now. */
+  weather?: WeatherDisplay;
 };
 
 /** Sunrise and sunset only; never legal shooting hours. */
@@ -44,26 +43,29 @@ export function sunSentence(sun: { sunrise: string; sunset: string }): string {
   return `${sunrisePhrase}\u00A0· ${sunsetPhrase}`;
 }
 
-export function ConditionsPanel({
-  place,
-  now,
-  wind = UNKNOWN_VALUE,
-  temperature = UNKNOWN_VALUE,
-}: Props) {
+export function ConditionsPanel({ place, now, weather = UNKNOWN_WEATHER }: Props) {
   const { sunrise, sunset } = sunLine(place, now);
+  const spoken = [
+    `Sunrise ${sunrise}, sunset ${sunset}.`,
+    `Wind ${weather.windSpoken}.`,
+    `Temperature ${weather.temperatureSpoken}.`,
+    weather.updatedSpoken ? `${weather.updatedSpoken}.` : null,
+  ];
   return (
-    <View
-      accessible
-      accessibilityLabel={`Sunrise ${sunrise}, sunset ${sunset}. Wind ${wind === UNKNOWN_VALUE ? 'not known yet' : wind}. Temperature ${temperature === UNKNOWN_VALUE ? 'not known yet' : temperature}.`}
-      style={styles.panel}
-    >
+    <View accessible accessibilityLabel={spoken.filter(Boolean).join(' ')} style={styles.panel}>
       <Text style={styles.primary}>{sunSentence({ sunrise, sunset })}</Text>
       <View style={styles.row}>
-        <Text style={styles.secondary}>
-          Wind <Text style={styles.wind}>{wind}</Text>
-        </Text>
-        <Text style={styles.secondary}>{temperature}</Text>
+        <View style={styles.windGroup}>
+          <Text style={styles.secondary}>
+            Wind <Text style={styles.wind}>{weather.wind}</Text>
+          </Text>
+          {weather.windTowardDeg !== null ? (
+            <WindArrowIcon towardDeg={weather.windTowardDeg} />
+          ) : null}
+        </View>
+        <Text style={styles.secondary}>{weather.temperature}</Text>
       </View>
+      {weather.updated ? <Text style={styles.secondary}>{weather.updated}</Text> : null}
     </View>
   );
 }
@@ -78,7 +80,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     justifyContent: 'center',
   },
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  windGroup: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   primary: { ...textStyles.labelNarrow, color: colors.text },
   secondary: { ...textStyles.body, color: colors.textSecondary },
   wind: { color: colors.wind },
