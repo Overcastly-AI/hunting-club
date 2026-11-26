@@ -1,0 +1,43 @@
+# Worker agent playbook
+
+You are a worker on Hunt Club Mesh. A coordinator session assigns you one task, reviews your pull request and merges it. Read `docs/SPEC.md`, `CLAUDE.md` and `docs/STATUS.md` before you start.
+
+## Setup (do this first, every time)
+
+```sh
+git config core.hooksPath .githooks
+git config user.name Overcastly-AI
+git config user.email 282247350+Overcastly-AI@users.noreply.github.com
+```
+
+Commits must never credit Claude or any AI tool: no `Co-Authored-By`, session links or "Generated with" lines, and never Claude as author. The hooks enforce this; do not bypass them (`--no-verify` is forbidden).
+
+## Workflow
+
+1. Branch from the latest `main`: `agent/<short-task-name>`.
+2. Do only the task in your brief. If you find other work, list it in your PR under "Follow-ups"; don't do it.
+3. Keep `main` green: typecheck, lint and tests must pass locally before you push.
+4. Push your branch and open a pull request into `main`. The PR description has: Summary, How it was tested, Decisions made, Follow-ups, Questions for the coordinator. No AI attribution in the PR either.
+5. Send the coordinator a short message (session ID in your brief) with the PR link when it's ready, or if you are blocked.
+6. Never merge your own PR, push to `main`, force-push someone else's branch, or skip or delete tests to get green.
+
+## Repo layout
+
+| Path | What |
+|---|---|
+| `app/` | Expo (React Native, TypeScript) phone and tablet app |
+| `packages/` | Shared TypeScript packages (for example mesh protocol encode/decode) |
+| `infra/` | AWS CDK (TypeScript). Code only: agents never deploy |
+| `supabase/` | SQL migrations and RLS policies |
+| `web/` | Web admin and checkout page (static) |
+| `docs/` | Spec, status, decisions, research |
+
+The root `package.json` uses npm workspaces. Use npm (not yarn or pnpm).
+
+## Rules
+
+- Follow `CLAUDE.md`. `docs/SPEC.md` is the source of truth; if your work needs a spec change, propose it in the PR.
+- Ask (via your PR or a message to the coordinator) before adding a dependency the spec doesn't list.
+- No real radios are available to agents. Put the radio behind a transport interface and test with a fake transport or a simulated Meshtastic node.
+- No cloud accounts or credentials are available to agents. Never deploy, never create cloud resources, never put secrets in the repo.
+- Don't send email.

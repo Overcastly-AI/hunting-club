@@ -14,10 +14,21 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 |---|---|---|---|---|
 | 1 | 2026-11-26 | Dev subdomain `huntclub-dev.<domain>`: Route 53 hosted zone, delegation from parent, ACM wildcard cert in us-east-1 | Waiting for reply | |
 
-## Waiting on the owner
+## How the project runs
 
-- Branch policy for agents (create `main`, worker branches, merge reviewed PRs)
-- Check-in cadence and number of parallel workers
-- Daily status email: OK? time and time zone
-- Removing Claude credit from commit `0cbde5d` (needs a force-push)
-- Open decisions listed in `docs/SPEC.md`
+- The owner delegated full control to the coordinator (2026-11-26). Hard limits that still need the owner: spending money beyond free tiers and the dev DNS zone, deleting the owner's data, emails to anyone but the owner.
+- Coordinator session: `session_01QS5dr3XTYjo26Gf4MeA3GC`. Wakes hourly via a scheduled task: checks Grok Bot email, workers and PRs; reviews and merges; starts the next tasks.
+- Workers: separate cloud sessions, at most 2–3 at a time, one task each, branch `agent/<task>`, PR into `main`. Playbook: `docs/AGENTS.md`.
+- Daily status email to the owner around 13:00 UTC, subject starting "Hunt Club Mesh status" (never "Grok Bot", which is reserved for AWS requests).
+- Commits authored as `Overcastly-AI <282247350+Overcastly-AI@users.noreply.github.com>`.
+
+## Workers
+
+| Task | Session | Branch / PR | Status |
+|---|---|---|---|
+
+## Owner to-dos (non-blocking)
+
+- Set the GitHub default branch to `main` (repo Settings → Branches).
+- Open decisions listed in `docs/SPEC.md`.
+- Real-radio testing when milestones 2+ land (agents can't reach hardware).
