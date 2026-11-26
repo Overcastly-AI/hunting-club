@@ -1,7 +1,13 @@
 import { Match } from 'aws-cdk-lib/assertions';
 import { GSIS, PARTITION_PREFIXES, TABLE_KEYS, TTL_ATTRIBUTE } from '@huntclub/club-data';
 import { APP_ID, AUTH_CALLBACK_PATH, URL_SCHEME } from '@huntclub/shared';
-import { API_ENV, PROJECT, STRIPE_WEBHOOK_SECRETS, secretName, secretNameEnvVar } from '../config';
+import {
+  API_ENV,
+  PROJECT,
+  STRIPE_WEBHOOK_SECRETS,
+  secretParameterName,
+  secretParameterEnvVar,
+} from '../config';
 import { dev } from '../config/dev';
 import { CLUB_API_TABLE_ACTIONS } from '../src/stacks/api-stack';
 import { synthTemplates } from './helpers';
@@ -234,21 +240,34 @@ describe('api stack', () => {
       [API_ENV.tableName]: Match.anyValue(),
     };
     for (const key of STRIPE_WEBHOOK_SECRETS) {
-      variables[secretNameEnvVar(key)] = secretName(dev.name, key);
+      variables[secretParameterEnvVar(key)] = secretParameterName(dev.name, key);
     }
     t.hasResourceProperties('AWS::Lambda::Function', { Environment: { Variables: variables } });
   });
 
-  it('lets the webhook read exactly its own secrets', () => {
-    const secretStatements = statements().filter((s) =>
-      actionsOf(s).some((a) => a.startsWith('secretsmanager:')),
+  it('lets the webhook read exactly its own SSM parameters, with no KMS or wildcard grant', () => {
+    const ssmStatements = statements().filter((s) =>
+      actionsOf(s).some((a) => a.startsWith('ssm:')),
     );
-    expect(secretStatements).toHaveLength(STRIPE_WEBHOOK_SECRETS.length);
-    const resources = JSON.stringify(secretStatements.map((s) => s.Resource));
-    for (const key of STRIPE_WEBHOOK_SECRETS) {
-      expect(resources).toContain(`secret:${secretName(dev.name, key)}-??????`);
+    expect(ssmStatements).toHaveLength(STRIPE_WEBHOOK_SECRETS.length);
+    for (const s of ssmStatements) {
+      expect(actionsOf(s)).toContain('ssm:GetParameter');
+      expect(actionsOf(s).every((a) => a.startsWith('ssm:') && !/Put|Delete/.test(a))).toBe(true);
     }
-    expect(resources).not.toContain('secret:*');
+    const resources = JSON.stringify(ssmStatements.map((s) => s.Resource));
+    for (const key of STRIPE_WEBHOOK_SECRETS) {
+      expect(resources).toContain(`:parameter${secretParameterName(dev.name, key)}"`);
+    }
+    expect(resources).not.toContain('parameter/*');
+    expect(
+      statements().some((s) => actionsOf(s).some((a) => a.startsWith('secretsmanager:'))),
+    ).toBe(false);
+  });
+
+  it('names parameters /hunt-club-mesh/<env>/<name>', () => {
+    expect(secretParameterName('dev', 'stripeWebhookSecret')).toBe(
+      '/hunt-club-mesh/dev/stripe-webhook-secret',
+    );
   });
 
   it('limits the webhook to billing partitions of the table', () => {

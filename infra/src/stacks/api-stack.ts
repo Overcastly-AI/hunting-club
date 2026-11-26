@@ -3,14 +3,14 @@ import type * as cognito from 'aws-cdk-lib/aws-cognito';
 import type * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
 import type { Construct } from 'constructs';
 import { PARTITION_PREFIXES } from '@huntclub/club-data';
 import {
   API_ENV,
   STRIPE_WEBHOOK_SECRETS,
-  secretName,
-  secretNameEnvVar,
+  secretParameterName,
+  secretParameterEnvVar,
   type EnvConfig,
 } from '../../config';
 import { NodeLambda } from '../constructs/node-lambda';
@@ -86,20 +86,19 @@ export class ApiStack extends Stack {
       [API_ENV.tableName]: table.tableName,
     };
     for (const key of STRIPE_WEBHOOK_SECRETS) {
-      webhookEnv[secretNameEnvVar(key)] = secretName(config.name, key);
+      webhookEnv[secretParameterEnvVar(key)] = secretParameterName(config.name, key);
     }
     this.stripeWebhook = new NodeLambda(this, 'StripeWebhook', {
       entry: 'stripe-webhook',
       environment: webhookEnv,
     });
 
-    // Least privilege: read exactly its secrets (created outside CDK; values never in the repo).
+    // Least privilege: read exactly its SecureString parameters (created outside CDK, so
+    // values never touch the repo). With the default aws/ssm key no KMS grant is needed.
     for (const key of STRIPE_WEBHOOK_SECRETS) {
-      secretsmanager.Secret.fromSecretNameV2(
-        this,
-        `Secret-${key}`,
-        secretName(config.name, key),
-      ).grantRead(this.stripeWebhook.function);
+      ssm.StringParameter.fromSecureStringParameterAttributes(this, `Secret-${key}`, {
+        parameterName: secretParameterName(config.name, key),
+      }).grantRead(this.stripeWebhook.function);
     }
 
     // Only items whose partition key starts with a billing prefix (subscriptions, processed

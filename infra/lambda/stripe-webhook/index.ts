@@ -1,13 +1,13 @@
 // Stripe webhook (Lambda Function URL). STUB until Milestone 9: it checks that the
 // deployment wired up the table and secret names, then answers 501 so Stripe keeps
 // retrying. It never reads secret values and never logs request bodies (CLAUDE.md).
-import { API_ENV, STRIPE_WEBHOOK_SECRETS, secretNameEnvVar } from '../../config/types';
+import { API_ENV, STRIPE_WEBHOOK_SECRETS, secretParameterEnvVar } from '../../config/types';
 import { jsonResponse, missingEnv, type FunctionUrlEvent, type FunctionUrlResult } from '../http';
 
 const REQUIRED_ENV = [
   API_ENV.envName,
   API_ENV.tableName,
-  ...STRIPE_WEBHOOK_SECRETS.map(secretNameEnvVar),
+  ...STRIPE_WEBHOOK_SECRETS.map(secretParameterEnvVar),
 ];
 
 export const handler = async (event: FunctionUrlEvent): Promise<FunctionUrlResult> => {

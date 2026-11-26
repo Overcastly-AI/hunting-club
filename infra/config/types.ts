@@ -1,7 +1,10 @@
 /** Project-wide constants used by every environment. */
 export const PROJECT = 'hunt-club-mesh';
 
-/** Names of the secrets each Lambda may read. Values live only in AWS Secrets Manager. */
+/**
+ * Secrets each Lambda may read. Values live only in SSM Parameter Store as SecureString
+ * parameters (standard tier, free; encrypted with the default aws/ssm key).
+ */
 export type SecretKey = 'stripeWebhookSecret' | 'stripeApiKey';
 
 const SECRET_SLUGS: Record<SecretKey, string> = {
@@ -12,9 +15,9 @@ const SECRET_SLUGS: Record<SecretKey, string> = {
 /** Secrets the Stripe webhook Lambda may read (docs/research/stripe-and-auth.md §4). */
 export const STRIPE_WEBHOOK_SECRETS: readonly SecretKey[] = ['stripeWebhookSecret', 'stripeApiKey'];
 
-/** Env var that carries a secret's NAME (never its value), e.g. STRIPE_WEBHOOK_SECRET_NAME. */
-export function secretNameEnvVar(key: SecretKey): string {
-  return `${key.replace(/[A-Z]/g, (c) => `_${c}`).toUpperCase()}_NAME`;
+/** Env var that carries a secret's parameter NAME (never its value), e.g. STRIPE_WEBHOOK_SECRET_PARAM. */
+export function secretParameterEnvVar(key: SecretKey): string {
+  return `${key.replace(/[A-Z]/g, (c) => `_${c}`).toUpperCase()}_PARAM`;
 }
 
 /** Environment variable names the API Lambdas read; the stacks set them from here. */
@@ -25,9 +28,9 @@ export const API_ENV = {
   userPoolClientIds: 'USER_POOL_CLIENT_IDS',
 } as const;
 
-/** Secrets Manager name for a secret, following the owner's `hunt-club-mesh/<env>/<name>` scheme. */
-export function secretName(env: string, key: SecretKey): string {
-  return `${PROJECT}/${env}/${SECRET_SLUGS[key]}`;
+/** SSM parameter name for a secret: `/hunt-club-mesh/<env>/<name>` (owner decision 2026-11-26). */
+export function secretParameterName(env: string, key: SecretKey): string {
+  return `/${PROJECT}/${env}/${SECRET_SLUGS[key]}`;
 }
 
 /** Everything that differs between environments. One file per environment in this folder. */

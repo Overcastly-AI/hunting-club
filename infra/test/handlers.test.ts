@@ -1,4 +1,9 @@
-import { API_ENV, STRIPE_WEBHOOK_SECRETS, secretName, secretNameEnvVar } from '../config';
+import {
+  API_ENV,
+  STRIPE_WEBHOOK_SECRETS,
+  secretParameterName,
+  secretParameterEnvVar,
+} from '../config';
 import { handler as clubApi } from '../lambda/club-api';
 import { handler as stripeWebhook } from '../lambda/stripe-webhook';
 
@@ -14,7 +19,7 @@ function wireApiEnv() {
   process.env[API_ENV.userPoolId] = 'us-east-1_pool';
   process.env[API_ENV.userPoolClientIds] = 'app,web';
   for (const key of STRIPE_WEBHOOK_SECRETS) {
-    process.env[secretNameEnvVar(key)] = secretName('dev', key);
+    process.env[secretParameterEnvVar(key)] = secretParameterName('dev', key);
   }
 }
 
@@ -53,9 +58,12 @@ describe('stripe-webhook stub', () => {
   it('answers 500 and names what is missing when misconfigured', async () => {
     wireApiEnv();
     delete process.env[API_ENV.tableName];
-    delete process.env[secretNameEnvVar('stripeWebhookSecret')];
+    delete process.env[secretParameterEnvVar('stripeWebhookSecret')];
     const res = await stripeWebhook(post());
     expect(res.statusCode).toBe(500);
-    expect(JSON.parse(res.body).missing).toEqual([API_ENV.tableName, 'STRIPE_WEBHOOK_SECRET_NAME']);
+    expect(JSON.parse(res.body).missing).toEqual([
+      API_ENV.tableName,
+      secretParameterEnvVar('stripeWebhookSecret'),
+    ]);
   });
 });

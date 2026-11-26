@@ -4,7 +4,7 @@ Code only. Agents never deploy. The owner's operator runs `cdk deploy` after rev
 
 | Path                            | What                                                                                                                                                                                                                                 |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `config/types.ts`               | `EnvConfig`, the project name, and secret names (`hunt-club-mesh/<env>/<name>`)                                                                                                                                                      |
+| `config/types.ts`               | `EnvConfig`, the project name, and secret parameter names (`/hunt-club-mesh/<env>/<name>`, SSM SecureString)                                                                                                                         |
 | `config/dev.ts`                 | The dev environment's real values (account, region, domain, zone, certificate). The only place they appear                                                                                                                           |
 | `src/stacks/web-stack.ts`       | Private S3 bucket + CloudFront (origin access control, HTTPS only, existing ACM cert) at the env domain, Route 53 A/AAAA aliases, and `/.well-known` universal-link files once the app IDs are known                                 |
 | `src/stacks/api-stack.ts`       | Stripe webhook Lambda behind a Function URL (stub until Milestone 9), allowed to read only its own secrets                                                                                                                           |
@@ -25,7 +25,7 @@ Select an environment with `-c env=<name>` (default `dev`).
 ## Before the first deploy
 
 - Bootstrap the account once: `cdk bootstrap aws://054825383623/us-east-1`.
-- Create the secrets in Secrets Manager (values never in the repo): `hunt-club-mesh/dev/stripe-webhook-secret`, `hunt-club-mesh/dev/stripe-api-key`. The stub works without them; Milestone 9 reads them.
+- Create the secrets as SSM Parameter Store SecureString parameters (standard tier, default `aws/ssm` key; values never in the repo): `/hunt-club-mesh/dev/stripe-webhook-secret`, `/hunt-club-mesh/dev/stripe-api-key`. Not before Milestone 9; the stubs work without them.
 - Universal links: add the Apple Team ID and the Android signing SHA-256 fingerprints to `config/dev.ts`. Until then no `.well-known` files are published.
 
 - Cognito sends sign-in codes with its default email sender (low daily limit). Configure Amazon SES as the user pool's email sender before real clubs sign up.
