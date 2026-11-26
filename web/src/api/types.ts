@@ -42,6 +42,8 @@ export interface ClubApi {
   listStands(): Promise<readonly Stand[]>;
   listAreas(): Promise<readonly Area[]>;
   getSubscription(): Promise<Subscription | null>;
+  /** Stripe's customer portal URL for the club's subscription (admins only). */
+  openBillingPortal(): Promise<string>;
   /** Harvests in the club the admin may see (theirs, plus everyone's shared ones). */
   listHarvests(): Promise<readonly Harvest[]>;
   /** The club's offline map packs (of its property line). */

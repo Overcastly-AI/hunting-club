@@ -17,22 +17,29 @@ const pool = new TestUserPool();
 const startMapPackBuild = jest.fn(async (_build: unknown) => undefined);
 let ids = 0;
 const createCheckoutSession = jest.fn(async () => ({ url: 'https://checkout.stripe.test/s' }));
-const fakeStripe = { createCheckoutSession } as unknown as StripeApi;
+const createPortalSession = jest.fn(async () => ({ url: 'https://billing.stripe.test/p' }));
+const fakeStripe = { createCheckoutSession, createPortalSession } as unknown as StripeApi;
+const PRICES = { club_standard: { year: 'price_test_year', month: 'price_test_month' } };
+const PORTAL_RETURN = 'https://web.test/app/#/billing';
 
-beforeAll(async () => {
-  w = await World.seedTwoClubs();
-  api = createClubApi({
+const makeApi = (prices: Record<string, Record<string, string>>) =>
+  createClubApi({
     data: w.data,
     verifier: cognitoVerifier(TEST_POOL, pool.jwks),
     stripe: async () => fakeStripe,
     startMapPackBuild,
     newId: () => `00000000-0000-4000-8000-${(++ids).toString(16).padStart(12, '0')}`,
     checkout: {
-      prices: { club_standard: { year: 'price_test_year', month: 'price_test_month' } },
+      prices,
       successUrl: 'https://web.test/checkout/done',
       cancelUrl: 'https://web.test/checkout/cancel',
+      portalReturnUrl: PORTAL_RETURN,
     },
   });
+
+beforeAll(async () => {
+  w = await World.seedTwoClubs();
+  api = makeApi(PRICES);
 });
 afterAll(() => w.destroy());
 beforeEach(() => jest.spyOn(console, 'log').mockImplementation(() => undefined));
@@ -41,10 +48,10 @@ const oak = () => w.club('Oak Ridge');
 async function call(
   method: string,
   path: string,
-  opts: { as?: string; body?: unknown; token?: string; rawBody?: string } = {},
+  opts: { as?: string; body?: unknown; token?: string; rawBody?: string; via?: Handler } = {},
 ) {
   const token = opts.token ?? (opts.as ? pool.accessToken(w.user(opts.as)) : undefined);
-  const res = await api(
+  const res = await (opts.via ?? api)(
     urlEvent(method, path, {
       ...(opts.body !== undefined ? { body: opts.body } : {}),
       ...(opts.rawBody !== undefined ? { rawBody: opts.rawBody } : {}),
@@ -334,6 +341,39 @@ describe('billing', () => {
     ).toBe(400);
     await w.data.putPlan(SERVICE, { id: 'unpriced', name: 'Unpriced', active: true });
     expect(await call('POST', path, { as: 'ada', body: { planId: 'unpriced' } })).toMatchObject({
+      status: 503,
+      body: { error: { code: 'not_configured' } },
+    });
+  });
+});
+
+describe('billing portal', () => {
+  const path = () => `/clubs/${oak()}/billing-portal`;
+
+  it("opens Stripe's customer portal for the club's customer, back to Billing", async () => {
+    expect(await call('POST', path(), { as: 'ada' })).toMatchObject({
+      status: 200,
+      body: { url: 'https://billing.stripe.test/p' },
+    });
+    expect(createPortalSession).toHaveBeenCalledWith({
+      customer: `cus_${oak()}`,
+      return_url: PORTAL_RETURN,
+    });
+  });
+
+  it('is for admins only, and needs a subscription', async () => {
+    expect((await call('POST', path(), { as: 'max' })).status).toBe(403);
+    const created = await call('POST', '/clubs', {
+      as: 'nora',
+      body: { club: { name: 'No Sub Club' }, admin: { displayName: 'Nora', initials: 'NO' } },
+    });
+    expect(
+      (await call('POST', `/clubs/${created.body.id}/billing-portal`, { as: 'nora' })).status,
+    ).toBe(404);
+  });
+
+  it('answers not_configured, like Checkout, while Stripe prices are unset', async () => {
+    expect(await call('POST', path(), { as: 'ada', via: makeApi({}) })).toMatchObject({
       status: 503,
       body: { error: { code: 'not_configured' } },
     });

@@ -31,7 +31,12 @@ import {
 import { randomUUID } from 'node:crypto';
 import type { z } from 'zod';
 import type { TokenVerifier } from './auth';
-import { type CheckoutConfig, createCheckout, type StripeApi } from './billing';
+import {
+  type CheckoutConfig,
+  createBillingPortal,
+  createCheckout,
+  type StripeApi,
+} from './billing';
 import { errorResponse, toErrorResponse } from './errors';
 import {
   bearerToken,
@@ -318,6 +323,24 @@ function routes(data: ClubData): Route<Ctx>[] {
           planId,
           priceId,
           config: c.deps.checkout,
+        });
+        return { url };
+      },
+    },
+    {
+      method: 'POST',
+      path: API_PATHS.billingPortal,
+      handle: async (c, p) => {
+        const club = await data.getBillableClub(c.actor, p.clubId!);
+        // Like Checkout: no Stripe prices means Stripe is not set up in this environment.
+        if (Object.keys(c.deps.checkout.prices).length === 0) {
+          throw new ClubDataError('not_configured', 'payments are not set up yet');
+        }
+        const subscription = await data.getSubscription(c.actor, club.id);
+        if (!subscription) throw new ClubDataError('not_found', 'no subscription yet');
+        const url = await createBillingPortal(await c.deps.stripe(), {
+          customerId: subscription.stripeCustomerId,
+          returnUrl: c.deps.checkout.portalReturnUrl,
         });
         return { url };
       },

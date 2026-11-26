@@ -52,5 +52,6 @@ export function adminApi(client: ClubApiClient): ClubApi {
     startCheckout: async (planId, interval) =>
       (await client.startCheckout(await requireClub(), { planId, interval })).url,
     getSubscription: async () => (await client.getSubscription(await requireClub())).subscription,
+    openBillingPortal: async () => (await client.openBillingPortal(await requireClub())).url,
   };
 }

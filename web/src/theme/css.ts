@@ -26,7 +26,8 @@ p { margin: 0 0 var(--space-md); }
 .muted { color: var(--color-text-secondary); }
 a { color: var(--color-text); }
 :focus-visible { outline: 3px solid var(--color-accent); outline-offset: 2px; }
-.layout { max-width: 960px; margin: 0 auto; padding: var(--space-lg) var(--space-md); }
+/* Content (and tables) up to 960px wide on desktop; the padding sits outside it. */
+.layout { max-width: calc(960px + 2 * var(--space-md)); margin: 0 auto; padding: var(--space-lg) var(--space-md); }
 .not-found { display: grid; justify-items: center; text-align: center; gap: var(--space-sm);
   padding: var(--space-xl) 0; }
 .nav { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-bottom: var(--space-lg); }
@@ -35,6 +36,11 @@ a { color: var(--color-text); }
   background: var(--color-surface-raised); color: var(--color-text-secondary); text-decoration: none; }
 .nav a[aria-current='page'] { color: var(--color-accent); font-weight: 700;
   text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 6px; }
+.summary-row { display: flex; flex-wrap: wrap; gap: var(--space-sm); list-style: none;
+  padding: 0; margin: var(--space-md) 0 0; }
+.summary-row a { display: inline-flex; align-items: center; gap: var(--space-sm);
+  min-height: var(--tap-min); padding: 0 var(--space-md); border-radius: var(--radius-control);
+  background: var(--color-surface-raised); text-decoration: none; }
 .app-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
   gap: var(--space-sm); margin-top: var(--space-lg); }
 .app-footer p { margin: 0; }
