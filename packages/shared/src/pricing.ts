@@ -23,8 +23,14 @@ export function formatUsd(cents: number): string {
   return `$${Number.isInteger(dollars) ? dollars : dollars.toFixed(2)}`;
 }
 
-/** Months a yearly price saves against paying monthly for twelve months. */
-const MONTHS_FREE = (12 * MONTH_CENTS - YEAR_CENTS) / MONTH_CENTS;
+/** Cents a yearly price saves against paying monthly for twelve months. */
+const YEAR_SAVES_CENTS = 12 * MONTH_CENTS - YEAR_CENTS;
+/** The same saving in months. */
+const MONTHS_FREE = YEAR_SAVES_CENTS / MONTH_CENTS;
+
+/** "14-day free trial, then $10/month. Cancel anytime before day 14 …" for one interval. */
+const trialLine = (price: string) =>
+  `${TRIAL_DAYS}-day free trial, then ${price}. Cancel anytime before day ${TRIAL_DAYS} and you won't be charged.`;
 
 export interface IntervalPricing {
   amountCents: number;
@@ -34,6 +40,10 @@ export interface IntervalPricing {
   price: string;
   /** Highlight shown next to the price ("2 months free"). */
   badge?: string;
+  /** What this interval saves against monthly ("save $20"). */
+  savings?: string;
+  /** The free-trial line under this interval's price. */
+  trial: string;
 }
 
 export const CLUB_PRICING: {
@@ -54,8 +64,15 @@ export const CLUB_PRICING: {
       label: 'Yearly',
       price: `${formatUsd(YEAR_CENTS)}/year`,
       badge: `${MONTHS_FREE} months free`,
+      savings: `save ${formatUsd(YEAR_SAVES_CENTS)}`,
+      trial: trialLine(`${formatUsd(YEAR_CENTS)}/year`),
     },
-    month: { amountCents: MONTH_CENTS, label: 'Monthly', price: `${formatUsd(MONTH_CENTS)}/month` },
+    month: {
+      amountCents: MONTH_CENTS,
+      label: 'Monthly',
+      price: `${formatUsd(MONTH_CENTS)}/month`,
+      trial: trialLine(`${formatUsd(MONTH_CENTS)}/month`),
+    },
   },
   /** Call to action for both intervals. */
   cta: `Start your ${TRIAL_DAYS}-day free trial`,
