@@ -29,10 +29,10 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 |---|---|---|---|
 | M1: app project setup | session_01QS5dr4qFtLFfyf7oVjMNAj | PR #2 | Merged 2026-11-26 05:50 UTC |
 | M2 research: Meshtastic link + simulator | session_01QS5dr5ia6B5X5renWEXyAe | PR #1 | Merged 2026-11-26 05:42 UTC |
-| M2 part 1: packages/mesh client + FakeTransport | session_01QS5dr5jAZ6wC472f8hsUHW | agent/m2-mesh-client | Started 2026-11-26 05:42 UTC |
+| M2 part 1: packages/mesh client + FakeTransport | session_01QS5dr5jAZ6wC472f8hsUHW | PR #4 | In review: DRY pass + exports for BLE worker |
 | M2 part 2: BLE transport, permissions, Android foreground service, pairing screen | session_01QS5dr7YPxgw1iqGybujET3 | agent/m2-ble-transport | Started 2026-11-26 05:51 UTC (depends on mesh client) |
 | M4: offline map (MapLibre + USGS), Design D overlays and markers | session_01QS5dr3kB1sf3Bt86wVb3qW | agent/m4-offline-map | Started 2026-11-26 05:51 UTC |
-| CI Android native build + Archivo variable font | session_01QS5dr4qFtLFfyf7oVjMNAj (reused) | agent/ci-android-font | Started 2026-11-26 05:55 UTC |
+| CI Android native build + Archivo variable font + minSdk 26 | session_01QS5dr4qFtLFfyf7oVjMNAj (reused) | PR #3 | Approved; waiting on first Android CI build |
 | M8: Supabase schema, RLS, invite RPC, tests, packages/shared types | session_01QS5dr5ia6B5X5renWEXyAe (reused) | agent/m8-supabase-schema | Started 2026-11-26 05:55 UTC |
 
 ## Decisions log
@@ -48,7 +48,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 ## Backlog (coordinator)
 
-- After mesh client merges: app DB migration should import check-in modes and other enums from `@huntclub/mesh` instead of SQL string literals (DRY).
+- After mesh client merges: app DB migrations (TS strings) should interpolate check-in modes, `MAX_TEXT_CHARS` and other constants from `@huntclub/mesh` instead of literals (DRY).
 - Tab icon set (dependency choice).
 - `messages` table needs recipient/group column before chat (M7).
 

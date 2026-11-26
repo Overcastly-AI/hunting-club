@@ -159,8 +159,8 @@ Everything that matters in the field travels over the LoRa mesh, with no server 
 | club_members | club id, user id, display name, initials, role (admin, member, guest), node ID, expires at | Guests expire |
 | subscriptions | club id, Stripe customer ID, Stripe subscription ID, plan, status, paid through | Written only by the webhook Lambda |
 | invites | id, club id, token, created by, expires at, uses | Enforces member limit |
-| stands | id, club id, area id, name, type, lat, lon, notes, active, updated at | |
-| areas | id, club id, name, boundary (GeoJSON), notes, active, updated at | Optional named zones |
+| stands | id, mesh id, club id, area id, name, type, lat, lon, notes, active, updated at | mesh id = integer used on the radio |
+| areas | id, mesh id, club id, name, boundary (GeoJSON), notes, active, updated at | Optional named zones; mesh id as stands |
 | harvests | id, club id, member id, species, sex, lat, lon, stand or area id, notes, harvested at | Only harvests a member chose to share with the club; feeds reports |
 | map_packs | id, club id, bounds, zoom range, source, S3 key, size, built at | |
 | stripe_events | event ID, processed at | Webhook idempotency |
@@ -203,7 +203,8 @@ Use stock Meshtastic channels, positions and text messages. Put the hunting-spec
 
 **Rules**
 
-- Encode app messages as small protobufs with: message ID, sender node ID, timestamp, mode, stand or area ID or pin location, and payload. De-duplicate on message ID.
+- Encode app messages as small protobufs with: message ID, sender node ID, timestamp, mode, stand or area ID or pin location, and payload. De-duplicate on (sender, message ID). **The exact wire format's single source of truth is the field table in `packages/mesh/src/codec/appPort.ts`;** this spec doesn't repeat it.
+- Stands and areas travel on the mesh as a small integer `mesh_id` (uint32, unique within the club), not their UUIDs, to fit the size budgets.
 - Show delivery state in the UI (for example, "Delivered to 5 of 6") using **app-level receipts** on our port: a firmware ack on a broadcast only proves one neighbour heard it. Receipts are de-duplicated and rate-limited to protect airtime. Ask for a Hand retries until at least one receipt arrives.
 - Mark positions as stale in the UI: solid ring under 2 min, dashed between 2 and 10 min, faded after that.
 - Keep the hop limit at the Meshtastic default (3) and avoid chatty updates. Airtime is shared by everyone in range.
