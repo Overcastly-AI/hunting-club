@@ -52,7 +52,8 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 | M4: offline map | session_01QS5dr3kB1sf3Bt86wVb3qW | PR #6 | Approved; moving config to app.config.ts after #3 |
 | M2 part 2: BLE transport, pairing, Android service | session_01QS5dr7YPxgw1iqGybujET3 | PR #7 (draft) | Switching to @huntclub/mesh imports; then app.config.ts after #3 |
 | Weather: NWS wind/temperature, offline cache | session_01QS5dr7o9U9xBRJaR86iMuW | agent/weather | Started 06:10 UTC (builds on #6) |
-| Research: Stripe + Supabase Auth + webhook Lambda | session_01QS5dr5ia6B5X5renWEXyAe | agent/m2-research | Started 06:08 UTC (after #5 conflict) |
+| HarvestSex single source + Stripe/Auth research | session_01QS5dr5ia6B5X5renWEXyAe | PR #8 | Merged 06:16 UTC |
+| infra/: CDK stacks (web+CloudFront, webhook Lambda stub, ops schedules) | session_01QS5dr5ia6B5X5renWEXyAe | agent/m2-research | Started 06:15 UTC |
 | packages/core: check-in, overdue, help retries, receipts, party cap | session_01QS5dr5jAZ6wC472f8hsUHW | agent/m2-mesh-client (new PR) | Started 06:09 UTC |
 
 ## Decisions log
@@ -80,7 +81,14 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 | Secret | Secrets Manager name | Sent | Rotated |
 |---|---|---|---|
 
+## Supabase
+
+- Org "Grok Bot" (dtbdseniylkmipccqskx), free plan. Project `desk` (jvanxotplnwddodwxxcx) belongs to the owner's trading desk: **never modify, pause or delete it.**
+- Creating `hunt-club-mesh-dev` (us-east-1) failed: the owner is at the 2-active-free-projects limit; the other project is in an org this connection can't see. Waiting for the owner to pause/delete that one. Until then the schema is tested against local Postgres in CI; not blocking before M8–M10.
+
 ## Owner to-dos (non-blocking)
+
+- Pause or delete the free Supabase project in the other organization (not `desk`), then tell the coordinator to create `hunt-club-mesh-dev`.
 
 - **Open or closed source (needed before the app ships):** Meshtastic protobufs are GPL-3.0 with no app exception. Closed-source app + bundled protobufs conflicts with the license; open-sourcing the app (GPL-3.0) resolves it and the cloud can stay proprietary.
 - Optional: allow running `meshtasticd --sim` in the agent environment (blocked by sandbox policy) so agents can test against a simulated radio.
