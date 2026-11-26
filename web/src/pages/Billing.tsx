@@ -25,7 +25,7 @@ export function Billing(props: { api: ClubApi }) {
   return (
     <section aria-labelledby="billing-title">
       <PageHeading id="billing-title">Billing</PageHeading>
-      <Loadable state={billing}>
+      <Loadable state={billing} noClub={<PlansBeforeClub />}>
         {([subscription, plans]) => (
           <>
             <Status subscription={subscription} />
@@ -39,6 +39,36 @@ export function Billing(props: { api: ClubApi }) {
         The radio, chat and Ask for a Hand keep working whatever the billing status.
       </p>
     </section>
+  );
+}
+
+/** Prices for an admin who has not created the club yet. */
+function PlansBeforeClub() {
+  return (
+    <div>
+      <ul className="panel">
+        {BILLING_INTERVALS.map((option) => (
+          <li key={option}>
+            <PriceLabel interval={option} />
+          </li>
+        ))}
+      </ul>
+      <p className="muted">{CLUB_PRICING.terms}</p>
+      <p>
+        <a href="#/club">Create your club</a> to start your free trial.
+      </p>
+    </div>
+  );
+}
+
+/** "Yearly: $100/year · 2 months free", from CLUB_PRICING. */
+function PriceLabel({ interval }: { interval: BillingInterval }) {
+  const pricing = CLUB_PRICING.intervals[interval];
+  return (
+    <span>
+      {pricing.label}: {pricing.price}
+      {pricing.badge ? <strong> · {pricing.badge}</strong> : null}
+    </span>
   );
 }
 
@@ -91,24 +121,18 @@ function Pay(props: { api: ClubApi; plans: readonly Plan[] }) {
       <h2>Subscribe the club</h2>
       <fieldset className="panel">
         <legend>Billing</legend>
-        {BILLING_INTERVALS.map((option) => {
-          const pricing = CLUB_PRICING.intervals[option];
-          return (
-            <label key={option} className="row">
-              <input
-                type="radio"
-                name="interval"
-                value={option}
-                checked={interval === option}
-                onChange={() => setChosenInterval(option)}
-              />
-              <span>
-                {pricing.label}: {pricing.price}
-                {pricing.badge ? <strong> · {pricing.badge}</strong> : null}
-              </span>
-            </label>
-          );
-        })}
+        {BILLING_INTERVALS.map((option) => (
+          <label key={option} className="row">
+            <input
+              type="radio"
+              name="interval"
+              value={option}
+              checked={interval === option}
+              onChange={() => setChosenInterval(option)}
+            />
+            <PriceLabel interval={option} />
+          </label>
+        ))}
       </fieldset>
       <button
         className="button primary"

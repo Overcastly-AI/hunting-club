@@ -30,7 +30,7 @@ export const signInCopy = {
   email: 'Email address',
   emailPlaceholder: 'you@example.com',
   sendCode: 'Email me a code',
-  sending: 'Sending code…',
+  sending: 'Sending code… this can take a few seconds',
   codeSent: (email: string) => `Enter the code from the email we sent to ${email}.`,
   codeHelp: (kind: CodeChallenge['kind']) =>
     `The code works for ${emailCodeRules(kind).validFor}. Not in your inbox? Check your spam folder.`,

@@ -4,6 +4,7 @@ import { bundleBuildId, newerBuildIsLive } from './buildVersion';
 import type { WebClubServices } from './cloud';
 import { Loading } from './components/Loading';
 import { SignIn } from './pages/SignIn';
+import { NOT_FOUND_TITLE, NotFound } from './pages/NotFound';
 import { ADMIN_TITLE, useDocumentTitle } from './title';
 import { signedInEmail } from './tokenStore';
 
@@ -37,9 +38,11 @@ export const PAGES = [
 
 type PagePath = (typeof PAGES)[number]['path'];
 
-function currentPath(): PagePath {
+/** The page the hash names; no hash is the first page, and an unknown one is null (Page not found). */
+function currentPath(): PagePath | null {
   const hash = window.location.hash.replace(/^#\/?/, '');
-  return PAGES.find((p) => p.path === hash)?.path ?? PAGES[0].path;
+  if (hash === '') return PAGES[0].path;
+  return PAGES.find((p) => p.path === hash)?.path ?? null;
 }
 
 const SIGN_IN_TITLE = 'Sign in';
@@ -65,7 +68,7 @@ export function App(props: WebClubServices) {
   const [auth, setAuth] = useState<Auth>({ kind: 'restoring' });
   // The route asked for (deep link or reload). Sign-in never changes it, so the admin
   // lands on that page once signed in.
-  const [path, setPath] = useState<PagePath>(currentPath);
+  const [path, setPath] = useState<PagePath | null>(currentPath);
 
   useEffect(() => {
     const onHash = () => {
@@ -95,12 +98,12 @@ export function App(props: WebClubServices) {
   }, [session]);
 
   const notReady = !session || (auth.kind === 'signedIn' && !api);
-  const page = PAGES.find((p) => p.path === path) ?? PAGES[0];
+  const page = PAGES.find((p) => p.path === path);
   useDocumentTitle(
     ...(notReady || auth.kind === 'restoring'
       ? []
       : auth.kind === 'signedIn'
-        ? [page.label, ADMIN_TITLE]
+        ? [page?.label ?? NOT_FOUND_TITLE, ADMIN_TITLE]
         : [SIGN_IN_TITLE]),
   );
 
@@ -155,8 +158,8 @@ export function App(props: WebClubServices) {
       </nav>
       <main id="main">
         {/* Keyed by page: each page mounts fresh, and its heading takes focus. */}
-        <Suspense key={page.path} fallback={<Loading />}>
-          {page.render(api)}
+        <Suspense key={page?.path ?? ''} fallback={<Loading />}>
+          {page ? page.render(api) : <NotFound signedIn />}
         </Suspense>
       </main>
       {auth.email ? <p className="muted">Signed in as {auth.email}</p> : null}
