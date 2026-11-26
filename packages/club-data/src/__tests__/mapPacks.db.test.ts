@@ -61,10 +61,12 @@ describe('map pack builds', () => {
     expect(await statuses()).toMatchObject({ [next.id]: 'building' });
   });
 
-  it('is per club', async () => {
-    await start();
-    await expect(
-      w.data.startMapPackBuild(w.as('pat'), w.club('Pine Hollow'), PACK),
-    ).resolves.toMatchObject({ status: 'building' });
+  it('runs one build at a time across all clubs', async () => {
+    const pine = () => w.data.startMapPackBuild(w.as('pat'), w.club('Pine Hollow'), PACK);
+    const pack = await start();
+    await expectCode(pine(), 'conflict');
+    await w.data.finishMapPack(SERVICE, oak(), pack.id, ready());
+    await expect(pine()).resolves.toMatchObject({ status: 'building' });
+    await expectCode(start(), 'conflict');
   });
 });

@@ -34,6 +34,10 @@ import { ATTR, CLUB_COLLECTIONS, epochSeconds, keys, readExpiry, withExpiry } fr
 import { TTL_ATTRIBUTE } from '../table';
 import { authorizeClub, fromItem, getEntity, notFound, validate } from './common';
 
+/** A build holds both: one per club, and one account-wide (the builder runs one at a time). */
+const buildLocks = (clubId: string) =>
+  [keys.mapPackBuild(clubId), keys.mapPackBuildGlobal] as const;
+
 /** Admin: the club to build a map pack for (its property line gives the bounds). */
 export async function getClubForMapPack(ctx: Ctx, actor: Actor, clubId: string): Promise<Club> {
   await authorizeClub(ctx, actor, clubId, 'requestMapPack');
@@ -71,16 +75,19 @@ export async function startMapPackBuild(
     createdAt: nowIso,
     updatedAt: nowIso,
   };
+  const takeLock = (lock: ReturnType<typeof buildLocks>[number]) => ({
+    put: withExpiry({ ...lock, packId: id, expiresAt }),
+    // Free, or held by a build whose time is up.
+    condition: `${NOT_EXISTS} OR #exp <= :nowSec`,
+    names: { '#exp': TTL_ATTRIBUTE },
+    values: { ':nowSec': epochSeconds(now) },
+  });
+  const [clubLock, globalLock] = buildLocks(clubId);
   try {
     await transact(ctx, [
       { check: keys.club(clubId), condition: EXISTS },
-      {
-        put: withExpiry({ ...keys.mapPackBuild(clubId), packId: id, expiresAt }),
-        // Free, or held by a build whose time is up.
-        condition: `${NOT_EXISTS} OR #exp <= :nowSec`,
-        names: { '#exp': TTL_ATTRIBUTE },
-        values: { ':nowSec': epochSeconds(now) },
-      },
+      takeLock(clubLock),
+      takeLock(globalLock),
       {
         put: withExpiry({ ...keys.inClub(clubId, 'mapPack', id), ...pack }),
         condition: NOT_EXISTS,
@@ -89,6 +96,12 @@ export async function startMapPackBuild(
   } catch (e) {
     if (e instanceof TransactionFailed && e.failed.has(1)) {
       throw new ClubDataError('conflict', 'a map pack is already being built for this club');
+    }
+    if (e instanceof TransactionFailed && e.failed.has(2)) {
+      throw new ClubDataError(
+        'conflict',
+        'another map pack is being built; try again in a few minutes',
+      );
     }
     if (e instanceof TransactionFailed) throw notFound();
     throw e;
@@ -148,14 +161,13 @@ async function settle(
     if (e instanceof ConditionFailed) throw notFound();
     throw e;
   }
-  try {
-    // Only this build's lock: a newer build may hold it once ours timed out.
-    await remove(ctx, keys.mapPackBuild(clubId), {
-      condition: 'packId = :id',
-      values: { ':id': id },
-    });
-  } catch (e) {
-    if (!(e instanceof ConditionFailed)) throw e;
+  for (const lock of buildLocks(clubId)) {
+    try {
+      // Only this build's lock: a newer build may hold it once ours timed out.
+      await remove(ctx, lock, { condition: 'packId = :id', values: { ':id': id } });
+    } catch (e) {
+      if (!(e instanceof ConditionFailed)) throw e;
+    }
   }
   return fromItem(MapPackSchema, item);
 }

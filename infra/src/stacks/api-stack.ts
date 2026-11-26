@@ -127,7 +127,6 @@ export class ApiStack extends Stack {
       // The shared tile cap is derived from this budget (MAP_PACK_LIMITS).
       timeout: Duration.seconds(MAP_PACK_BUILD.timeoutSeconds),
       memorySize: 1024,
-      reservedConcurrentExecutions: 1,
       environment: {
         [API_ENV.envName]: config.name,
         [API_ENV.tableName]: table.tableName,
@@ -135,8 +134,9 @@ export class ApiStack extends Stack {
         [API_ENV.webOrigin]: `https://${config.domainName}`,
       },
     });
-    // No retries (a failed build is recorded on the pack; the admin can start another);
-    // one build at a time account-wide caps cost and USGS load.
+    // No retries (a failed build is recorded on the pack; the admin can start another).
+    // One build at a time account-wide is a lock item in the table (club-data), not
+    // reserved concurrency, which new accounts' concurrency limit may refuse.
     this.mapPackBuilder.function.configureAsyncInvoke({
       retryAttempts: 0,
       maxEventAge: Duration.seconds(MAP_PACK_BUILD.lockSeconds),

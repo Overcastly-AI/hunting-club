@@ -354,8 +354,8 @@ describe('api stack', () => {
       t.resourceCountIs('AWS::Events::Rule', 0);
       // The shared tile cap (MAP_PACK_LIMITS) assumes exactly this timeout.
       expect(fn.Properties.Timeout).toBe(MAP_PACK_BUILD.timeoutSeconds);
-      // One build at a time, never retried.
-      expect(fn.Properties.ReservedConcurrentExecutions).toBe(1);
+      // Never retried; no reserved concurrency (a table lock serializes builds).
+      expect(fn.Properties.ReservedConcurrentExecutions).toBeUndefined();
       t.hasResourceProperties('AWS::Lambda::EventInvokeConfig', {
         MaximumRetryAttempts: 0,
         MaximumEventAgeInSeconds: MAP_PACK_BUILD.lockSeconds,

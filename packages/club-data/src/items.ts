@@ -37,6 +37,8 @@ export const keys = {
   secret: (clubId: string) => key(clubPk(clubId), 'SECRET'),
   /** One map-pack build at a time per club: held (with a TTL) while a build runs. */
   mapPackBuild: (clubId: string) => key(clubPk(clubId), 'MAPPACK_BUILD'),
+  /** One map-pack build at a time account-wide (caps cost and USGS load). */
+  mapPackBuildGlobal: key('MAPPACK_BUILD', 'GLOBAL'),
   // Billing items live in their own partitions (PARTITION_PREFIXES) so the Stripe
   // webhook's IAM policy can be limited to them with dynamodb:LeadingKeys.
   subscription: (clubId: string) =>
