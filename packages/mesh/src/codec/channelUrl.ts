@@ -9,6 +9,7 @@
  * Channel keys are secrets: never log a ChannelSet, URL or PSK.
  */
 import { create, fromBinary, toBinary } from '@bufbuild/protobuf';
+import { JOIN_PATH, WEB_DOMAINS } from '@huntclub/shared';
 import { AppOnly, Channel, Config } from '../protobufs';
 import type { RandomSource } from '../random';
 import { base64UrlDecode, base64UrlEncode } from './base64url';
@@ -98,13 +99,14 @@ export interface JoinLink {
 
 /**
  * Hosts that serve the web join page (and, later, the iOS/Android universal
- * link) at JOIN_WEB_PATH. First entry is the default for new links.
- * TODO(backlog): the production host is not decided yet. Add it here (as
- * the first entry) once chosen; until then QR codes default to the app
- * form, and the web form only works on the dev domain.
+ * link) at JOIN_WEB_PATH, from WEB_DOMAINS in @huntclub/shared (the single
+ * source). First entry is the default for new links.
+ * TODO(backlog): the production host is not decided yet. Add it to
+ * WEB_DOMAINS (as the first entry) once chosen; until then QR codes default
+ * to the app form, and the web form only works on the dev domain.
  */
-export const JOIN_WEB_HOSTS: readonly string[] = ['huntclub-dev.jaycobjones.com'];
-export const JOIN_WEB_PATH = '/join';
+export const JOIN_WEB_HOSTS: readonly string[] = Object.values(WEB_DOMAINS);
+export const JOIN_WEB_PATH = JOIN_PATH;
 
 /**
  * - `app`: `huntclub://join?cs=…&party=…` (opens the app directly).

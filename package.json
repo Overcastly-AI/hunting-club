@@ -5,7 +5,8 @@
   "workspaces": [
     "app",
     "packages/*",
-    "infra"
+    "infra",
+    "web"
   ],
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || true",
@@ -13,7 +14,7 @@
     "lint": "npm run lint --workspaces --if-present && prettier --check .",
     "format": "prettier --write .",
     "test": "npm test --workspaces --if-present",
-    "synth": "npm run synth -w @huntclub/infra"
+    "synth": "npm run build -w @huntclub/web && npm run synth -w @huntclub/infra"
   },
   "devDependencies": {
     "prettier": "^3.10.1"
@@ -22,6 +23,7 @@
     "node": ">=22"
   },
   "overrides": {
-    "react": "19.3.0"
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   }
 }

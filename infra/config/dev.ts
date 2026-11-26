@@ -1,3 +1,4 @@
+import { WEB_DOMAINS } from '@huntclub/shared/app';
 import type { EnvConfig } from './types';
 
 /**
@@ -8,7 +9,7 @@ export const dev: EnvConfig = {
   name: 'dev',
   account: '054825383623',
   region: 'us-east-1',
-  domainName: 'huntclub-dev.jaycobjones.com',
+  domainName: WEB_DOMAINS.dev,
   hostedZoneId: 'Z041480814OY68TGPM84F',
   certificateArn:
     'arn:aws:acm:us-east-1:054825383623:certificate/ece3d63e-c299-4106-b448-88b7bb3dcb48',
