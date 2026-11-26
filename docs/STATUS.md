@@ -26,9 +26,11 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 | Task | Session | Branch / PR | Status |
 |---|---|---|---|
-| M1: app project setup | session_01QS5dr4qFtLFfyf7oVjMNAj | agent/m1-scaffold | Started 2026-11-26 05:34 UTC |
+| M1: app project setup | session_01QS5dr4qFtLFfyf7oVjMNAj | PR #2 | Merged 2026-11-26 05:50 UTC |
 | M2 research: Meshtastic link + simulator | session_01QS5dr5ia6B5X5renWEXyAe | PR #1 | Merged 2026-11-26 05:42 UTC |
 | M2 part 1: packages/mesh client + FakeTransport | session_01QS5dr5jAZ6wC472f8hsUHW | agent/m2-mesh-client | Started 2026-11-26 05:42 UTC |
+| M2 part 2: BLE transport, permissions, Android foreground service, pairing screen | session_01QS5dr7YPxgw1iqGybujET3 | agent/m2-ble-transport | Started 2026-11-26 05:51 UTC (depends on mesh client) |
+| M4: offline map (MapLibre + USGS), Design D overlays and markers | session_01QS5dr3kB1sf3Bt86wVb3qW | agent/m4-offline-map | Started 2026-11-26 05:51 UTC |
 
 ## Decisions log
 
@@ -37,7 +39,17 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 | 2026-11-26 | Own thin Meshtastic client on `@meshtastic/protobufs`; no `@meshtastic/core` | Core removed upstream; needs heavy polyfills |
 | 2026-11-26 | `react-native-ble-manager` 13.x instead of ble-plx | ble-plx legacy-bridge only, rewrite stalled |
 | 2026-11-26 | Private port 314 + app-level receipts | Broadcast acks only prove one neighbour heard |
+| 2026-11-26 | App IDs `com.overcastly.huntclub` (iOS and Android) | Owner's GitHub org; hard to change after store upload |
+| 2026-11-26 | DRY with no shortcuts (owner rule) | One source of truth; shared code in `packages/` |
 | 2026-11-26 | Android foreground service as a small in-repo Expo module | No library provides it; avoids a dependency |
+
+## Backlog (coordinator)
+
+- After mesh client merges: app DB migration should import check-in modes and other enums from `@huntclub/mesh` instead of SQL string literals (DRY).
+- CI: add Android native build job (prebuild + Gradle debug); iOS native builds via EAS.
+- Archivo variable font (width axis) or condensed static faces.
+- Tab icon set (dependency choice).
+- `messages` table needs recipient/group column before chat (M7).
 
 ## Owner to-dos (non-blocking)
 
