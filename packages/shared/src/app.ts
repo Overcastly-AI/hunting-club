@@ -9,7 +9,7 @@ export const APP_NAME = 'Hunt Club Mesh';
  * and sign-in, and the public site's app structured data.
  */
 export const APP_DESCRIPTION =
-  'Off-grid hunting with your party and club over Meshtastic radios: a shared map, chat and check-in with no cell service.';
+  'Off-grid hunting for your party and club: a shared map, chat and check-in over small radios, with no cell service.';
 
 /** iOS bundle identifier and Android package name. */
 export const APP_ID = 'com.overcastly.huntclub';
