@@ -84,9 +84,8 @@ export function SlideToConfirm({
         onLayout={onLayout}
         style={[styles.track, disabled && { opacity: opacity.pressed }]}
       >
-        <Text style={styles.label} numberOfLines={1}>
-          {label}
-        </Text>
+        {/* Wraps instead of cutting off at large text sizes; the track grows with it. */}
+        <Text style={styles.label}>{label}</Text>
         <Animated.View
           {...pan.panHandlers}
           testID="slide-thumb"
@@ -111,7 +110,7 @@ const CHEVRON = 12;
 const styles = StyleSheet.create({
   wrap: { gap: spacing.sm },
   track: {
-    height: sizes.primaryButtonMaxHeight,
+    minHeight: sizes.primaryButtonMaxHeight,
     borderRadius: radii.primaryButton,
     backgroundColor: colors.surfaceRaised,
     borderWidth: 1,
@@ -125,6 +124,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingLeft: THUMB + spacing.md,
     paddingRight: spacing.md,
+    paddingVertical: spacing.sm,
   },
   thumb: {
     position: 'absolute',

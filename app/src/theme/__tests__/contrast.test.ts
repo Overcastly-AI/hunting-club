@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs';
+
 import { colors, opacity } from '..';
 import { MIN_TEXT_CONTRAST, blendOver, contrastRatio } from '@huntclub/design';
+import { SRC, sourceFiles } from '../../test-utils/sourceFiles';
 
 describe('contrastRatio', () => {
   it('matches the WCAG reference values', () => {
@@ -44,4 +47,32 @@ describe('text contrast (spec: at least 4.5:1)', () => {
     const dimmed = blendOver(colors.textSecondary, colors.mapHalo, opacity.faded);
     expect(contrastRatio(dimmed, colors.mapHalo)).toBeLessThan(MIN_TEXT_CONTRAST);
   });
+});
+
+/** Backgrounds every screen, sheet and card is drawn on. */
+const SCREEN_BACKGROUNDS = ['surface', 'surfaceRaised'] as const;
+
+/** Every token the app's source uses as a text colour (`color: colors.x`), so new ones are checked too. */
+function textColorTokens(): (keyof typeof colors)[] {
+  const used = sourceFiles(SRC, /\.tsx?$/).flatMap((file) =>
+    [...readFileSync(file, 'utf8').matchAll(/\bcolor: colors\.(\w+)/g)].map((m) => m[1]!),
+  );
+  return [...new Set(used)].sort() as (keyof typeof colors)[];
+}
+
+describe('every text colour in the app on every screen background', () => {
+  const tokens = textColorTokens();
+  // A background colour used as text (the primary button label) is checked as a pair above.
+  const onScreens = tokens.filter((t) => !(SCREEN_BACKGROUNDS as readonly string[]).includes(t));
+
+  it('finds the text colours it checks', () => {
+    expect(onScreens).toEqual(expect.arrayContaining(['text', 'textSecondary', 'help']));
+  });
+
+  it.each(onScreens.flatMap((fg) => SCREEN_BACKGROUNDS.map((bg) => [fg, bg] as const)))(
+    '%s on %s',
+    (fg, bg) => {
+      expect(contrastRatio(colors[fg], colors[bg])).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
+    },
+  );
 });
