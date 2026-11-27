@@ -3,7 +3,7 @@ import { cx } from './cx';
 import type { AvatarSize } from './sizes';
 
 /**
- * Initials in a circle (from a name, or an email's local part). Decorative by default (the
+ * Initials in a circle, from a name ("?" when there is none). Decorative by default (the
  * name is written beside it); give it a `label` when it stands alone. `you` draws it in the
  * accent: orange is for you.
  */

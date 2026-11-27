@@ -6,11 +6,12 @@ import {
   THEME_STORAGE_KEY,
 } from '@huntclub/design';
 import { globalCss } from '../theme/css';
-import { ADMIN_PATH, LEGAL_PATHS, signInCopy } from '@huntclub/shared';
+import { ADMIN_PATH, emailStandInName, LEGAL_PATHS, signInCopy } from '@huntclub/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { SESSION_EXPIRED } from '../App';
 import { BILLING_ALERT_LABELS } from '../billingStatus';
 import { axeViolations } from '../components/ui/__tests__/axe';
+import { accountAvatarName } from '../shell/Account';
 import { MORE_LABEL } from '../shell/Shell';
 import { PAGES, pageHref } from '../shell/routes';
 import { go, renderSignedIn } from '../testing/app';
@@ -62,6 +63,17 @@ describe('navigation', () => {
 });
 
 describe('the account menu', () => {
+  it('takes its initials from the shared email stand-in, never a name made up from the email', () => {
+    const user = (email?: string) => ({ userId: SIGNED_IN.userId, ...(email ? { email } : {}) });
+    expect(accountAvatarName(user('jane.doe@example.com'))).toBe(
+      emailStandInName('jane.doe@example.com'),
+    );
+    // An underscore is no name: "?" in the avatar, not "JD".
+    expect(accountAvatarName(user('jane_doe@example.com'))).toBe('');
+    expect(accountAvatarName(user())).toBe('');
+    expect(accountAvatarName(undefined)).toBe('');
+  });
+
   it('is the only place with Sign out, and holds who is signed in, Theme, Privacy and Terms', async () => {
     await renderSignedIn();
     expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
