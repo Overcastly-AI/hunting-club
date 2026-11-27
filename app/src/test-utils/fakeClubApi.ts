@@ -7,6 +7,8 @@ import {
   type MapPack,
   mapPackKey,
   type Member,
+  type MemberProfileUpdate,
+  MemberProfileUpdateSchema,
   type Stand,
   type ClubSession,
 } from '@huntclub/shared';
@@ -129,9 +131,13 @@ export function fakeClubApi(
     requestMapPack: offline(() => {
       throw new ClubApiRequestError('forbidden', 403);
     }),
-    updateMemberProfile: offline(() => {
-      throw new ClubApiRequestError('forbidden', 403);
-    }),
+    updateMemberProfile: jest.fn(
+      async (_clubId: string, _userId: string, patch: MemberProfileUpdate) => {
+        if (options.offline) throw new ClubApiRequestError('network', 0);
+        Object.assign(member, MemberProfileUpdateSchema.parse(patch));
+        return member;
+      },
+    ),
     redeemInvite: jest.fn(async (req: { token: string; displayName: string; initials: string }) => {
       if (options.offline) throw new ClubApiRequestError('network', 0);
       joined = true;
