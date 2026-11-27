@@ -38,7 +38,7 @@ Daylight, "overcast": a cool grey-green white, chosen for glare. It is not cream
 | raised | #E7EBE9 | Secondary buttons, table heads |
 | edge | #66706C | Outlines of controls |
 | ink | #0E1416 | Text (18.1:1 on plate) |
-| quiet | #45504D | Second-line text |
+| quiet | #3D4845 | Second-line text (7.2:1 on pit; 7:1 or better on every daylight surface) |
 | blaze | #FF7A1F | Same orange, always with an ink outline so its edge passes 3:1. Orange text becomes #A8420A |
 | lantern | #6B4C00 on #FBE7B0 | Ask for a Hand |
 | fresh / wind | #157F3C / #1B5EA6 | Darkened to pass on white |

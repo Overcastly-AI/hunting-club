@@ -20,7 +20,7 @@ import {
 } from './type';
 
 /** Browser default root size: type is set in rem so it follows the reader's text-size setting. */
-const ROOT_FONT_PX = 16;
+export const ROOT_FONT_PX = 16;
 export const rem = (px: number) => `${px / ROOT_FONT_PX}rem`;
 
 /** `surfaceRaised` → `surface-raised`, `surface0` → `surface-0`, `title1` → `title-1`. */

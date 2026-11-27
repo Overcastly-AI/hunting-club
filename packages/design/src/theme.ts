@@ -164,7 +164,8 @@ export const lightTheme = {
     borderSubtle: '#C9D0CD',
     borderControl: '#66706C',
     text: OVERCAST.ink,
-    textSecondary: '#45504D',
+    // 7:1 or better on every daylight surface, like body text (DAYLIGHT_BODY_TOKENS).
+    textSecondary: '#3D4845',
     textTertiary: '#545F5B',
     accent: BLAZE,
     accentHover: BLAZE_HOVER,
@@ -222,6 +223,15 @@ export const THEME_ATTRIBUTE = 'data-theme';
 
 /** Every surface text and controls sit on, deepest to highest. */
 export const SURFACES = ['canvas', 'plate', 'raised', 'pressed'] as const;
+
+/**
+ * Body and second-line text: held to MIN_DAYLIGHT_BODY_CONTRAST (7:1) on every daylight
+ * surface, for reading in glare.
+ */
+export const DAYLIGHT_BODY_TOKENS = [
+  'text',
+  'textSecondary',
+] as const satisfies readonly ThemeColorToken[];
 
 /**
  * Contrast rules for every theme: every pair the map-first direction draws (the pairs its
