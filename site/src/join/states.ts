@@ -14,9 +14,17 @@ export const JOIN_HOOKS = {
   open: 'data-join-open',
   /** Where the invite QR code is drawn (shown on wide screens). */
   qr: 'data-join-qr',
+  /** The club invite's heading: becomes "Join <club name>" when the link names the club. */
+  clubName: 'data-join-club-name',
 } as const;
 
-/** Shown before the script runs, and when the page is opened with no invite. */
+/**
+ * Shown before the script runs (and with no script). Once it runs, a page with no invite
+ * says the link is missing or invalid.
+ */
 export const INITIAL_JOIN_STATE: JoinState = 'generic';
 
 export const JOIN_QR_LABEL = 'Invite QR code';
+
+/** The club invite heading when the link names the club. Set as text, never as HTML. */
+export const joinClubHeading = (clubName: string) => `Join ${clubName}`;

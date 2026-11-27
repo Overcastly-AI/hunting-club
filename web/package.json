@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite --configLoader runner",
     "build": "tsc --noEmit && vite build --configLoader runner",
+    "build:kit": "vite build --configLoader runner --mode kit --outDir dist-kit",
     "preview": "vite preview --configLoader runner",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --configLoader runner"
@@ -15,6 +16,10 @@
     "@huntclub/design": "*",
     "@huntclub/mesh": "*",
     "@huntclub/shared": "*",
+    "@radix-ui/react-tabs": "1.2.1",
+    "@radix-ui/react-toast": "1.3.1",
+    "@radix-ui/react-tooltip": "1.4.1",
+    "lucide-react": "1.72.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
@@ -24,6 +29,7 @@
     "@types/react": "~19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.3.0",
+    "axe-core": "4.14.0",
     "jsdom": "31.0.1",
     "typescript": "~6.0.3",
     "vite": "8.3.8",

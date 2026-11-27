@@ -110,3 +110,65 @@ describe('dawn scene', () => {
     }
   });
 });
+
+/** Numbers each SVG path command takes (per repeat); Z takes none. */
+const PATH_ARITY: Record<string, number> = {
+  M: 2,
+  L: 2,
+  H: 1,
+  V: 1,
+  C: 6,
+  S: 4,
+  Q: 4,
+  T: 2,
+  A: 7,
+  Z: 0,
+};
+
+/**
+ * Problems in an SVG path's `d`: an unknown command, or a command whose number count is not a
+ * whole multiple of what it takes (a browser stops drawing the path at that point).
+ */
+function pathProblems(d: string): string[] {
+  const problems: string[] = [];
+  const tokens = d.match(/[A-Za-z]|[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g) ?? [];
+  if (tokens.join('').length !== d.replace(/[\s,]/g, '').length) problems.push('stray characters');
+  if (!/^[Mm]$/.test(tokens[0] ?? '')) problems.push('does not start with M');
+  let i = 0;
+  while (i < tokens.length) {
+    const command = tokens[i]!;
+    const arity = PATH_ARITY[command.toUpperCase()];
+    if (arity === undefined) {
+      problems.push(`unknown command ${command}`);
+      break;
+    }
+    let count = 0;
+    for (i++; i < tokens.length && !/[A-Za-z]/.test(tokens[i]!); i++) count++;
+    const ok = arity === 0 ? count === 0 : count > 0 && count % arity === 0;
+    if (!ok) problems.push(`${command} with ${count} numbers`);
+  }
+  return problems;
+}
+
+describe('dawn scene path data', () => {
+  const paths = [...svg.matchAll(/\sd="([^"]*)"/g)].map((m) => m[1]!);
+  const cells = Object.values(dawnSprites).flatMap((sprite) => sprite.cells);
+
+  it('finds the paths it checks: the ridges, trees, grass and every animal frame', () => {
+    expect(paths.length).toBeGreaterThan(5);
+    expect(cells.length).toBeGreaterThan(10);
+  });
+
+  it('has no malformed command in any path, drawn or sprite', () => {
+    const bad = [...paths, ...cells]
+      .map((d) => ({ problems: pathProblems(d), start: d.slice(0, 40) }))
+      .filter((p) => p.problems.length > 0);
+    expect(bad).toEqual([]);
+  });
+
+  it('catches an incomplete Q, the bug this test was written for', () => {
+    expect(pathProblems('M0 0 Q10 10 L20 20Z')).toEqual(['Q with 2 numbers']);
+    expect(pathProblems('M0 0 Q10 10 20 20 L20 20Z')).toEqual([]);
+    expect(pathProblems('M0 0 X1 2')).toEqual(['unknown command X']);
+  });
+});
