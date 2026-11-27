@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { FAVICON_SVG, logoMarkSvg } from '@huntclub/design';
 import { aerialSvg } from '@huntclub/design/aerial';
 import { ogImageSvg, OG_FONT_FILE, renderPng } from './og';
-import { JOIN_SCRIPT_ENTRY } from '../vite.config';
+import { JOIN_SCRIPT_ENTRY, MENU_SCRIPT_ENTRY } from '../vite.config';
 import { SAMPLE_CLUB } from './map/sampleClub';
 import { renderJoin, renderNotFound, renderPage } from './render';
 import {
@@ -38,7 +38,7 @@ function hashedAsset(name: string, ext: string, content: string): string {
   return `/${file}`;
 }
 
-// The browser script, from the client build's manifest (`vite build --mode client`).
+// The browser scripts, from the client build's manifest (`vite build --mode client`).
 const MANIFEST = join(DIST, '.vite', 'manifest.json');
 const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8')) as Record<string, { file: string }>;
 const clientScript = (entry: string) => {
@@ -53,6 +53,8 @@ const assets = {
   cssUrl: hashedAsset('site', 'css', siteCss(fontUrl)),
   // The home page's old-bookmark forward.
   forwardScriptUrl: hashedAsset('forward', 'js', HASH_FORWARD_SCRIPT),
+  // The phone header menu, on every page.
+  menuScriptUrl: clientScript(MENU_SCRIPT_ENTRY),
   // The home hero's aerial picture with the example club's line and areas.
   aerialUrl: hashedAsset('aerial', 'svg', aerialSvg(SAMPLE_CLUB)),
 };
