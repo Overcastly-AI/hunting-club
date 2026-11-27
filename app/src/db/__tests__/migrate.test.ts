@@ -18,6 +18,7 @@ const EXPECTED_TABLES = [
   'members',
   'paired_radio',
   'party',
+  'pending_name_sync',
   'positions',
   'radios',
   'stands',

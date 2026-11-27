@@ -305,6 +305,19 @@ const nameSkipped = `
 ALTER TABLE app_state ADD COLUMN name_skipped_at INTEGER;
 `;
 
+/**
+ * The hunter's latest name waiting to reach their clubs (club/nameSync.ts): one row at most,
+ * replaced by each edit, removed once every club has it.
+ */
+const pendingNameSync = `
+CREATE TABLE pending_name_sync (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  display_name TEXT NOT NULL,
+  initials TEXT NOT NULL,
+  queued_at INTEGER NOT NULL
+);
+`;
+
 export const migrations: readonly Migration[] = [
   { version: 1, name: 'initial local schema', sql: initialSchema },
   { version: 2, name: 'map pack downloads', sql: mapPackDownloads },
@@ -318,4 +331,5 @@ export const migrations: readonly Migration[] = [
   { version: 10, name: 'club map packs', sql: clubMapPacks },
   { version: 11, name: 'theme preference', sql: themePreference },
   { version: 12, name: 'name prompt skipped', sql: nameSkipped },
+  { version: 13, name: 'pending name sync', sql: pendingNameSync },
 ];

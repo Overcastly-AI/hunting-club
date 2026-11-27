@@ -18,6 +18,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
@@ -29,6 +30,7 @@ import type { RadioClub } from '../radio/RadioServices';
 import type { SecureStorage } from '../storage/secure';
 import { type ClubRadio, type LocalClub, loadClubRadio, loadClubs } from './store';
 import { type LocalClubMapPack, type MapPackSync, loadClubMapPacks } from './mapPacks';
+import { sendQueuedName } from './nameSync';
 import { joinClubFromLink, syncAllClubs } from './sync';
 
 export type ClubServices = {
@@ -113,7 +115,8 @@ export function ClubStateProvider({
   const { session, api, secrets, mapPacks: mapPackSync } = services;
   const [clubs, setClubs] = useState<LocalClub[]>([]);
   const [signedIn, setSignedIn] = useState(false);
-  const myProfile: MyProfile | null = useProfile().profile ?? null;
+  const savedProfile = useProfile().profile; // undefined while loading
+  const myProfile: MyProfile | null = savedProfile ?? null;
   const [radio, setRadio] = useState<ClubRadio>(NO_CLUB_RADIO);
   const [mapPacks, setMapPacks] = useState<LocalClubMapPack[]>([]);
 
@@ -133,12 +136,20 @@ export function ClubStateProvider({
     [db, secrets, session],
   );
 
+  /** Sends a renamed hunter's queued name to their clubs (signed in only; never for free users). */
+  const sendName = useCallback(async () => {
+    const userId = api && (await session.isSignedIn()) ? (await session.user())?.userId : undefined;
+    return api && userId ? sendQueuedName(db, api, userId) : { failed: 0 };
+  }, [api, db, session]);
+
   const sync = useCallback(async () => {
     if (!api || !(await session.isSignedIn())) return { failed: 0 };
     const { failed } = await syncAllClubs(db, api, now(), mapPackSync);
+    // After invites are redeemed, so a newly joined club gets the latest name too.
+    const name = await sendName().catch(() => ({ failed: 1 }));
     await reload();
-    return { failed: failed.length };
-  }, [api, db, mapPackSync, now, reload, session]);
+    return { failed: failed.length + name.failed };
+  }, [api, db, mapPackSync, now, reload, sendName, session]);
 
   const join = useCallback(
     async (url: string, profile: MemberJoin) => {
@@ -154,6 +165,14 @@ export function ClubStateProvider({
   useEffect(() => {
     void reload().then(() => sync().catch(() => undefined));
   }, [reload, sync]);
+
+  // A rename (not the profile loading) goes out at once when it can; else it waits queued.
+  const lastProfile = useRef(savedProfile);
+  useEffect(() => {
+    const previous = lastProfile.current;
+    lastProfile.current = savedProfile;
+    if (previous !== undefined && previous !== savedProfile) void sendName().catch(() => undefined);
+  }, [savedProfile, sendName]);
 
   const state = useMemo<ClubState>(
     () => ({

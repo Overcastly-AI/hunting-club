@@ -16,6 +16,7 @@ import {
   type MyProfile,
 } from '../db/appState';
 import type { SqlDatabase } from '../db/types';
+import { queueNameSync } from '../club/nameSync';
 
 export type ProfileContextValue = {
   /** undefined while loading; null before the hunter enters a name. */
@@ -55,9 +56,11 @@ export function ProfileProvider({
   const save = useCallback(
     async (next: MyProfile) => {
       await saveProfile(db, next);
+      // Club members' clubs get the new name with the next club sync (offline-safe queue).
+      await queueNameSync(db, next, now());
       setProfile(next);
     },
-    [db],
+    [db, now],
   );
   const skipName = useCallback(async () => {
     await markNameSkipped(db, now());
