@@ -29,6 +29,34 @@ export const sizes = {
   controlBorder: 1.5,
   /** Outline of the selected option (a basemap, a check-in mode): 2 px of accent edge. */
   selectedBorder: 2,
+  /** The map's control column (Layers, North, Find me): one plate this wide. */
+  mapToolWidth: 58,
+  /** One control in that column. */
+  mapToolHeight: 56,
+  /** A check-in mode button (At a stand, In an area, Right here, On the move). */
+  modeButton: 58,
+  /** A row in a sheet list (stands to check in at, map layers). */
+  listRow: 56,
+  /** The radio mark at the end of a pick-one row. */
+  radioMark: 26,
+  /** The dot inside a chosen radio mark. */
+  radioDot: 14,
+  /** A basemap thumbnail's picture in the layers sheet. */
+  swatchHeight: 56,
+  /** The on/off switch's track and knob. */
+  switchWidth: 46,
+  switchHeight: 28,
+  switchKnob: 18,
+  /** The mesh status dot. */
+  meshDot: 10,
+  /** The grab handle on top of a sheet. */
+  grabberWidth: 40,
+  grabberHeight: 4,
+  /** The strip of map above the chat thread, and the peek of map above Check In. */
+  chatMapStrip: 96,
+  checkInMapPeek: 180,
+  /** The orange edge on your own message. */
+  mineEdge: 3,
 } as const;
 
 /** Opacity levels used on the map. */
@@ -43,6 +71,8 @@ export const opacity = {
   pressed: 0.7,
   /** Backing of a marker plate over the aerial, so busy imagery never shows through its text. */
   markerPlate: 0.94,
+  /** Hybrid basemap: the topo map drawn over the aerial at this opacity. */
+  hybridTopo: 0.45,
 } as const;
 
 /**

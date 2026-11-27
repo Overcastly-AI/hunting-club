@@ -38,10 +38,10 @@ export function LayersIcon({ color }: IconProps) {
   return <Layers {...DRAW} color={useIconColor(color)} />;
 }
 
-/** North-up: a compass needle with a red point. */
+/** North-up: a red compass needle (the north arrow is one of only two reds, with the unread badge). */
 export function NorthIcon({ color }: IconProps) {
   const theme = useTheme();
-  return <Navigation2 {...DRAW} color={useIconColor(color)} fill={theme.colors.danger} />;
+  return <Navigation2 {...DRAW} color={color ?? theme.colors.alert} fill={theme.colors.alert} />;
 }
 
 /** Center on me. */
@@ -55,7 +55,7 @@ export function WindArrowIcon({ towardDeg, color }: IconProps & { towardDeg: num
   return (
     <ArrowUp
       {...DRAW}
-      color={color ?? theme.colors.info}
+      color={color ?? theme.colors.wind}
       style={{ transform: [{ rotate: `${towardDeg}deg` }] }}
     />
   );

@@ -28,13 +28,14 @@ export function systemCardText(
   }
 }
 
-/** The live counter under the text field. */
+/** The live counter inside the text field: "11 of 200", or "3 too many" past the limit. */
 export function charactersLeft(text: string): { left: number; text: string; over: boolean } {
-  const left = MAX_TEXT_CHARS - [...text].length;
+  const used = [...text].length;
+  const left = MAX_TEXT_CHARS - used;
   return {
     left,
     over: left < 0,
-    text: left >= 0 ? `${left} left` : `${-left} too many`,
+    text: left >= 0 ? `${used} of ${MAX_TEXT_CHARS}` : `${-left} too many`,
   };
 }
 

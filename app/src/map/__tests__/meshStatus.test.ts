@@ -8,7 +8,9 @@ describe('describeMeshStatus', () => {
     expect(
       describeMeshStatus({ radioConnected: true, radioCount: 3, lastHeardAt: NOW - 12_000 }, NOW),
     ).toEqual({
-      text: 'Mesh: 3 radios · heard 12s ago',
+      title: 'Mesh: 3 radios',
+      detail: 'heard 12s ago',
+      text: 'Mesh: 3 radios, heard 12s ago',
       tone: 'ok',
     });
   });
@@ -19,7 +21,12 @@ describe('describeMeshStatus', () => {
         { radioConnected: true, radioCount: 2, lastHeardAt: NOW - 15 * MINUTE_MS },
         NOW,
       ),
-    ).toEqual({ text: 'No radios heard for 15 min', tone: 'quiet' });
+    ).toEqual({
+      title: 'No radios heard for 15 min',
+      detail: null,
+      text: 'No radios heard for 15 min',
+      tone: 'quiet',
+    });
   });
 
   it('handles no radio and nothing heard yet', () => {
@@ -37,11 +44,11 @@ describe('describeMeshStatus', () => {
         { radioConnected: true, radioCount: 1, lastHeardAt: NOW + 30 * MINUTE_MS },
         NOW,
       ),
-    ).toEqual({ text: 'Mesh: last heard time unknown', tone: 'quiet' });
+    ).toMatchObject({ text: 'Mesh: last heard time unknown', tone: 'quiet' });
     expect(
       describeMeshStatus({ radioConnected: true, radioCount: 1, lastHeardAt: NOW + 5_000 }, NOW)
         .text,
-    ).toBe('Mesh: 1 radio · heard 0s ago');
+    ).toBe('Mesh: 1 radio, heard 0s ago');
   });
 
   it('counts days once the mesh has been quiet that long', () => {
@@ -59,6 +66,6 @@ describe('describeMeshStatus', () => {
         { radioConnected: true, radioCount: 1, lastHeardAt: NOW - 3 * MINUTE_MS },
         NOW,
       ).text,
-    ).toBe('Mesh: 1 radio · heard 3 min ago');
+    ).toBe('Mesh: 1 radio, heard 3 min ago');
   });
 });

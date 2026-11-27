@@ -1,5 +1,6 @@
 import type { Placement } from '@huntclub/core';
 import { CheckInMode, type LatLon } from '@huntclub/mesh';
+import type { StandType } from '@huntclub/shared';
 
 import { distanceMeters } from '../map/geo';
 
@@ -44,7 +45,14 @@ export function placementFrom(draft: CheckInDraft): DraftResult {
 }
 
 /** A club stand as the Check In tab lists it. */
-export type ClubStand = { meshId: number; name: string; position: LatLon; occupiedBy?: string };
+export type ClubStand = {
+  meshId: number;
+  name: string;
+  position: LatLon;
+  /** Tree stand, ladder or ground blind (the club's stand list); drawn as its icon. */
+  type?: StandType;
+  occupiedBy?: string;
+};
 export type ClubArea = { meshId: number; name: string };
 
 /** Open stands first, nearest first when we know where we are; occupied stands last. */

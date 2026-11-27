@@ -89,7 +89,8 @@ describe('chat wording', () => {
   });
 
   it('counts down the 200-character limit, counting emoji as one', () => {
-    expect(charactersLeft('')).toEqual({ left: MAX_TEXT_CHARS, over: false, text: '200 left' });
+    expect(charactersLeft('')).toEqual({ left: MAX_TEXT_CHARS, over: false, text: '0 of 200' });
+    expect(charactersLeft('Seeing deer').text).toBe('11 of 200');
     expect(charactersLeft('🦌🦌').left).toBe(198);
     expect(charactersLeft('a'.repeat(203))).toEqual({ left: -3, over: true, text: '3 too many' });
   });

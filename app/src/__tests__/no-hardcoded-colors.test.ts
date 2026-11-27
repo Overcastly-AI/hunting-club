@@ -15,14 +15,14 @@ describe('theme usage', () => {
   });
 
   it('takes colours from the theme hook, except the map’s own symbols and labels', () => {
-    // Map markers, map labels and their halo, the basemap background and the QR code
-    // keep fixed colours in both themes; everything else uses useTheme() or makeStyles().
+    // Map labels and their halo, your dot and scent cone, the help pin, the basemap background
+    // and the QR code keep fixed colours in both themes. Hunter and stand markers are drawn
+    // like the chrome (plate, ink, the freshness ring), so they follow the theme like
+    // everything else, through useTheme() or makeStyles().
     const STATIC_COLOR_FILES = [
       'components/QrCode.tsx',
       'map/basemaps.ts',
       'map/components/HaloText.tsx',
-      'map/components/HunterMarker.tsx',
-      'map/components/OpenStandMarker.tsx',
       'map/components/ScaleBar.tsx',
       'map/components/YouMarker.tsx',
       'safety/components/HelpMarker.tsx',

@@ -82,6 +82,7 @@ describe('untilSunset', () => {
 
   it('counts hours and minutes: "2 h 14 min until sunset"', () => {
     expect(untilSunset(SUNSET, sunset - (2 * HOUR_MS + 14 * MINUTE_MS))).toEqual({
+      span: '2 h 14 min',
       short: '2 h 14 min until sunset',
       spoken: '2 hours 14 minutes until sunset',
     });
@@ -115,7 +116,11 @@ describe('sunReadout', () => {
     expect(sunReadout(PLACE, now, NORMAL)).toEqual({
       sunrise: { short: formatClockTime(SUNRISE), spoken: formatClockTime(SUNRISE) },
       sunset: { short: formatClockTime(SUNSET), spoken: formatClockTime(SUNSET) },
-      untilSunset: { short: '2 h 14 min until sunset', spoken: '2 hours 14 minutes until sunset' },
+      untilSunset: {
+        span: '2 h 14 min',
+        short: '2 h 14 min until sunset',
+        spoken: '2 hours 14 minutes until sunset',
+      },
     });
   });
 

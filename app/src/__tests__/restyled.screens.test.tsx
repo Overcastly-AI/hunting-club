@@ -1,12 +1,19 @@
 /**
  * The screens restyled in the redesign (P5b: Map controls and bottom sheet, Chat, Check In;
  * P5c: onboarding states, sign-in, Join club, the Clubhouse board, Legal, the map's layer and
- * download sheets, Pair your radio) at 200 % text: the shared audit (48 px targets, spoken
- * labels, nothing clipped) and the spoken labels each screen had before. Then the same
- * screens in the light theme, where every colour must come from the light theme's tokens.
+ * download sheets, Pair your radio; map-first M3: the top plate and readout strip, hunter and
+ * stand markers, the bottom sheet's states, Check In for a club) at 200 % text: the shared
+ * audit (48 px targets, spoken labels, nothing clipped) and the spoken labels each screen had
+ * before. Then the same screens in the light theme, where every colour must come from the
+ * light theme's tokens (or the basemap pictures, which are imagery and the same in both).
  */
 import { darkTheme, lightTheme, type ThemePreference } from '@huntclub/design';
-import { DAY_MS, privacyPolicy, RESEND_CODE_COOLDOWN_SECONDS } from '@huntclub/shared';
+import {
+  conditionsReadout,
+  DAY_MS,
+  privacyPolicy,
+  RESEND_CODE_COOLDOWN_SECONDS,
+} from '@huntclub/shared';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { getPermissionsAsync, requestPermissionsAsync } from 'expo-notifications';
 import { readFileSync } from 'node:fs';
@@ -19,21 +26,28 @@ import { BoardScreen } from '../board/BoardScreen';
 import type { BoardEntry } from '../board/boardModel';
 import { OutList } from '../board/components/OutList';
 import { ChatScreen } from '../chat/ChatScreen';
-import { CheckInScreen } from '../checkin/CheckInScreen';
+import { CheckInRadioContext } from '../checkin/CheckInRadio';
+import { CheckInScreen, WHERE_ARE_YOU_HUNTING } from '../checkin/CheckInScreen';
 import { clubCopy } from '../club/copy';
 import { ClubEntitlementContext } from '../club/entitlement';
 import { JoinClubScreen } from '../club/JoinClubScreen';
 import { SignInScreen } from '../club/SignInScreen';
 import { DownloadAreaSheet } from '../map/components/DownloadAreaSheet';
-import { LayersSheet } from '../map/components/LayersSheet';
-import { MapBottomSheet } from '../map/components/MapBottomSheet';
+import { LayersSheet, SAVED_ON_THIS_PHONE } from '../map/components/LayersSheet';
+import { MapBottomSheet, NOT_CHECKED_IN } from '../map/components/MapBottomSheet';
 import { MapControls } from '../map/components/MapControls';
+import { HunterMarker } from '../map/components/HunterMarker';
+import { OpenStandMarker } from '../map/components/OpenStandMarker';
+import { TopPlate } from '../map/components/TopPlate';
+import { ALL_LAYERS_ON, MAP_LAYER_LABELS } from '../map/layers';
+import { MESH_QUIET_DETAIL } from '../map/meshStatus';
 import type { MapPack } from '../map/mapPacks';
 import { onboardingCopy } from '../onboarding/copy';
 import { PermissionsStep } from '../onboarding/PermissionsStep';
 import { radioCopy } from '../radio/copy';
 import { PairRadioScreen } from '../radio/ui/PairRadioScreen';
 import { a11yProblems, setLargeText } from '../test-utils/a11yAudit';
+import { checkInRadio } from '../test-utils/checkInFixtures';
 import { answerPermissionAlerts } from '../test-utils/alerts';
 import { clubWrapper } from '../test-utils/clubFixture';
 import { fakeBle } from '../test-utils/fakeBleManager';
@@ -45,7 +59,12 @@ import {
   memorySecureStorage,
   partyJoinUrl,
 } from '../test-utils/fakeClubApi';
-import { NOW } from '../test-utils/mapFixtures';
+import {
+  NOW,
+  UNTIL_SUNSET_FIXTURE,
+  hunterFixture,
+  openStandFixture,
+} from '../test-utils/mapFixtures';
 import { renderWithRadio } from '../test-utils/renderWithRadio';
 import { resetBluetoothForTests } from '../test-utils/resetBluetooth';
 import { SRC, sourceFiles } from '../test-utils/sourceFiles';
@@ -111,8 +130,9 @@ type Case = {
   then?: () => Promise<void>;
   /** Needs a radio (RadioProvider with the fake radio). */
   radio?: boolean;
-  /** Spoken labels that must still be there: buttons, then fields. */
+  /** Spoken labels that must still be there: buttons, switches, then fields. */
   buttons?: readonly string[];
+  switches?: readonly string[];
   fields?: readonly string[];
 };
 
@@ -129,6 +149,7 @@ const CASES: Record<string, Case> = {
         place={{ kind: 'moving' }}
         checkedInAt={0}
         now={60_000}
+        untilSunset={UNTIL_SUNSET_FIXTURE}
         audience="party"
         onAskForHand={jest.fn()}
         onCheckOut={jest.fn()}
@@ -145,9 +166,85 @@ const CASES: Record<string, Case> = {
     ],
   },
   'map bottom sheet, not checked in (no stand needed)': {
-    ui: () => <MapBottomSheet state="notCheckedIn" onCheckIn={jest.fn()} />,
+    ui: () => (
+      <MapBottomSheet
+        state="notCheckedIn"
+        untilSunset={UNTIL_SUNSET_FIXTURE}
+        audience="club"
+        onAskForHand={jest.fn()}
+        onCheckIn={jest.fn()}
+      />
+    ),
     ready: 'Check In',
-    buttons: ['Check In'],
+    buttons: ['Check In', 'Ask for a Hand. Pings club members'],
+  },
+  'map bottom sheet, after sunset': {
+    ui: () => (
+      <MapBottomSheet
+        state="notCheckedIn"
+        untilSunset={null}
+        audience="party"
+        onAskForHand={jest.fn()}
+        onCheckIn={jest.fn()}
+      />
+    ),
+    ready: NOT_CHECKED_IN,
+    buttons: ['Check In', 'Ask for a Hand. Pings your party'],
+  },
+  'map top plate, mesh heard, full readout': {
+    ui: () => (
+      <TopPlate
+        groupLabel="Pine Ridge Hunt Club"
+        onGroupPress={jest.fn()}
+        mesh={{ radioConnected: true, radioCount: 3, lastHeardAt: NOW - 12_000 }}
+        now={NOW}
+        onMeshPress={jest.fn()}
+        readout={conditionsReadout({
+          place: { lat: 46, lon: -94 },
+          now: NOW,
+          windMph: 6,
+          windFromDeg: 315,
+          temperatureF: 34,
+        })}
+        weatherUpdated={{ short: 'Updated 3 hr ago', spoken: 'forecast updated 3 hours ago' }}
+      />
+    ),
+    ready: 'Pine Ridge Hunt Club',
+    buttons: ['Pine Ridge Hunt Club', 'Mesh: 3 radios, heard 12s ago'],
+  },
+  'map top plate, mesh gone quiet, nothing known': {
+    ui: () => (
+      <TopPlate
+        groupLabel="Party"
+        onGroupPress={jest.fn()}
+        mesh={{ radioConnected: true, radioCount: 2, lastHeardAt: NOW - 15 * 60_000 }}
+        now={NOW}
+        onMeshPress={jest.fn()}
+        readout={conditionsReadout({ place: null, now: NOW })}
+      />
+    ),
+    ready: 'Party',
+    buttons: ['Party', `No radios heard for 15 min. ${MESH_QUIET_DETAIL}`],
+  },
+  'hunter and stand markers, fresh, stale and faded': {
+    ui: () => (
+      <>
+        <HunterMarker hunter={hunterFixture(0)} now={NOW} />
+        <HunterMarker hunter={hunterFixture(5, { id: 'b', displayName: 'Ray T.' })} now={NOW} />
+        <HunterMarker hunter={hunterFixture(30, { id: 'c', displayName: 'June H.' })} now={NOW} />
+        <OpenStandMarker stand={openStandFixture} />
+      </>
+    ),
+    ready: 'Ridge Stand',
+  },
+  'check in, a club with stands': {
+    ui: () => (
+      <CheckInRadioContext.Provider value={checkInRadio('club')}>
+        <CheckInScreen />
+      </CheckInRadioContext.Provider>
+    ),
+    ready: WHERE_ARE_YOU_HUNTING,
+    buttons: ['Slide to check in'],
   },
   'chat with no radio': {
     ui: () => <ChatScreen />,
@@ -267,6 +364,8 @@ const CASES: Record<string, Case> = {
       <LayersSheet
         visible
         basemap="topo"
+        layers={{ stands: true, hunters: false, scent: true }}
+        onLayerChange={jest.fn()}
         packs={[pack('a', 'complete'), pack('b', 'downloading'), pack('c', 'failed')]}
         progress={{ b: 40 }}
         onSelect={jest.fn()}
@@ -275,14 +374,17 @@ const CASES: Record<string, Case> = {
         onClose={jest.fn()}
       />
     ),
-    ready: 'Downloaded areas',
-    buttons: ['Topo', 'Aerial', 'Download the map for this area', 'Delete', 'Close'],
+    ready: SAVED_ON_THIS_PHONE,
+    buttons: ['Aerial', 'Topo', 'Hybrid', 'Download the map for this area', 'Delete', 'Close'],
+    switches: Object.values(MAP_LAYER_LABELS),
   },
   'map layers, none downloaded': {
     ui: () => (
       <LayersSheet
         visible
-        basemap="aerial"
+        basemap="hybrid"
+        layers={ALL_LAYERS_ON}
+        onLayerChange={jest.fn()}
         packs={[]}
         progress={{}}
         onSelect={jest.fn()}
@@ -343,6 +445,7 @@ describe('restyled screens at 200 % text', () => {
     for (const name of c.buttons ?? []) {
       expect(screen.getAllByRole(/^(button|tab)$/, { name }).length).toBeGreaterThan(0);
     }
+    for (const name of c.switches ?? []) expect(screen.getByRole('switch', { name })).toBeTruthy();
     for (const label of c.fields ?? []) expect(screen.getByLabelText(label)).toBeTruthy();
   });
 });

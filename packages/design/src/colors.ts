@@ -54,6 +54,26 @@ export const boundary = {
 export type ColorToken = keyof typeof colors;
 
 /**
+ * The little pictures of each basemap in the phone's layers sheet (docs/DESIGN.md, "Layers as a
+ * sheet: three basemap thumbnails"). They are imagery, not interface, so they are the same in
+ * both themes; the values are the mockups' aerial stand-in and topo swatch (design-map-first
+ * branch, styles.css).
+ */
+export const basemapSwatch = {
+  /** Aerial: timber, a field, a creek. */
+  woods: '#2C3323',
+  field: '#A39160',
+  water: '#17323B',
+  /** Topo: paper, green woods, brown contours, blue water. */
+  paper: '#E4DFC8',
+  paperWoods: '#C5D6A8',
+  contour: '#9A7B4F',
+  topoWater: '#1B5EA6',
+  /** Hybrid: aerial with pale contours over it. */
+  hybridContour: '#F1E6C0',
+} as const;
+
+/**
  * Light sections of the public marketing site: the daylight theme's own colours (no cream),
  * until the site moves to the daylight theme itself (docs/DESIGN.md "Open points").
  */

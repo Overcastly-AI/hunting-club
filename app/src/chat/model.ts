@@ -4,7 +4,7 @@ import type { HunterPlace } from '../map/types';
 export type ChatSegment = 'club' | 'party' | 'direct';
 
 export const SEGMENT_LABELS: Record<ChatSegment, string> = {
-  club: 'Whole Club',
+  club: 'Whole club',
   party: 'Party',
   direct: 'Direct',
 };
