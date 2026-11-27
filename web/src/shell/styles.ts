@@ -65,7 +65,10 @@ const base = `
 .shell-account .ui-popover__panel { top: auto; bottom: calc(100% + ${gap(2)}); left: 0; right: auto; }
 .shell-account-panel { display: grid; gap: ${gap(3)}; }
 .shell-account-panel__who { display: flex; align-items: center; gap: ${gap(3)}; margin: 0; padding: ${gap(1)} ${gap(2)}; }
+.shell-account-panel__lines { display: grid; min-width: 0; }
+.shell-account-panel__name { ${text('label')}; min-width: 0; overflow-wrap: anywhere; }
 .shell-account-panel__email { ${text('label')}; min-width: 0; overflow-wrap: anywhere; }
+.shell-account-panel__name + .shell-account-panel__email { ${text('caption')}; color: ${color('textSecondary')}; }
 .shell-account-panel .ui-choice-group { padding: 0 ${gap(2)}; }
 .shell-account-panel .ui-segment { padding: ${gap(1)} ${gap(2)}; }
 .shell-menu { border-top: ${HAIR}; padding-top: ${gap(2)}; }

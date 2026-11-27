@@ -34,6 +34,7 @@ export function Shell(props: {
   const [moreOpen, setMoreOpen] = useState(false);
   const moreSheet = useId();
   const alert = club.status === 'ready' ? billingAlert(club.value.subscription) : undefined;
+  const me = club.status === 'ready' ? club.value.me : null;
   const current = PAGES.find((p) => p.path === props.path);
   const currentInMore = current && 'inMore' in current ? current : undefined;
   const signOut = () => {
@@ -87,7 +88,7 @@ export function Shell(props: {
               </li>
             </ul>
           </nav>
-          <AccountMenu user={props.user} onSignOut={signOut} />
+          <AccountMenu user={props.user} me={me} onSignOut={signOut} />
         </header>
         <main
           id="main"
@@ -118,7 +119,7 @@ export function Shell(props: {
             </ul>
           </nav>
           <h3 className="shell-more__heading">Account</h3>
-          <AccountPanel user={props.user} onSignOut={signOut} />
+          <AccountPanel user={props.user} me={me} onSignOut={signOut} />
         </Dialog>
       </div>
     </ShellReloadContext.Provider>

@@ -7,7 +7,8 @@
     "synth": "cdk synth --quiet",
     "typecheck": "tsc --noEmit",
     "test": "jest",
-    "smoke": "node ../scripts/run-ts.mjs bin/smoke.ts"
+    "smoke": "node ../scripts/run-ts.mjs bin/smoke.ts",
+    "lighthouse": "node ../scripts/run-ts.mjs bin/lighthouse.ts"
   },
   "dependencies": {
     "@huntclub/api": "*",

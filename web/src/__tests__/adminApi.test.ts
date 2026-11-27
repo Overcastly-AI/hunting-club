@@ -42,6 +42,28 @@ describe('admin API over the shared client', () => {
     expect(listMyClubs).toHaveBeenCalledTimes(1); // the club id is looked up once
   });
 
+  it("gives the signed-in person's membership from the club lookup, with no extra call", async () => {
+    const data = sampleData();
+    const client = fakeClubClient(data);
+    const listMyClubs = vi.spyOn(client, 'listMyClubs');
+    const api = adminApi(client);
+    await api.getClub();
+    const me = await api.getMyMembership();
+    expect(me).toMatchObject({ displayName: data.members[0]!.displayName, role: 'admin' });
+    expect(listMyClubs).toHaveBeenCalledTimes(1);
+    // Just after creating a club, one fresh lookup.
+    const fresh = adminApi(fakeClubClient({ ...sampleData(), club: null }));
+    expect(await fresh.getMyMembership()).toBeNull();
+    await fresh.createClub({
+      club: { name: 'Pine Hollow' },
+      admin: { displayName: 'Pat Lane', initials: 'PL' },
+    });
+    expect(await fresh.getMyMembership()).toMatchObject({
+      displayName: 'Pat Lane',
+      initials: 'PL',
+    });
+  });
+
   it('has no club (and no club calls) when the person runs none', async () => {
     const api = adminApi(fakeClubClient({ ...sampleData(), club: null }));
     expect(await api.getClub()).toBeNull();

@@ -1,0 +1,50 @@
+name: Lighthouse dev
+
+# Lighthouse audit of the deployed dev site: Home, Pricing and the club admin sign-in,
+# mobile and desktop (`npm run lighthouse -w @huntclub/infra -- dev`; pages and URLs come
+# from infra/src/lighthouse.ts). Report only: scores go to the job summary and the HTML
+# reports to an artifact; the run never fails on a score. Signed-in admin pages are not
+# audited (no credentials here). Public pages only: no AWS credentials, no secrets.
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ['Deploy dev']
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lighthouse-dev
+  cancel-in-progress: true
+
+jobs:
+  lighthouse:
+    name: Lighthouse dev
+    # Only after a successful deploy (workflow_run also fires on failure).
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Uses the runner's preinstalled Google Chrome.
+      - name: Lighthouse
+        run: npm run --silent lighthouse -w @huntclub/infra -- dev "$RUNNER_TEMP/lighthouse" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload HTML reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lighthouse-dev-reports
+          path: ${{ runner.temp }}/lighthouse/*.report.html
+          if-no-files-found: warn
+          retention-days: 30

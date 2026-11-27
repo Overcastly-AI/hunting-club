@@ -78,27 +78,44 @@ export const displayNameSchema = z
 
 /**
  * A display name as stored. Read leniently, so a name saved before the rules above (for
- * example a seeded email local part) still loads; every write goes through displayNameSchema.
+ * example a raw email local part seeded before them) still loads; every write goes through displayNameSchema.
  */
 export const storedDisplayNameSchema = z.string().trim().min(1);
 
+/** The stand-in when an email's local part holds no letter or number to stand in with. */
+export const NAMELESS_STAND_IN = 'Member';
+
+/** Runs of characters a display name can't hold, and the edges a cut name shouldn't end on. */
+const NOT_NAME_CHARS = /[^\p{L}\p{M}\p{N} .'’-]+/gu;
+const EDGE_PUNCTUATION = /^[ .'’-]+|[ .'’-]+$/gu;
+
 /**
- * The stand-in name a dev seed gives an account from its email ("jane.doe@x" → "jane.doe"),
- * as typed: never split and title-cased, which would invent a name the person never gave.
- * Empty when the local part isn't a valid display name.
+ * The stand-in name an account gets from its email until the person gives theirs ("jane.doe@x"
+ * → "jane.doe"): the local part as typed, never split and title-cased, which would invent a
+ * name the person never gave. Characters a name can't hold become a period ("jane_doe" →
+ * "jane.doe") and it is cut to fit the radio; with no letter or number left it is
+ * NAMELESS_STAND_IN. Always a valid display name, and isEmailStandInName always knows it, so
+ * the person is asked for their name.
  */
 export function emailStandInName(email: string): string {
   const local = normalizeDisplayName(email.split('@')[0] ?? '');
-  return displayNameProblem(local) ? '' : local;
+  if (!displayNameProblem(local)) return local;
+  const cleaned = fitUtf8(local.replace(NOT_NAME_CHARS, '.'), RADIO_NAME_BYTES.long).replace(
+    EDGE_PUNCTUATION,
+    '',
+  );
+  return displayNameProblem(cleaned) ? NAMELESS_STAND_IN : cleaned;
 }
 
-/** Whether `displayName` is only the stand-in from `email`, not a name the person chose. */
+/**
+ * Whether `displayName` is only the stand-in from `email`, not a name the person chose: the
+ * stand-in above, or the raw local part a name saved before the rules may still hold.
+ */
 export function isEmailStandInName(displayName: string, email: string | undefined): boolean {
   if (!email) return false;
-  const standIn = emailStandInName(email);
-  return (
-    standIn !== '' && normalizeDisplayName(displayName).toLowerCase() === standIn.toLowerCase()
-  );
+  const name = normalizeDisplayName(displayName).toLowerCase();
+  const local = normalizeDisplayName(email.split('@')[0] ?? '').toLowerCase();
+  return name === emailStandInName(email).toLowerCase() || (local !== '' && name === local);
 }
 
 // Initials --------------------------------------------------------------------------------

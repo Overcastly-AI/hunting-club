@@ -202,6 +202,7 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
   const user = useSignedInUser();
   const me = loaded.members?.find((m) => m.userId === user?.userId);
   const [nameDone, setNameDone] = useState(false);
+  const reloadShell = useReloadShell();
   const askName = !nameDone && needsYourName(me, user?.email);
   // Only club admins draw the property line (the club API refuses anyone else too).
   const canDraw = me?.role === 'admin';
@@ -296,6 +297,7 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
             onDone={() => {
               setNameDone(true);
               details.reload();
+              reloadShell(); // the account menu shows the new name
             }}
           />
         ) : null}

@@ -5,6 +5,7 @@ import {
   type ClubApiClient,
   type ClubChoice,
   type ClubSession,
+  type Member,
   type MyClub,
 } from '@huntclub/shared';
 import { NoClubAccessError, NoClubError, type ClubApi } from './types';
@@ -23,9 +24,15 @@ export function adminApi(client: ClubApiClient, session?: Pick<ClubSession, 'use
   const currentUser = async () => (await session?.user())?.userId;
   let choice: ClubChoice | null = null;
   let lookup: { userId: string | undefined; clubId: Promise<string | null> } | undefined;
+  // The signed-in person's membership per club, as GET /me/clubs (or their own update) gave it.
+  const memberships = new Map<string, Member>();
+  const rememberMine = (mine: readonly MyClub[]) => {
+    for (const m of mine) memberships.set(m.club.id, m.membership);
+  };
   const forget = () => {
     choice = null;
     lookup = undefined;
+    memberships.clear();
   };
   const myClubId = async (): Promise<string | null> => {
     const userId = await currentUser();
@@ -33,6 +40,7 @@ export function adminApi(client: ClubApiClient, session?: Pick<ClubSession, 'use
       const stored = choice;
       const clubId: Promise<string | null> = client.listMyClubs().then(
         (mine) => {
+          rememberMine(mine);
           choice = chooseClub(mine, userId, stored, administers);
           return choice?.clubId ?? null;
         },
@@ -94,7 +102,16 @@ export function adminApi(client: ClubApiClient, session?: Pick<ClubSession, 'use
       const userId = await currentUser();
       // Only reachable signed in; without a session there is no one to rename.
       if (!userId) throw new ClubApiRequestError('forbidden', 403);
-      return changeClub((id) => client.updateMemberProfile(id, userId, patch));
+      const member = await changeClub((id) => client.updateMemberProfile(id, userId, patch));
+      memberships.set(member.clubId, member);
+      return member;
+    },
+    async getMyMembership() {
+      const id = await myClubId();
+      if (!id) return null;
+      // Known from the club lookup, except just after createClub: then one fresh lookup.
+      if (!memberships.has(id)) rememberMine(await client.listMyClubs());
+      return memberships.get(id) ?? null;
     },
     createInvite: (request) => changeClub((id) => client.createInvite(id, request)),
     async getClubChannelSet() {

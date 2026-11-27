@@ -1,11 +1,11 @@
 import { ClubSession, CognitoAuthError, SECURE_KEYS } from '@huntclub/shared';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { adminApi } from '../api/admin';
 import { App, SESSION_EXPIRED } from '../App';
 import { browserTokenStore } from '../tokenStore';
 import { fakeIdToken } from '@huntclub/shared/testing';
 import { fakeClubClient, fakeCognitoAuth, SIGNED_IN, sampleData } from '../testing/fakeClubApi';
-import { accountButton, signIn, signOutFromMenu } from '../testing/shell';
+import { openAccountMenu, signIn, signOutFromMenu } from '../testing/shell';
 
 const KEY = SECURE_KEYS.webClubRefreshToken;
 
@@ -84,7 +84,8 @@ describe('the web session across reloads', () => {
     load(storage, auth);
     expect(await screen.findByRole('heading', { level: 1, name: 'Stands and areas' })).toBeTruthy();
     expect(auth.refresh).toHaveBeenCalledWith('kept-refresh-token');
-    expect((await accountButton()).textContent).toContain(SIGNED_IN.email);
+    // The account menu holds the restored account's email (the button shows its club name).
+    expect(within(await openAccountMenu()).getByText(SIGNED_IN.email)).toBeTruthy();
   });
 
   it('asks to sign in again when the kept session cannot be refreshed', async () => {

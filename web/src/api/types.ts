@@ -56,6 +56,11 @@ export interface ClubApi {
   listMembers(): Promise<readonly Member[]>;
   /** The signed-in person's own name and initials in the club (any member may change theirs). */
   updateMyProfile(patch: MemberProfileUpdate): Promise<Member>;
+  /**
+   * The signed-in person's own membership of the club (name, initials), from GET /me/clubs,
+   * which the club lookup already loads: no extra call. Null when they have no club.
+   */
+  getMyMembership(): Promise<Member | null>;
   /** The club's invites, used or not (for Needs you on My club). */
   listInvites(): Promise<readonly Invite[]>;
   createInvite(request: InviteCreate): Promise<Invite>;
