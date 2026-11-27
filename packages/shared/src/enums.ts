@@ -41,6 +41,13 @@ export const STAND_TYPE_LABELS: Record<StandType, string> = {
   ground_blind: 'Ground blind',
 };
 
+/**
+ * A club stand's state, in the app (stand list and map markers) and the club admin. Open stands
+ * are offered at check-in ("Available"); closed ones are hidden from it (the stand's `active`
+ * flag). Who sits in a stand travels only over the mesh, never to the club service.
+ */
+export const STAND_STATUS_LABELS = { open: 'Available', closed: 'Closed' } as const;
+
 /** Harvest sex keys. Their wire codes live in @huntclub/mesh (HARVEST_SEX_CODES). */
 export const HARVEST_SEXES = ['male', 'female', 'unknown'] as const;
 export const HarvestSexSchema = z.enum(HARVEST_SEXES);

@@ -1,7 +1,10 @@
+import { STAND_STATUS_LABELS } from '@huntclub/shared';
+
 import { NOW, hunterFixture, openStandFixture } from '../../test-utils/mapFixtures';
 import {
   hunterAccessibilityLabel,
   hunterPlateDetail,
+  OPEN_STAND,
   openStandAccessibilityLabel,
   placeLabel,
   yourAccessibilityLabel,
@@ -53,8 +56,15 @@ describe('hunterPlateDetail', () => {
 });
 
 describe('other marker labels', () => {
+  it('calls an open stand Available, from the wording the club admin uses', () => {
+    expect(OPEN_STAND).toBe(STAND_STATUS_LABELS.open);
+    expect(OPEN_STAND).toBe('Available');
+  });
+
   it('reads open stands with their type', () => {
-    expect(openStandAccessibilityLabel(openStandFixture)).toBe('Ridge Stand, ladder stand, open');
+    expect(openStandAccessibilityLabel(openStandFixture)).toBe(
+      'Ridge Stand, ladder stand, available',
+    );
   });
 
   it('mentions your scent only when the cone is shown', () => {

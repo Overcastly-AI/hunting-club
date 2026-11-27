@@ -31,9 +31,9 @@ export function MarkerHitArea({ children, testID }: { children: ReactNode; testI
 type PlateProps = {
   /** First line: the stand, spot or area ("Creek Stand"). */
   title: string;
-  /** Second line ("Dale B., 2 min ago"; "Open"). */
+  /** Second line ("Dale B., 2 min ago"; "Available"). */
   detail?: string;
-  /** "Open" is fresh green; everything else is second-line grey. */
+  /** "Available" is fresh green; everything else is second-line grey. */
   detailTone?: 'quiet' | 'fresh';
 };
 

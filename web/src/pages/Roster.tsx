@@ -78,6 +78,10 @@ export function Roster(props: { api: ClubApi }) {
   const [invite, setInvite] = useState<InviteState>({ kind: 'idle' });
   const inviteHeading = useRef<HTMLHeadingElement>(null);
   const ready = members.status === 'ready';
+  const me = useSignedInUser()?.userId;
+  // While nobody else has joined, the empty state's "Invite hunters" and the invite section are
+  // the one path to inviting, so the header does not offer a second button for the same thing.
+  const alone = ready && otherMembers(members.value, me) === 0;
   const makeInvite = () => {
     setInvite({ kind: 'busy' });
     void createInviteLink(props.api).then(setInvite);
@@ -91,9 +95,9 @@ export function Roster(props: { api: ClubApi }) {
     <Page
       title="Roster"
       description={ready ? rosterTally(members.value) : undefined}
-      // Invites need a club: only offered once the roster has loaded.
+      // Invites need a club: only offered once the roster has loaded (and not twice when empty).
       actions={
-        ready ? (
+        ready && !alone ? (
           <Button variant="primary" icon={Plus} onClick={goToInvite}>
             Invite members
           </Button>

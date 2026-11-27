@@ -1,4 +1,11 @@
-import { pluralize, STAND_TYPE_LABELS, type Area, type Club, type Stand } from '@huntclub/shared';
+import {
+  pluralize,
+  STAND_STATUS_LABELS,
+  STAND_TYPE_LABELS,
+  type Area,
+  type Club,
+  type Stand,
+} from '@huntclub/shared';
 import { MapPin } from 'lucide-react';
 import type { ClubApi } from '../api/types';
 import { Loadable } from '../components/Loadable';
@@ -7,7 +14,6 @@ import { standIcon } from '../components/standIcons';
 import { isOffline, useAsync } from '../components/useAsync';
 import { Badge, DataTable, EmptyState } from '../components/ui';
 import { ICON_SIZE } from '@huntclub/design';
-import { STAND_STATUS_LABELS } from '../format';
 import { ClubMap } from '../map/ClubMap';
 
 /**

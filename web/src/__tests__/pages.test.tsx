@@ -809,6 +809,10 @@ describe('errors, empty states and navigation', () => {
       await screen.findByRole('heading', { level: 2, name: NO_OTHER_MEMBERS.title }),
     ).toBeTruthy();
     expect(screen.getByText(NO_OTHER_MEMBERS.line)).toBeTruthy();
+    // One clear path: the header's "Invite members" is hidden while the empty state and the
+    // invite section show.
+    expect(screen.getByRole('heading', { level: 2, name: INVITE_TITLE })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Invite members' })).toBeNull();
     // Its action leads to the invite section's QR code (still made only on request).
     fireEvent.click(screen.getByRole('button', { name: INVITE_TITLE }));
     expect(document.activeElement?.textContent).toBe(INVITE_TITLE);
@@ -826,6 +830,7 @@ describe('errors, empty states and navigation', () => {
     go('#/roster');
     expect(await screen.findByText('Ruth Keller')).toBeTruthy();
     expect(screen.queryByText(/No other members yet/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Invite members' })).toBeTruthy();
   });
 
   it('names the stands and areas tables by their counted headings', async () => {

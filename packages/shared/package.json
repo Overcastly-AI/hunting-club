@@ -17,7 +17,8 @@
     "./testing": "./src/testing.ts",
     "./schema-runtime": "./src/schemaRuntime.ts",
     "./signInCopy": "./src/signInCopy.ts",
-    "./useCooldown": "./src/useCooldown.ts"
+    "./useCooldown": "./src/useCooldown.ts",
+    "./useCodeEntry": "./src/useCodeEntry.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

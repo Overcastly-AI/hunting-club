@@ -13,14 +13,13 @@ import {
   space,
   type FontWidth,
 } from '@huntclub/design';
-import { polygonRings, type StandType } from '@huntclub/shared';
+import { polygonRings, STAND_STATUS_LABELS, type StandType } from '@huntclub/shared';
 import { MapPinOff, type LucideIcon } from 'lucide-react';
 import { useRef, type ReactNode } from 'react';
 import { EmptyState } from '../components/ui';
 import { standIcon } from '../components/standIcons';
 import { useElementSize, type Size } from '../components/useElementSize';
 import { cx } from '../components/ui/cx';
-import { STAND_STATUS_LABELS } from '../format';
 import type { BasemapPicture } from './basemap';
 import {
   fitPlan,

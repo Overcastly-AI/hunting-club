@@ -2,6 +2,7 @@ import {
   codeDigits,
   emailCodeRules,
   EMAIL_OTP_CODE_LENGTH,
+  nextCode,
   RESEND_CODE_COOLDOWN_SECONDS,
   SIGN_UP_CODE_LENGTH,
   signInCopy,
@@ -32,5 +33,15 @@ describe('emailed code rules', () => {
 
   it('keep every digit of a paste and drop everything else', () => {
     expect(codeDigits(' 1234 5678-9 ')).toBe('123456789');
+  });
+
+  it('ignore one keystroke past the length, as maxlength does', () => {
+    expect(nextCode('12345678', '123456789', 8)).toBe('12345678');
+    expect(nextCode('1234567', '12345678', 8)).toBe('12345678');
+  });
+
+  it('keep a paste that is too long whole, so it is refused, never cut to fit', () => {
+    expect(nextCode('', '1234 5678 9', 8)).toBe('123456789');
+    expect(nextCode('123', '1234567890', 8)).toBe('1234567890');
   });
 });

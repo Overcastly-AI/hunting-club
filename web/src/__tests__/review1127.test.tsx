@@ -7,13 +7,13 @@ import {
   memoryTokenStore,
   polygonBounds,
   signInCopy,
+  STAND_STATUS_LABELS,
 } from '@huntclub/shared';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { adminApi } from '../api/admin';
 import { App } from '../App';
 import { Loading, type LoadingLayout } from '../components/Loading';
 import { SKELETON_DELAY_MS } from '../components/ui';
-import { STAND_STATUS_LABELS } from '../format';
 import { SAMPLE_PACK } from '../map/samplePack';
 import { SAMPLE_PROPERTY } from '../map/sampleProperty';
 import { globalCss } from '../theme/css';

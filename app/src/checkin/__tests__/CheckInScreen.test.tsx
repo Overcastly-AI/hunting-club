@@ -59,8 +59,8 @@ describe('Check In modes', () => {
     expect(screen.getByText(STANDS_NEAREST_FIRST)).toBeTruthy();
     const stands = modeNames().slice(4);
     expect(stands).toEqual([
-      'Oak Ridge. Ladder stand, open, 0.2 mi away',
-      'Pond Box. Ground blind, open, 0.3 mi away',
+      'Oak Ridge. Ladder stand, available, 0.2 mi away',
+      'Pond Box. Ground blind, available, 0.3 mi away',
       'Creek Stand. Dale B. is here, 730 ft away',
     ]);
     expect(screen.getByRole('radio', { name: /^Creek Stand/ })).toBeDisabled();

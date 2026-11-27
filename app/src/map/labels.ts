@@ -1,4 +1,4 @@
-import { STAND_TYPE_LABELS, describeFreshness } from '@huntclub/shared';
+import { STAND_STATUS_LABELS, STAND_TYPE_LABELS, describeFreshness } from '@huntclub/shared';
 
 import type { HunterOnMap, HunterPlace, OpenStandOnMap } from './types';
 
@@ -9,8 +9,8 @@ export const UNNAMED_SPOT = 'Spot';
 /** Shown when a club stand or area name isn't on this phone yet. */
 export const UNNAMED_STAND = 'Club stand';
 export const UNNAMED_AREA = 'Club area';
-/** Shown under a club stand nobody is in. */
-export const OPEN_STAND = 'Open';
+/** Shown under a club stand nobody is in: the shared stand wording, as the club admin says it. */
+export const OPEN_STAND = STAND_STATUS_LABELS.open;
 /** Label beside your scent cone. */
 export const YOUR_SCENT = 'Your scent';
 
@@ -42,7 +42,7 @@ export function hunterAccessibilityLabel(hunter: HunterOnMap, now: number): stri
   return parts.join(', ');
 }
 
-/** Screen-reader label, for example "Ridge Stand, ladder stand, open". */
+/** Screen-reader label, for example "Ridge Stand, ladder stand, available". */
 export function openStandAccessibilityLabel(stand: OpenStandOnMap): string {
   return `${stand.name}, ${STAND_TYPE_LABELS[stand.type].toLowerCase()}, ${OPEN_STAND.toLowerCase()}`;
 }

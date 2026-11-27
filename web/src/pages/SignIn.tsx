@@ -4,7 +4,6 @@ import {
   CLUB_PRICING,
   type ClubSession,
   type CodeChallenge,
-  codeDigits,
   CognitoAuthError,
   emailCodeRules,
   isPlausibleEmail,
@@ -12,10 +11,11 @@ import {
   RESEND_CODE_COOLDOWN_SECONDS,
   signInCopy as copy,
 } from '@huntclub/shared';
+import { useCodeEntry } from '@huntclub/shared/useCodeEntry';
 import { useCooldown } from '@huntclub/shared/useCooldown';
 import { breakpoints } from '@huntclub/design';
 import { Mail } from 'lucide-react';
-import { useRef, useState, type ClipboardEvent, type FormEvent } from 'react';
+import { useState, type ClipboardEvent, type FormEvent } from 'react';
 import { LogoMark } from '../components/LogoMark';
 import { usePageHeadingFocus } from '../components/Page';
 import { Button, Field, Input, PageHeader } from '../components/ui';
@@ -48,7 +48,6 @@ export function SignIn(props: {
 }) {
   const { session, onSignedIn } = props;
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
   const [challenge, setChallenge] = useState<CodeChallenge | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,8 +57,6 @@ export function SignIn(props: {
   const heading = usePageHeadingFocus();
   // The sample's aerial, read as My club reads a club's pack; the plain ground until it loads.
   const basemap = useBasemap(SAMPLE_PACK);
-  // One confirm at a time: the last digit landing and a press of Enter must not both send it.
-  const confirming = useRef(false);
 
   async function run(kind: Exclude<Busy, null>, step: () => Promise<void>) {
     if (busy) return;
@@ -97,39 +94,33 @@ export function SignIn(props: {
     void run('resend', async () => {
       setChallenge(await session.requestCode(challenge.email));
       cooldown.start();
-      setCode('');
+      entry.clear();
       setNotice(copy.resent);
     });
   };
 
-  const submitCode = (value: string) => {
-    if (!challenge || confirming.current) return;
-    if (value.length !== emailCodeRules(challenge.kind).length) {
+  // Digits only, sent as soon as the last one lands, one confirm at a time (shared with the app).
+  const entry = useCodeEntry({
+    maxLength: challenge ? emailCodeRules(challenge.kind).length : undefined,
+    confirm: (value) => {
+      if (!challenge) return Promise.resolve();
+      setFieldError(null);
+      return run('confirm', async () => {
+        await session.confirmCode(challenge, value);
+        onSignedIn(challenge.email);
+      });
+    },
+    incomplete: () => {
+      if (!challenge) return;
       setError(null);
       setNotice(null);
       setFieldError(copy.codeIncomplete(challenge.kind));
-      return;
-    }
-    setFieldError(null);
-    confirming.current = true;
-    void run('confirm', async () => {
-      await session.confirmCode(challenge, value);
-      onSignedIn(challenge.email);
-    }).finally(() => {
-      confirming.current = false;
-    });
-  };
+    },
+  });
 
   const confirm = (e: FormEvent) => {
     e.preventDefault();
-    submitCode(code);
-  };
-
-  /** Digits only; the code goes as soon as its last digit lands. */
-  const enterCode = (value: string) => {
-    const digits = codeDigits(value);
-    setCode(digits);
-    if (challenge && digits.length === emailCodeRules(challenge.kind).length) submitCode(digits);
+    entry.submit();
   };
 
   /**
@@ -138,12 +129,12 @@ export function SignIn(props: {
    */
   const pasteCode = (e: ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
-    enterCode(e.clipboardData.getData('text'));
+    entry.change(e.clipboardData.getData('text'));
   };
 
   const otherEmail = () => {
     setChallenge(null);
-    setCode('');
+    entry.clear();
     setFieldError(null);
     setError(null);
     setNotice(null);
@@ -203,8 +194,8 @@ export function SignIn(props: {
                 autoComplete="one-time-code"
                 maxLength={emailCodeRules(challenge.kind).length}
                 required
-                value={code}
-                onChange={(e) => enterCode(e.target.value)}
+                value={entry.code}
+                onChange={(e) => entry.change(e.target.value)}
                 onPaste={pasteCode}
               />
             </Field>
