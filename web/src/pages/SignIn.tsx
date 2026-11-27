@@ -1,7 +1,7 @@
-import { logoMarkSvg } from '@huntclub/design';
 import {
   APP_DESCRIPTION,
   APP_NAME,
+  CLUB_PRICING,
   type ClubSession,
   type CodeChallenge,
   codeDigits,
@@ -9,26 +9,34 @@ import {
   emailCodeRules,
   isPlausibleEmail,
   LEGAL_PATHS,
+  RESEND_CODE_COOLDOWN_SECONDS,
   signInCopy as copy,
 } from '@huntclub/shared';
-import { lazy, Suspense, useState, type FormEvent } from 'react';
-import { Field } from '../components/Field';
-import { PageHeading } from '../components/PageHeading';
-
-/**
- * The dawn scene behind the card: its own lazy chunk (sprites and CSS), so the form never waits
- * for it and signed-in pages never download it.
- */
-const DawnBackground = lazy(() => import('../components/DawnBackground'));
-
-/** The logo mark as an image source (decorative: the app name is written next to it). */
-const LOGO_SRC = `data:image/svg+xml,${encodeURIComponent(logoMarkSvg())}`;
+import { useCooldown } from '@huntclub/shared/useCooldown';
+import { breakpoints } from '@huntclub/design';
+import { Mail } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
+import { LogoMark } from '../components/LogoMark';
+import { usePageHeadingFocus } from '../components/Page';
+import { Button, Field, Input, PageHeader } from '../components/ui';
+import { SHELL } from '../components/ui/sizes';
+import { ClubMap } from '../map/ClubMap';
+import { SAMPLE_PLAN, SAMPLE_PROPERTY } from '../map/sampleProperty';
 
 type Busy = null | 'send' | 'resend' | 'confirm';
 
+/** The words under the form for someone with no account yet. */
+export const NEW_HERE = `New here? Sign in with your email, then start your club with a ${CLUB_PRICING.trialDays}-day free trial.`;
+/** The caption on the map behind the form: nobody is signed in, so it is a made-up club. */
+export const SAMPLE_CAPTION = `Sample property: ${SAMPLE_PROPERTY.name}`;
+
+/** Room the form's plate covers from the tablet width up (its width and margins), kept clear of the map. */
+const DOOR_ROOM = 520;
+
 /**
  * Email, then the code from that email (the shared sign-in client). No passwords. Submit
- * stays enabled; input is checked on submit and problems show under the field.
+ * stays enabled; input is checked on submit and problems show under the field. The form
+ * floats on a plate over a sample property (docs/DESIGN.md: the map is the page).
  */
 export function SignIn(props: {
   session: ClubSession;
@@ -44,6 +52,8 @@ export function SignIn(props: {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(props.notice ?? null);
   const [busy, setBusy] = useState<Busy>(null);
+  const cooldown = useCooldown(RESEND_CODE_COOLDOWN_SECONDS);
+  const heading = usePageHeadingFocus();
 
   async function run(kind: Exclude<Busy, null>, step: () => Promise<void>) {
     if (busy) return;
@@ -70,13 +80,17 @@ export function SignIn(props: {
       return;
     }
     setFieldError(null);
-    void run('send', async () => setChallenge(await session.requestCode(email.trim())));
+    void run('send', async () => {
+      setChallenge(await session.requestCode(email.trim()));
+      cooldown.start();
+    });
   };
 
   const resend = () => {
-    if (!challenge) return;
+    if (!challenge || cooldown.remaining > 0) return;
     void run('resend', async () => {
       setChallenge(await session.requestCode(challenge.email));
+      cooldown.start();
       setCode('');
       setNotice(copy.resent);
     });
@@ -107,86 +121,108 @@ export function SignIn(props: {
   };
 
   return (
-    <div className="auth">
-      <Suspense fallback={null}>
-        <DawnBackground />
-      </Suspense>
-      <section className="auth-card" aria-labelledby="sign-in-title">
-        <div className="auth-brand">
-          <img src={LOGO_SRC} alt="" width={48} height={48} />
-          <div>
-            <p className="auth-app-name">{APP_NAME}</p>
-            <p className="muted">{APP_DESCRIPTION}</p>
-          </div>
+    <div className="signin">
+      <section className="signin__door" aria-labelledby="sign-in-title">
+        <div className="signin__brand">
+          <LogoMark size={SHELL.logo} />
+          <p className="signin__app-name">{APP_NAME}</p>
         </div>
-        <PageHeading id="sign-in-title">{copy.title}</PageHeading>
+        <PageHeader
+          title={copy.title}
+          titleId="sign-in-title"
+          titleRef={heading}
+          description={APP_DESCRIPTION}
+        />
         {challenge === null ? (
-          <form onSubmit={sendCode} noValidate>
-            <p>{copy.intro}</p>
-            <Field
-              label={copy.email}
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              autoCapitalize="none"
-              spellCheck={false}
-              placeholder={copy.emailPlaceholder}
-              required
-              error={fieldError}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <button className="button primary wide" type="submit" aria-busy={busy === 'send'}>
+          <form className="signin__form" onSubmit={sendCode} noValidate>
+            <Field label={copy.email} error={fieldError}>
+              <Input
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                spellCheck={false}
+                placeholder={copy.emailPlaceholder}
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </Field>
+            <Button
+              variant="primary"
+              size="lg"
+              block
+              type="submit"
+              icon={Mail}
+              loading={busy === 'send'}
+            >
               {busy === 'send' ? copy.sending : copy.sendCode}
-            </button>
+            </Button>
+            <p className="signin__note">{copy.intro}</p>
           </form>
         ) : (
-          <form onSubmit={confirm} noValidate>
-            <p>{copy.codeSent(challenge.email)}</p>
-            <Field
-              label={copy.code}
-              hint={copy.codeHelp(challenge.kind)}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              required
-              error={fieldError}
-              value={code}
-              // Digits only, nothing cut off: a long paste is checked on submit, not truncated.
-              onChange={(e) => setCode(codeDigits(e.target.value))}
-            />
-            <button className="button primary wide" type="submit" aria-busy={busy === 'confirm'}>
+          <form className="signin__form" onSubmit={confirm} noValidate>
+            <p className="signin__note">{copy.codeSent(challenge.email)}</p>
+            <Field label={copy.code} hint={copy.codeHelp(challenge.kind)} error={fieldError}>
+              <Input
+                className="signin__code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                required
+                value={code}
+                // Digits only, nothing cut off: a long paste is checked on submit, not truncated.
+                onChange={(e) => setCode(codeDigits(e.target.value))}
+              />
+            </Field>
+            <Button variant="primary" size="lg" block type="submit" loading={busy === 'confirm'}>
               {busy === 'confirm' ? copy.signingIn : copy.confirm}
-            </button>
-            <div className="row auth-secondary">
-              <button className="button" type="button" disabled={busy !== null} onClick={resend}>
-                {busy === 'resend' ? copy.sending : copy.resend}
-              </button>
-              <button
-                className="button"
-                type="button"
-                disabled={busy !== null}
-                onClick={otherEmail}
+            </Button>
+            <div className="signin__secondary">
+              <Button
+                variant="secondary"
+                disabled={busy !== null || cooldown.remaining > 0}
+                onClick={resend}
               >
+                {busy === 'resend'
+                  ? copy.sending
+                  : cooldown.remaining > 0
+                    ? copy.resendIn(cooldown.remaining)
+                    : copy.resend}
+              </Button>
+              <Button variant="tertiary" disabled={busy !== null} onClick={otherEmail}>
                 {copy.useOtherEmail}
-              </button>
+              </Button>
             </div>
           </form>
         )}
         {notice ? (
-          <p className="muted" role="status">
+          <p className="signin__note" role="status">
             {notice}
           </p>
         ) : null}
         {error ? (
-          <p className="error" role="alert">
+          <p className="signin__error" role="alert">
             {error}
           </p>
         ) : null}
+        <footer className="signin__footer">
+          <p>{NEW_HERE}</p>
+          <p className="signin__legal">
+            <a href={LEGAL_PATHS.privacy}>Privacy</a>
+            <a href={LEGAL_PATHS.terms}>Terms</a>
+          </p>
+        </footer>
       </section>
-      <footer className="auth-footer muted">
-        <a href={LEGAL_PATHS.privacy}>Privacy</a>
-        <a href={LEGAL_PATHS.terms}>Terms</a>
-      </footer>
+      <ClubMap
+        className="signin__map"
+        {...SAMPLE_PLAN}
+        label={`${SAMPLE_CAPTION}: a property line with two areas and three stands.`}
+        insets={({ width }) => (width >= breakpoints.tablet ? { left: DOOR_ROOM } : { bottom: 56 })}
+      >
+        <p className="signin__sample" aria-hidden="true">
+          {SAMPLE_CAPTION}
+        </p>
+      </ClubMap>
     </div>
   );
 }

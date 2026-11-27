@@ -131,6 +131,16 @@ export type ConditionsInput = {
 
 export type ConditionsReadout = SunReadout & { wind: WindReadout; temperature: Wording };
 
+/** The strip's four cells, in order, with the word over each (docs/DESIGN.md "Read out"). */
+export const READOUT_CELLS = ['sunrise', 'sunset', 'wind', 'temperature'] as const;
+export type ReadoutCell = (typeof READOUT_CELLS)[number];
+export const READOUT_LABELS: Record<ReadoutCell, string> = {
+  sunrise: 'Sunrise',
+  sunset: 'Sunset',
+  wind: 'Wind',
+  temperature: 'Temp',
+};
+
 /** The four-cell strip plus the sunset countdown. */
 export function conditionsReadout(input: ConditionsInput): ConditionsReadout {
   return {

@@ -1,50 +1,15 @@
-import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
-import type { ClubApi } from './api/types';
+import { ADMIN_PATH, type SignedInUser } from '@huntclub/shared';
+import { Suspense, useEffect, useState } from 'react';
 import { bundleBuildId, newerBuildIsLive } from './buildVersion';
-import type { SignedInUser } from '@huntclub/shared';
 import type { WebClubServices } from './cloud';
 import { Loading } from './components/Loading';
+import { Banner } from './components/ui';
 import { SignIn } from './pages/SignIn';
 import { NOT_FOUND_TITLE, NotFound } from './pages/NotFound';
+import { Shell } from './shell/Shell';
+import { currentPath, HOME_PATH, PAGES, type PagePath } from './shell/routes';
 import { ADMIN_TITLE, useDocumentTitle } from './title';
 import { SignedInUserContext } from './signedInUser';
-
-// Each admin page loads on first visit (the roster also pulls in the mesh codec and QR encoder).
-const MyClub = lazy(() => import('./pages/MyClub').then((m) => ({ default: m.MyClub })));
-const Roster = lazy(() => import('./pages/Roster').then((m) => ({ default: m.Roster })));
-const StandsAndAreas = lazy(() =>
-  import('./pages/StandsAndAreas').then((m) => ({ default: m.StandsAndAreas })),
-);
-const Harvests = lazy(() => import('./pages/Harvests').then((m) => ({ default: m.Harvests })));
-const MapPacks = lazy(() => import('./pages/MapPacks').then((m) => ({ default: m.MapPacks })));
-const Billing = lazy(() => import('./pages/Billing').then((m) => ({ default: m.Billing })));
-
-/** Pages reachable once signed in, in navigation order. Hash routes: no server rewrites. */
-export const PAGES = [
-  { path: 'club', label: 'My club', render: (api: ClubApi) => <MyClub api={api} /> },
-  { path: 'roster', label: 'Roster', render: (api: ClubApi) => <Roster api={api} /> },
-  {
-    path: 'stands',
-    label: 'Stands and areas',
-    render: (api: ClubApi) => <StandsAndAreas api={api} />,
-  },
-  { path: 'harvests', label: 'Harvests', render: (api: ClubApi) => <Harvests api={api} /> },
-  { path: 'maps', label: 'Map packs', render: (api: ClubApi) => <MapPacks api={api} /> },
-  { path: 'billing', label: 'Billing', render: (api: ClubApi) => <Billing api={api} /> },
-] as const satisfies readonly {
-  path: string;
-  label: string;
-  render: (api: ClubApi) => ReactNode;
-}[];
-
-type PagePath = (typeof PAGES)[number]['path'];
-
-/** The page the hash names; no hash is the first page, and an unknown one is null (Page not found). */
-function currentPath(): PagePath | null {
-  const hash = window.location.hash.replace(/^#\/?/, '');
-  if (hash === '') return PAGES[0].path;
-  return PAGES.find((p) => p.path === hash)?.path ?? null;
-}
 
 const SIGN_IN_TITLE = 'Sign in';
 
@@ -56,7 +21,8 @@ export const SESSION_EXPIRED = 'Your session expired. Sign in again.';
 
 /**
  * - restoring: a refresh token was kept (browser storage); refreshing it first.
- * - signedOut: show sign-in (with `expired` when the kept session could not be refreshed).
+ * - signedOut: show sign-in (with `expired` only when the kept session could not be
+ *   refreshed on load; a deliberate sign-out never says the session expired).
  * - signedIn: `email` is undefined when the token does not say who it is.
  */
 type Auth =
@@ -91,7 +57,8 @@ export function App(props: WebClubServices) {
           ? { kind: 'signedIn', user: await session.user() }
           : { kind: 'signedOut', expired: true };
       }
-      if (live) setAuth(next);
+      // Only the first answer counts: a sign-in or sign-out meanwhile wins.
+      if (live) setAuth((current) => (current.kind === 'restoring' ? next : current));
     })();
     return () => {
       live = false;
@@ -111,7 +78,7 @@ export function App(props: WebClubServices) {
   if (notReady) {
     return (
       <main className="layout">
-        <p className="banner">{NOT_READY}</p>
+        <Banner tone="warning">{NOT_READY}</Banner>
       </main>
     );
   }
@@ -126,7 +93,7 @@ export function App(props: WebClubServices) {
 
   if (auth.kind === 'signedOut' || !api) {
     return (
-      <main className="layout">
+      <main id="main">
         <SignIn
           session={session}
           notice={auth.kind === 'signedOut' && auth.expired ? SESSION_EXPIRED : undefined}
@@ -136,38 +103,23 @@ export function App(props: WebClubServices) {
     );
   }
 
-  // Revokes the refresh token and clears it from this browser.
+  // Back to /app/ with no hash (the next sign-in starts on the first page), then revoke the
+  // refresh token and clear it from this browser. Never "session expired": this was asked for.
   const signOut = () => {
+    window.history.replaceState(null, '', ADMIN_PATH);
+    setPath(HOME_PATH);
     setAuth({ kind: 'signedOut', expired: false });
     void session.signOut();
   };
 
   return (
-    <div className="layout">
-      <a className="skip-link" href="#main">
-        Skip to content
-      </a>
-      <nav className="nav" aria-label="Club admin">
-        {PAGES.map((p) => (
-          <a key={p.path} href={`#/${p.path}`} aria-current={p.path === path ? 'page' : undefined}>
-            {p.label}
-          </a>
-        ))}
-      </nav>
-      <main id="main">
-        {/* Keyed by page: each page mounts fresh, and its heading takes focus. */}
-        <SignedInUserContext.Provider value={auth.user}>
-          <Suspense key={page?.path ?? ''} fallback={<Loading />}>
-            {page ? page.render(api) : <NotFound signedIn />}
-          </Suspense>
-        </SignedInUserContext.Provider>
-      </main>
-      <footer className="app-footer">
-        {auth.user?.email ? <p className="muted">Signed in as {auth.user.email}</p> : null}
-        <button className="button" type="button" onClick={signOut}>
-          Sign out
-        </button>
-      </footer>
-    </div>
+    <Shell api={api} user={auth.user} path={page ? page.path : null} onSignOut={signOut}>
+      {/* Keyed by page: each page mounts fresh, and its heading takes focus. */}
+      <SignedInUserContext.Provider value={auth.user}>
+        <Suspense key={page?.path ?? ''} fallback={<Loading />}>
+          {page ? page.render(api) : <NotFound signedIn />}
+        </Suspense>
+      </SignedInUserContext.Provider>
+    </Shell>
   );
 }

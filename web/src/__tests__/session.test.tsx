@@ -4,7 +4,7 @@ import { adminApi } from '../api/admin';
 import { App, SESSION_EXPIRED } from '../App';
 import { browserTokenStore } from '../tokenStore';
 import { fakeIdToken } from '@huntclub/shared/testing';
-import { fakeClubClient, fakeCognitoAuth, SIGNED_IN, sampleData } from './fakeClubApi';
+import { fakeClubClient, fakeCognitoAuth, SIGNED_IN, sampleData } from '../testing/fakeClubApi';
 
 const KEY = SECURE_KEYS.webClubRefreshToken;
 

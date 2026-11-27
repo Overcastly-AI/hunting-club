@@ -14,7 +14,7 @@ import { Banner } from '../components/Banner';
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
 import { Field } from '../components/Field';
-import { useCooldown } from '../hooks/useCooldown';
+import { useCooldown } from '@huntclub/shared/useCooldown';
 import { makeStyles, textStyles } from '../theme';
 import { useClub } from './ClubProvider';
 import { clubCopy } from './copy';

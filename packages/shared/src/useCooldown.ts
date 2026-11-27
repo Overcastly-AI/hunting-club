@@ -1,6 +1,7 @@
+// The resend cooldown's countdown, shared by the app's and the web admin's sign-in (React only,
+// so it is a subpath of its own: `@huntclub/shared/useCooldown`; Lambdas never load React).
 import { useCallback, useEffect, useState } from 'react';
-
-const SECOND_MS = 1000;
+import { SECOND_MS } from './time';
 
 /**
  * A countdown in whole seconds: `start()` sets it to `seconds`, and it ticks down to 0

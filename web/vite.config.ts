@@ -2,7 +2,6 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 import { ADMIN_PATH } from '@huntclub/shared/app';
 import { buildVersion } from './build-version';
-import { dawnStylesheet } from './dawn-stylesheet';
 import { globalStylesheet } from './global-stylesheet';
 import { noEvalEntry } from './no-eval-entry';
 import { siteHead } from './site-head';
@@ -15,7 +14,6 @@ export default defineConfig({
     react(),
     noEvalEntry(),
     globalStylesheet(),
-    dawnStylesheet(),
     siteHead(),
     themeBootstrap(),
     buildVersion(),

@@ -7,3 +7,9 @@ export function formatDate(iso: string): string {
     timeZone: 'UTC',
   });
 }
+
+/**
+ * A stand's state in one word: open stands are offered at check-in in the app, closed ones are
+ * hidden from it (the stand's `active` flag).
+ */
+export const STAND_STATUS_LABELS = { open: 'Open', closed: 'Closed' } as const;

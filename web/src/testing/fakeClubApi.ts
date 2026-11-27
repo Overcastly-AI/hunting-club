@@ -1,5 +1,6 @@
 import { defaultRandom } from '@huntclub/mesh';
 import { fakeIdToken } from '@huntclub/shared/testing';
+import { SAMPLE_PROPERTY } from '../map/sampleProperty';
 import {
   type AuthTokens,
   ClubApiRequestError,
@@ -48,18 +49,6 @@ const AREA_NORTH = '1f0c5c1a-2f4b-4b7e-8d2a-7c1e0a5b9d02';
 const AREA_CREEK = '2a7d9e3b-5c6f-4e1a-9b8c-0d2e4f6a8b03';
 const T = '2026-11-01T12:00:00.000Z';
 const timestamps = { createdAt: T, updatedAt: T };
-const square = {
-  type: 'Polygon' as const,
-  coordinates: [
-    [
-      [-90, 40],
-      [-90, 40.01],
-      [-89.99, 40.01],
-      [-90, 40],
-    ],
-  ],
-};
-
 const userId = (n: number) => `3c8e1f2a-4b5d-4e6f-8a9b-0c1d2e3f4a${String(n).padStart(2, '0')}`;
 const STAND_OAK = '4d9f2a3b-5c6e-4f7a-9b0c-1d2e3f4a5b02';
 
@@ -109,31 +98,28 @@ export function sampleData(): FakeClubData {
     role,
     ...timestamps,
   });
-  const stand = (n: number, name: string, type: Stand['type'], areaId: string, active = true) => ({
-    id: `4d9f2a3b-5c6e-4f7a-9b0c-1d2e3f4a5b${String(n).padStart(2, '0')}`,
+  const AREA_IDS = { north: AREA_NORTH, creek: AREA_CREEK } as const;
+  const stands: Stand[] = SAMPLE_PROPERTY.stands.map(({ area, ...stand }, i) => ({
+    id: `4d9f2a3b-5c6e-4f7a-9b0c-1d2e3f4a5b${String(i + 1).padStart(2, '0')}`,
     clubId: CLUB,
-    meshId: n,
-    name,
-    type,
-    areaId,
-    lat: 40.005,
-    lon: -89.995,
-    active,
+    meshId: i + 1,
+    areaId: AREA_IDS[area],
+    ...stand,
     ...timestamps,
-  });
+  }));
   return {
     club: {
       id: CLUB,
-      name: 'Oak Ridge Hunt Club',
+      name: SAMPLE_PROPERTY.name,
       acreage: 640,
-      boundary: square,
+      boundary: SAMPLE_PROPERTY.boundary,
       region: 'US',
       overdueGraceMinutes: 30,
       ...timestamps,
     },
     members: [
-      member(1, 'Dale Morgan', 'DM', 'admin'),
-      member(2, 'Ruth Keller', 'RK', 'member'),
+      { ...member(1, 'Dale Morgan', 'DM', 'admin'), nodeId: 0xdb01a2c4 },
+      { ...member(2, 'Ruth Keller', 'RK', 'member'), nodeId: 0x3fe10b7d },
       { ...member(3, 'Sam Ortiz', 'SO', 'guest'), expiresAt: '2026-12-31T00:00:00.000Z' },
     ],
     areas: [
@@ -141,8 +127,7 @@ export function sampleData(): FakeClubData {
         id: AREA_NORTH,
         clubId: CLUB,
         meshId: 1,
-        name: 'North 40',
-        boundary: square,
+        ...SAMPLE_PROPERTY.areas.north,
         active: true,
         ...timestamps,
       },
@@ -150,18 +135,13 @@ export function sampleData(): FakeClubData {
         id: AREA_CREEK,
         clubId: CLUB,
         meshId: 2,
-        name: 'Creek Bottom',
-        boundary: square,
+        ...SAMPLE_PROPERTY.areas.creek,
         active: true,
         ...timestamps,
       },
     ],
     invites: [],
-    stands: [
-      stand(1, 'Creek Stand', 'tree_stand', AREA_CREEK),
-      stand(2, 'Big Oak Ladder', 'ladder', AREA_NORTH),
-      stand(3, 'Field Blind', 'ground_blind', AREA_NORTH, false),
-    ],
+    stands,
     harvests: [
       harvest(1, 1, 'Deer', 'male', '2026-11-15T17:30:00.000Z', STAND_OAK),
       harvest(2, 2, 'Deer', 'female', '2026-11-16T13:00:00.000Z'),
@@ -313,14 +293,17 @@ export const testCode = (kind: CodeChallenge['kind'] = 'signIn') =>
 /** Who the fake sign-in signs in: Dale, sampleData()'s admin. */
 export const SIGNED_IN = { userId: userId(1), email: 'dale@example.com' };
 
+/** Tokens for SIGNED_IN, good for an hour (a kept session restores from them). */
+export const fakeTokens = (): AuthTokens => ({
+  accessToken: 'a',
+  idToken: fakeIdToken(SIGNED_IN),
+  refreshToken: 'r',
+  expiresAt: Date.now() + 3_600_000,
+});
+
 /** Cognito stand-in: emails "send" instantly and only testCode(kind) signs in (as SIGNED_IN). */
 export function fakeCognitoAuth(kind: CodeChallenge['kind'] = 'signIn'): CognitoAuth {
-  const tokens: AuthTokens = {
-    accessToken: 'a',
-    idToken: fakeIdToken(SIGNED_IN),
-    refreshToken: 'r',
-    expiresAt: Date.now() + 3_600_000,
-  };
+  const tokens = fakeTokens();
   return {
     requestCode: async (email) =>
       kind === 'signIn' ? { kind, email, session: 's' } : { kind, email },

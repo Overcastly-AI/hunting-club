@@ -14,6 +14,8 @@ export function PageHeader(props: {
   actions?: ReactNode;
   status?: ReactNode;
   back?: { href: string; label: string };
+  /** The h1's id, for a section named by it (aria-labelledby). */
+  titleId?: string;
   titleRef?: Ref<HTMLHeadingElement>;
 }) {
   return (
@@ -31,7 +33,12 @@ export function PageHeader(props: {
           </ButtonLink>
         ) : null}
         <div className="ui-page-header__title-row">
-          <h1 className="ui-page-header__title text-title-1" tabIndex={-1} ref={props.titleRef}>
+          <h1
+            id={props.titleId}
+            className="ui-page-header__title text-title-1"
+            tabIndex={-1}
+            ref={props.titleRef}
+          >
             {props.title}
           </h1>
           {props.status}

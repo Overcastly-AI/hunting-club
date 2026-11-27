@@ -11,13 +11,24 @@ import {
   type Club,
   type MapPack,
 } from '@huntclub/shared';
-import { useState } from 'react';
+import { Download, Hammer, Map as MapIcon, RefreshCw } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 import { NoClubError, type ClubApi } from '../api/types';
 import { Loadable } from '../components/Loadable';
-import { DataTable } from '../components/DataTable';
-import { PageHeading } from '../components/PageHeading';
+import { Page } from '../components/Page';
 import { isOffline, useAsync } from '../components/useAsync';
+import {
+  Badge,
+  Banner,
+  Button,
+  DataTable,
+  EmptyState,
+  Segmented,
+  StatGrid,
+  StatTile,
+} from '../components/ui';
 import { formatDate } from '../format';
+import { ClubMap } from '../map/ClubMap';
 
 /** How long a build may take, in words ("15 minutes"). */
 const BUILD_MINUTES = `${Math.ceil(MAP_PACK_BUILD.timeoutSeconds / 60)} minutes`;
@@ -60,36 +71,50 @@ export function MapPacks(props: { api: ClubApi }) {
   );
 
   return (
-    <section aria-labelledby="packs-title">
-      <PageHeading id="packs-title">Map packs</PageHeading>
-      <p>
-        A map pack covers your property line in full detail. Members download it in the app, so the
-        map works with no cell service.
-      </p>
+    <Page
+      title="Map packs"
+      description="Download the property in full detail before you go. Maps work with no cell service."
+    >
       <Loadable state={state}>
         {([club, packs]) => (
           <>
-            <BuildPack
-              api={props.api}
-              club={club}
-              building={packs.some((p) => p.status === 'building')}
-              onStarted={state.reload}
-            />
-            <h2>Map packs</h2>
-            {packs.length === 0 ? (
-              <p>No map packs yet.</p>
-            ) : (
-              <>
-                <PackTable packs={packs} />
-                <button className="button" type="button" onClick={state.reload}>
+            <div className="beside-map">
+              <div className="beside-map__lists">
+                <BuildPack
+                  api={props.api}
+                  club={club}
+                  building={packs.some((p) => p.status === 'building')}
+                  onStarted={state.reload}
+                />
+              </div>
+              <ClubMap
+                className="beside-map__map"
+                boundary={club.boundary}
+                areas={[]}
+                stands={[]}
+                compact
+                label={
+                  club.boundary
+                    ? 'The area a map pack covers: the club property line.'
+                    : 'No property line yet.'
+                }
+                insets={{ top: 24, right: 24, bottom: 40, left: 24 }}
+                empty={<p className="plan__empty">No property line yet.</p>}
+              />
+            </div>
+            <div className="section-head">
+              <h2 className="section-title">Map packs</h2>
+              {packs.length > 0 ? (
+                <Button icon={RefreshCw} size="sm" onClick={state.reload}>
                   Check again
-                </button>
-              </>
-            )}
+                </Button>
+              ) : null}
+            </div>
+            <PackTable packs={packs} />
           </>
         )}
       </Loadable>
-    </section>
+    </Page>
   );
 }
 
@@ -99,7 +124,11 @@ function BuildPack(props: { api: ClubApi; club: Club; building: boolean; onStart
 
   if (!props.club.boundary) {
     // No estimate without a boundary; the line is drawn in the app (not on the web).
-    return <p>Draw the property line in the app first. The map pack covers exactly that area.</p>;
+    return (
+      <EmptyState icon={MapIcon} title="Draw the property line first" titleAs="h2">
+        Draw it in the app. A map pack covers exactly that area.
+      </EmptyState>
+    );
   }
   // The same rule the club service applies before it accepts a build.
   const estimate = estimateClubPack(props.club.boundary, { basemap });
@@ -116,64 +145,86 @@ function BuildPack(props: { api: ClubApi; club: Club; building: boolean; onStart
   };
 
   return (
-    <>
-      <fieldset className="choices">
-        <legend>Basemap</legend>
-        {BASEMAP_IDS.map((id) => (
-          <label key={id} className="choice">
-            <input
-              type="radio"
-              name="basemap"
-              value={id}
-              checked={basemap === id}
-              onChange={() => {
-                setBasemap(id);
-                setRequest({ kind: 'idle' });
-              }}
-            />
-            {BASEMAPS[id].label}
-          </label>
-        ))}
-      </fieldset>
+    <section className="form-plate" aria-labelledby="build-pack">
+      <h2 id="build-pack" className="section-title">
+        Build a map pack
+      </h2>
+      <Segmented
+        legend="Basemap"
+        options={BASEMAP_IDS.map((id) => ({ value: id, label: BASEMAPS[id].label }))}
+        value={basemap}
+        onChange={(id) => {
+          setBasemap(id);
+          setRequest({ kind: 'idle' });
+        }}
+      />
       {estimate.overLimit ? (
-        <p className="error" role="alert">
-          The property is too big for one map pack: about {estimate.tiles.toLocaleString('en-US')}{' '}
-          map tiles, and a pack can hold {MAP_PACK_LIMITS.maxTiles.toLocaleString('en-US')} tiles
-          and {formatBytes(MAP_PACK_LIMITS.maxBytes)}.
-        </p>
+        <div role="alert">
+          <Banner tone="danger" title="Too big for one map pack">
+            About {estimate.tiles.toLocaleString('en-US')} map tiles, and a pack can hold{' '}
+            {MAP_PACK_LIMITS.maxTiles.toLocaleString('en-US')} tiles and{' '}
+            {formatBytes(MAP_PACK_LIMITS.maxBytes)}.
+          </Banner>
+        </div>
       ) : (
-        <p className="muted" data-testid="pack-estimate">
-          About {estimate.tiles.toLocaleString('en-US')} map tiles, about{' '}
-          {formatBytes(estimate.bytes)}.
-        </p>
+        <div className="estimate">
+          <StatGrid aria-label="Estimate">
+            <StatTile label="Map tiles" value={`About ${estimate.tiles.toLocaleString('en-US')}`} />
+            <StatTile label="Download" value={`About ${formatBytes(estimate.bytes)}`} />
+          </StatGrid>
+        </div>
       )}
-      {props.building ? <p>A map pack is being built. It can take up to {BUILD_MINUTES}.</p> : null}
-      <button
-        className="button primary"
-        type="button"
-        disabled={request.kind === 'busy' || props.building || estimate.overLimit !== null}
-        onClick={() => void build()}
-      >
-        Build map pack
-      </button>
-      {request.kind === 'error' ? (
-        <p className="error" role="alert">
-          {request.message}
-        </p>
+      {props.building ? (
+        <Banner tone="info" live>
+          A map pack is being built. It can take up to {BUILD_MINUTES}.
+        </Banner>
       ) : null}
-    </>
+      <div className="form-plate__actions">
+        <Button
+          variant="primary"
+          icon={Hammer}
+          loading={request.kind === 'busy'}
+          disabled={props.building || estimate.overLimit !== null}
+          onClick={() => void build()}
+        >
+          Build map pack
+        </Button>
+      </div>
+      {request.kind === 'error' ? (
+        <div role="alert">
+          <Banner tone="danger">{request.message}</Banner>
+        </div>
+      ) : null}
+      <p className="form-note">Members download ready packs in the app, under Map packs.</p>
+    </section>
   );
 }
 
-/** Status in words, and the detail that goes with it. */
-function packStatus(p: MapPack): { status: string; size: string; date: string } {
+/** Status as a tagged word, and the detail that goes with it. */
+function packStatus(p: MapPack): { status: ReactNode; size: string; date: string } {
   switch (p.status) {
     case 'building':
-      return { status: 'Being built', size: '—', date: formatDate(p.createdAt) };
+      return {
+        status: <Badge tone="info">Being built</Badge>,
+        size: '—',
+        date: formatDate(p.createdAt),
+      };
     case 'ready':
-      return { status: 'Ready', size: formatBytes(p.sizeBytes), date: formatDate(p.builtAt) };
+      return {
+        status: <Badge tone="success">Ready</Badge>,
+        size: formatBytes(p.sizeBytes),
+        date: formatDate(p.builtAt),
+      };
     case 'failed':
-      return { status: `Failed: ${p.reason}`, size: '—', date: formatDate(p.updatedAt) };
+      return {
+        status: (
+          <span className="status-reason">
+            <Badge tone="danger">Failed</Badge> {p.reason}
+          </span>
+        ),
+        size: '—',
+        date: formatDate(p.updatedAt),
+      };
   }
 }
 
@@ -190,11 +241,20 @@ function PackTable({ packs }: { packs: readonly MapPack[] }) {
       caption="Club map packs, newest first"
       rows={rows}
       rowKey={(r) => r.id}
+      empty={
+        <EmptyState icon={Download} title="No map packs yet" titleAs="h3">
+          Build one above. It takes a few minutes.
+        </EmptyState>
+      }
       columns={[
-        { label: 'Basemap', cell: (r) => r.basemap },
-        { label: 'Status', cell: (r) => r.status },
-        { label: 'Size', cell: (r) => r.size },
-        { label: 'Date', cell: (r) => r.date },
+        { key: 'basemap', header: 'Basemap', cell: (r) => r.basemap },
+        { key: 'status', header: 'Status', cell: (r) => r.status },
+        {
+          key: 'size',
+          header: 'Size',
+          cell: (r) => <span className="text-readout-inline">{r.size}</span>,
+        },
+        { key: 'date', header: 'Date', cell: (r) => r.date },
       ]}
     />
   );

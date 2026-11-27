@@ -2,6 +2,7 @@ import { ADMIN_PATH, CHECKOUT_RETURN_PATHS } from '@huntclub/shared';
 import { lazy, Suspense, type ReactNode } from 'react';
 import type { WebClubServices } from './cloud';
 import { Loading } from './components/Loading';
+import { PublicShell } from './shell/PublicShell';
 
 // Each entry path loads only its own code: the Checkout pages don't pull in the admin,
 // and the admin doesn't pull in the mesh codec until an invite is made.
@@ -19,6 +20,11 @@ const CheckoutReturn = lazy(() =>
 const KIT_ENABLED = import.meta.env.DEV || import.meta.env.MODE === 'kit';
 export const KIT_HASH = '#/_kit';
 const Kit = KIT_ENABLED ? lazy(() => import('./kit/Kit').then((m) => ({ default: m.Kit }))) : null;
+/** The admin over sample data, for screenshots and review (/app/?demo=<scenario>): kit builds only. */
+export const DEMO_PARAM = 'demo';
+const Demo = KIT_ENABLED
+  ? lazy(() => import('./demo/Demo').then((m) => ({ default: m.Demo })))
+  : null;
 
 /**
  * The page's real paths (WEB_PAGE_PATHS) need no sign-in; ADMIN_PATH (/app/) is the club
@@ -34,6 +40,13 @@ export function Root(
     return (
       <Suspense fallback={<Loading />}>
         <Kit />
+      </Suspense>
+    );
+  const demo = new URL(location.href).searchParams.get(DEMO_PARAM);
+  if (Demo && isAdminPath(path) && demo !== null)
+    return (
+      <Suspense fallback={<Loading />}>
+        <Demo scenario={demo} />
       </Suspense>
     );
   if (path === CHECKOUT_RETURN_PATHS.success)
@@ -67,8 +80,8 @@ const isAdminPath = (path: string) => path === ADMIN_ROOT || path.startsWith(`${
 
 function Page(props: { children: ReactNode }) {
   return (
-    <main className="layout">
-      <Suspense fallback={<Loading />}>{props.children}</Suspense>
-    </main>
+    <Suspense fallback={<Loading />}>
+      <PublicShell>{props.children}</PublicShell>
+    </Suspense>
   );
 }

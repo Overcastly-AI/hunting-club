@@ -12,6 +12,7 @@ import {
   mapPackKey,
   mapPackUrl,
   polygonBounds,
+  polygonRings,
   tileUrl,
   tilesInBounds,
 } from '../maps';
@@ -54,6 +55,18 @@ describe('shared map maths', () => {
     expect(mapPackUrl('dev', { s3Key: mapPackKey('c1', 'p1') })).toBe(
       'https://huntclub-dev.jaycobjones.com/packs/c1/p1.pmtiles',
     );
+  });
+
+  it('lists the rings of a Polygon and a MultiPolygon, skipping anything malformed', () => {
+    const ring = [
+      [-90, 40],
+      [-89.99, 40],
+      [-90, 40.01],
+      [-90, 40],
+    ];
+    expect(polygonRings({ coordinates: [ring] })).toEqual([ring]);
+    expect(polygonRings({ coordinates: [[ring], [ring, ring]] })).toHaveLength(3);
+    expect(polygonRings({ coordinates: [['x'], 7, null] })).toEqual([]);
   });
 
   it('caps club packs so a build at the polite rate fits the builder timeout', () => {

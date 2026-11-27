@@ -13,6 +13,10 @@ import {
 
 /** Phones (below the tablet breakpoint): the same query as the compact type sizes. */
 export const PHONE = `@media ${COMPACT_MEDIA}`;
+/** Tablets: from the tablet breakpoint up to desktop. */
+export const TABLET = `@media (min-width: ${breakpoints.tablet}px) and (max-width: ${breakpoints.desktop - 1}px)`;
+/** Tablet and up (not phones). */
+export const TABLET_UP = `@media (min-width: ${breakpoints.tablet}px)`;
 /** Desktop and up. */
 export const DESKTOP = `@media (min-width: ${breakpoints.desktop}px)`;
 

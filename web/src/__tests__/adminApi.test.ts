@@ -13,7 +13,7 @@ import {
   SubscriptionSchema,
 } from '@huntclub/shared';
 import { adminApi } from '../api/admin';
-import { fakeClubClient, sampleData } from './fakeClubApi';
+import { fakeClubClient, sampleData } from '../testing/fakeClubApi';
 
 // The fake stands in for the real club API, so its data must be valid shared wire types.
 describe('fake club API data', () => {

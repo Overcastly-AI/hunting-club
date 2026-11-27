@@ -54,6 +54,19 @@ export const boundary = {
 export type ColorToken = keyof typeof colors;
 
 /**
+ * The club plan: the map the web admin draws from the club's own geometry (property line,
+ * areas, stands) where it has no imagery. Its ground is the aerial's base tone and its
+ * distance grid the aerial's contour tone (the direction's world), the same in both themes,
+ * like the picture.
+ */
+export const mapPlanColors = {
+  /** The ground under the property. */
+  mapGround: '#3B3A2D',
+  /** The distance grid, drawn faintly over the ground. */
+  mapGrid: '#D8C9A0',
+} as const;
+
+/**
  * Light sections of the public marketing site: the daylight theme's own colours (no cream),
  * until the site moves to the daylight theme itself (docs/DESIGN.md "Open points").
  */
