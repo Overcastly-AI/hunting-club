@@ -16,6 +16,9 @@ export const MAP_FRAME = {
   phone: [790, 470],
 } as const satisfies Record<string, AerialPoint>;
 
+/** The widest screen the hero must fill edge to edge (the aerial is framed to cover it). */
+export const MAP_COVERED_WIDTH = 1600;
+
 /** The hero's height on a wide screen, and the map's height above the sheet on a phone. */
 export const HERO_HEIGHT = { wide: 664, phone: 300 } as const;
 

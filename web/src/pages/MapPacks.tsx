@@ -110,7 +110,7 @@ export function MapPacks(props: { api: ClubApi }) {
                 </Button>
               ) : null}
             </div>
-            <PackTable packs={packs} />
+            <PackTable packs={packs} canBuild={Boolean(club.boundary)} />
           </>
         )}
       </Loadable>
@@ -228,7 +228,13 @@ function packStatus(p: MapPack): { status: ReactNode; size: string; date: string
   }
 }
 
-function PackTable({ packs }: { packs: readonly MapPack[] }) {
+/** What the empty list says: it points at the build control only when the page shows one. */
+const EMPTY_PACKS_BODY = {
+  canBuild: 'Build one above. It takes a few minutes.',
+  needsLine: 'Draw the property line in the app first, then build one here.',
+} as const;
+
+function PackTable({ packs, canBuild }: { packs: readonly MapPack[]; canBuild: boolean }) {
   const rows = [...packs]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .map((p) => ({
@@ -243,7 +249,7 @@ function PackTable({ packs }: { packs: readonly MapPack[] }) {
       rowKey={(r) => r.id}
       empty={
         <EmptyState icon={Download} title="No map packs yet" titleAs="h3">
-          Build one above. It takes a few minutes.
+          {canBuild ? EMPTY_PACKS_BODY.canBuild : EMPTY_PACKS_BODY.needsLine}
         </EmptyState>
       }
       columns={[

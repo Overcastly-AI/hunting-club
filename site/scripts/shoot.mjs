@@ -1,5 +1,5 @@
 // Screenshots of the built site (site/dist) for review, and a real-browser check that no page
-// scrolls sideways on a 360 px phone. Uses the Playwright already on the machine (never
+// scrolls sideways from a 360 px phone to 1600 px, and that the home map hero is full-bleed. Uses the Playwright already on the machine (never
 // installs a browser):
 //   npm run build -w @huntclub/site
 //   NODE_PATH=/opt/node-tools/node_modules node site/scripts/shoot.mjs docs/redesign/m4
@@ -32,6 +32,8 @@ const PAGES = [
 const WIDTHS = [1280, 390];
 const THEMES = { dark: 'dark', daylight: 'light' };
 const NARROWEST = 360;
+// Widths checked for sideways scroll, and (on the home page) for a full-bleed map hero.
+const CHECK_WIDTHS = [NARROWEST, 1024, 1280, 1440, 1600];
 const TYPES = {
   '.html': 'text/html',
   '.css': 'text/css',
@@ -76,17 +78,34 @@ try {
       }
       await page.close();
     }
-    const phone = await browser.newPage({
-      viewport: { width: NARROWEST, height: 800 },
-      deviceScaleFactor: 1,
-      colorScheme,
-    });
-    for (const path of PAGES) {
-      await phone.goto(origin + path, { waitUntil: 'networkidle' });
-      const wide = await phone.evaluate(() => document.documentElement.scrollWidth);
-      if (wide > NARROWEST) failures.push(`${path} (${theme}) is ${wide}px wide at ${NARROWEST}px`);
+    for (const checkWidth of CHECK_WIDTHS) {
+      const check = await browser.newPage({
+        viewport: { width: checkWidth, height: 800 },
+        deviceScaleFactor: 1,
+        colorScheme,
+      });
+      for (const path of PAGES) {
+        await check.goto(origin + path, { waitUntil: 'networkidle' });
+        const wide = await check.evaluate(() => document.documentElement.scrollWidth);
+        if (wide > checkWidth)
+          failures.push(`${path} (${theme}) is ${wide}px wide at ${checkWidth}px`);
+      }
+      // The home hero fills the window edge to edge, and its aerial reaches both edges.
+      await check.goto(origin + '/', { waitUntil: 'networkidle' });
+      const gap = await check.evaluate(() => {
+        const hero = document.querySelector('.hero').getBoundingClientRect();
+        const map = document.querySelector('.hero .world-map').getBoundingClientRect();
+        return {
+          left: Math.max(hero.left, map.left - hero.left),
+          right: Math.max(innerWidth - hero.right, hero.right - map.right),
+        };
+      });
+      if (gap.left > 0 || gap.right > 0)
+        failures.push(
+          `The home map hero leaves a gap (${JSON.stringify(gap)}) at ${checkWidth}px (${theme})`,
+        );
+      await check.close();
     }
-    await phone.close();
   }
 } finally {
   await browser.close();
@@ -96,4 +115,6 @@ if (failures.length) {
   console.error(`Sideways scroll:\n${failures.join('\n')}`);
   process.exit(1);
 }
-console.log(`No page scrolls sideways at ${NARROWEST}px.`);
+console.log(
+  `No page scrolls sideways, and the home map hero is full-bleed, at ${CHECK_WIDTHS.join(', ')}px.`,
+);
