@@ -105,6 +105,7 @@ const drawLine = async (page: Page) => {
       const map = document.querySelector('.clubview__map').getBoundingClientRect();
       const plate = document.querySelector('.clubview__plate').getBoundingClientRect();
       const controls = document.querySelector('.plan__controls').getBoundingClientRect();
+      // On a phone the draw tools are a bar along the bottom, under the controls.
       return { left: map.left, right: map.right, top: plate.bottom, bottom: controls.top };
     })()`,
   );
@@ -170,6 +171,20 @@ const SHOTS: readonly Shot[] = [
   { name: 'billing-no-club', scenario: 'noClub', hash: '#/billing', only: ONCE },
   { name: 'my-club-no-club', scenario: 'noClub', hash: '#/club', only: ONCE_EACH },
   { name: 'my-club-no-line', scenario: 'noLine', hash: '#/club' },
+  {
+    name: 'my-club-draw-more',
+    scenario: 'noLine',
+    hash: '#/club',
+    act: async (page) => {
+      await drawLine(page);
+      await page.getByRole('button', { name: 'More tools' }).click();
+    },
+    geolocation: AT_THE_PROPERTY,
+    only: [
+      [390, 'dark'],
+      [390, 'light'],
+    ],
+  },
   {
     name: 'my-club-draw',
     scenario: 'noLine',
