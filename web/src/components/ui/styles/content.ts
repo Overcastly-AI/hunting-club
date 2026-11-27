@@ -3,7 +3,7 @@
 // edge and no shadow (shadows only go under things floating over imagery); its parts are
 // divided by hairlines, never boxed one by one. Values read out in condensed tabular figures.
 import { STATUS_TONE_COLORS, STATUS_TONES, type StatusTone } from '@huntclub/design';
-import { AVATAR, TABLE_ROW_HEIGHT, type AvatarSize } from '../sizes';
+import { AVATAR, SHELL, TABLE_ROW_HEIGHT, type AvatarSize } from '../sizes';
 import {
   color,
   DESKTOP,
@@ -103,10 +103,11 @@ const skeleton = `
 .ui-skeleton--title { height: 1.5rem; width: 40%; margin-bottom: ${gap(2)}; }
 .ui-skeleton--tile { height: 76px; border-radius: 0; }
 .ui-skeleton--short { width: 60%; }
-@keyframes ui-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+/* A map that is still loading: the map's own height (My club), with no corners on the bleed page. */
+.ui-skeleton--map { height: ${SHELL.phoneMapHeight}px; border-radius: 0; }
+${DESKTOP} { .ui-skeleton--map { height: 100vh; } }@keyframes ui-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 @media (prefers-reduced-motion: reduce) { .ui-skeleton { animation: none; background-image: none; } }
-.ui-skeleton-group { display: grid; gap: ${gap(2)}; }
-`;
+.ui-skeleton-group { display: grid; gap: ${gap(2)}; }`;
 
 /** `.block--tone` rules: each tone's text and icon colour on its background (STATUS_TONE_COLORS). */
 const toneCss = (block: string, tones: readonly StatusTone[]) =>

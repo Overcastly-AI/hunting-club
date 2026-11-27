@@ -24,7 +24,7 @@ import { App } from '../App';
 import { PAGES } from '../shell/routes';
 import * as download from '../download';
 import * as navigate from '../navigate';
-import { Loading } from '../components/Loading';
+import { Loading, LOADING_LABEL } from '../components/Loading';
 import { Root } from '../Root';
 import { globalCss } from '../theme/css';
 import { pageTitle } from '../title';
@@ -40,14 +40,22 @@ import { go } from '../testing/app';
 import { accountButton, requestCode, signIn } from '../testing/shell';
 import { tableRows } from '../testing/tables';
 import { SAMPLE_CAPTION } from '../pages/SignIn';
-import { CREATE_INVITE, NO_RADIO } from '../pages/Roster';
+import {
+  COPY_INVITE,
+  CREATE_INVITE,
+  INVITE_TITLE,
+  NO_OTHER_MEMBERS,
+  NO_RADIO,
+} from '../pages/Roster';
 
-/** Opens the invite dialog (which makes nothing yet) and asks for the link. */
+/** The roster's invite section (which makes nothing until asked). */
+const inviteSection = () => screen.findByRole('region', { name: INVITE_TITLE });
+
+/** Asks the roster's invite section for the link; resolves to the section. */
 async function createInviteLink() {
-  fireEvent.click(await screen.findByRole('button', { name: 'Invite members' }));
-  const dialog = await screen.findByRole('dialog', { name: 'Invite members' });
-  fireEvent.click(within(dialog).getByRole('button', { name: CREATE_INVITE }));
-  return dialog;
+  const section = await inviteSection();
+  fireEvent.click(within(section).getByRole('button', { name: CREATE_INVITE }));
+  return section;
 }
 
 /** Every call that changes club data on the server: none may run just from opening a page. */
@@ -111,14 +119,15 @@ describe('sign in', () => {
   it('explains a wrong code and stays on the code step', async () => {
     renderApp();
     window.location.hash = '#/roster';
+    // The code goes as soon as its last digit lands.
     fireEvent.change(await requestCode(), { target: { value: '99999999' } });
-    fireEvent.click(screen.getByRole('button', { name: signInCopy.confirm }));
     expect((await screen.findByRole('alert')).textContent).toBe(signInCopy.errors.wrong_code);
-    expect(screen.getByLabelText(signInCopy.code)).toBeTruthy();
+    expect(screen.getByLabelText(signInCopy.code('signIn'))).toBeTruthy();
     // The route asked for stays put on the sign-in screen, then opens once signed in.
     expect(window.location.hash).toBe('#/roster');
-    fireEvent.change(screen.getByLabelText(signInCopy.code), { target: { value: testCode() } });
-    fireEvent.click(screen.getByRole('button', { name: signInCopy.confirm }));
+    fireEvent.change(screen.getByLabelText(signInCopy.code('signIn')), {
+      target: { value: testCode() },
+    });
     expect(await screen.findByRole('heading', { level: 1, name: 'Roster' })).toBeTruthy();
   });
 
@@ -130,17 +139,21 @@ describe('sign in', () => {
         session: new ClubSession(fakeCognitoAuth(kind), memoryTokenStore()),
         api: adminApi(fakeClubClient(sampleData())),
       });
-      const input = (await requestCode()) as HTMLInputElement;
-      expect(input.maxLength).toBe(-1);
+      const input = (await requestCode(kind)) as HTMLInputElement;
+      // The label, the field's limit and the check all come from the one length rule.
+      expect(screen.getByLabelText(`${length}-digit code`)).toBe(input);
+      expect(input.maxLength).toBe(length);
       expect(screen.getByText(signInCopy.codeHelp(kind)).textContent).toContain(validFor);
+      // A paste is read whole: one digit too many is refused on submit, never cut short.
       const tooLong = testCode(kind) + '9';
-      fireEvent.change(input, { target: { value: tooLong.split('').join(' ') } });
+      fireEvent.paste(input, {
+        clipboardData: { getData: () => tooLong.split('').join(' ') },
+      });
       expect(input.value).toBe(tooLong);
       fireEvent.click(screen.getByRole('button', { name: signInCopy.confirm }));
       expectFieldError(input, signInCopy.codeIncomplete(kind));
       expect(signInCopy.codeIncomplete(kind)).toContain(String(length));
       fireEvent.change(input, { target: { value: testCode(kind) } });
-      fireEvent.click(screen.getByRole('button', { name: signInCopy.confirm }));
       await screen.findByRole('navigation', { name: 'Club admin' });
     },
   );
@@ -149,7 +162,6 @@ describe('sign in', () => {
     renderApp();
     const input = await requestCode();
     fireEvent.change(input, { target: { value: '99999999' } });
-    fireEvent.click(screen.getByRole('button', { name: signInCopy.confirm }));
     await screen.findByRole('alert');
     fireEvent.change(input, { target: { value: '12' } });
     fireEvent.click(screen.getByRole('button', { name: signInCopy.confirm }));
@@ -193,7 +205,7 @@ describe('sign in', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: signInCopy.sendCode }));
     expect(screen.getByRole('button', { name: signInCopy.sending })).toBeTruthy();
-    await screen.findByLabelText(signInCopy.code);
+    await screen.findByLabelText(signInCopy.code('signIn'));
   });
 
   it('sends a new code on request after the cooldown, with the expiry and a spam hint', async () => {
@@ -214,7 +226,7 @@ describe('sign in', () => {
     vi.useRealTimers();
     fireEvent.click(screen.getByRole('button', { name: signInCopy.resend }));
     expect((await screen.findByRole('status')).textContent).toBe(signInCopy.resent);
-    expect(screen.getByLabelText(signInCopy.code)).toBeTruthy();
+    expect(screen.getByLabelText(signInCopy.code('signIn'))).toBeTruthy();
   });
 
   it('shows the app name, logo, description and Privacy and Terms links', async () => {
@@ -318,9 +330,15 @@ describe('club pages', () => {
     renderApp();
     await signIn();
     go('#/nope');
-    expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Back to the app' }).getAttribute('href')).toBe(
-      ADMIN_PATH,
+    const heading = await screen.findByRole('heading', { name: 'Page not found' });
+    // A crossed-out map pin, then links to My club and Roster.
+    expect(heading.closest('section')!.querySelector('.not-found__icon svg')).toBeTruthy();
+    const main = screen.getByRole('main');
+    expect(within(main).getByRole('link', { name: 'My club' }).getAttribute('href')).toBe(
+      `${ADMIN_PATH}#/club`,
+    );
+    expect(within(main).getByRole('link', { name: 'Roster' }).getAttribute('href')).toBe(
+      `${ADMIN_PATH}#/roster`,
     );
     await vi.waitFor(() =>
       expect(document.title).toBe(`Page not found · Club admin · ${APP_NAME}`),
@@ -349,7 +367,7 @@ describe('club pages', () => {
     });
   });
 
-  it('makes no invite until the admin asks: opening the roster or the dialog writes nothing', async () => {
+  it('makes no invite until the admin asks: opening the roster or going to its invite writes nothing', async () => {
     const client = fakeClubClient(sampleData());
     const writes = WRITES.filter((name) => name in client).map((name) =>
       vi.spyOn(client, name as keyof ClubApiClient),
@@ -357,17 +375,19 @@ describe('club pages', () => {
     renderApp(undefined, servicesFor(client));
     await signIn();
     go('#/roster');
+    // "Invite members" takes the admin to the invite section, and makes nothing.
     fireEvent.click(await screen.findByRole('button', { name: 'Invite members' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Invite members' });
-    // Let every effect of the open dialog run.
+    const section = await inviteSection();
+    expect(document.activeElement).toBe(within(section).getByRole('heading', { level: 2 }));
     await act(async () => new Promise((done) => setTimeout(done, 50)));
     for (const write of writes) expect(write).not.toHaveBeenCalled();
-    expect(within(dialog).queryByRole('img', { name: 'Club invite QR code' })).toBeNull();
+    expect(within(section).queryByRole('img', { name: 'Club invite QR code' })).toBeNull();
     expect(screen.queryByTestId('invite-link')).toBeNull();
-    // Closing it makes nothing either; asking makes exactly one.
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Done' }));
+    // Asking makes exactly one, and the page shows its QR code and the copy action.
     await createInviteLink();
     await screen.findByTestId('invite-link');
+    expect(within(section).getByRole('img', { name: 'Club invite QR code' })).toBeTruthy();
+    expect(within(section).getByRole('button', { name: COPY_INVITE })).toBeTruthy();
     expect(client.createInvite).toHaveBeenCalledTimes(1);
   });
 
@@ -734,7 +754,7 @@ describe('errors, empty states and navigation', () => {
       const writeText = vi.fn(async () => undefined);
       clipboard(writeText);
       const link = await invite();
-      fireEvent.click(screen.getByRole('button', { name: 'Copy link' }));
+      fireEvent.click(screen.getByRole('button', { name: COPY_INVITE }));
       expect(await screen.findByRole('button', { name: 'Copied' })).toBeTruthy();
       expect(writeText).toHaveBeenCalledWith(link);
     });
@@ -742,7 +762,7 @@ describe('errors, empty states and navigation', () => {
     it('keeps the link in a read-only field to copy by hand when the browser will not copy', async () => {
       clipboard(vi.fn(async () => Promise.reject(new Error('denied'))));
       const link = await invite();
-      fireEvent.click(screen.getByRole('button', { name: 'Copy link' }));
+      fireEvent.click(screen.getByRole('button', { name: COPY_INVITE }));
       expect(await screen.findByRole('button', { name: 'Could not copy' })).toBeTruthy();
       const field = screen.getByLabelText('Or send this link') as HTMLInputElement;
       expect(field.readOnly).toBe(true);
@@ -786,8 +806,12 @@ describe('errors, empty states and navigation', () => {
     await signIn();
     go('#/roster');
     expect(
-      await screen.findByText("No other members yet. Invite your hunters with the club's QR code."),
+      await screen.findByRole('heading', { level: 2, name: NO_OTHER_MEMBERS.title }),
     ).toBeTruthy();
+    expect(screen.getByText(NO_OTHER_MEMBERS.line)).toBeTruthy();
+    // Its action leads to the invite section's QR code (still made only on request).
+    fireEvent.click(screen.getByRole('button', { name: INVITE_TITLE }));
+    expect(document.activeElement?.textContent).toBe(INVITE_TITLE);
     go('#/stands');
     expect(await screen.findByRole('heading', { level: 2, name: 'Stands 0' })).toBeTruthy();
     expect(screen.getByText('No stands yet')).toBeTruthy();
@@ -886,7 +910,7 @@ describe('errors, empty states and navigation', () => {
     expect(document.getElementById('main')?.tagName).toBe('MAIN');
     // Its own container: the signed-in page may still be showing its own loading status.
     const { container } = render(<Loading />);
-    expect(within(container).getByRole('status').textContent).toBe('Loading…');
+    expect(within(container).getByRole('status').textContent).toBe(LOADING_LABEL);
   });
 
   it('lays out each billing choice as a row of one list', async () => {

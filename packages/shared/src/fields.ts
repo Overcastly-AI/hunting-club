@@ -59,6 +59,14 @@ export function suggestInitials(name: string): string {
     .map((word) => Array.from(word).find((ch) => LETTER_OR_DIGIT.test(ch)) ?? '');
   return Array.from(firsts.join('')).slice(0, INITIALS_MAX).join('').toLocaleUpperCase();
 }
+
+/**
+ * Initials for a name or an email: an email's local part with its dots, dashes and pluses read
+ * as word breaks ("jane.doe@x" → "JD"). Only the initials split it; a name stays as typed.
+ */
+export const initialsFor = (nameOrEmail: string): string =>
+  suggestInitials((nameOrEmail.split('@')[0] ?? '').replace(/[._+-]+/g, ' '));
+
 /** A member's display name, e.g. "Jake Smith". */
 export const DISPLAY_NAME_MAX = 40;
 /** Meshtastic LoRa region code, e.g. 'US'. */

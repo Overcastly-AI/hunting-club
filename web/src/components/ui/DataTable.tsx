@@ -2,7 +2,7 @@ import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { cx } from './cx';
 import { ICON_SIZE } from '@huntclub/design';
-import { Skeleton } from './Skeleton';
+import { SkeletonRows } from './Skeleton';
 
 export interface TableColumn<R> {
   /** Unique within the table. */
@@ -14,8 +14,6 @@ export interface TableColumn<R> {
 }
 
 type Sort = { key: string; direction: 'ascending' | 'descending' };
-
-const SKELETON_ROWS = 3;
 
 /**
  * A table of records: sortable columns (a button in the header, aria-sort), sticky header,
@@ -76,15 +74,7 @@ export function DataTable<R>(props: {
 
   let body: ReactNode;
   if (props.loading) {
-    body = Array.from({ length: SKELETON_ROWS }, (_, i) => (
-      <tr key={i} aria-hidden="true">
-        {Array.from({ length: width }, (_, j) => (
-          <td key={j}>
-            <Skeleton short={j > 0} />
-          </td>
-        ))}
-      </tr>
-    ));
+    body = <SkeletonRows columns={width} />;
   } else if (rows.length === 0) {
     body = (
       <tr className="ui-table__empty-row">

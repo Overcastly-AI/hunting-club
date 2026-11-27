@@ -2,7 +2,7 @@
 // sign-in and My club, with plates floating on it; away from the map, content is tables and
 // rows divided by hairlines, never boxes around each part. Components draw themselves
 // (components/ui/styles); this file only places them. Theme tokens only.
-import { sizes } from '@huntclub/design';
+import { opacity, sizes } from '@huntclub/design';
 import { SHELL } from '../components/ui/sizes';
 import {
   color,
@@ -21,7 +21,7 @@ const floating = `background: ${color('plate')}; border-radius: var(--radius-lg)
 const common = `
 .page-pad { padding: ${gap(6)} ${gap(8)}; max-width: calc(${SHELL.contentMaxWidth}px + 2 * ${gap(8)}); margin: 0 auto; }
 ${PHONE} { .page-pad { padding: ${gap(5)} ${gap(4)}; } }
-.loading { ${text('body')}; color: ${color('textSecondary')}; margin: 0; }
+.loading--stats, .loading--page { gap: ${gap(3)}; }
 .stale-notice { margin-bottom: ${gap(4)}; }
 .quiet { color: ${color('textSecondary')}; }
 .section-title { ${text('title3')}; display: flex; align-items: baseline; gap: ${gap(2)}; margin: 0 0 ${gap(3)}; }
@@ -30,7 +30,6 @@ ${PHONE} { .page-pad { padding: ${gap(5)} ${gap(4)}; } }
   margin: ${gap(8)} 0 ${gap(3)}; }
 .section-head .section-title { margin: 0; }
 .ui-table-wrap + .section-title, .ui-table-wrap + .section-head { margin-top: ${gap(8)}; }
-.after-table { ${text('body')}; color: ${color('textSecondary')}; margin: ${gap(3)} 0 0; }
 .form-plate { display: grid; gap: ${gap(4)}; max-width: 560px; }
 .form-plate__actions { display: flex; flex-wrap: wrap; gap: ${gap(2)}; }
 .form-note { ${text('body')}; color: ${color('textSecondary')}; margin: 0; max-width: 68ch; }
@@ -38,6 +37,10 @@ ${PHONE} { .page-pad { padding: ${gap(5)} ${gap(4)}; } }
 .stack-action { display: grid; gap: ${gap(1)}; justify-items: end; }
 .filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: ${gap(3)}; margin-bottom: ${gap(4)}; }
 .filters__search { flex: 1 1 18rem; }
+/* Date fields: the same field box as the search, a fixed share of the row, wrapping side by side. */
+.filters__date { flex: 0 1 15rem; min-width: 10rem; }
+.filters__date .ui-input { display: flex; align-items: center; }
+${PHONE} { .filters__date { flex: 1 1 0; } }
 .filters .ui-choice-group__legend { margin-bottom: ${gap(2)}; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: ${gap(2)}; margin-bottom: ${gap(4)}; }
 .toolbar__text { ${text('label')}; color: ${color('textSecondary')}; margin: 0 auto 0 0; }
@@ -46,10 +49,16 @@ ${PHONE} { .toolbar__text { flex: 1 1 100%; } .toolbar .ui-button { flex: 1 1 0;
 
 /** Sign-in: the form on a plate over the sample property; on a phone, the map is a band on top. */
 const signin = `
-.signin { position: relative; min-height: 100vh; isolation: isolate; padding: ${gap(10)}; }
+.signin { position: relative; display: flex; align-items: center; min-height: 100vh; isolation: isolate;
+  padding: ${gap(10)}; }
 .signin__map { position: absolute; inset: 0; z-index: -1; }
+/* The sample's aerial, dimmed into the plain ground: a quiet backdrop, never competing with the form. */
+.signin__map .plan__basemap { opacity: ${opacity.backdrop}; }
+/* Sized to its contents and centred on the map's height: no empty slab under the form. */
 .signin__door { position: relative; display: flex; flex-direction: column; gap: ${gap(4)}; width: 440px;
-  min-height: calc(100vh - 2 * ${gap(10)}); padding: ${gap(8)} ${gap(8)} ${gap(5)}; ${floating} }
+  padding: ${gap(8)} ${gap(8)} ${gap(5)}; ${floating} }
+/* The field on the plate: the plate fill inside the control edge (the placeholder is textTertiary, 4.5:1 on it). */
+.signin__door .ui-input { background: ${color('plate')}; }
 .signin__brand { display: flex; align-items: center; gap: ${gap(3)}; }
 .signin__app-name { ${text('title3')}; margin: 0; }
 .signin__door .ui-page-header { margin: ${gap(6)} 0 0; }
@@ -60,16 +69,16 @@ const signin = `
 .signin__secondary { display: flex; flex-wrap: wrap; gap: ${gap(2)}; }
 .signin__note { ${text('body')}; color: ${color('textSecondary')}; margin: 0; }
 .signin__error { ${text('label')}; color: ${color('danger')}; margin: 0; }
-.signin__footer { margin-top: auto; padding-top: ${gap(4)}; border-top: ${HAIR}; display: grid; gap: ${gap(1)};
+.signin__footer { padding-top: ${gap(4)}; border-top: ${HAIR}; display: grid; gap: ${gap(1)};
   color: ${color('textSecondary')}; }
 .signin__footer p { margin: 0; }
 .signin__legal { display: flex; gap: ${gap(5)}; }
 .signin__legal a { ${text('label')}; display: inline-flex; align-items: center; min-height: ${TAP};
   color: ${color('accentText')}; }
-.signin__sample { position: absolute; right: ${gap(6)}; bottom: ${gap(6)}; margin: 0; padding: ${gap(2)} ${gap(3)};
+.signin__sample { position: absolute; right: ${gap(6)}; top: ${gap(6)}; margin: 0; padding: ${gap(2)} ${gap(3)};
   ${text('label')}; ${floating} }
 ${PHONE} {
-  .signin { display: flex; flex-direction: column; padding: 0; }
+  .signin { flex-direction: column; align-items: stretch; padding: 0; }
   .signin__map { position: relative; inset: auto; z-index: 0; order: -1; height: 300px; flex: none; }
   .signin__door { width: auto; min-height: 0; flex: 1; margin: -${gap(4)} 0 0; padding: ${gap(6)} ${gap(4)} ${gap(4)};
     border-radius: var(--radius-xl) var(--radius-xl) 0 0; z-index: 1; }
@@ -100,7 +109,6 @@ const clubview = `
 .side-section__count { color: ${color('textSecondary')}; }
 .side-section__empty-state { border-top: ${HAIR}; }
 .side-section__empty-state .ui-empty { padding: ${gap(4)} 0 ${gap(2)}; }
-.side-section__empty { ${text('body')}; color: ${color('textSecondary')}; margin: 0; padding-top: ${gap(3)}; border-top: ${HAIR}; }
 .rows { list-style: none; margin: 0; padding: 0; }
 .rows > li { border-top: ${HAIR}; }
 .row-item { display: flex; align-items: center; gap: ${gap(3)}; min-height: 64px; padding: ${gap(2)} 0; }
@@ -147,6 +155,15 @@ const roster = `
 .person__text { display: grid; min-width: 0; }
 .person__name { ${text('label')}; font-weight: 750; }
 .person__role { ${text('caption')}; color: ${color('textSecondary')}; }
+/* The roster and, beside it from desktop (after it on phones), the club's invite QR and link. */
+.roster { display: grid; gap: ${gap(8)}; }
+.roster__members { min-width: 0; }
+.roster__members > .ui-empty { padding-left: 0; padding-right: 0; }
+.roster__invite { padding-top: ${gap(5)}; border-top: ${HAIR}; }
+${DESKTOP} {
+  .roster { grid-template-columns: minmax(0, 1fr) 320px; align-items: start; }
+  .roster__invite { position: sticky; top: ${gap(6)}; padding: 0 0 0 ${gap(6)}; border: 0; border-left: ${HAIR}; }
+}
 .invite { display: grid; gap: ${gap(5)}; justify-items: start; }
 .invite__start { display: grid; gap: ${gap(4)}; justify-items: start; }
 .invite__start .form-note { margin: 0; }
@@ -161,6 +178,13 @@ const qr = `
 .qr svg { display: block; width: 100%; height: auto; }
 `;
 
+/** Page not found: the crossed-out pin, one line and the ways back. */
+const notFound = `
+.not-found { display: grid; gap: ${gap(3)}; justify-items: start; }
+.not-found__icon { display: grid; color: ${color('textSecondary')}; }
+.not-found__links { display: flex; flex-wrap: wrap; gap: ${gap(2)}; margin-top: ${gap(2)}; }
+`;
+
 const billing = `
 .billing { display: grid; gap: ${gap(5)}; max-width: 760px; }
 .billing__free { ${text('body')}; display: flex; align-items: center; gap: ${gap(2)}; margin: ${gap(8)} 0 0;
@@ -170,4 +194,5 @@ const billing = `
 .billing__invoices .ui-empty { padding: ${gap(4)} 0 0; border-top: ${HAIR}; }
 `;
 
-export const pagesCss = () => [common, signin, clubview, besideMap, roster, qr, billing].join('\n');
+export const pagesCss = () =>
+  [common, signin, clubview, besideMap, roster, qr, notFound, billing].join('\n');

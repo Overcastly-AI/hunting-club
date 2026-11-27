@@ -19,7 +19,15 @@ export { EmptyState } from './EmptyState';
 export { Field, Input, Select, Textarea, type SelectOption } from './Field';
 export { PageHeader } from './PageHeader';
 export { Popover, type PopoverPlacement } from './Popover';
-export { LoadingRegion, Skeleton, SkeletonText } from './Skeleton';
+export {
+  LoadingRegion,
+  Skeleton,
+  SKELETON_DELAY_MS,
+  SkeletonRows,
+  SkeletonStats,
+  SkeletonTable,
+  SkeletonText,
+} from './Skeleton';
 export { Tabs, type TabItem } from './Tabs';
 export { ThemeToggle } from './ThemeToggle';
 export { ToastProvider, useToast, type ToastMessage, type ToastTone } from './Toast';

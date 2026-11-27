@@ -3,8 +3,9 @@
 // builds drop it. Signed in as the sample admin unless the scenario says otherwise.
 import { ClubSession, DAY_MS, memoryTokenStore, type Member } from '@huntclub/shared';
 import { adminApi } from '../api/admin';
+import type { ClubApi } from '../api/types';
 import type { WebClubServices } from '../cloud';
-import { demoMapPack } from './demoPack';
+import { samplePack } from '../map/samplePack';
 import {
   fakeClubClient,
   fakeCognitoAuth,
@@ -23,6 +24,8 @@ export const DEMO_SCENARIOS = [
   'noPlans',
   'noClub',
   'signedOut',
+  'loading',
+  'alone',
 ] as const;
 export type DemoScenario = (typeof DEMO_SCENARIOS)[number];
 
@@ -67,7 +70,7 @@ function demoData(scenario: DemoScenario, now: number): FakeClubData {
     updatedAt: iso(now - DAY_MS),
   });
   // A ready aerial pack, drawn under My club's plan (scripts/shoot.ts serves its archive).
-  data.mapPacks.push(demoMapPack(data.club!.id));
+  data.mapPacks.push(samplePack(data.club!.id));
   const sub = data.subscription!;
   switch (scenario) {
     case 'trial':
@@ -116,15 +119,26 @@ function demoData(scenario: DemoScenario, now: number): FakeClubData {
       data.club = null;
       break;
     case 'signedOut':
+    case 'loading':
+      break;
+    case 'alone':
+      // Only the signed-in admin: the roster's empty state.
+      data.members = data.members.slice(0, 1);
       break;
   }
   return data;
 }
 
+/** The club service never answering: every page stays in its loading state (`loading`). */
+function neverAnswers(api: ClubApi): ClubApi {
+  return new Proxy(api, { get: () => () => new Promise(() => undefined) });
+}
+
 export function demoServices(scenario: DemoScenario, now = Date.now()): WebClubServices {
   const store = memoryTokenStore(scenario === 'signedOut' ? null : fakeTokens());
+  const api = adminApi(fakeClubClient(demoData(scenario, now)));
   return {
     session: new ClubSession(fakeCognitoAuth(), store),
-    api: adminApi(fakeClubClient(demoData(scenario, now))),
+    api: scenario === 'loading' ? neverAnswers(api) : api,
   };
 }

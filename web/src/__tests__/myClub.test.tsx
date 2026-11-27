@@ -2,7 +2,7 @@ import { DAY_MS, polygonBounds, READOUT_LABELS, type MapPack, type Member } from
 import { screen, waitFor, within } from '@testing-library/react';
 import { OVERDUE_ALERT_LABEL } from '../components/ConditionsStrip';
 import { SAMPLE_PROPERTY } from '../map/sampleProperty';
-import { OUT_NOW_EMPTY } from '../pages/MyClub';
+import { MAP_EMPTY, NEEDS_YOU_EMPTY, OUT_NOW_EMPTY } from '../pages/MyClub';
 import { renderSignedIn } from '../testing/app';
 import { sampleData } from '../testing/fakeClubApi';
 import { packArchive, packFetch } from '../testing/packArchive';
@@ -67,13 +67,20 @@ describe('My club', () => {
     expect(await needsYou()).toEqual([
       { text: expect.stringMatching(/^Draw your property line/), to: 'In the app' },
     ]);
-    expect(screen.getByText(/No property line, areas or stands yet/)).toBeTruthy();
+    // The empty map uses the EmptyState pattern: an icon, a title and one line, on a plate.
+    const map = screen
+      .getByRole('heading', { level: 3, name: MAP_EMPTY.title })
+      .closest('.plan__empty')!;
+    expect(map.querySelector('.ui-empty__icon svg')).toBeTruthy();
+    expect(within(map as HTMLElement).getByText(MAP_EMPTY.line)).toBeTruthy();
   });
 
   it('shows nothing to do when nothing needs the admin', async () => {
     const data = sampleData();
     await renderSignedIn({ ...data, mapPacks: data.mapPacks.filter((p) => p.status === 'ready') });
-    expect(await screen.findByText('Nothing needs you right now.')).toBeTruthy();
+    const empty = await screen.findByRole('heading', { level: 3, name: NEEDS_YOU_EMPTY.title });
+    expect(empty.closest('.ui-empty')!.querySelector('.ui-empty__icon svg')).toBeTruthy();
+    expect(screen.getByText(NEEDS_YOU_EMPTY.line)).toBeTruthy();
     expect(await needsYou()).toEqual([]);
   });
 

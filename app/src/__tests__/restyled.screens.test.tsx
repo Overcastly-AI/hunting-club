@@ -294,7 +294,10 @@ const CASES: Record<string, Case> = {
     then: async () => {
       await fireEvent.changeText(screen.getByLabelText(clubCopy.signIn.email), 'dale@example.com');
       await fireEvent.press(screen.getByRole('button', { name: clubCopy.signIn.sendCode }));
-      await fireEvent.changeText(await screen.findByLabelText(clubCopy.signIn.code), '12');
+      await fireEvent.changeText(
+        await screen.findByLabelText(clubCopy.signIn.code('signIn')),
+        '12',
+      );
       await fireEvent.press(screen.getByRole('button', { name: clubCopy.signIn.confirm }));
       await screen.findByText(clubCopy.signIn.codeIncomplete('signIn'));
     },
@@ -303,7 +306,7 @@ const CASES: Record<string, Case> = {
       clubCopy.signIn.resendIn(RESEND_CODE_COOLDOWN_SECONDS),
       clubCopy.signIn.useOtherEmail,
     ],
-    fields: [clubCopy.signIn.code],
+    fields: [clubCopy.signIn.code('signIn')],
   },
   'join club': {
     ui: async () =>

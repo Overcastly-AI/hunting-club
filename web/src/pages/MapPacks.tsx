@@ -75,7 +75,7 @@ export function MapPacks(props: { api: ClubApi }) {
       title="Map packs"
       description="Download the property in full detail before you go. Maps work with no cell service."
     >
-      <Loadable state={state}>
+      <Loadable state={state} skeleton="table">
         {([club, packs]) => (
           <>
             <div className="beside-map">
@@ -99,7 +99,10 @@ export function MapPacks(props: { api: ClubApi }) {
                     : 'No property line yet.'
                 }
                 insets={{ top: 24, right: 24, bottom: 40, left: 24 }}
-                empty={<p className="plan__empty">No property line yet.</p>}
+                empty={{
+                  title: 'No property line yet',
+                  line: 'Draw it in the app. A map pack covers exactly that area.',
+                }}
               />
             </div>
             <div className="section-head">

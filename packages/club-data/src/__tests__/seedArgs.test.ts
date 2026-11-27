@@ -29,10 +29,16 @@ describe('seed:dev arguments', () => {
   });
 });
 
-it('derives a display name and initials from an email', () => {
+it('takes the display name from an email exactly as typed, and initials from its words', () => {
   expect(profileFromEmail('jane.doe@example.com')).toEqual({
-    displayName: 'Jane Doe',
+    displayName: 'jane.doe',
     initials: 'JD',
   });
-  expect(profileFromEmail('uat@example.com')).toEqual({ displayName: 'Uat', initials: 'UA' });
+  // Never split and title-cased ("Jonesjaycob Uitest").
+  expect(profileFromEmail('jonesjaycob.uitest@example.com')).toEqual({
+    displayName: 'jonesjaycob.uitest',
+    initials: 'JU',
+  });
+  expect(profileFromEmail('uat@example.com')).toEqual({ displayName: 'uat', initials: 'U' });
+  expect(profileFromEmail('@example.com')).toEqual({ displayName: 'UAT Admin', initials: 'UA' });
 });

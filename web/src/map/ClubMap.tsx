@@ -14,7 +14,9 @@ import {
   type FontWidth,
 } from '@huntclub/design';
 import { polygonRings, type StandType } from '@huntclub/shared';
+import { MapPinOff, type LucideIcon } from 'lucide-react';
 import { useRef, type ReactNode } from 'react';
+import { EmptyState } from '../components/ui';
 import { standIcon } from '../components/standIcons';
 import { useElementSize, type Size } from '../components/useElementSize';
 import { cx } from '../components/ui/cx';
@@ -45,6 +47,15 @@ export interface PlanArea {
   id: string;
   name: string;
   boundary: { coordinates: unknown };
+}
+
+/** What the map says when there is nothing to draw: the EmptyState pattern on a plate. */
+export interface MapEmpty {
+  /** Default: a map pin crossed out. */
+  icon?: LucideIcon;
+  title: string;
+  line: string;
+  action?: ReactNode;
 }
 
 /** Until the box is measured (and in tests): a desktop map's size. */
@@ -87,8 +98,8 @@ export function ClubMap(props: {
   className?: string;
   /** Plates floating over the map. */
   children?: ReactNode;
-  /** Shown over the ground when there is nothing to draw yet. */
-  empty?: ReactNode;
+  /** Shown over the ground when there is nothing to draw yet (null: nothing, e.g. still loading). */
+  empty?: MapEmpty | null;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const size = useElementSize(box, FALLBACK_SIZE);
@@ -128,8 +139,24 @@ export function ClubMap(props: {
           />
         ) : null}
       </svg>
-      {projection ? null : props.empty}
       {props.children}
+      {/* After the plates, so its heading follows the page's own in the outline. */}
+      {projection || !props.empty ? null : <MapEmptyPlate {...props.empty} />}
+    </div>
+  );
+}
+
+function MapEmptyPlate(props: MapEmpty) {
+  return (
+    <div className="plan__empty">
+      <EmptyState
+        icon={props.icon ?? MapPinOff}
+        title={props.title}
+        titleAs="h3"
+        action={props.action}
+      >
+        {props.line}
+      </EmptyState>
     </div>
   );
 }

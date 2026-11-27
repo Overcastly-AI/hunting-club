@@ -36,5 +36,6 @@ export const mapCss = () => `
 .plan__credit { ${text('markerDetail')}; font-weight: 600; fill: ${mapColor('text')}; ${halo} }
 .plan__empty { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: min(36ch, calc(100% - 2 * ${gap(4)}));
   padding: ${gap(3)} ${gap(4)}; border-radius: var(--radius-lg); background: ${color('plate')};
-  box-shadow: ${color('shadowPlate')}; color: ${color('text')}; ${text('body')}; margin: 0; }
+  box-shadow: ${color('shadowPlate')}; color: ${color('text')}; margin: 0; }
+.plan__empty .ui-empty { padding: 0; }
 `;

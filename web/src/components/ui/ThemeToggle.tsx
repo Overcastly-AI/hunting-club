@@ -1,4 +1,9 @@
-import { THEME_PREFERENCE_LABELS, THEME_PREFERENCES, type ThemePreference } from '@huntclub/design';
+import {
+  THEME_LABEL,
+  THEME_PREFERENCE_LABELS,
+  THEME_PREFERENCES,
+  type ThemePreference,
+} from '@huntclub/design';
 import { Monitor, Moon, Sun, type LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import { applyThemePreference, readThemePreference } from '../../theme/preference';
@@ -17,7 +22,7 @@ export function ThemeToggle(props: { hideLegend?: boolean; block?: boolean }) {
   const [preference, setPreference] = useState(readThemePreference);
   return (
     <Segmented
-      legend="Theme"
+      legend={THEME_LABEL}
       hideLegend={props.hideLegend}
       block={props.block}
       options={OPTIONS}

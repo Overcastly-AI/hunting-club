@@ -2,10 +2,11 @@
 // served from the kit build with the real security headers (infra/src/security-headers.ts).
 // For every page at 1280 and 390 px wide, in the dark and daylight themes, it checks:
 // no Content-Security-Policy violation, no horizontal scroll, axe with no serious or critical
-// issue, and that the invite dialog keeps focus inside. Screenshots (deviceScaleFactor 1) go to
-// docs/redesign/<folder>/ (m2 unless named), optionally only the named shots. The demo club's
-// aerial map pack (src/demo/demoPack.ts) is built once with the real map-pack builder from USGS
-// (cached in .run-ts/) and served at its key with range requests, as CloudFront serves packs.
+// issue, and that the phone's More sheet takes focus and gives it back to the More tab. Screenshots (deviceScaleFactor 1) go to
+// docs/redesign/<folder>/ (m2 unless named), optionally only the named shots. The sample
+// property's aerial map pack (src/map/samplePack.ts) is built once with the real map-pack
+// builder from USGS (cached in .run-ts/) and served with range requests, as CloudFront serves
+// packs: at the demo club's key (My club) and at the public sample key (sign-in).
 // Uses the preinstalled Playwright (never `playwright install`).
 //
 //   npm run build:kit -w @huntclub/web
@@ -27,7 +28,7 @@ import { createRequire } from 'node:module';
 import { dirname, extname, join, resolve } from 'node:path';
 import { contentSecurityPolicy, PERMISSIONS_POLICY } from '../../infra/src/security-headers';
 import { buildMapPack, politeTileFetcher } from '../../packages/api/src/mapPackBuilder';
-import { demoMapPack, demoMapPackBuild } from '../src/demo/demoPack';
+import { SAMPLE_PACK, samplePack, samplePackBuild } from '../src/map/samplePack';
 import { sampleData } from '../src/testing/fakeClubApi';
 
 const WEB = process.cwd();
@@ -44,6 +45,8 @@ interface Shot {
   name: string;
   scenario: string;
   hash: string;
+  /** What shows once the page is up (default: the page's h1). */
+  ready?: string;
   /** Runs after the page settles, before the checks (e.g. opens a dialog). */
   act?: (page: Page) => Promise<void>;
   /** Only these widths and themes (default: every one). States beyond the main one are shot once. */
@@ -57,19 +60,27 @@ interface Page {
   waitForTimeout(ms: number): Promise<void>;
   evaluate<T>(fn: string | (() => T)): Promise<T>;
   screenshot(options: { path: string; fullPage: boolean }): Promise<unknown>;
-  getByRole(role: string, options: { name: string | RegExp }): { click(): Promise<void> };
+  getByRole(
+    role: string,
+    options: { name: string | RegExp },
+  ): { click(): Promise<void>; fill(value: string): Promise<void> };
   keyboard: { press(key: string): Promise<void> };
   close(): Promise<void>;
 }
 
-const openInviteDialog = async (page: Page) => {
-  await page.getByRole('button', { name: 'Invite members' }).click();
-  await page.waitForSelector('.ui-dialog[open]');
-};
 const openInvite = async (page: Page) => {
-  await openInviteDialog(page);
   await page.getByRole('button', { name: 'Create invite link' }).click();
-  await page.waitForSelector('.ui-dialog[open] .qr svg');
+  await page.waitForSelector('.roster__invite .qr svg');
+};
+/** Sign-in's second step: an email sent, the code field showing. */
+const codeStep = async (page: Page) => {
+  await page.getByRole('textbox', { name: 'Email address' }).fill('dale@example.com');
+  await page.getByRole('button', { name: 'Email me a code' }).click();
+  await page.waitForSelector('.signin__code');
+};
+const openClubSwitcher = async (page: Page) => {
+  await page.getByRole('button', { name: /Club:/ }).click();
+  await page.waitForTimeout(250);
 };
 const openAccount = async (page: Page) => {
   await page.getByRole('button', { name: /Account/ }).click();
@@ -85,16 +96,34 @@ const ONCE_EACH = [
 
 const SHOTS: readonly Shot[] = [
   { name: 'signin', scenario: 'signedOut', hash: '' },
+  { name: 'signin-code', scenario: 'signedOut', hash: '', act: codeStep },
   { name: 'my-club', scenario: 'trial', hash: '#/club' },
   { name: 'roster', scenario: 'trial', hash: '#/roster' },
-  { name: 'roster-invite-start', scenario: 'trial', hash: '#/roster', act: openInviteDialog },
   { name: 'roster-invite', scenario: 'trial', hash: '#/roster', act: openInvite },
+  { name: 'roster-empty', scenario: 'alone', hash: '#/roster', only: ONCE_EACH },
+  // The club service never answers: the skeletons, past their 200 ms wait.
+  { name: 'loading', scenario: 'loading', hash: '#/roster' },
+  { name: 'loading-harvests', scenario: 'loading', hash: '#/harvests', only: ONCE_EACH },
+  {
+    name: 'loading-my-club',
+    scenario: 'loading',
+    hash: '#/club',
+    ready: '.ui-skeleton--map',
+    only: ONCE_EACH,
+  },
   { name: 'stands', scenario: 'trial', hash: '#/stands' },
   { name: 'harvests', scenario: 'trial', hash: '#/harvests' },
   { name: 'map-packs', scenario: 'trial', hash: '#/maps' },
   { name: 'billing', scenario: 'trial', hash: '#/billing' },
   { name: 'not-found', scenario: 'trial', hash: '#/no-such-page' },
-  { name: 'account-menu', scenario: 'active', hash: '#/roster', act: openAccount, only: ONCE_EACH },
+  { name: 'account-menu', scenario: 'active', hash: '#/roster', act: openAccount },
+  {
+    name: 'club-switcher',
+    scenario: 'active',
+    hash: '#/roster',
+    act: openClubSwitcher,
+    only: ONCE,
+  },
   { name: 'billing-active', scenario: 'active', hash: '#/billing', only: ONCE },
   { name: 'billing-ending', scenario: 'ending', hash: '#/billing', only: ONCE },
   { name: 'billing-past-due', scenario: 'pastDue', hash: '#/billing', only: ONCE_EACH },
@@ -116,18 +145,18 @@ const TYPES: Record<string, string> = {
   '.json': 'application/json',
 };
 
-/** The demo club's pack archive: built once from USGS by the real builder, then cached. */
-async function demoPackArchive(): Promise<Buffer> {
+/** The sample pack's archive: built once from USGS by the real builder, then cached. */
+async function samplePackArchive(): Promise<Buffer> {
   if (existsSync(PACK_CACHE)) return readFileSync(PACK_CACHE);
   const clubId = sampleData().club!.id;
   let archive: Buffer | undefined;
-  const pack = demoMapPack(clubId);
+  const pack = samplePack(clubId);
   // Only the builder's two writes are needed: the pack row stays the demo's own.
   const data = {
     finishMapPack: async () => pack,
     failMapPack: async () => pack,
   } as unknown as Parameters<typeof buildMapPack>[1]['data'];
-  await buildMapPack(demoMapPackBuild(clubId), {
+  await buildMapPack(samplePackBuild(clubId), {
     data,
     fetchTile: politeTileFetcher({ fetch, userAgent: 'HuntClubMesh-demo-screenshots' }),
     putObject: async (_key, body) => {
@@ -139,13 +168,13 @@ async function demoPackArchive(): Promise<Buffer> {
   return archive!;
 }
 
-/** The kit build under ADMIN_PATH, with the site's real security headers; the demo pack. */
+/** The kit build under ADMIN_PATH, with the site's real security headers; the sample pack. */
 function serve(packArchive: Buffer): Promise<{ server: Server; origin: string }> {
   const csp = contentSecurityPolicy({ name: 'dev' });
-  const packPath = mapPackPath(demoMapPack(sampleData().club!.id));
+  const packPaths = [samplePack(sampleData().club!.id), SAMPLE_PACK].map(mapPackPath);
   const server = createServer((req, res) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
-    if (url.pathname === packPath) {
+    if (packPaths.includes(url.pathname)) {
       // CloudFront answers a range of an S3 object with 206.
       const [, from, to] = /bytes=(\d+)-(\d+)/.exec(req.headers.range ?? '')?.map(Number) ?? [];
       res.setHeader('Content-Type', 'application/octet-stream');
@@ -193,7 +222,7 @@ async function main() {
     close(): Promise<void>;
   }
   const axeSource = readFileSync(load.resolve('axe-core/axe.min.js'), 'utf8');
-  const { server, origin } = await serve(await demoPackArchive());
+  const { server, origin } = await serve(await samplePackArchive());
   const only = ONLY_SHOTS?.split(',');
   const browser = await playwright.chromium.launch();
   const problems: string[] = [];
@@ -223,10 +252,13 @@ async function main() {
           });
           const label = `${shot.name} ${width} ${THEMES[theme]}`;
           await page.goto(`${origin}${ADMIN_PATH}?demo=${shot.scenario}${shot.hash}`);
-          await page.waitForSelector('h1');
+          await page.waitForSelector(shot.ready ?? 'h1');
           await page.waitForTimeout(400);
-          // My club draws its map pack once the archive is read.
-          if (shot.hash === '#/club' && shot.scenario !== 'noClub')
+          // My club and sign-in draw the sample pack once the archive is read.
+          if (
+            (shot.hash === '#/club' && !['noClub', 'loading'].includes(shot.scenario)) ||
+            shot.scenario === 'signedOut'
+          )
             await page.waitForSelector('.plan__basemap image');
           if (shot.act) await shot.act(page);
           const csp = await page.evaluate<string[]>('window.__csp');
@@ -243,18 +275,20 @@ async function main() {
                .map((v) => v.id + ' (' + v.impact + '): ' + v.nodes.map((n) => n.target.join(' ')).join(', ')))`,
           );
           for (const a of axe) problems.push(`${label}: axe ${a}`);
-          if (shot.act === openInvite) {
+          if (shot.name === 'roster' && width === 390) {
+            // The More tab: expanded and its sheet holding focus while open, focus back on close.
+            await page.getByRole('button', { name: /^More/ }).click();
+            await page.waitForSelector('.ui-dialog[open]');
             for (let i = 0; i < 12; i++) await page.keyboard.press('Tab');
             const inside = await page.evaluate<boolean>(
               "!!document.activeElement && !!document.activeElement.closest('.ui-dialog[open]')",
             );
-            if (!inside) problems.push(`${label}: focus left the open dialog`);
+            if (!inside) problems.push(`${label}: focus left the More sheet`);
             await page.keyboard.press('Escape');
             const back = await page.evaluate<string>(
-              "document.querySelector('.ui-dialog[open]') ? 'open' : (document.activeElement && document.activeElement.textContent) || ''",
+              "document.querySelector('.ui-dialog[open]') ? 'open' : (document.activeElement && document.activeElement.getAttribute('aria-expanded')) || ''",
             );
-            if (back !== 'Invite members') problems.push(`${label}: Esc left focus on "${back}"`);
-            await shot.act(page);
+            if (back !== 'false') problems.push(`${label}: Esc did not return focus to More`);
           }
           await page.screenshot({
             path: join(OUT, `${shot.name}-${width}-${THEMES[theme]}.png`),

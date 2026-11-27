@@ -1,22 +1,21 @@
 // Test helpers for signing in and the signed-in shell, shared by the page and session tests.
-import { signInCopy } from '@huntclub/shared';
+import { signInCopy, type CodeChallenge } from '@huntclub/shared';
 import { fireEvent, screen, within } from '@testing-library/react';
 import { ACCOUNT_LABEL } from '../shell/Account';
 import { testCode } from './fakeClubApi';
 
 /** Asks for a sign-in code on the sign-in screen; resolves to the code field. */
-export async function requestCode() {
+export async function requestCode(kind: CodeChallenge['kind'] = 'signIn') {
   fireEvent.change(await screen.findByLabelText(signInCopy.email), {
     target: { value: 'dale@example.com' },
   });
   fireEvent.click(screen.getByRole('button', { name: signInCopy.sendCode }));
-  return screen.findByLabelText(signInCopy.code);
+  return screen.findByLabelText(signInCopy.code(kind));
 }
 
-/** Signs in with the emailed code; resolves once the admin shows. */
+/** Signs in with the emailed code (it goes when its last digit lands); resolves once the admin shows. */
 export async function signIn() {
   fireEvent.change(await requestCode(), { target: { value: testCode() } });
-  fireEvent.click(screen.getByRole('button', { name: signInCopy.confirm }));
   await screen.findByRole('navigation', { name: 'Club admin' });
 }
 

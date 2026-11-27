@@ -15,12 +15,14 @@ import {
 import { useCooldown } from '@huntclub/shared/useCooldown';
 import { breakpoints } from '@huntclub/design';
 import { Mail } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type ClipboardEvent, type FormEvent } from 'react';
 import { LogoMark } from '../components/LogoMark';
 import { usePageHeadingFocus } from '../components/Page';
 import { Button, Field, Input, PageHeader } from '../components/ui';
 import { SHELL } from '../components/ui/sizes';
 import { ClubMap } from '../map/ClubMap';
+import { useBasemap } from '../map/basemap';
+import { SAMPLE_PACK } from '../map/samplePack';
 import { SAMPLE_PLAN, SAMPLE_PROPERTY } from '../map/sampleProperty';
 
 type Busy = null | 'send' | 'resend' | 'confirm';
@@ -54,6 +56,10 @@ export function SignIn(props: {
   const [busy, setBusy] = useState<Busy>(null);
   const cooldown = useCooldown(RESEND_CODE_COOLDOWN_SECONDS);
   const heading = usePageHeadingFocus();
+  // The sample's aerial, read as My club reads a club's pack; the plain ground until it loads.
+  const basemap = useBasemap(SAMPLE_PACK);
+  // One confirm at a time: the last digit landing and a press of Enter must not both send it.
+  const confirming = useRef(false);
 
   async function run(kind: Exclude<Busy, null>, step: () => Promise<void>) {
     if (busy) return;
@@ -96,20 +102,43 @@ export function SignIn(props: {
     });
   };
 
-  const confirm = (e: FormEvent) => {
-    e.preventDefault();
-    if (!challenge) return;
-    if (code.length !== emailCodeRules(challenge.kind).length) {
+  const submitCode = (value: string) => {
+    if (!challenge || confirming.current) return;
+    if (value.length !== emailCodeRules(challenge.kind).length) {
       setError(null);
       setNotice(null);
       setFieldError(copy.codeIncomplete(challenge.kind));
       return;
     }
     setFieldError(null);
+    confirming.current = true;
     void run('confirm', async () => {
-      await session.confirmCode(challenge, code);
+      await session.confirmCode(challenge, value);
       onSignedIn(challenge.email);
+    }).finally(() => {
+      confirming.current = false;
     });
+  };
+
+  const confirm = (e: FormEvent) => {
+    e.preventDefault();
+    submitCode(code);
+  };
+
+  /** Digits only; the code goes as soon as its last digit lands. */
+  const enterCode = (value: string) => {
+    const digits = codeDigits(value);
+    setCode(digits);
+    if (challenge && digits.length === emailCodeRules(challenge.kind).length) submitCode(digits);
+  };
+
+  /**
+   * A paste is read whole (spaces and dashes dropped) rather than cut at maxlength first:
+   * a code with one digit too many is refused on submit, never silently shortened.
+   */
+  const pasteCode = (e: ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    enterCode(e.clipboardData.getData('text'));
   };
 
   const otherEmail = () => {
@@ -163,15 +192,20 @@ export function SignIn(props: {
         ) : (
           <form className="signin__form" onSubmit={confirm} noValidate>
             <p className="signin__note">{copy.codeSent(challenge.email)}</p>
-            <Field label={copy.code} hint={copy.codeHelp(challenge.kind)} error={fieldError}>
+            <Field
+              label={copy.code(challenge.kind)}
+              hint={copy.codeHelp(challenge.kind)}
+              error={fieldError}
+            >
               <Input
                 className="signin__code"
                 inputMode="numeric"
                 autoComplete="one-time-code"
+                maxLength={emailCodeRules(challenge.kind).length}
                 required
                 value={code}
-                // Digits only, nothing cut off: a long paste is checked on submit, not truncated.
-                onChange={(e) => setCode(codeDigits(e.target.value))}
+                onChange={(e) => enterCode(e.target.value)}
+                onPaste={pasteCode}
               />
             </Field>
             <Button variant="primary" size="lg" block type="submit" loading={busy === 'confirm'}>
@@ -216,6 +250,7 @@ export function SignIn(props: {
       <ClubMap
         className="signin__map"
         {...SAMPLE_PLAN}
+        basemap={basemap}
         label={`${SAMPLE_CAPTION}: a property line with two areas and three stands.`}
         insets={({ width }) =>
           width >= breakpoints.tablet ? { left: DOOR_ROOM } : { top: 56, bottom: 56 }

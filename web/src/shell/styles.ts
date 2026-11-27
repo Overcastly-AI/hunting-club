@@ -36,6 +36,11 @@ const base = `
 .shell-club__name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .shell-club__button svg { flex: none; color: ${color('textSecondary')}; }
 .shell-club__status { padding: 0 ${gap(2)}; }
+/* The club switcher: 4 px under its button and the rail's full inner width, edges in line. */
+.shell-club .ui-popover__panel.shell-club__panel { top: calc(100% + ${gap(1)}); left: 0; right: 0; width: auto;
+  min-width: 0; }
+.shell-club__panel .shell-menu { border-top: 0; padding-top: 0; }
+.shell-club__panel .ui-button { white-space: normal; text-align: left; overflow-wrap: anywhere; }
 .shell-nav { flex: 1; min-height: 0; overflow-y: auto; }
 .shell-nav__list, .shell-more, .shell-menu { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .shell-nav__slot--more { display: none; }
@@ -104,7 +109,8 @@ ${PHONE} {
   .shell-club { flex: 1; min-width: 0; padding: 0; border: 0; }
   .shell-club .ui-skeleton { margin: 0; }
   .shell-club__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
-  .shell-club__panel { position: fixed; top: ${SHELL.topBarHeight + 8}px; left: ${gap(4)}; }
+  .shell-club .ui-popover__panel.shell-club__panel { position: fixed; top: ${SHELL.topBarHeight + 8}px;
+    left: ${gap(4)}; right: ${gap(4)}; }
   .shell-nav { position: fixed; left: 0; right: 0; bottom: 0; height: ${TAB_BAR}; padding: 0 0 ${SAFE_BOTTOM};
     overflow: visible; background: ${color('canvas')}; border-top: ${HAIR}; }
   .shell-nav__list { height: ${MOBILE_TAB_BAR_HEIGHT}px; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; }

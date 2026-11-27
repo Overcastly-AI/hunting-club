@@ -28,7 +28,7 @@ import { useEffect, useState } from 'react';
 /** At most this many tiles under the plan: enough for a square mile at the deepest level. */
 export const BASEMAP_MAX_TILES = 64;
 
-type ReadyPack = Extract<MapPack, { status: 'ready' }>;
+export type ReadyPack = Extract<MapPack, { status: 'ready' }>;
 
 /** One tile of the picture: where it lies on the ground and the image to draw there. */
 export interface BasemapTile {
