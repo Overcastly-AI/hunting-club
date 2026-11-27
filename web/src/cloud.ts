@@ -43,6 +43,7 @@ export function createWebClubServices(env: CloudEnvironment = ENVIRONMENT): WebC
           accessToken: () => session.accessToken(),
           refresh: () => session.refresh(),
         }),
+        session,
       )
     : undefined;
   return { session, api };

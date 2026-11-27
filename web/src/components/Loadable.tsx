@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Loading, type LoadingLayout } from './Loading';
-import { NoClub } from './NoClub';
+import { NoClub, NoClubAccess } from './NoClub';
 import { Banner, Button } from './ui';
 import type { AsyncResult } from './useAsync';
 
@@ -28,6 +28,7 @@ export function Loadable<T>(props: {
     return props.skeleton === 'map' ? loading : pad(loading);
   }
   if (state.status === 'noClub') return pad(props.noClub ?? <NoClub />);
+  if (state.status === 'noAccess') return pad(<NoClubAccess onStart={state.reload} />);
   if (state.status === 'error') {
     return pad(
       <div role="alert">

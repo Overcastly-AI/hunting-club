@@ -136,9 +136,10 @@ function neverAnswers(api: ClubApi): ClubApi {
 
 export function demoServices(scenario: DemoScenario, now = Date.now()): WebClubServices {
   const store = memoryTokenStore(scenario === 'signedOut' ? null : fakeTokens());
-  const api = adminApi(fakeClubClient(demoData(scenario, now)));
+  const session = new ClubSession(fakeCognitoAuth(), store);
+  const api = adminApi(fakeClubClient(demoData(scenario, now)), session);
   return {
-    session: new ClubSession(fakeCognitoAuth(), store),
+    session,
     api: scenario === 'loading' ? neverAnswers(api) : api,
   };
 }

@@ -101,6 +101,26 @@ it('keeps the offline join when the network is down, and reports the failure', a
   expect((await loadClubs(d))[0]).toMatchObject({ pendingInvite: true, name: UNSYNCED_CLUB_NAME });
 });
 
+it('never asks for a club another account synced on this phone, and keeps it for the radio', async () => {
+  const d = await db();
+  await joinClubFromLink(d, secrets, clubJoinUrl(), profile, NOW);
+  await syncClub(d, fakeClubApi(), CLUB_ID, NOW); // the first account redeems and syncs
+  // Signed out, then another account signs in: it belongs to no club.
+  const other = fakeClubApi();
+  const { failed } = await syncAllClubs(d, other, NOW + 1);
+  expect(failed).toEqual([]);
+  expect(other.listMyClubs).toHaveBeenCalledTimes(1);
+  for (const call of [
+    other.listStands,
+    other.listAreas,
+    other.getEntitlement,
+    other.redeemInvite,
+  ]) {
+    expect(call).not.toHaveBeenCalled();
+  }
+  expect((await loadClubs(d))[0]).toMatchObject({ id: CLUB_ID, name: 'Oak Ridge', syncedAt: NOW });
+});
+
 it('closes club features when the club has no paid-through date', async () => {
   const d = await db();
   await joinClubFromLink(d, secrets, clubJoinUrl(), profile, NOW);

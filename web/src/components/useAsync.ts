@@ -1,6 +1,6 @@
 import { ClubApiRequestError } from '@huntclub/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { NoClubError } from '../api/types';
+import { NoClubAccessError, NoClubError } from '../api/types';
 
 export type AsyncState<T> =
   | { status: 'loading' }
@@ -8,7 +8,9 @@ export type AsyncState<T> =
   | { status: 'ready'; value: T; stale?: boolean }
   | { status: 'error'; message: string }
   /** The person runs no club yet: not an error, the page asks them to create one. */
-  | { status: 'noClub' };
+  | { status: 'noClub' }
+  /** The club API refused the selected club (403) and the account has no other: not an error. */
+  | { status: 'noAccess' };
 
 /** The state plus `reload()`, which runs `load()` again (Try again, Check again, after a save). */
 export type AsyncResult<T> = AsyncState<T> & { reload: () => void };
@@ -49,6 +51,8 @@ export function useAsync<T>(
         if (!live) return;
         if (error instanceof NoClubError) {
           setState({ status: 'noClub' });
+        } else if (error instanceof NoClubAccessError) {
+          setState({ status: 'noAccess' });
         } else if (last.current && options.keepLastOn?.(error)) {
           setState({ status: 'ready', value: last.current.value, stale: true });
         } else {

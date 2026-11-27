@@ -7,7 +7,7 @@
  * are downloaded and kept for offline use.
  */
 import { decodeJoinUrl } from '@huntclub/mesh';
-import type { ClubApiClient, MemberJoin } from '@huntclub/shared';
+import { isMyClub, type ClubApiClient, type MemberJoin, type MyClub } from '@huntclub/shared';
 
 import type { SqlDatabase } from '../db/types';
 import { type MapPackSync, syncClubMapPacks } from './mapPacks';
@@ -83,7 +83,12 @@ export async function syncClub(
   }
 }
 
-/** Syncs every club on this phone; one club failing doesn't stop the others. */
+/**
+ * Syncs every club on this phone that the signed-in account belongs to (or has an invite
+ * waiting for); one club failing doesn't stop the others. A club another account synced on
+ * this phone stays saved for the radio, but its id is never sent with this account's token
+ * (it would only answer 403).
+ */
 export async function syncAllClubs(
   db: SqlDatabase,
   api: ClubApiClient,
@@ -91,7 +96,16 @@ export async function syncAllClubs(
   mapPacks?: MapPackSync,
 ): Promise<{ failed: { clubId: string; error: unknown }[] }> {
   const failed: { clubId: string; error: unknown }[] = [];
-  for (const club of await loadClubs(db)) {
+  const clubs = await loadClubs(db);
+  if (clubs.length === 0) return { failed };
+  let mine: readonly MyClub[];
+  try {
+    mine = await api.listMyClubs();
+  } catch (error) {
+    return { failed: clubs.map((club) => ({ clubId: club.id, error })) };
+  }
+  for (const club of clubs) {
+    if (!club.pendingInvite && !isMyClub(mine, club.id)) continue;
     await syncClub(db, api, club.id, now, mapPacks).catch((error: unknown) =>
       failed.push({ clubId: club.id, error }),
     );

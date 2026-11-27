@@ -17,7 +17,7 @@ export async function renderSignedIn(data = sampleData(), hash = '') {
   const auth = fakeCognitoAuth();
   const session = new ClubSession(auth, memoryTokenStore(fakeTokens()));
   const client = fakeClubClient(data);
-  const view = render(<App session={session} api={adminApi(client)} />);
+  const view = render(<App session={session} api={adminApi(client, session)} />);
   await screen.findByRole('navigation', { name: 'Club admin' });
   // The page's heading takes focus when it mounts: wait for it, so a menu opened next stays open.
   await screen.findByRole('heading', { level: 1 });

@@ -108,8 +108,8 @@ describe('admin API over the shared client', () => {
   it('passes other errors through', async () => {
     const client = fakeClubClient();
     vi.spyOn(client, 'getSubscription').mockRejectedValue(
-      new ClubApiRequestError('forbidden', 403),
+      new ClubApiRequestError('not_found', 404),
     );
-    await expect(adminApi(client).getSubscription()).rejects.toMatchObject({ code: 'forbidden' });
+    await expect(adminApi(client).getSubscription()).rejects.toMatchObject({ code: 'not_found' });
   });
 });

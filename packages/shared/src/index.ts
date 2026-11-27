@@ -4,6 +4,7 @@ export * from './limits';
 export * from './fields';
 export * from './harvestReport';
 export * from './club';
+export * from './clubChoice';
 export * from './api';
 export * from './apiPaths';
 export * from './apiClient';
