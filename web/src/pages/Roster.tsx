@@ -1,32 +1,62 @@
-import { encodeJoinUrl } from '@huntclub/mesh';
-import { DAY_MS, MEMBER_ROLE_LABELS, type Member } from '@huntclub/shared';
-import { useEffect, useRef, useState } from 'react';
+import { encodeJoinUrl, nodeId } from '@huntclub/mesh';
+import {
+  DAY_MS,
+  MEMBER_ROLE_LABELS,
+  pluralize,
+  type Member,
+  type MemberRole,
+} from '@huntclub/shared';
+import { Plus, Search } from 'lucide-react';
+import { useState } from 'react';
 import type { ClubApi } from '../api/types';
-import { DataTable, type Column } from '../components/DataTable';
 import { Loadable } from '../components/Loadable';
-import { PageHeading } from '../components/PageHeading';
+import { Page } from '../components/Page';
 import { QrCode } from '../components/QrCode';
 import { isOffline, useAsync } from '../components/useAsync';
+import {
+  Avatar,
+  Banner,
+  Button,
+  CopyButton,
+  DataTable,
+  Dialog,
+  EmptyState,
+  Field,
+  Input,
+  Segmented,
+  type TableColumn,
+} from '../components/ui';
 import { formatDate } from '../format';
 import { useSignedInUser } from '../signedInUser';
 
 /** How long a new member invite stays valid. */
 const INVITE_DAYS = 14;
 
-const MEMBER_COLUMNS: readonly Column<Member>[] = [
-  { label: 'Name', cell: (m) => m.displayName },
-  { label: 'Role', cell: (m) => MEMBER_ROLE_LABELS[m.role] },
-  { label: 'Guest pass until', cell: (m) => (m.expiresAt ? formatDate(m.expiresAt) : '—') },
-];
+/** The roster's word for a member with no radio paired yet. */
+export const NO_RADIO = 'No radio paired';
+
+/** The header's tally: "6 members and 1 guest" (guests are not members). */
+export function rosterTally(list: readonly Member[]): string {
+  const guests = list.filter((m) => m.role === 'guest').length;
+  const members = pluralize(list.length - guests, 'member');
+  return guests ? `${members} and ${pluralize(guests, 'guest')}` : members;
+}
+
+/** The second line under a name: the role, "You", or how long a guest pass lasts. */
+function roleLine(m: Member, me: string | undefined): string {
+  const role =
+    m.role === 'guest' && m.expiresAt
+      ? `Guest until ${formatDate(m.expiresAt)}`
+      : MEMBER_ROLE_LABELS[m.role];
+  return m.userId === me ? `${role}. You` : role;
+}
+
+type Filter = 'all' | MemberRole;
 
 type InviteState =
-  | { kind: 'idle' }
   | { kind: 'busy' }
   | { kind: 'error'; message: string }
   | { kind: 'ready'; joinUrl: string; expiresAt: string };
-
-/** `copied`: the clipboard took it. `manual`: no clipboard, so the link is selected to copy by hand. */
-type CopyState = 'idle' | 'copied' | 'manual';
 
 /**
  * Members other than the signed-in admin. Without a known user (an ID token that could
@@ -36,149 +66,211 @@ function otherMembers(list: readonly Member[], me: string | undefined): number {
   return me ? list.filter((m) => m.userId !== me).length : Math.max(0, list.length - 1);
 }
 
-/** Members and their roles, plus a fresh invite link for new members. */
+/** Members, their roles and radios, and the invite QR for new members. */
 export function Roster(props: { api: ClubApi }) {
   const members = useAsync(() => props.api.listMembers(), [props.api], { keepLastOn: isOffline });
-  const [invite, setInvite] = useState<InviteState>({ kind: 'idle' });
-  const [copy, setCopy] = useState<CopyState>('idle');
-  const me = useSignedInUser();
-
-  const makeInvite = async () => {
+  // The invite is made by the click that opens the dialog (never by an effect, which could
+  // run twice and leave an unused invite behind).
+  const [invite, setInvite] = useState<InviteState | null>(null);
+  const ready = members.status === 'ready';
+  const makeInvite = () => {
     setInvite({ kind: 'busy' });
-    setCopy('idle');
-    try {
-      // Channel first, invite last: a failed key read must not leave an unused invite behind.
-      // The club's name goes in the link so the invite page can say "Join <club name>".
-      const [channelSet, club] = await Promise.all([
-        props.api.getClubChannelSet(),
-        props.api.getClub(),
-      ]);
-      const created = await props.api.createInvite({
-        role: 'member',
-        expiresAt: new Date(Date.now() + INVITE_DAYS * DAY_MS).toISOString(),
-      });
-      // The one join-link builder (@huntclub/mesh); the https form works in any camera app.
-      const target = {
-        kind: 'club',
-        clubId: created.clubId,
-        inviteToken: created.token,
-        ...(club ? { clubName: club.name } : {}),
-      } as const;
-      setInvite({
-        kind: 'ready',
-        joinUrl: encodeJoinUrl({ channelSet, target }, { form: 'web' }),
-        expiresAt: created.expiresAt,
-      });
-    } catch (error) {
-      setInvite({
-        kind: 'error',
-        message: isOffline(error)
-          ? 'No connection. Try again when you are online.'
-          : 'Could not make the invite. Try again.',
-      });
-    }
-  };
-
-  const copyLink = async (joinUrl: string) => {
-    try {
-      if (!navigator.clipboard) throw new Error('no clipboard');
-      await navigator.clipboard.writeText(joinUrl);
-      setCopy('copied');
-    } catch {
-      setCopy('manual');
-    }
+    void createInviteLink(props.api).then(setInvite);
   };
 
   return (
-    <section aria-labelledby="roster-title">
-      <PageHeading id="roster-title">Roster</PageHeading>
-      <Loadable state={members}>
-        {(list) => (
-          <>
-            <DataTable
-              caption="Club members"
-              columns={MEMBER_COLUMNS}
-              rows={list}
-              rowKey={(m) => m.userId}
-              stack
-            />
-            {otherMembers(list, me?.userId) === 0 ? (
-              <p>No other members yet. Make an invite below and share it with your hunters.</p>
-            ) : null}
-          </>
-        )}
-      </Loadable>
-
-      {/* Invites need a club: only offered once the roster has loaded. */}
-      {members.status === 'ready' ? (
-        <>
-          <h2>Invite a member</h2>
-          <p className="muted">
-            New members scan the invite with their phone camera. The new member joins the club radio
-            channel.
-          </p>
-          <button
-            className="button primary"
-            type="button"
-            disabled={invite.kind === 'busy'}
-            onClick={() => void makeInvite()}
-          >
-            {invite.kind === 'busy' ? 'Making invite…' : 'Make an invite'}
-          </button>
-          {invite.kind === 'error' ? (
-            <p className="error" role="alert">
-              {invite.message}
-            </p>
-          ) : null}
-          {invite.kind === 'ready' ? (
-            <div className="panel" aria-live="polite">
-              <QrCode value={invite.joinUrl} label="Club invite QR code" />
-              <p>Or send this link (valid until {formatDate(invite.expiresAt)}):</p>
-              <p className="code" data-testid="invite-link">
-                {invite.joinUrl}
-              </p>
-              {copy === 'manual' ? (
-                <ManualCopy value={invite.joinUrl} />
-              ) : (
-                <button
-                  className="button"
-                  type="button"
-                  onClick={() => void copyLink(invite.joinUrl)}
-                >
-                  {copy === 'copied' ? 'Copied' : 'Copy link'}
-                </button>
-              )}
-            </div>
-          ) : null}
-        </>
+    <Page
+      title="Roster"
+      description={ready ? rosterTally(members.value) : undefined}
+      // Invites need a club: only offered once the roster has loaded.
+      actions={
+        ready ? (
+          <Button variant="primary" icon={Plus} onClick={makeInvite}>
+            Invite members
+          </Button>
+        ) : null
+      }
+    >
+      <Loadable state={members}>{(list) => <Members list={list} />}</Loadable>
+      {invite ? (
+        <InviteDialog state={invite} onRetry={makeInvite} onClose={() => setInvite(null)} />
       ) : null}
-    </section>
+    </Page>
   );
 }
 
-/** When the browser will not copy for us: the link, selected, ready for Ctrl+C or ⌘C. */
-function ManualCopy(props: { value: string }) {
-  const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    ref.current?.focus();
-    ref.current?.select();
-  }, []);
+function Members(props: { list: readonly Member[] }) {
+  const me = useSignedInUser()?.userId;
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<Filter>('all');
+  const count = (role: MemberRole) => props.list.filter((m) => m.role === role).length;
+  const words = query.trim().toLowerCase();
+  const rows = props.list.filter(
+    (m) =>
+      (filter === 'all' || m.role === filter) &&
+      (words === '' || m.displayName.toLowerCase().includes(words)),
+  );
+  const columns: readonly TableColumn<Member>[] = [
+    {
+      key: 'name',
+      header: 'Member',
+      sortValue: (m) => m.displayName,
+      cell: (m) => (
+        <span className="person">
+          <Avatar name={m.displayName} you={m.userId === me} />
+          <span className="person__text">
+            <span className="person__name">{m.displayName}</span>
+            <span className="person__role">{roleLine(m, me)}</span>
+          </span>
+        </span>
+      ),
+    },
+    {
+      key: 'radio',
+      header: 'Radio',
+      cell: (m) =>
+        m.nodeId === undefined ? (
+          <span className="quiet">{NO_RADIO}</span>
+        ) : (
+          <span className="text-readout-inline">{nodeId(m.nodeId)}</span>
+        ),
+    },
+    {
+      key: 'joined',
+      header: 'Joined',
+      sortValue: (m) => m.createdAt,
+      cell: (m) => formatDate(m.createdAt),
+    },
+  ];
+
   return (
-    <div className="field">
-      <label htmlFor="invite-copy" className="text-label">
-        Copy this link
-      </label>
-      <input
-        id="invite-copy"
-        ref={ref}
-        readOnly
-        value={props.value}
-        aria-describedby="invite-copy-hint"
-        onFocus={(e) => e.currentTarget.select()}
+    <>
+      <div className="filters">
+        <Field label="Find a member" className="filters__search">
+          <Input
+            type="search"
+            placeholder="Name"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </Field>
+        <Segmented
+          legend="Show"
+          options={[
+            { value: 'all', label: `Everyone ${props.list.length}` },
+            { value: 'admin', label: `Admins ${count('admin')}` },
+            { value: 'guest', label: `Guests ${count('guest')}` },
+          ]}
+          value={filter}
+          onChange={setFilter}
+        />
+      </div>
+      <DataTable
+        caption="Club members"
+        columns={columns}
+        rows={rows}
+        rowKey={(m) => m.userId}
+        initialSort={{ key: 'name', direction: 'ascending' }}
+        empty={
+          <EmptyState icon={Search} title="Nobody matches" titleAs="h3">
+            Check the spelling, or show everyone.
+          </EmptyState>
+        }
       />
-      <span id="invite-copy-hint" className="muted">
-        The link is selected. Press Ctrl+C (⌘C on a Mac) to copy it.
-      </span>
-    </div>
+      {otherMembers(props.list, me) === 0 ? (
+        <p className="after-table">
+          No other members yet. Invite your hunters with the club's QR code.
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * A new member invite as a join link. Channel first, invite last: a failed key read must not
+ * leave an unused invite behind.
+ */
+async function createInviteLink(api: ClubApi): Promise<InviteState> {
+  try {
+    // The club's name goes in the link so the invite page can say "Join <club name>".
+    const [channelSet, club] = await Promise.all([api.getClubChannelSet(), api.getClub()]);
+    const created = await api.createInvite({
+      role: 'member',
+      expiresAt: new Date(Date.now() + INVITE_DAYS * DAY_MS).toISOString(),
+    });
+    // The one join-link builder (@huntclub/mesh); the https form works in any camera app.
+    const target = {
+      kind: 'club',
+      clubId: created.clubId,
+      inviteToken: created.token,
+      ...(club ? { clubName: club.name } : {}),
+    } as const;
+    return {
+      kind: 'ready',
+      joinUrl: encodeJoinUrl({ channelSet, target }, { form: 'web' }),
+      expiresAt: created.expiresAt,
+    };
+  } catch (error) {
+    return {
+      kind: 'error',
+      message: isOffline(error)
+        ? 'No connection. Try again when you are online.'
+        : 'Could not make the invite. Try again.',
+    };
+  }
+}
+
+/** The invite's QR code and link, with Copy link. */
+function InviteDialog(props: { state: InviteState; onRetry: () => void; onClose: () => void }) {
+  const { state } = props;
+  return (
+    <Dialog
+      open
+      onClose={props.onClose}
+      title="Invite members"
+      description="New members scan the code with their phone camera. It adds them to the club and its radio channel."
+      footer={
+        <Button variant="secondary" onClick={props.onClose}>
+          Done
+        </Button>
+      }
+    >
+      <div aria-live="polite">
+        {state.kind === 'busy' ? (
+          <p className="loading" role="status">
+            Making invite…
+          </p>
+        ) : null}
+        {state.kind === 'error' ? (
+          <Banner
+            tone="danger"
+            live
+            action={
+              <Button size="sm" onClick={props.onRetry}>
+                Try again
+              </Button>
+            }
+          >
+            {state.message}
+          </Banner>
+        ) : null}
+        {state.kind === 'ready' ? (
+          <div className="invite">
+            <QrCode value={state.joinUrl} label="Club invite QR code" />
+            <div className="invite__link">
+              <Field label="Or send this link" hint={`Works until ${formatDate(state.expiresAt)}.`}>
+                <Input
+                  readOnly
+                  value={state.joinUrl}
+                  data-testid="invite-link"
+                  onFocus={(e) => e.currentTarget.select()}
+                />
+              </Field>
+              <CopyButton text={state.joinUrl} label="Copy link" />
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </Dialog>
   );
 }

@@ -1,65 +1,138 @@
-import { STAND_TYPE_LABELS, type Area, type Stand } from '@huntclub/shared';
+import { pluralize, STAND_TYPE_LABELS, type Area, type Club, type Stand } from '@huntclub/shared';
+import { MapPin } from 'lucide-react';
 import type { ClubApi } from '../api/types';
-import { DataTable } from '../components/DataTable';
 import { Loadable } from '../components/Loadable';
-import { PageHeading } from '../components/PageHeading';
+import { Page } from '../components/Page';
+import { standIcon } from '../components/standIcons';
 import { isOffline, useAsync } from '../components/useAsync';
+import { Badge, DataTable, EmptyState } from '../components/ui';
+import { ICON_SIZE } from '@huntclub/design';
+import { STAND_STATUS_LABELS } from '../format';
+import { ClubMap } from '../map/ClubMap';
 
-/** The club's stands and named areas. Editing (and drawing on the map) comes later. */
+/**
+ * The club's stands and named areas, beside the club plan. They are placed and drawn in the
+ * app (on the phone, at the spot); the web lists them.
+ */
 export function StandsAndAreas(props: { api: ClubApi }) {
   // Both lists together: stand rows show their area's name, area rows count their stands.
   const places = useAsync(
-    () => Promise.all([props.api.listStands(), props.api.listAreas()]),
+    () =>
+      Promise.all([props.api.listStands(), props.api.listAreas(), props.api.getClub()] as const),
     [props.api],
     { keepLastOn: isOffline },
   );
 
   return (
-    <section aria-labelledby="stands-title">
-      <PageHeading id="stands-title">Stands and areas</PageHeading>
+    <Page
+      title="Stands and areas"
+      description={
+        places.status === 'ready'
+          ? `${pluralize(places.value[0].length, 'stand')} and ${pluralize(places.value[1].length, 'area')}. Place and draw them in the app.`
+          : undefined
+      }
+    >
       <Loadable state={places}>
-        {([stands, areas]) => <Places stands={stands} areas={areas} />}
+        {([stands, areas, club]) => <Places stands={stands} areas={areas} club={club} />}
       </Loadable>
-    </section>
+    </Page>
   );
 }
 
-function Places({ stands, areas }: { stands: readonly Stand[]; areas: readonly Area[] }) {
+function Places(props: { stands: readonly Stand[]; areas: readonly Area[]; club: Club | null }) {
+  const { stands, areas, club } = props;
+  const areaName = (id?: string) => areas.find((a) => a.id === id)?.name ?? '—';
   return (
-    <>
-      <h2 id="stands-list">Stands ({stands.length})</h2>
-      {stands.length === 0 ? (
-        <p>No stands yet.</p>
-      ) : (
+    <div className="beside-map">
+      <div className="beside-map__lists">
+        <h2 id="stands-list" className="section-title">
+          Stands <span className="section-title__count text-readout-inline">{stands.length}</span>
+        </h2>
         <DataTable
-          labelledBy="stands-list"
+          caption={`Stands (${stands.length})`}
           rows={stands}
           rowKey={(s) => s.id}
-          stack
+          initialSort={{ key: 'name', direction: 'ascending' }}
+          empty={
+            <EmptyState icon={MapPin} title="No stands yet" titleAs="h3">
+              Add stands in the app, standing at the spot.
+            </EmptyState>
+          }
           columns={[
-            { label: 'Name', cell: (s) => s.name },
-            { label: 'Type', cell: (s) => STAND_TYPE_LABELS[s.type] },
-            { label: 'Area', cell: (s) => areas.find((a) => a.id === s.areaId)?.name ?? '—' },
-            // Inactive stands are hidden from check-in in the app (store: active = 1).
-            { label: 'Available for check-in', cell: (s) => (s.active ? 'Yes' : 'No') },
+            {
+              key: 'name',
+              header: 'Name',
+              sortValue: (s) => s.name,
+              cell: (s) => {
+                const Icon = standIcon(s.type);
+                return (
+                  <span className="place">
+                    <span className="place__mark">
+                      <Icon size={ICON_SIZE.md} aria-hidden />
+                    </span>
+                    {s.name}
+                  </span>
+                );
+              },
+            },
+            { key: 'type', header: 'Type', cell: (s) => STAND_TYPE_LABELS[s.type] },
+            {
+              key: 'area',
+              header: 'Area',
+              sortValue: (s) => areaName(s.areaId),
+              cell: (s) => areaName(s.areaId),
+            },
+            {
+              // Closed stands are hidden from check-in in the app (store: active = 1).
+              key: 'check-in',
+              header: 'Check-in',
+              cell: (s) =>
+                s.active ? (
+                  <Badge tone="success">{STAND_STATUS_LABELS.open}</Badge>
+                ) : (
+                  <Badge tone="neutral">{STAND_STATUS_LABELS.closed}</Badge>
+                ),
+            },
           ]}
         />
-      )}
-      <h2 id="areas-list">Areas ({areas.length})</h2>
-      {areas.length === 0 ? (
-        <p>No areas yet.</p>
-      ) : (
+        <h2 id="areas-list" className="section-title">
+          Areas <span className="section-title__count text-readout-inline">{areas.length}</span>
+        </h2>
         <DataTable
-          labelledBy="areas-list"
+          caption={`Areas (${areas.length})`}
           rows={areas}
           rowKey={(a) => a.id}
-          stack
+          initialSort={{ key: 'name', direction: 'ascending' }}
+          empty={
+            <EmptyState icon={MapPin} title="No areas yet" titleAs="h3">
+              Draw areas in the app to split the property into named parts.
+            </EmptyState>
+          }
           columns={[
-            { label: 'Name', cell: (a) => a.name },
-            { label: 'Stands', cell: (a) => stands.filter((s) => s.areaId === a.id).length },
+            { key: 'name', header: 'Name', sortValue: (a) => a.name, cell: (a) => a.name },
+            {
+              key: 'stands',
+              header: 'Stands',
+              sortValue: (a) => stands.filter((s) => s.areaId === a.id).length,
+              cell: (a) => (
+                <span className="text-readout-inline">
+                  {stands.filter((s) => s.areaId === a.id).length}
+                </span>
+              ),
+            },
           ]}
         />
-      )}
-    </>
+      </div>
+      <ClubMap
+        className="beside-map__map"
+        boundary={club?.boundary}
+        areas={areas}
+        stands={stands}
+        compact
+        label={`Map of the club: ${pluralize(areas.length, 'area')} and ${pluralize(stands.length, 'stand')}.`}
+        insets={{ top: 24, right: 24, bottom: 40, left: 24 }}
+        empty={<p className="plan__empty">Nothing to draw yet.</p>}
+      />
+    </div>
   );
 }

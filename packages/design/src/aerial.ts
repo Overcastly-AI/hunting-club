@@ -6,7 +6,7 @@
 //
 // The SVG uses presentation attributes only (no <style>, no script), so it can be served as a
 // plain image file under the strict CSP. Deterministic: the same picture on every build.
-import { basemapSwatch, boundary, colors } from './colors';
+import { basemapSwatch, boundary, mapPlanColors } from './colors';
 
 /** The picture's size in px: 1 px is about 6 ft on the ground. */
 export const AERIAL_WORLD = { width: 2000, height: 1400 } as const;
@@ -22,11 +22,11 @@ export interface AerialClub {
 
 /**
  * The picture's paints (imagery, not interface: docs/DESIGN.md "Hard rules"). The ground is
- * the `mapGround` token, so the page behind the picture matches it while it loads; colours the
+ * the map ground (`mapPlanColors.mapGround`), so the page behind the picture matches it while it loads; colours the
  * phone's aerial basemap thumbnail also draws come from `basemapSwatch`.
  */
 export const AERIAL_PAINTS = {
-  ground: colors.mapGround,
+  ground: mapPlanColors.mapGround,
   corn: basemapSwatch.field,
   hay: '#86864F',
   wheat: '#62833F',

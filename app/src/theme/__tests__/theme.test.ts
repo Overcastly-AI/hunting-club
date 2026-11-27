@@ -33,7 +33,6 @@ describe('color tokens', () => {
       wind: '#8EC5FF',
       waterLabel: '#C9DCDD',
       mapHalo: '#0B0D0E',
-      mapGround: '#2C3323',
     });
   });
 

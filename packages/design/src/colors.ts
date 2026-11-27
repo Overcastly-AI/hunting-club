@@ -41,8 +41,6 @@ export const colors = {
   waterLabel: '#C9DCDD',
   /** 3 px outline behind all map text (the direction's halo; the picture is the same in both themes). */
   mapHalo: '#0B0D0E',
-  /** The aerial's ground tone (aerial.ts), behind the picture while it loads. */
-  mapGround: '#2C3323',
 } as const;
 
 /** Club property line: white at 85% plus a 1 px accent inner line. */
@@ -55,6 +53,22 @@ export const boundary = {
 export type ColorToken = keyof typeof colors;
 
 /**
+ * The club plan: the map the web admin draws from the club's own geometry (property line,
+ * areas, stands) where it has no imagery. Its ground is the aerial's base tone and its
+ * distance grid the aerial's contour tone (the direction's world), the same in both themes,
+ * like the picture.
+ */
+export const mapPlanColors = {
+  /**
+   * The ground under the property: the admin's plan, and on the site the tone behind the aerial
+   * stand-in (aerial.ts) while it loads and around it on wide screens.
+   */
+  mapGround: '#3B3A2D',
+  /** The distance grid, drawn faintly over the ground. */
+  mapGrid: '#D8C9A0',
+} as const;
+
+/**
  * The little pictures of each basemap in the phone's layers sheet (docs/DESIGN.md, "Layers as a
  * sheet: three basemap thumbnails"). They are imagery, not interface, so they are the same in
  * both themes; the values are the mockups' aerial stand-in and topo swatch (design-map-first
@@ -62,7 +76,7 @@ export type ColorToken = keyof typeof colors;
  */
 export const basemapSwatch = {
   /** Aerial: timber, a field, a creek. */
-  woods: colors.mapGround,
+  woods: '#2C3323',
   field: '#A39160',
   water: '#17323B',
   /** Topo: paper, green woods, brown contours, blue water. */

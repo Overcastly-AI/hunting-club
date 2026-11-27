@@ -13,12 +13,13 @@ const OPTIONS: readonly ChoiceOption<ThemePreference>[] = THEME_PREFERENCES.map(
 }));
 
 /** Theme: System / Dark / Light. Applies at once and is kept in this browser. */
-export function ThemeToggle(props: { hideLegend?: boolean }) {
+export function ThemeToggle(props: { hideLegend?: boolean; block?: boolean }) {
   const [preference, setPreference] = useState(readThemePreference);
   return (
     <Segmented
       legend="Theme"
       hideLegend={props.hideLegend}
+      block={props.block}
       options={OPTIONS}
       value={preference}
       onChange={(next) => {

@@ -1,5 +1,5 @@
 import { AERIAL_PAINTS, AERIAL_WORLD, aerialSvg } from '../../src/aerial';
-import { boundary, colors } from '../../src/colors';
+import { boundary, mapPlanColors } from '../../src/colors';
 
 const club = {
   line: [
@@ -43,7 +43,7 @@ describe('aerial stand-in', () => {
     ];
     expect(used.length).toBeGreaterThan(10);
     for (const [, paint] of used) expect(allowed.has(paint!)).toBe(true);
-    expect(AERIAL_PAINTS.ground).toBe(colors.mapGround);
+    expect(AERIAL_PAINTS.ground).toBe(mapPlanColors.mapGround);
   });
 
   it("draws the club's line (white with the accent inner line) and each area", () => {

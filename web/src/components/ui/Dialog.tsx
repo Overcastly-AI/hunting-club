@@ -10,7 +10,8 @@ let openDialogs = 0;
  * A modal dialog on the native <dialog> (Radix Dialog's scroll lock injects a <style>
  * element, which the CSP blocks). showModal() makes the rest of the page inert, so focus
  * stays inside; Esc and a click on the scrim call onClose (an open tooltip takes the first
- * Esc, as the top layer); focus goes back to the control that opened it. A bottom sheet
+ * Esc, as the top layer); focus goes back to the control that opened it, even when the
+ * dialog is unmounted with its content. A bottom sheet
  * under 640 px. Footer: secondary actions first, the main one last.
  */
 export function Dialog(props: {
@@ -29,6 +30,9 @@ export function Dialog(props: {
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog || !props.open) return;
+    // Focus goes back here on close, also when the page removes the dialog with it (the
+    // browser's own return only works for a dialog that is closed and still in the page).
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     dialog.showModal();
     // Start on the dialog itself (its title is read): focusing the close button first would
     // pop its tooltip, and the first Esc would close only that.
@@ -39,6 +43,7 @@ export function Dialog(props: {
       dialog.close();
       openDialogs -= 1;
       if (openDialogs === 0) document.documentElement.classList.remove(SCROLL_LOCK);
+      if (opener?.isConnected) opener.focus();
     };
   }, [props.open]);
 
