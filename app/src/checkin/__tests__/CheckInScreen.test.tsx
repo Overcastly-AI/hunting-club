@@ -35,12 +35,11 @@ describe('Check In modes', () => {
   it('offers a club At a stand, In an area, Right here and On the move, stand first', async () => {
     await show(checkInRadio('club'));
     // The four modes, then (At a stand is picked) the stands.
-    expect(modeNames().slice(0, 4).map((label: string) => label.split('.')[0])).toEqual([
-      'At a stand',
-      'In an area',
-      'Right here',
-      'On the move',
-    ]);
+    expect(
+      modeNames()
+        .slice(0, 4)
+        .map((label: string) => label.split('.')[0]),
+    ).toEqual(['At a stand', 'In an area', 'Right here', 'On the move']);
     expect(screen.getByRole('radio', { name: /^At a stand/ })).toBeSelected();
   });
 

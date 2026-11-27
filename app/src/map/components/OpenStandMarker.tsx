@@ -13,11 +13,7 @@ import { MarkerHitArea, MarkerPlate } from './MarkerPlate';
 export function OpenStandMarker({ stand }: { stand: OpenStandOnMap }) {
   const styles = useStyles();
   return (
-    <View
-      accessible
-      accessibilityLabel={openStandAccessibilityLabel(stand)}
-      style={styles.row}
-    >
+    <View accessible accessibilityLabel={openStandAccessibilityLabel(stand)} style={styles.row}>
       <MarkerHitArea testID="stand-hit-area">
         <StandSquare testID="stand-square" type={stand.type} />
       </MarkerHitArea>

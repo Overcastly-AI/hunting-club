@@ -113,7 +113,9 @@ export function Button({
       <View style={styles.texts}>
         <Text style={[styles.label, textStyle]}>{label}</Text>
         {detail ? (
-          <Text style={[styles.detail, textStyle, variant === 'help' && !disabled && styles.helpDetail]}>
+          <Text
+            style={[styles.detail, textStyle, variant === 'help' && !disabled && styles.helpDetail]}
+          >
             {detail}
           </Text>
         ) : null}

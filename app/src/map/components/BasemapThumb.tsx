@@ -17,7 +17,12 @@ const CONTOURS = ['M0 20 C 30 8, 60 30, 100 14', 'M0 32 C 35 18, 65 42, 100 26']
 function Swatch({ view }: { view: BasemapView }) {
   const aerial = view !== 'topo';
   return (
-    <Svg width="100%" height={sizes.swatchHeight} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+    <Svg
+      width="100%"
+      height={sizes.swatchHeight}
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="none"
+    >
       <Rect width={W} height={H} fill={aerial ? basemapSwatch.woods : basemapSwatch.paper} />
       {aerial ? (
         <Path d="M58 8 L92 12 L88 40 L60 36 Z" fill={basemapSwatch.field} />

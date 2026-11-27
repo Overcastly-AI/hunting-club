@@ -1,5 +1,13 @@
 import { formatShortDate } from '@huntclub/shared';
-import { Check, Download, Map as MapIcon, Trash2, Users, Wind, type LucideIcon } from 'lucide-react-native';
+import {
+  Check,
+  Download,
+  Map as MapIcon,
+  Trash2,
+  Users,
+  Wind,
+  type LucideIcon,
+} from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { Alert, Text, View } from 'react-native';
 
@@ -10,7 +18,15 @@ import { EmptyState } from '../../components/EmptyState';
 import { STAND_ICON_COMPONENTS } from '../../components/icons';
 import { Sheet } from '../../components/Sheet';
 import { ToggleRow } from '../../components/ToggleRow';
-import { ICON_SIZE, makeStyles, sizes, spacing, textStyles, useTheme, type StatusTone } from '../../theme';
+import {
+  ICON_SIZE,
+  makeStyles,
+  sizes,
+  spacing,
+  textStyles,
+  useTheme,
+  type StatusTone,
+} from '../../theme';
 import {
   BASEMAP_VIEWS,
   BASEMAP_VIEW_LABELS,
@@ -19,7 +35,12 @@ import {
   basemapBySource,
   type BasemapView,
 } from '../basemaps';
-import { MAP_LAYER_IDS, MAP_LAYER_LABELS, type MapLayerId, type MapLayerVisibility } from '../layers';
+import {
+  MAP_LAYER_IDS,
+  MAP_LAYER_LABELS,
+  type MapLayerId,
+  type MapLayerVisibility,
+} from '../layers';
 import type { MapPack, MapPackStatus } from '../mapPacks';
 import { formatBytes } from '../tiles';
 import { BasemapThumb } from './BasemapThumb';
@@ -129,30 +150,30 @@ export function LayersSheet({
         </EmptyState>
       ) : (
         <View style={styles.rows}>
-        {clubPack ? (
-          <SavedRow icon={Check} title="Club map" detail={clubPackText(clubPack)} />
-        ) : null}
-        {packs.map((pack) => (
-          <SavedRow
-            key={pack.id}
-            icon={Download}
-            title={`${pack.name}, ${basemapBySource(pack.source)?.label ?? pack.source}`}
-            status={
-              <Badge
-                tone={PACK_STATUS_TONE[pack.status]}
-                label={packStatusText(pack, progress[pack.id])}
+          {clubPack ? (
+            <SavedRow icon={Check} title="Club map" detail={clubPackText(clubPack)} />
+          ) : null}
+          {packs.map((pack) => (
+            <SavedRow
+              key={pack.id}
+              icon={Download}
+              title={`${pack.name}, ${basemapBySource(pack.source)?.label ?? pack.source}`}
+              status={
+                <Badge
+                  tone={PACK_STATUS_TONE[pack.status]}
+                  label={packStatusText(pack, progress[pack.id])}
+                />
+              }
+            >
+              <Button
+                variant="danger"
+                icon={Trash2}
+                label="Delete"
+                accessibilityHint={`Deletes ${pack.name} from this phone`}
+                onPress={() => confirmDelete(pack)}
               />
-            }
-          >
-            <Button
-              variant="danger"
-              icon={Trash2}
-              label="Delete"
-              accessibilityHint={`Deletes ${pack.name} from this phone`}
-              onPress={() => confirmDelete(pack)}
-            />
-          </SavedRow>
-        ))}
+            </SavedRow>
+          ))}
         </View>
       )}
       <Button

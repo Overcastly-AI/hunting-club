@@ -11,7 +11,6 @@ import { useIncomingAlerts } from '../../safety/hooks';
 import { spacing } from '../../theme';
 import type { BoardRadio } from '../BoardRadio';
 
-
 /** The board's map: everyone out, help/overdue pins, framed around them and the clubhouse. */
 export function BoardMap({ radio, now }: { radio: BoardRadio | null; now: number }) {
   const store = useMemo(() => createMapDataStore(), []);

@@ -25,7 +25,15 @@ type Props = {
  * orange selected edge (orange's third job) and, as a row, a filled radio mark, so it is never
  * colour alone. Disabled is its own look, not a fade, so its text keeps 4.5:1.
  */
-export function Choice({ label, detail, selected, disabled, onPress, icon: Icon, look = 'row' }: Props) {
+export function Choice({
+  label,
+  detail,
+  selected,
+  disabled,
+  onPress,
+  icon: Icon,
+  look = 'row',
+}: Props) {
   const styles = useStyles();
   const selectedStyles = useSelectedStyles();
   const theme = useTheme();

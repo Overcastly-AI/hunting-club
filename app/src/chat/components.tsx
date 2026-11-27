@@ -178,7 +178,12 @@ const useStyles = makeStyles((theme) => ({
   body: { ...textStyles.bodyLarge, color: theme.colors.text },
   delivery: { ...textStyles.caption, color: theme.colors.textSecondary, alignSelf: 'flex-end' },
   problem: { color: theme.colors.warning },
-  system: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xs },
+  system: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
   help: {
     borderRadius: radii.lg,
     borderWidth: 1,

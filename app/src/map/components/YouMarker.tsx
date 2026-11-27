@@ -33,11 +33,7 @@ export function YouMarker({ position, windFromDeg }: Props) {
     <>
       {showScent ? <ScentCone position={position} windFromDeg={windFromDeg} /> : null}
       <Marker id="you" lngLat={[position.lon, position.lat]} {...YOU_ANCHOR}>
-        <View
-          accessible
-          accessibilityLabel={yourAccessibilityLabel(showScent)}
-          style={styles.row}
-        >
+        <View accessible accessibilityLabel={yourAccessibilityLabel(showScent)} style={styles.row}>
           <View style={styles.box}>
             <Pulse />
             <View style={styles.dot} />

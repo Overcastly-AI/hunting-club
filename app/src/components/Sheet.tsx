@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Grabber } from './Grabber';
 import { Button } from './Button';
-import { makeStyles, radii, sizes, spacing, textStyles } from '../theme';
+import { makeStyles, radii, spacing, textStyles } from '../theme';
 
 type Props = { visible: boolean; title: string; onClose: () => void; children: ReactNode };
 

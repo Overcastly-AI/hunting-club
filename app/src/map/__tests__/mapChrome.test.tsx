@@ -1,12 +1,7 @@
 // The map-first map chrome (docs/DESIGN.md): the freshness ring, padded marker tap areas, the
 // readout strip with missing data, and the bottom sheet's states, in both themes.
 import { darkTheme, lightTheme, type Theme, type ThemePreference } from '@huntclub/design';
-import {
-  CALM,
-  UNKNOWN_VALUE,
-  conditionsReadout,
-  type ConditionsReadout,
-} from '@huntclub/shared';
+import { CALM, UNKNOWN_VALUE, conditionsReadout, type ConditionsReadout } from '@huntclub/shared';
 import { render, screen } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { StyleSheet } from 'react-native';
@@ -25,7 +20,8 @@ import { MARKER_ANCHOR } from '../components/MarkerPlate';
 import { OpenStandMarker } from '../components/OpenStandMarker';
 import { ReadoutStrip, splitUnit } from '../components/ReadoutStrip';
 
-const flat = (style: unknown) => (StyleSheet.flatten(style as never) ?? {}) as Record<string, unknown>;
+const flat = (style: unknown) =>
+  (StyleSheet.flatten(style as never) ?? {}) as Record<string, unknown>;
 const styleOf = (testID: string, index = 0) =>
   flat(screen.getAllByTestId(testID)[index]!.props.style);
 
@@ -124,12 +120,9 @@ describe('the readout strip', () => {
 
   it('reads sunrise, sunset, wind from and temperature, in that order', async () => {
     await draw(<ReadoutStrip readout={full} />, 'dark', 'Sunrise');
-    expect(screen.getAllByText(/^(Sunrise|Sunset|Wind from|Temp)$/).map((n) => n.props.children)).toEqual([
-      'Sunrise',
-      'Sunset',
-      'Wind from',
-      'Temp',
-    ]);
+    expect(
+      screen.getAllByText(/^(Sunrise|Sunset|Wind from|Temp)$/).map((n) => n.props.children),
+    ).toEqual(['Sunrise', 'Sunset', 'Wind from', 'Temp']);
     // The number in a readout, its unit drawn small inside it.
     expect(screen.getByText('NW 6 mph')).toBeTruthy();
     expect(
@@ -143,29 +136,31 @@ describe('the readout strip', () => {
       'a place but no forecast',
       conditionsReadout({ place: { lat: 46, lon: -94 }, now: NOW, windMph: null }),
     ],
-  ] as [string, ConditionsReadout][])('shows "—" for what is not known: %s', async (_name, readout) => {
-    await draw(<ReadoutStrip readout={readout} />, 'dark', 'Wind from');
-    const unknown = screen.queryAllByText(UNKNOWN_VALUE);
-    expect(unknown.length).toBe(
-      [readout.sunrise, readout.sunset, readout.wind, readout.temperature].filter(
-        (cell) => cell.short === UNKNOWN_VALUE,
-      ).length,
-    );
-    expect(unknown.length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByLabelText(/Wind not known\. Temperature not known\.$/)).toBeTruthy();
-  });
+  ] as [string, ConditionsReadout][])(
+    'shows "—" for what is not known: %s',
+    async (_name, readout) => {
+      await draw(<ReadoutStrip readout={readout} />, 'dark', 'Wind from');
+      const unknown = screen.queryAllByText(UNKNOWN_VALUE);
+      expect(unknown.length).toBe(
+        [readout.sunrise, readout.sunset, readout.wind, readout.temperature].filter(
+          (cell) => cell.short === UNKNOWN_VALUE,
+        ).length,
+      );
+      expect(unknown.length).toBeGreaterThanOrEqual(2);
+      expect(screen.getByLabelText(/Wind not known\. Temperature not known\.$/)).toBeTruthy();
+    },
+  );
 
   it('never mentions legal shooting hours, first light or last light', async () => {
     const container = await draw(<ReadoutStrip readout={full} />, 'dark', 'Sunrise');
-    const words = container.queryAll(() => true).flatMap((node) =>
-      typeof node.props.children === 'string' ? [node.props.children] : [],
-    );
+    const words = container
+      .queryAll(() => true)
+      .flatMap((node) => (typeof node.props.children === 'string' ? [node.props.children] : []));
     expect(words.join(' ')).not.toMatch(/shooting|legal|light/i);
   });
 });
 
 describe('the bottom sheet', () => {
-
   it('not checked in: nobody can see you yet, the time to sunset, Check In and Ask for a Hand', async () => {
     await draw(
       <MapBottomSheet

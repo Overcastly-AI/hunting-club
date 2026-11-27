@@ -70,7 +70,11 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: 'center',
     paddingHorizontal: KNOB_INSET,
   },
-  trackOn: { backgroundColor: theme.colors.text, borderColor: theme.colors.text, alignItems: 'flex-end' },
+  trackOn: {
+    backgroundColor: theme.colors.text,
+    borderColor: theme.colors.text,
+    alignItems: 'flex-end',
+  },
   knob: {
     width: sizes.switchKnob,
     height: sizes.switchKnob,

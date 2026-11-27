@@ -46,11 +46,7 @@ export function HunterMarker({ hunter, now, compact }: Props) {
   const view = describeFreshness(hunter.heardAt, now);
   const ring = FRESHNESS_RING[view.freshness];
   return (
-    <View
-      accessible
-      accessibilityLabel={hunterAccessibilityLabel(hunter, now)}
-      style={styles.row}
-    >
+    <View accessible accessibilityLabel={hunterAccessibilityLabel(hunter, now)} style={styles.row}>
       <MarkerHitArea testID="hunter-hit-area">
         {/* Only the circle fades: the plate keeps full contrast, and its age says how old. */}
         <View

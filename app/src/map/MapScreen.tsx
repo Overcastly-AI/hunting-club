@@ -20,7 +20,14 @@ import { makeStyles, spacing } from '../theme';
 import { conditionsReadout } from '@huntclub/shared';
 
 import { useClubEntitlement } from '../club/entitlement';
-import { BASEMAPS, CONTINENTAL_US_VIEW, DEFAULT_BASEMAP, baseOf, basemapStyle, type BasemapView } from './basemaps';
+import {
+  BASEMAPS,
+  CONTINENTAL_US_VIEW,
+  DEFAULT_BASEMAP,
+  baseOf,
+  basemapStyle,
+  type BasemapView,
+} from './basemaps';
 import { DownloadAreaSheet } from './components/DownloadAreaSheet';
 import { HaloText } from './components/HaloText';
 import { LayersSheet } from './components/LayersSheet';
@@ -118,10 +125,7 @@ export function MapScreen({ dataSource }: Props) {
         <MapLayers data={data} alerts={alerts} now={now} layers={layers} />
         {/* No scent cone while the wind is calm or unknown, or with its layer off. */}
         {you ? (
-          <YouMarker
-            position={you}
-            windFromDeg={layers.scent ? readout.wind.fromDeg : null}
-          />
+          <YouMarker position={you} windFromDeg={layers.scent ? readout.wind.fromDeg : null} />
         ) : null}
       </Map>
 

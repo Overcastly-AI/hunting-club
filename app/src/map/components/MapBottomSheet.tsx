@@ -5,7 +5,7 @@ import { Text, View } from 'react-native';
 import { Grabber } from '../../components/Grabber';
 import { Button } from '../../components/Button';
 import { HELP_AUDIENCE_TEXT, type Audience } from '../../domain/audience';
-import { makeStyles, radii, sizes, spacing, textStyles } from '../../theme';
+import { makeStyles, radii, spacing, textStyles } from '../../theme';
 import { placeLabel } from '../labels';
 import type { HunterPlace } from '../types';
 
@@ -123,9 +123,7 @@ function CheckedIn(props: Extract<MapBottomSheetProps, { state: 'checkedIn' }>) 
           </Text>
           {/* Wraps rather than cutting off a long place name at large text sizes. */}
           <Text style={styles.title}>{placeLabel(props.place)}</Text>
-          <Text style={styles.subtitle}>
-            Since {since === 'Just now' ? 'just now' : since}
-          </Text>
+          <Text style={styles.subtitle}>Since {since === 'Just now' ? 'just now' : since}</Text>
         </View>
         <Countdown untilSunset={props.untilSunset} />
       </View>
