@@ -40,35 +40,6 @@ export const polygonSchema = z.looseObject({
 });
 export type Polygon = z.infer<typeof polygonSchema>;
 
-/** Initials shown on map markers, e.g. "JK". */
-export const INITIALS_MAX = 3;
-export const initialsSchema = z
-  .string()
-  .regex(new RegExp(`^[\\p{L}\\p{N}]{1,${INITIALS_MAX}}$`, 'u'));
-
-const LETTER_OR_DIGIT = /[\p{L}\p{N}]/u;
-
-/**
- * First letter or digit of each word, upper case, at most INITIALS_MAX: "Jake Smith" → "JS".
- * The app suggests these for a new profile; the web admin draws them in avatars.
- */
-export function suggestInitials(name: string): string {
-  const firsts = name
-    .trim()
-    .split(/\s+/)
-    .map((word) => Array.from(word).find((ch) => LETTER_OR_DIGIT.test(ch)) ?? '');
-  return Array.from(firsts.join('')).slice(0, INITIALS_MAX).join('').toLocaleUpperCase();
-}
-
-/**
- * Initials for a name or an email: an email's local part with its dots, dashes and pluses read
- * as word breaks ("jane.doe@x" → "JD"). Only the initials split it; a name stays as typed.
- */
-export const initialsFor = (nameOrEmail: string): string =>
-  suggestInitials((nameOrEmail.split('@')[0] ?? '').replace(/[._+-]+/g, ' '));
-
-/** A member's display name, e.g. "Jake Smith". */
-export const DISPLAY_NAME_MAX = 40;
 /** Meshtastic LoRa region code, e.g. 'US'. */
 export const regionSchema = z.string().regex(/^[A-Z0-9_]{2,12}$/);
 export const planIdSchema = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/);

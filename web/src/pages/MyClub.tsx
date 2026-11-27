@@ -4,7 +4,11 @@ import {
   CLUB_PRICING,
   ClubCreateRequestSchema,
   DISPLAY_NAME_MAX,
+  DISPLAY_NAME_PROBLEMS,
+  DISPLAY_NAME_PURPOSE,
+  INITIALS_HINT,
   INITIALS_MAX,
+  INITIALS_PROBLEM,
   needsYou,
   pluralize,
   SUBSCRIPTION_STATUS_LABELS,
@@ -36,6 +40,8 @@ import { boundsCentre, planBounds } from '../map/plan';
 import { StandDrawer } from '../map/StandDrawer';
 import { pageHref, PAGES, type PagePath } from '../shell/routes';
 import { useReloadShell } from '../shell/shellClub';
+import { useSignedInUser } from '../signedInUser';
+import { needsYourName, YourNamePrompt } from './YourName';
 
 /** Your club, or a form to start one. Payment is on the Billing page. */
 export function MyClub(props: { api: ClubApi }) {
@@ -171,6 +177,11 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
   // The stand whose details are open (tapped on the map); read-only, stands are edited in the app.
   const [standId, setStandId] = useState<string | null>(null);
   const stand = stands.find((s) => s.id === standId) ?? null;
+  // A name that is only the email's stand-in: ask for the one they go by.
+  const user = useSignedInUser();
+  const me = loaded.members?.find((m) => m.userId === user?.userId);
+  const [nameDone, setNameDone] = useState(false);
+  const askName = !nameDone && needsYourName(me, user?.email);
 
   return (
     <section className="clubview" aria-labelledby="club-title">
@@ -209,6 +220,16 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
             Start your {CLUB_PRICING.trialDays}-day free trial on{' '}
             <a href={pageHref('billing')}>Billing</a>.
           </Banner>
+        ) : null}
+        {askName && me ? (
+          <YourNamePrompt
+            api={props.api}
+            me={me}
+            onDone={() => {
+              setNameDone(true);
+              details.reload();
+            }}
+          />
         ) : null}
         <OutNow />
         <Loadable state={details} skeleton="table">
@@ -336,14 +357,11 @@ function ClubSummary({ details }: { details: ClubDetails }) {
   );
 }
 
-/** From the shared initials rule (initialsSchema), so the hint never drifts from it. */
-const INITIALS_HINT = `Up to ${INITIALS_MAX} letters or numbers, shown on the map`;
-
-/** Inline errors, by the request schema's field path. */
+/** Inline errors, by the request schema's field path (the shared name rules' own words). */
 const CREATE_ERRORS = {
   'club.name': 'Enter the club name.',
-  'admin.displayName': 'Enter your name.',
-  'admin.initials': `Enter your initials: up to ${INITIALS_MAX} letters or numbers.`,
+  'admin.displayName': DISPLAY_NAME_PROBLEMS.empty,
+  'admin.initials': INITIALS_PROBLEM,
 } as const;
 type CreateField = keyof typeof CREATE_ERRORS;
 
@@ -366,7 +384,9 @@ function CreateClub(props: { api: ClubApi; onCreated: () => void }) {
       const fields: Partial<Record<CreateField, string>> = {};
       for (const issue of request.error.issues) {
         const field = issue.path.join('.') as CreateField;
-        if (field in CREATE_ERRORS) fields[field] ??= CREATE_ERRORS[field];
+        if (!(field in CREATE_ERRORS)) continue;
+        // The name rule says which part it refuses (blank, too long, a character).
+        fields[field] ??= field === 'admin.displayName' ? issue.message : CREATE_ERRORS[field];
       }
       setInvalid(fields);
       return;
@@ -393,11 +413,7 @@ function CreateClub(props: { api: ClubApi; onCreated: () => void }) {
       <Field label="Club name" error={invalid['club.name']}>
         <Input required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
-      <Field
-        label="Your name"
-        hint="Shown to club members on the map and in chat."
-        error={invalid['admin.displayName']}
-      >
+      <Field label="Your name" hint={DISPLAY_NAME_PURPOSE} error={invalid['admin.displayName']}>
         <Input
           required
           maxLength={DISPLAY_NAME_MAX}

@@ -2,6 +2,7 @@ export * from './app';
 export * from './enums';
 export * from './limits';
 export * from './fields';
+export * from './names';
 export * from './harvestReport';
 export * from './club';
 export * from './clubChoice';

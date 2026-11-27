@@ -15,7 +15,7 @@ export async function markOnboarded(db: SqlDatabase, at: number): Promise<void> 
   await db.runAsync('UPDATE app_state SET onboarded_at = ? WHERE id = 1', at);
 }
 
-/** The hunter's own name and initials, as entered during onboarding. */
+/** The hunter's own name and initials, as entered in onboarding or the name prompt. */
 export type MyProfile = Pick<MemberJoin, 'displayName' | 'initials'>;
 
 export async function loadProfile(db: SqlDatabase): Promise<MyProfile | null> {
@@ -33,6 +33,18 @@ export async function saveProfile(db: SqlDatabase, profile: MyProfile): Promise<
     profile.displayName,
     profile.initials,
   );
+}
+
+/** When the hunter skipped the name prompt at check-in (ms since epoch), or null. */
+export async function loadNameSkippedAt(db: SqlDatabase): Promise<number | null> {
+  const row = await db.getFirstAsync<{ name_skipped_at: number | null }>(
+    'SELECT name_skipped_at FROM app_state WHERE id = 1',
+  );
+  return row?.name_skipped_at ?? null;
+}
+
+export async function markNameSkipped(db: SqlDatabase, at: number): Promise<void> {
+  await db.runAsync('UPDATE app_state SET name_skipped_at = ? WHERE id = 1', at);
 }
 
 /** System (follow the phone), Dark or Light, as the hunter chose it in Settings. */

@@ -21,6 +21,7 @@ import { useClub } from '../ClubProvider';
 import { useClubEntitlement } from '../entitlement';
 import type { ClubServices } from '../ClubProvider';
 import { JoinClubScreen } from '../JoinClubScreen';
+import { nameCopy } from '../../profile/copy';
 import { clubCopy } from '../copy';
 import { loadClubs } from '../store';
 import { joinClubFromLink, syncClub } from '../sync';
@@ -154,8 +155,8 @@ it('joins from a Club QR code with a name and initials', async () => {
     secrets: memorySecureStorage(),
   });
   await render(wrap(<JoinClubScreen url={clubJoinUrl()} onDone={jest.fn()} />));
-  await fireEvent.changeText(screen.getByLabelText(clubCopy.join.name), 'Max');
-  await fireEvent.changeText(screen.getByLabelText(clubCopy.join.initials), 'mx');
+  await fireEvent.changeText(screen.getByLabelText(nameCopy.nameLabel), 'Max');
+  await fireEvent.changeText(screen.getByLabelText(nameCopy.initialsLabel), 'mx');
   await fireEvent.press(screen.getByRole('button', { name: clubCopy.join.join }));
   expect(await screen.findByText(clubCopy.join.joined)).toBeTruthy();
   expect(screen.getByText(clubCopy.join.signInToFinish)).toBeTruthy();

@@ -5,7 +5,7 @@
  * (no raw items), as the service.
  */
 import {
-  DISPLAY_NAME_MAX,
+  emailStandInName,
   ENTITLEMENT_GRACE_DAYS,
   initialsFor,
   type StandType,
@@ -58,11 +58,11 @@ const FALLBACK_PROFILE = { displayName: 'UAT Admin', initials: 'UA' } as const;
 
 /**
  * Display name and initials from an email's local part, the name exactly as typed
- * ("jonesjaycob.uitest@x" → "jonesjaycob.uitest", "JU"). Never split and title-cased: that
- * invents a name ("Jonesjaycob Uitest") the person never gave.
+ * ("jonesjaycob.uitest@x" → "jonesjaycob.uitest", "JU"), by the shared stand-in rule
+ * (emailStandInName). The admin is asked for a real name on the web (My club).
  */
 export function profileFromEmail(email: string) {
-  const displayName = (email.split('@')[0] ?? '').trim().slice(0, DISPLAY_NAME_MAX);
+  const displayName = emailStandInName(email);
   if (!displayName) return { ...FALLBACK_PROFILE };
   return { displayName, initials: initialsFor(displayName) || FALLBACK_PROFILE.initials };
 }

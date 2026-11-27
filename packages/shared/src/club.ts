@@ -7,6 +7,12 @@
 // is written once.
 import { z } from 'zod';
 import { CLUB_NAME_MAX } from './limits';
+import {
+  displayNameSchema,
+  initialsSchema,
+  storedDisplayNameSchema,
+  storedInitialsSchema,
+} from './names';
 import { BILLING_INTERVALS } from './pricing';
 import {
   HarvestSexSchema,
@@ -20,8 +26,6 @@ import {
   channelKeySchema,
   hasLatLonPair,
   idSchema,
-  DISPLAY_NAME_MAX,
-  initialsSchema,
   inviteTokenSchema,
   latitudeSchema,
   longitudeSchema,
@@ -100,8 +104,9 @@ export type ClubSecret = z.infer<typeof ClubSecretSchema>;
 
 // Members ------------------------------------------------------------------------
 
+/** A member's profile as they (or an admin) enter it: the shared name rules (names.ts). */
 const memberProfile = {
-  displayName: trimmedText(DISPLAY_NAME_MAX),
+  displayName: displayNameSchema,
   initials: initialsSchema,
   /** Meshtastic node number of the member's radio. */
   nodeId: uint32Schema.optional(),
@@ -121,6 +126,8 @@ export const MemberSchema = z
     clubId: idSchema,
     userId: userIdSchema,
     ...memberProfile,
+    displayName: storedDisplayNameSchema,
+    initials: storedInitialsSchema,
     ...memberAccess,
     ...timestamps,
   })
@@ -154,6 +161,18 @@ export const MemberJoinSchema = z.strictObject({
   initials: memberProfile.initials,
 });
 export type MemberJoin = z.input<typeof MemberJoinSchema>;
+
+/**
+ * A typed name and initials as they are saved (name normalized, initials upper case), or null
+ * when they break the shared name rules. The app's name prompt and the web's both use it.
+ */
+export function parseMemberProfile(input: MemberJoin): MemberJoin | null {
+  const result = MemberJoinSchema.safeParse({
+    displayName: input.displayName,
+    initials: input.initials.trim().toLocaleUpperCase(),
+  });
+  return result.success ? result.data : null;
+}
 
 // Subscriptions and Stripe events --------------------------------------------------
 

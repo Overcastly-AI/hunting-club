@@ -2,7 +2,13 @@ import { fromBinary, toBinary } from '@bufbuild/protobuf';
 
 import { decodeAdmin } from '../codec/radio';
 import { Admin, Mesh, Portnums } from '../protobufs';
-import { OWNER_WIRE_LIMITS, buildSetOwnerMessage, fitUtf8, ownerFromProfile } from '../owner';
+import {
+  OWNER_WIRE_LIMITS,
+  buildSetOwnerMessage,
+  fitUtf8,
+  ownerFromProfile,
+  profileFromOwner,
+} from '../owner';
 import { connectedClient, tick } from '../testing/fixtures';
 
 describe('ownerFromProfile', () => {
@@ -19,6 +25,34 @@ describe('ownerFromProfile', () => {
     expect(owner.shortName).toBe('ÉÉ'); // 4 bytes
     expect(fitUtf8('x'.repeat(40), OWNER_WIRE_LIMITS.longNameBytes)).toHaveLength(39);
     expect(fitUtf8('🦌a', 3)).toBe(''); // never splits a 4-byte character
+  });
+});
+
+describe('profileFromOwner', () => {
+  it('suggests the name someone gave the radio, with its short name as initials', () => {
+    expect(profileFromOwner({ longName: ' Dale  Earl ', shortName: 'de' })).toEqual({
+      displayName: 'Dale Earl',
+      initials: 'DE',
+    });
+  });
+
+  it('suggests initials from the name when the short name is not valid initials', () => {
+    expect(profileFromOwner({ longName: 'Dale Earl', shortName: '🦌' })).toEqual({
+      displayName: 'Dale Earl',
+      initials: 'DE',
+    });
+  });
+
+  it('ignores the stock firmware name, no name, and names that break the shared rules', () => {
+    expect(profileFromOwner({ longName: 'Meshtastic 1a2b', shortName: '1a2b' })).toBeNull();
+    expect(profileFromOwner({ shortName: 'DE' })).toBeNull();
+    expect(profileFromOwner(null)).toBeNull();
+    expect(profileFromOwner({ longName: 'Dale 🦌', shortName: 'DE' })).toBeNull();
+  });
+
+  it('round-trips a profile written to the radio', () => {
+    const profile = { displayName: 'Jake Smith', initials: 'JS' };
+    expect(profileFromOwner(ownerFromProfile(profile))).toEqual(profile);
   });
 });
 

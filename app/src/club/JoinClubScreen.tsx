@@ -1,10 +1,5 @@
 import { ChannelUrlError, decodeJoinUrl } from '@huntclub/mesh';
-import {
-  DISPLAY_NAME_MAX,
-  INITIALS_MAX,
-  type MemberJoin,
-  MemberJoinSchema,
-} from '@huntclub/shared';
+import type { MemberJoin } from '@huntclub/shared';
 import { router } from 'expo-router';
 import { LogIn, UserPlus } from 'lucide-react-native';
 import { useState } from 'react';
@@ -12,7 +7,7 @@ import { useState } from 'react';
 import { Banner } from '../components/Banner';
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
-import { Field } from '../components/Field';
+import { ProfileFields, useProfileDraft } from '../profile/ProfileFields';
 import { useClub } from './ClubProvider';
 import { clubCopy } from './copy';
 import { SIGN_IN_ROUTE } from './routes';
@@ -79,7 +74,7 @@ export function JoinClubScreen({ url, onDone }: { url: string | null; onDone: ()
   );
 }
 
-/** Name and initials for the club roster (prefilled from onboarding). */
+/** Name and initials for the club roster (prefilled from onboarding), by the shared rules. */
 function JoinForm({
   initial,
   onJoin,
@@ -87,33 +82,18 @@ function JoinForm({
   initial: MemberJoin | null;
   onJoin: (profile: MemberJoin) => void;
 }) {
-  const [displayName, setDisplayName] = useState(initial?.displayName ?? '');
-  const [initials, setInitials] = useState(initial?.initials ?? '');
-  const profile = MemberJoinSchema.safeParse({ displayName, initials: initials.toUpperCase() });
+  const draft = useProfileDraft({ initial });
+  const { profile } = draft;
   return (
     <Screen title={copy.title} description={copy.intro}>
-      <Field
-        label={copy.name}
-        value={displayName}
-        onChangeText={setDisplayName}
-        maxLength={DISPLAY_NAME_MAX}
-        autoCapitalize="words"
-        autoComplete="name"
-      />
-      <Field
-        label={copy.initials}
-        value={initials}
-        onChangeText={setInitials}
-        autoCapitalize="characters"
-        maxLength={INITIALS_MAX}
-      />
+      <ProfileFields draft={draft} />
       <Button
         variant="primary"
         size="lg"
         icon={UserPlus}
         label={copy.join}
-        disabled={!profile.success}
-        onPress={() => profile.success && onJoin(profile.data)}
+        disabled={!profile}
+        onPress={() => profile && onJoin(profile)}
       />
     </Screen>
   );

@@ -109,6 +109,7 @@ const clubview = `
 .side-section__count { color: ${color('textSecondary')}; }
 .side-section__empty-state { border-top: ${HAIR}; }
 .side-section__empty-state .ui-empty { padding: ${gap(4)} 0 ${gap(2)}; }
+.your-name .form-plate { padding-top: ${gap(3)}; border-top: ${HAIR}; }
 .rows { list-style: none; margin: 0; padding: 0; }
 .rows > li { border-top: ${HAIR}; }
 .row-item { display: flex; align-items: center; gap: ${gap(3)}; min-height: 64px; padding: ${gap(2)} 0; }
