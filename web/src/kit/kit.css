@@ -1,0 +1,89 @@
+/* Layout of the dev-only kit page (Kit.tsx). Theme variables only; never in production. */
+html:has(.kit) {
+  background: var(--theme-canvas);
+  color-scheme: var(--theme-color-scheme);
+}
+.kit {
+  min-height: 100vh;
+  background: var(--theme-canvas);
+  color: var(--theme-text);
+  padding: var(--space-8) clamp(var(--space-4), 4vw, var(--space-8)) var(--space-16);
+}
+.kit-header,
+.kit-main {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+.kit-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-6);
+  margin-bottom: var(--space-8);
+}
+.kit-title {
+  margin: 0 0 var(--space-2);
+}
+.kit-intro,
+.kit-text {
+  color: var(--theme-text-secondary);
+  margin: 0;
+}
+.kit-main {
+  display: grid;
+  gap: var(--space-8);
+}
+.kit-section {
+  display: grid;
+  gap: var(--space-4);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--theme-border-subtle);
+}
+.kit-section__title {
+  margin: 0;
+  color: var(--theme-text);
+}
+.kit-label {
+  margin: var(--space-2) 0 0;
+  color: var(--theme-text-tertiary);
+}
+.kit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.kit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: var(--space-6);
+  align-items: start;
+}
+.kit-stack {
+  display: grid;
+  gap: var(--space-3);
+}
+.kit-preview {
+  display: block;
+  width: 96px;
+  height: 56px;
+  border: 1px solid var(--theme-border-subtle);
+}
+.kit-preview--topo {
+  background: var(--theme-success-tint);
+}
+.kit-preview--aerial {
+  background: var(--theme-warning-tint);
+}
+.kit-person {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.kit-person > span:last-child {
+  display: grid;
+}
+.kit-person__email {
+  color: var(--theme-text-tertiary);
+}

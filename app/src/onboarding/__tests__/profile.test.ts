@@ -1,24 +1,6 @@
-import { DISPLAY_NAME_MAX, INITIALS_MAX } from '@huntclub/shared';
+import { DISPLAY_NAME_MAX } from '@huntclub/shared';
 
-import { parseProfile, suggestInitials } from '../profile';
-
-describe('suggestInitials', () => {
-  it.each([
-    ['Jake Smith', 'JS'],
-    ['  jake   smith ', 'JS'],
-    ['Mary Ann Lee Jones', 'MAL'],
-    ['Jake', 'J'],
-    ['Élodie Ørsted', 'ÉØ'],
-    ['"Bud" O’Neil', 'BO'],
-    ['', ''],
-  ])('%j → %j', (name, initials) => {
-    expect(suggestInitials(name)).toBe(initials);
-  });
-
-  it('never suggests more than the shared limit', () => {
-    expect(suggestInitials('a b c d e f').length).toBe(INITIALS_MAX);
-  });
-});
+import { parseProfile } from '../profile';
 
 describe('parseProfile', () => {
   it('accepts and trims a valid name with initials', () => {

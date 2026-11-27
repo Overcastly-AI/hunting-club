@@ -1,4 +1,4 @@
-import { DISPLAY_NAME_MAX, INITIALS_MAX } from '@huntclub/shared';
+import { DISPLAY_NAME_MAX, INITIALS_MAX, suggestInitials } from '@huntclub/shared';
 import { useState } from 'react';
 
 import { Button } from '../components/Button';
@@ -6,7 +6,7 @@ import { Screen } from '../components/Screen';
 import { Field } from '../components/Field';
 import type { MyProfile } from '../db/appState';
 import { onboardingCopy } from './copy';
-import { parseProfile, suggestInitials } from './profile';
+import { parseProfile } from './profile';
 
 type Props = {
   initial?: MyProfile | null;
