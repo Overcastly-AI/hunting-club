@@ -1,6 +1,6 @@
 import type { MyClub } from '../api';
 import { ClubApiRequestError } from '../apiClient';
-import { chooseClub, isMyClub, isNoClubAccess } from '../clubChoice';
+import { chooseClub, clubsForAccount, isMyClub, isNoClubAccess } from '../clubChoice';
 
 const A = 'user-a';
 const B = 'user-b';
@@ -46,5 +46,24 @@ describe('isMyClub and isNoClubAccess', () => {
     expect(isNoClubAccess(new ClubApiRequestError('forbidden', 403))).toBe(true);
     expect(isNoClubAccess(new ClubApiRequestError('not_found', 404))).toBe(false);
     expect(isNoClubAccess(new Error('403'))).toBe(false);
+  });
+});
+
+describe('clubsForAccount', () => {
+  const saved = [
+    { id: 'a1', memberUserId: A, pendingInvite: false },
+    { id: 'b1', memberUserId: B, pendingInvite: false },
+    { id: 'new', memberUserId: null, pendingInvite: true },
+  ];
+  const ids = (userId: string | undefined) => clubsForAccount(saved, userId).map((c) => c.id);
+
+  it("lists the account's own clubs and waiting invites, hiding other accounts' clubs", () => {
+    expect(ids(A)).toEqual(['a1', 'new']);
+    expect(ids(B)).toEqual(['b1', 'new']);
+  });
+
+  it('lists every saved club when signed out, and never changes the saved list', () => {
+    expect(ids(undefined)).toEqual(['a1', 'b1', 'new']);
+    expect(saved).toHaveLength(3);
   });
 });

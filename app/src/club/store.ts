@@ -25,6 +25,8 @@ export type LocalClub = {
   id: string;
   name: string;
   role: MemberRole | null;
+  /** The account this phone last synced the club as (null before the first sync). */
+  memberUserId: string | null;
   /** Club features are open until this moment (ms); null = closed or unknown. */
   featuresUntil: number | null;
   /** Joined on the mesh from a link, not yet added to the roster (needs sign-in + internet). */
@@ -171,6 +173,7 @@ export async function saveClubSnapshot(
 type ClubRow = {
   id: string;
   name: string;
+  my_user_id: string | null;
   my_role: MemberRole | null;
   features_until: number | null;
   pending_invite: string | null;
@@ -180,13 +183,14 @@ type ClubRow = {
 
 export async function loadClubs(db: SqlDatabase): Promise<LocalClub[]> {
   const rows = await db.getAllAsync<ClubRow>(
-    `SELECT id, name, my_role, features_until, pending_invite, synced_at, overdue_grace_minutes
+    `SELECT id, name, my_user_id, my_role, features_until, pending_invite, synced_at, overdue_grace_minutes
      FROM groups WHERE kind = 'club' ORDER BY name`,
   );
   return rows.map((r) => ({
     id: r.id,
     name: r.name,
     role: r.my_role,
+    memberUserId: r.my_user_id,
     featuresUntil: r.features_until,
     pendingInvite: r.pending_invite !== null,
     syncedAt: r.synced_at,
