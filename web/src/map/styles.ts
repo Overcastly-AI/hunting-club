@@ -3,6 +3,7 @@
 // are chrome, so they follow the theme.
 import { boundary, opacity, sizes, themeVar } from '@huntclub/design';
 import { color, gap, HAIR, PHONE, TAP, text } from '../components/ui/styles/shared';
+import { DRAW_BAR_HEIGHT } from './plan';
 
 /** A map colour from @huntclub/design (`--color-*`, not themed). */
 const mapColor = (name: 'text' | 'mapHalo' | 'mapGround' | 'mapGrid') =>
@@ -77,6 +78,14 @@ export const mapCss = () => `
 .draw__problem { ${text('label')}; color: ${color('text')}; }
 .draw__error { ${text('label')}; color: ${color('danger')}; }
 .draw__actions { display: flex; flex-wrap: wrap; gap: ${gap(2)}; }
+/* On a phone: the draw tools as a bar along the map's bottom, More tools opening above it (and over the map's controls). */
+.plan__controls.plan__controls--lifted { bottom: calc(${DRAW_BAR_HEIGHT}px + ${gap(8)}); }
+.draw-bar { position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; display: grid; gap: ${gap(2)};
+  min-height: ${DRAW_BAR_HEIGHT}px; padding: ${gap(2)} ${gap(3)}; background: ${color('plate')}; border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: ${color('shadowPlate')}; }
+.draw-bar__row { display: flex; align-items: center; gap: ${gap(2)}; }
+.draw-bar__row .draw__count { flex: 1; min-width: 0; }
+.draw-bar__more { display: grid; gap: ${gap(2)}; padding-bottom: ${gap(2)}; border-bottom: ${HAIR}; }
 ${PHONE} { .plan__controls { right: ${gap(2)}; bottom: ${gap(6)}; max-width: calc(100% - 2 * ${gap(2)}); } }
 .plan__empty { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: min(36ch, calc(100% - 2 * ${gap(4)}));
   padding: ${gap(3)} ${gap(4)}; border-radius: var(--radius-lg); background: ${color('plate')};

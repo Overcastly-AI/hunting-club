@@ -13,7 +13,7 @@ import { useState } from 'react';
 import { liveBasemap } from '../map/basemap';
 import { ClubMap } from '../map/ClubMap';
 import { canClose, drawProblem, drawReducer, startDrawing, type DrawState } from '../map/draw';
-import { DEFAULT_VIEW, panView, viewProjection, zoomView } from '../map/plan';
+import { DEFAULT_VIEW, DRAW_BAR_HEIGHT, panView, viewProjection, zoomView } from '../map/plan';
 import { SAMPLE_PLAN } from '../map/sampleProperty';
 import { renderSignedIn } from '../testing/app';
 import { sampleData } from '../testing/fakeClubApi';
@@ -30,7 +30,10 @@ class TestPointerEvent extends MouseEvent {
   }
 }
 beforeEach(() => vi.stubGlobal('PointerEvent', TestPointerEvent));
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 /** jsdom lays nothing out: every map is its 960 by 640 fallback, at the page's top left. */
 const W = 960;
@@ -357,5 +360,50 @@ describe('drawing the property line on My club', () => {
     );
     // Still drawing: nothing is lost.
     expect(corners().getAllByRole('button')).toHaveLength(3);
+  });
+});
+
+describe('drawing on a phone', () => {
+  it('keeps the count and Save on a bar along the map, with the other tools behind More tools', async () => {
+    // Every element laid out at a phone's map size.
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+      width: 390,
+      height: 724,
+      left: 0,
+      top: 0,
+    } as DOMRect);
+    const { save } = await noLineYet();
+    const bar = within(screen.getByRole('group', { name: 'Drawing the property line' }));
+    expect(bar.getByText('0 corners')).toBeTruthy();
+    // Only the bar: no tools on the club plate, and none until More opens.
+    expect(screen.queryByRole('button', { name: 'Add corner' })).toBeNull();
+    const more = bar.getByRole('button', { name: 'More tools' });
+    expect(more.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(more);
+    expect(more.getAttribute('aria-expanded')).toBe('true');
+    const panel = document.getElementById(more.getAttribute('aria-controls')!)!;
+    for (const name of ['Add corner', 'Undo', 'Remove corner', 'Close shape', 'Cancel'])
+      expect(within(panel).getByRole('button', { name })).toBeTruthy();
+    // The scale bar and credit move up above the bar.
+    const scale = ground().querySelector('.plan__scale')!.getAttribute('transform')!;
+    expect(Number(scale.match(/ ([-\d.]+)\)$/)![1])).toBeLessThanOrEqual(724 - DRAW_BAR_HEIGHT);
+    // Draw from the keyboard through the panel; it stays open between corners.
+    const add = () => fireEvent.click(within(panel).getByRole('button', { name: 'Add corner' }));
+    add();
+    fireEvent.keyDown(ground(), { key: 'ArrowLeft', shiftKey: true });
+    add();
+    fireEvent.keyDown(ground(), { key: 'ArrowUp', shiftKey: true });
+    add();
+    expect(bar.getByText('3 corners')).toBeTruthy();
+    fireEvent.click(within(panel).getByRole('button', { name: 'Close shape' }));
+    // Esc closes More and gives focus back to it.
+    fireEvent.keyDown(within(panel).getByRole('button', { name: 'Undo' }), { key: 'Escape' });
+    expect(more.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(more);
+    expect(document.querySelector('.draw-bar .draw__count')!.textContent).toMatch(
+      /^3 corners, \d+ acres$/,
+    );
+    fireEvent.click(bar.getByRole('button', { name: 'Save line' }));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
   });
 });

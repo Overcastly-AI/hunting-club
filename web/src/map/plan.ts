@@ -46,6 +46,12 @@ export const VIEW_ZOOM = { min: 3, max: 20 } as const;
 /** Where a club with nothing drawn yet starts: the lower 48 states. */
 export const DEFAULT_VIEW: View = { lon: -96, lat: 38.5, zoom: 4 };
 
+/**
+ * The draw bar along the map's bottom on a phone (PropertyLineEditor): one 48 px row of
+ * buttons with 8 px around it. The scale bar, credit and map controls sit above it.
+ */
+export const DRAW_BAR_HEIGHT = 48 + 2 * 8;
+
 /** How far in "Use my location" goes: a few square miles, enough to find the property. */
 export const LOCATION_ZOOM = 14;
 

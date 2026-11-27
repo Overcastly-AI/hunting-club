@@ -1,5 +1,5 @@
 import { overdueAt } from '@huntclub/core';
-import { space } from '@huntclub/design';
+import { breakpoints, space } from '@huntclub/design';
 import {
   CLUB_PRICING,
   ClubCreateRequestSchema,
@@ -38,7 +38,7 @@ import { Banner, Button, ButtonLink, EmptyState, Field, Input } from '../compone
 import { basemapPack, useBasemap } from '../map/basemap';
 import { ClubMap, FIT_PADDING } from '../map/ClubMap';
 import { drawReducer, startDrawing, type DrawAction, type DrawState } from '../map/draw';
-import { boundsCentre, planBounds } from '../map/plan';
+import { boundsCentre, DRAW_BAR_HEIGHT, planBounds } from '../map/plan';
 import { DrawControls, DrawLayer } from '../map/PropertyLineEditor';
 import { StandDrawer } from '../map/StandDrawer';
 import { cx } from '../components/ui/cx';
@@ -234,27 +234,37 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
         interactive
         insets={{ top: PLATE_TOP + plateSize.height + FIT_PADDING }}
         empty={details.status === 'ready' && !canDraw ? MAP_EMPTY : null}
+        footer={draw ? (size) => (size.width < breakpoints.tablet ? DRAW_BAR_HEIGHT : 0) : 0}
         {...(draw
           ? {
               onMapClick: (at: [number, number]) => dispatch({ type: 'add', at }),
-              overlay: (frame) => (
-                <>
-                  <DrawLayer frame={frame} state={draw} dispatch={dispatch} />
-                  <ClubPlate>
-                    {title}
-                    <DrawControls
-                      frame={frame}
-                      state={draw}
-                      dispatch={dispatch}
-                      onSave={async (boundary) => {
-                        setSaved(await props.api.savePropertyLine(boundary));
-                        dispatch({ type: 'stop' });
-                      }}
-                      onCancel={() => dispatch({ type: 'stop' })}
-                    />
-                  </ClubPlate>
-                </>
-              ),
+              overlay: (frame) => {
+                const controls = (layout: 'plate' | 'bar') => (
+                  <DrawControls
+                    frame={frame}
+                    state={draw}
+                    dispatch={dispatch}
+                    layout={layout}
+                    onSave={async (boundary) => {
+                      setSaved(await props.api.savePropertyLine(boundary));
+                      dispatch({ type: 'stop' });
+                    }}
+                    onCancel={() => dispatch({ type: 'stop' })}
+                  />
+                );
+                // On a phone the tools are a bar along the map's bottom: the map keeps the screen.
+                const bar = frame.width < breakpoints.tablet;
+                return (
+                  <>
+                    <DrawLayer frame={frame} state={draw} dispatch={dispatch} />
+                    <ClubPlate>
+                      {title}
+                      {bar ? null : controls('plate')}
+                    </ClubPlate>
+                    {bar ? controls('bar') : null}
+                  </>
+                );
+              },
             }
           : {
               onStandSelect: (s: { id: string }) => setStandId(s.id),

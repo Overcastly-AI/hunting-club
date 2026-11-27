@@ -12,8 +12,17 @@ import {
   ringAcres,
   type Polygon,
 } from '@huntclub/shared';
-import { Check, Plus, Trash2, Undo2, X, type LucideIcon } from 'lucide-react';
-import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import {
+  Check,
+  ChevronDown,
+  Ellipsis,
+  Plus,
+  Trash2,
+  Undo2,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
+import { useId, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { Button } from '../components/ui';
 import { cx } from '../components/ui/cx';
 import { mapPoint, TAP_SLOP, type MapFrame } from './ClubMap';
@@ -191,8 +200,10 @@ function Action(props: {
 }
 
 /**
- * The editor's words and buttons, on the map's plate: how to draw, how many corners and acres,
- * what is still needed, and Add corner, Undo, Remove corner, Close shape, Save and Cancel.
+ * The editor's words and buttons: how to draw, how many corners and acres, what is still
+ * needed, and Add corner, Undo, Remove corner, Close shape, Save and Cancel. On the map's plate
+ * (`plate`), or on a phone as a bar along the map's bottom (`bar`): the count and Save line,
+ * with the other tools behind More tools (not the tab bar's More), so the map keeps most of the screen.
  */
 export function DrawControls(props: {
   frame: MapFrame;
@@ -200,10 +211,14 @@ export function DrawControls(props: {
   dispatch: Dispatch;
   onSave: (boundary: Polygon) => Promise<void>;
   onCancel: () => void;
+  layout?: 'plate' | 'bar';
 }) {
   const { state, dispatch } = props;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [more, setMore] = useState(false);
+  const moreButton = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
   const problem = drawProblem(state);
   const n = state.corners.length;
   const act = (action: DrawAction) => {
@@ -222,60 +237,124 @@ export function DrawControls(props: {
       setBusy(false);
     }
   };
-  return (
-    <div className="draw">
-      <p className="draw__how">
-        {state.closed
-          ? 'Drag a corner to move it, or select it and use the arrow keys.'
-          : 'Click the map to add corners, or move the map and use Add corner. Drag a corner to move it.'}
-      </p>
-      <p className="draw__count" aria-live="polite">
-        <span className="text-readout-inline">{pluralize(n, 'corner')}</span>
-        {state.closed && !problem ? (
-          <>
-            {', '}
-            <span className="text-readout-inline">
-              {pluralize(Math.round(ringAcres(state.corners)), 'acre')}
-            </span>
-          </>
-        ) : null}
-      </p>
+
+  const how = (
+    <p className="draw__how">
+      {state.closed
+        ? 'Drag a corner to move it, or select it and use the arrow keys.'
+        : 'Click the map to add corners, or move the map and use Add corner. Drag a corner to move it.'}
+    </p>
+  );
+  const count = (
+    <p className="draw__count" aria-live="polite">
+      <span className="text-readout-inline">{pluralize(n, 'corner')}</span>
+      {state.closed && !problem ? (
+        <>
+          {', '}
+          <span className="text-readout-inline">
+            {pluralize(Math.round(ringAcres(state.corners)), 'acre')}
+          </span>
+        </>
+      ) : null}
+    </p>
+  );
+  const notes = (
+    <>
       {state.closed && problem ? <p className="draw__problem">{STILL_NEEDED[problem]}</p> : null}
-      <div className="draw__actions">
-        {state.closed ? null : (
-          <Action icon={Plus} onClick={() => act({ type: 'add', at: centre(props.frame) })}>
-            Add corner
-          </Action>
-        )}
-        <Action icon={Undo2} onClick={() => act({ type: 'undo' })} disabled={!state.history.length}>
-          Undo
-        </Action>
-        <Action
-          icon={Trash2}
-          onClick={() => state.selected !== null && act({ type: 'remove', index: state.selected })}
-          disabled={state.selected === null}
-        >
-          Remove corner
-        </Action>
-        {state.closed ? null : (
-          <Action icon={Check} onClick={() => act({ type: 'close' })} disabled={!canClose(state)}>
-            Close shape
-          </Action>
-        )}
-      </div>
-      <div className="draw__actions">
-        <Button variant="primary" size="sm" loading={busy} onClick={() => void save()}>
-          Save line
-        </Button>
-        <Button size="sm" icon={X} onClick={props.onCancel} disabled={busy}>
-          Cancel
-        </Button>
-      </div>
       {error ? (
         <p className="draw__error" role="alert">
           {error}
         </p>
       ) : null}
+    </>
+  );
+  const tools = (
+    <>
+      {state.closed ? null : (
+        <Action icon={Plus} onClick={() => act({ type: 'add', at: centre(props.frame) })}>
+          Add corner
+        </Action>
+      )}
+      <Action icon={Undo2} onClick={() => act({ type: 'undo' })} disabled={!state.history.length}>
+        Undo
+      </Action>
+      <Action
+        icon={Trash2}
+        onClick={() => state.selected !== null && act({ type: 'remove', index: state.selected })}
+        disabled={state.selected === null}
+      >
+        Remove corner
+      </Action>
+      {state.closed ? null : (
+        <Action icon={Check} onClick={() => act({ type: 'close' })} disabled={!canClose(state)}>
+          Close shape
+        </Action>
+      )}
+    </>
+  );
+  const saveButton = (
+    <Button variant="primary" size="sm" loading={busy} onClick={() => void save()}>
+      Save line
+    </Button>
+  );
+  const cancel = (
+    <Button size="sm" icon={X} onClick={props.onCancel} disabled={busy}>
+      Cancel
+    </Button>
+  );
+
+  if (props.layout === 'bar') {
+    // Esc closes More tools and gives focus back to its button.
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || !more) return;
+      e.preventDefault();
+      setMore(false);
+      moreButton.current?.focus();
+    };
+    return (
+      <div
+        className="draw-bar"
+        role="group"
+        aria-label="Drawing the property line"
+        onKeyDown={onKeyDown}
+      >
+        {more ? (
+          <div id={panelId} className="draw-bar__more">
+            {how}
+            <div className="draw__actions">
+              {tools}
+              {cancel}
+            </div>
+          </div>
+        ) : null}
+        {notes}
+        <div className="draw-bar__row">
+          {count}
+          <Button
+            ref={moreButton}
+            size="sm"
+            icon={more ? ChevronDown : Ellipsis}
+            aria-expanded={more}
+            aria-controls={more ? panelId : undefined}
+            onClick={() => setMore((open) => !open)}
+          >
+            More tools
+          </Button>
+          {saveButton}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="draw">
+      {how}
+      {count}
+      {notes}
+      <div className="draw__actions">{tools}</div>
+      <div className="draw__actions">
+        {saveButton}
+        {cancel}
+      </div>
     </div>
   );
 }

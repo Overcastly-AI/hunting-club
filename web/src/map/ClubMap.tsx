@@ -149,6 +149,11 @@ export function ClubMap(props: {
   onMapClick?: (at: [number, number]) => void;
   /** Layers drawn over the map, with its projection (the property line editor). */
   overlay?: (frame: MapFrame) => ReactNode;
+  /**
+   * Room taken along the map's bottom edge by a bar over it, in px (or worked out from the
+   * map's size): the scale bar, the credit and the map's controls stay above it.
+   */
+  footer?: number | ((size: Size) => number);
   className?: string;
   /** Plates floating over the map. */
   children?: ReactNode;
@@ -167,6 +172,7 @@ export function ClubMap(props: {
   const { width, height } = size;
   const compact = props.compact ?? false;
   const interactive = props.interactive ?? false;
+  const footer = (typeof props.footer === 'function' ? props.footer(size) : props.footer) ?? 0;
   // Under the tablet width stand names stay, but area names would sit on the stands.
   const areaNames = !compact && width >= breakpoints.tablet;
   const bounds = planBounds(props);
@@ -300,6 +306,7 @@ export function ClubMap(props: {
             projection={projection}
             width={width}
             height={height}
+            footer={footer}
           />
         ) : null}
       </svg>
@@ -320,6 +327,7 @@ export function ClubMap(props: {
       {props.children}
       {interactive && projection ? (
         <MapControls
+          lift={footer}
           plateRef={controls}
           live={props.live ?? null}
           onLiveChange={props.onLiveChange}
@@ -342,6 +350,8 @@ const canLocate = () => typeof navigator !== 'undefined' && 'geolocation' in nav
  * admin's own location (used here only, never sent), zoom, and back to the property.
  */
 function MapControls(props: {
+  /** px of bar under the controls (footer). */
+  lift: number;
   plateRef: RefObject<HTMLDivElement | null>;
   live: BasemapId | null;
   onLiveChange?: ((basemap: BasemapId) => void) | undefined;
@@ -362,7 +372,12 @@ function MapControls(props: {
     );
   };
   return (
-    <div className="plan__controls" ref={props.plateRef} role="group" aria-label="Map controls">
+    <div
+      className={cx('plan__controls', props.lift > 0 && 'plan__controls--lifted')}
+      ref={props.plateRef}
+      role="group"
+      aria-label="Map controls"
+    >
       {props.live && props.onLiveChange ? (
         <Segmented
           legend="Basemap"
@@ -413,7 +428,8 @@ function MapEmptyPlate(props: MapEmpty) {
 }
 
 function Drawing(
-  props: Omit<Parameters<typeof ClubMap>[0], 'live'> & {
+  props: Omit<Parameters<typeof ClubMap>[0], 'live' | 'footer'> & {
+    footer: number;
     live: BasemapPicture | null;
     projection: Projection;
     width: number;
@@ -480,14 +496,22 @@ function Drawing(
               mapWidth={width}
             />
           ))}
-      <g transform={`translate(${EDGE / 2} ${height - EDGE / 2})`} className="plan__scale">
+      <g
+        transform={`translate(${EDGE / 2} ${height - props.footer - EDGE / 2})`}
+        className="plan__scale"
+      >
         <path className="plan__scale-bar" d={`M0 -8 V0 H${scale.px.toFixed(1)} V-8`} />
         <text className="plan__scale-label" x={scale.px / 2} y={-6} textAnchor="middle">
           {scale.label}
         </text>
       </g>
       {credit ? (
-        <text className="plan__credit" x={width - EDGE / 2} y={height - EDGE / 2} textAnchor="end">
+        <text
+          className="plan__credit"
+          x={width - EDGE / 2}
+          y={height - props.footer - EDGE / 2}
+          textAnchor="end"
+        >
           {credit}
         </text>
       ) : null}
