@@ -385,7 +385,7 @@ function Toasts() {
 const INVITE_LINK = 'https://example.com/join#kit-sample-invite';
 
 function Dialogs() {
-  const [open, setOpen] = useState<'invite' | 'confirm' | null>(null);
+  const [open, setOpen] = useState<'invite' | 'confirm' | 'side' | null>(null);
   const close = () => setOpen(null);
   return (
     <>
@@ -396,7 +396,15 @@ function Dialogs() {
         <Button variant="danger" onClick={() => setOpen('confirm')}>
           Remove member
         </Button>
+        <Button onClick={() => setOpen('side')}>Side panel</Button>
       </Row>
+      <Dialog
+        open={open === 'side'}
+        onClose={close}
+        placement="side"
+        title="Creek Stand"
+        description="Down the right edge from the tablet width up; a bottom sheet on phones."
+      />
       <Dialog
         open={open === 'invite'}
         onClose={close}

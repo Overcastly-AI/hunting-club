@@ -13,9 +13,14 @@ import {
   space,
   type FontWidth,
 } from '@huntclub/design';
-import { polygonRings, STAND_STATUS_LABELS, type StandType } from '@huntclub/shared';
+import {
+  polygonRings,
+  STAND_STATUS_LABELS,
+  STAND_TYPE_LABELS,
+  type StandType,
+} from '@huntclub/shared';
 import { MapPinOff, type LucideIcon } from 'lucide-react';
-import { useRef, type ReactNode } from 'react';
+import { useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { EmptyState } from '../components/ui';
 import { standIcon } from '../components/standIcons';
 import { useElementSize, type Size } from '../components/useElementSize';
@@ -68,6 +73,8 @@ const AREA_LABEL_DROP = 20;
 const SCALE_MAX_PX = 140;
 /** Stand marker, icon and plate geometry (packages/design sizes and radii). */
 const STAND = sizes.standMarker;
+/** A stand that opens its details is tapped over a 48 px square around the marker. */
+const HIT = sizes.minTapTarget;
 const ICON = sizes.icon;
 const PLATE_PAD = 8;
 const PLATE_GAP = 6;
@@ -99,6 +106,13 @@ export function ClubMap(props: {
   children?: ReactNode;
   /** Shown over the ground when there is nothing to draw yet (null: nothing, e.g. still loading). */
   empty?: MapEmpty | null;
+  /**
+   * Makes each stand a button (tap, Enter or Space) that calls this with it, e.g. to open its
+   * details. Without it the stands are part of the picture.
+   */
+  onStandSelect?: (stand: PlanStand) => void;
+  /** The stand whose details are open: its marker is drawn as the selected item. */
+  selectedStandId?: string | null;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const size = useElementSize(box, FALLBACK_SIZE);
@@ -138,6 +152,17 @@ export function ClubMap(props: {
           />
         ) : null}
       </svg>
+      {projection && props.onStandSelect ? (
+        <StandButtons
+          stands={props.stands}
+          projection={projection}
+          width={width}
+          height={height}
+          compact={compact}
+          onSelect={props.onStandSelect}
+          selectedId={props.selectedStandId ?? null}
+        />
+      ) : null}
       {props.children}
       {/* After the plates, so its heading follows the page's own in the outline. */}
       {projection || !props.empty ? null : <MapEmptyPlate {...props.empty} />}
@@ -212,15 +237,18 @@ function Drawing(
               </text>
             );
           })}
-      {props.stands.map((stand) => (
-        <Stand
-          key={stand.id}
-          stand={stand}
-          at={projection.project(stand.lon, stand.lat)}
-          compact={compact}
-          mapWidth={width}
-        />
-      ))}
+      {/* Stands that open their details are buttons, drawn on the layer above (StandButtons). */}
+      {props.onStandSelect
+        ? null
+        : props.stands.map((stand) => (
+            <Stand
+              key={stand.id}
+              stand={stand}
+              at={projection.project(stand.lon, stand.lat)}
+              compact={compact}
+              mapWidth={width}
+            />
+          ))}
       <g transform={`translate(${EDGE / 2} ${height - EDGE / 2})`} className="plan__scale">
         <path className="plan__scale-bar" d={`M0 -8 V0 H${scale.px.toFixed(1)} V-8`} />
         <text className="plan__scale-label" x={scale.px / 2} y={-6} textAnchor="middle">
@@ -281,14 +309,62 @@ function Grid(props: { step: number; origin: [number, number]; width: number; he
   );
 }
 
+/**
+ * The stands as buttons, on a layer over the picture (whose role="img" hides what is inside it
+ * from screen readers). Each reads out its name, type and status, and opens with a tap, Enter or
+ * Space; the layer lets every other tap through to the map.
+ */
+function StandButtons(props: {
+  stands: readonly PlanStand[];
+  projection: Projection;
+  width: number;
+  height: number;
+  compact: boolean;
+  onSelect: (stand: PlanStand) => void;
+  selectedId: string | null;
+}) {
+  const { width, height } = props;
+  return (
+    <svg
+      className="plan__svg plan__stands"
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      role="group"
+      aria-label="Stands"
+    >
+      {props.stands.map((stand) => {
+        const open = () => props.onSelect(stand);
+        const onKeyDown = (e: KeyboardEvent) => {
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          e.preventDefault(); // Space would scroll the page
+          open();
+        };
+        return (
+          <Stand
+            key={stand.id}
+            stand={stand}
+            at={props.projection.project(stand.lon, stand.lat)}
+            compact={props.compact}
+            mapWidth={width}
+            button={{ onClick: open, onKeyDown, selected: stand.id === props.selectedId }}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
 /** A stand: the rounded square with its type's icon, and its plate (name; Open or Closed). */
 function Stand(props: {
   stand: PlanStand;
   at: [number, number];
   compact?: boolean | undefined;
   mapWidth: number;
+  /** A stand that opens its details (StandButtons). */
+  button?: { onClick: () => void; onKeyDown: (e: KeyboardEvent) => void; selected: boolean };
 }) {
-  const { stand } = props;
+  const { stand, button } = props;
   const [x, y] = props.at;
   const Icon = standIcon(stand.type);
   const status = STAND_STATUS_LABELS[stand.active ? 'open' : 'closed'];
@@ -304,8 +380,34 @@ function Stand(props: {
   return (
     <g
       transform={`translate(${x.toFixed(1)} ${y.toFixed(1)})`}
-      className={cx('plan__stand', !stand.active && 'plan__stand--closed')}
+      className={cx(
+        'plan__stand',
+        !stand.active && 'plan__stand--closed',
+        button && 'plan__stand--button',
+        button?.selected && 'plan__stand--selected',
+      )}
+      {...(button
+        ? {
+            role: 'button',
+            tabIndex: 0,
+            // The plate's words first, in order (what a voice-control user says), then the type.
+            'aria-label': `${stand.name}, ${status}, ${STAND_TYPE_LABELS[stand.type]}`,
+            'aria-haspopup': 'dialog' as const,
+            onClick: button.onClick,
+            onKeyDown: button.onKeyDown,
+          }
+        : {})}
     >
+      {button ? (
+        <rect
+          className="plan__stand-hit"
+          x={-HIT / 2}
+          y={-HIT / 2}
+          width={HIT}
+          height={HIT}
+          rx={radii.md}
+        />
+      ) : null}
       <rect
         className="plan__stand-box"
         x={-STAND / 2}
@@ -329,6 +431,7 @@ function Stand(props: {
           <text className="plan__plate-name" x={PLATE_PAD} y={PLATE_PAD + PLATE_LINE.name - 2}>
             {stand.name}
           </text>
+          {/* A space between the lines, so the stand button's words read "Name Status". */}{' '}
           <text
             className={cx('plan__plate-detail', stand.active && 'plan__plate-detail--open')}
             x={PLATE_PAD}

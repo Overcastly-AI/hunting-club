@@ -70,6 +70,12 @@ const codeStep = async (page: Page) => {
   await page.getByRole('button', { name: 'Email me a code' }).click();
   await page.waitForSelector('.signin__code');
 };
+/** My club with a stand's details open (the side panel; a bottom sheet on phones). */
+const openStand = async (page: Page) => {
+  await page.getByRole('button', { name: /^Big Oak Ladder,/ }).click();
+  await page.waitForSelector('.ui-dialog--side[open] .stand-facts');
+  await page.waitForTimeout(250);
+};
 const openClubSwitcher = async (page: Page) => {
   await page.getByRole('button', { name: /Club:/ }).click();
   await page.waitForTimeout(250);
@@ -90,6 +96,7 @@ const SHOTS: readonly Shot[] = [
   { name: 'signin', scenario: 'signedOut', hash: '' },
   { name: 'signin-code', scenario: 'signedOut', hash: '', act: codeStep },
   { name: 'my-club', scenario: 'trial', hash: '#/club' },
+  { name: 'my-club-stand', scenario: 'trial', hash: '#/club', act: openStand },
   { name: 'roster', scenario: 'trial', hash: '#/roster' },
   { name: 'roster-invite', scenario: 'trial', hash: '#/roster', act: openInvite },
   { name: 'roster-empty', scenario: 'alone', hash: '#/roster', only: ONCE_EACH },

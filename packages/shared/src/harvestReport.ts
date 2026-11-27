@@ -1,7 +1,7 @@
 // Season summaries of the harvests members shared with their club: one rule for the
 // web admin (and the app later). Dates are the hunter's local calendar days in a
 // given time zone, never legal shooting hours.
-import type { Harvest } from './club';
+import type { Harvest, Member } from './club';
 import { HARVEST_SEXES, type HarvestSex } from './enums';
 import { DAY_MS } from './time';
 
@@ -140,4 +140,31 @@ export function harvestReport(
     ),
     byWeek,
   };
+}
+
+/** Who a harvest is shown as once its hunter has left the club. */
+export const FORMER_MEMBER = 'Former member';
+
+/** Display name by user id; people who have left the club are FORMER_MEMBER. */
+export function memberNames(members: readonly Pick<Member, 'userId' | 'displayName'>[]) {
+  const byId = new Map(members.map((m) => [m.userId, m.displayName]));
+  return (userId: string): string => byId.get(userId) ?? FORMER_MEMBER;
+}
+
+/** How many harvests a stand's details list. */
+export const RECENT_STAND_HARVESTS = 5;
+
+/**
+ * The latest harvests members shared with the club at one stand, newest first (an admin's own
+ * private ones are left out, as in the season report).
+ */
+export function recentStandHarvests(
+  all: readonly Harvest[],
+  standId: string,
+  limit: number = RECENT_STAND_HARVESTS,
+): Harvest[] {
+  return all
+    .filter((h) => h.shared && h.standId === standId)
+    .sort((a, b) => Date.parse(b.harvestedAt) - Date.parse(a.harvestedAt))
+    .slice(0, limit);
 }

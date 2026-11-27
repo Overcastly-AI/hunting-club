@@ -1,10 +1,13 @@
 import type { Harvest } from '../club';
 import {
+  FORMER_MEMBER,
   HARVEST_SEX_LABELS,
   defaultSeason,
   harvestReport,
   isSeason,
   localDay,
+  memberNames,
+  recentStandHarvests,
   weekStart,
 } from '../harvestReport';
 
@@ -93,5 +96,32 @@ describe('harvest report', () => {
     expect(report.byWeek.find((w) => w.key === '2026-11-15')!.count).toBe(2);
     expect(report.byWeek.find((w) => w.key === '2026-09-27')!.count).toBe(1); // 3 Oct
     expect(report.byWeek.reduce((sum, w) => sum + w.count, 0)).toBe(3);
+  });
+});
+
+describe('stand details', () => {
+  it("lists a stand's latest shared harvests, newest first, up to the limit", () => {
+    const at = (day: number) => `2026-11-${String(day).padStart(2, '0')}T12:00:00.000Z`;
+    const stand = 'stand-a';
+    const all = [
+      harvest({ standId: stand, harvestedAt: at(10), species: 'Old' }),
+      harvest({ standId: stand, harvestedAt: at(20), species: 'Newest' }),
+      harvest({ standId: stand, harvestedAt: at(15), species: 'Middle' }),
+      harvest({ standId: stand, harvestedAt: at(25), shared: false, species: 'Private' }),
+      harvest({ standId: 'stand-b', harvestedAt: at(26), species: 'Elsewhere' }),
+      harvest({ harvestedAt: at(27), species: 'No stand' }),
+    ];
+    expect(recentStandHarvests(all, stand).map((h) => h.species)).toEqual([
+      'Newest',
+      'Middle',
+      'Old',
+    ]);
+    expect(recentStandHarvests(all, stand, 2).map((h) => h.species)).toEqual(['Newest', 'Middle']);
+  });
+
+  it('names members by user id, and anyone who has left as a former member', () => {
+    const name = memberNames([{ userId: 'user-a', displayName: 'Dale Morgan' }]);
+    expect(name('user-a')).toBe('Dale Morgan');
+    expect(name('user-gone')).toBe(FORMER_MEMBER);
   });
 });

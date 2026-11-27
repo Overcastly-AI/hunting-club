@@ -12,6 +12,7 @@ import {
   sunReadout,
   type Area,
   type Club,
+  type Harvest,
   type Invite,
   type MapPack,
   type Member,
@@ -32,6 +33,7 @@ import { Banner, Button, ButtonLink, EmptyState, Field, Input } from '../compone
 import { basemapPack, useBasemap } from '../map/basemap';
 import { ClubMap, FIT_PADDING } from '../map/ClubMap';
 import { boundsCentre, planBounds } from '../map/plan';
+import { StandDrawer } from '../map/StandDrawer';
 import { pageHref, PAGES, type PagePath } from '../shell/routes';
 import { useReloadShell } from '../shell/shellClub';
 
@@ -76,6 +78,8 @@ interface ClubDetails {
   subscription?: Subscription | null;
   invites?: readonly Invite[];
   mapPacks?: readonly MapPack[];
+  /** For a stand's recent harvests (StandDrawer). */
+  harvests?: readonly Harvest[];
 }
 
 /** One failed list must not blank the page: it reads as "not loaded" (undefined). */
@@ -84,15 +88,18 @@ const settle = <T,>(load: Promise<T>) => load.catch(() => undefined);
 function useClubDetails(api: ClubApi) {
   return useAsync(
     async (): Promise<ClubDetails> => {
-      const [members, stands, areas, subscription, invites, mapPacks] = await Promise.all([
-        settle(api.listMembers()),
-        settle(api.listStands()),
-        settle(api.listAreas()),
-        settle(api.getSubscription()),
-        settle(api.listInvites()),
-        settle(api.listMapPacks()),
-      ]);
-      return { members, stands, areas, subscription, invites, mapPacks };
+      const [members, stands, areas, subscription, invites, mapPacks, harvests] = await Promise.all(
+        [
+          settle(api.listMembers()),
+          settle(api.listStands()),
+          settle(api.listAreas()),
+          settle(api.getSubscription()),
+          settle(api.listInvites()),
+          settle(api.listMapPacks()),
+          settle(api.listHarvests()),
+        ],
+      );
+      return { members, stands, areas, subscription, invites, mapPacks, harvests };
     },
     [api],
     { keepLastOn: isOffline },
@@ -161,6 +168,9 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
   const overdue = place ? overdueAt(now, place, club.overdueGraceMinutes, SUN) : undefined;
   const facts = clubFacts(club, loaded);
   const basemap = useBasemap(basemapPack(loaded.mapPacks));
+  // The stand whose details are open (tapped on the map); read-only, stands are edited in the app.
+  const [standId, setStandId] = useState<string | null>(null);
+  const stand = stands.find((s) => s.id === standId) ?? null;
 
   return (
     <section className="clubview" aria-labelledby="club-title">
@@ -173,6 +183,8 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
         basemap={basemap}
         insets={{ top: PLATE_TOP + plateSize.height + FIT_PADDING }}
         empty={details.status === 'ready' ? MAP_EMPTY : null}
+        onStandSelect={(s) => setStandId(s.id)}
+        selectedStandId={stand?.id ?? null}
       >
         <div className="clubview__plate" ref={plate}>
           <div className="clubview__title">
@@ -184,6 +196,13 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
           <ConditionsStrip sun={sun} overdueAt={overdue} />
         </div>
       </ClubMap>
+      <StandDrawer
+        stand={stand}
+        onClose={() => setStandId(null)}
+        areas={loaded.areas}
+        harvests={loaded.harvests}
+        members={loaded.members}
+      />
       <div className="clubview__side">
         {props.created ? (
           <Banner tone="success" live title="Club created">
