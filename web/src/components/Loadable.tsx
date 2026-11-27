@@ -1,36 +1,51 @@
 import type { ReactNode } from 'react';
 import { Loading } from './Loading';
 import { NoClub } from './NoClub';
+import { Banner, Button } from './ui';
 import type { AsyncResult } from './useAsync';
+
+/** Said while a reload failed for lack of a connection and the last good data stays up. */
+export const STALE_NOTICE = 'No connection to the club service. Showing what was last loaded.';
 
 /**
  * Renders loading and error states the same way on every page. `noClub` replaces the
  * standard "Create your club first" for a page that has something to show before a club.
+ * `padded`: on a page where the map is the page, the states get the page's padding.
  */
 export function Loadable<T>(props: {
   state: AsyncResult<T>;
   children: (value: T) => ReactNode;
   noClub?: ReactNode;
+  padded?: boolean;
 }) {
   const { state } = props;
-  if (state.status === 'loading') return <Loading />;
-  if (state.status === 'noClub') return props.noClub ?? <NoClub />;
+  const pad = (node: ReactNode) => (props.padded ? <div className="page-pad">{node}</div> : node);
+  if (state.status === 'loading') return pad(<Loading />);
+  if (state.status === 'noClub') return pad(props.noClub ?? <NoClub />);
   if (state.status === 'error') {
-    return (
-      <div role="alert" className="row">
-        <p className="error">{state.message}</p>
-        <button className="button" type="button" onClick={state.reload}>
-          Try again
-        </button>
-      </div>
+    return pad(
+      <div role="alert">
+        <Banner
+          tone="danger"
+          action={
+            <Button size="sm" onClick={state.reload}>
+              Try again
+            </Button>
+          }
+        >
+          {state.message}
+        </Banner>
+      </div>,
     );
   }
   return (
     <>
       {state.stale ? (
-        <p className="banner" role="status">
-          No connection to the club service. Showing what was last loaded.
-        </p>
+        <div className="stale-notice">
+          <Banner tone="warning" live>
+            {STALE_NOTICE}
+          </Banner>
+        </div>
       ) : null}
       {props.children(state.value)}
     </>

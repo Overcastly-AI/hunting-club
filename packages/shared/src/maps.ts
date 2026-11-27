@@ -172,15 +172,31 @@ export function mapPackUrl(env: keyof typeof WEB_DOMAINS, pack: { s3Key: string 
   return `https://${WEB_DOMAINS[env]}/${pack.s3Key}`;
 }
 
-/** Bounding box of a GeoJSON Polygon or MultiPolygon (a club's property line). */
-export function polygonBounds(polygon: { coordinates: unknown }): Bounds {
-  const points: [number, number][] = [];
+/** A ring of [lon, lat] points. */
+export type Ring = [lon: number, lat: number][];
+
+/**
+ * Every ring of a GeoJSON Polygon or MultiPolygon (outer rings and holes), as [lon, lat]
+ * points; anything that is not a position is skipped, so a malformed polygon gives fewer
+ * rings, never a crash.
+ */
+export function polygonRings(polygon: { coordinates: unknown }): Ring[] {
+  const rings: Ring[] = [];
+  const isPosition = (value: unknown): value is [number, number] =>
+    Array.isArray(value) && typeof value[0] === 'number' && typeof value[1] === 'number';
   const walk = (value: unknown) => {
-    if (Array.isArray(value) && typeof value[0] === 'number' && typeof value[1] === 'number') {
-      points.push([value[0], value[1]]);
-    } else if (Array.isArray(value)) value.forEach(walk);
+    if (!Array.isArray(value)) return;
+    if (value.length > 0 && value.every(isPosition)) {
+      rings.push(value.map(([lon, lat]) => [lon, lat]));
+    } else value.forEach(walk);
   };
   walk(polygon.coordinates);
+  return rings;
+}
+
+/** Bounding box of a GeoJSON Polygon or MultiPolygon (a club's property line). */
+export function polygonBounds(polygon: { coordinates: unknown }): Bounds {
+  const points = polygonRings(polygon).flat();
   if (points.length === 0) throw new Error('polygon has no coordinates');
   const lons = points.map((p) => p[0]);
   const lats = points.map((p) => p[1]);

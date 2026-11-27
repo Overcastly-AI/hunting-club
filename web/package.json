@@ -13,6 +13,7 @@
     "test": "vitest run --configLoader runner"
   },
   "dependencies": {
+    "@huntclub/core": "*",
     "@huntclub/design": "*",
     "@huntclub/mesh": "*",
     "@huntclub/shared": "*",

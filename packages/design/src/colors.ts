@@ -54,6 +54,19 @@ export const boundary = {
 export type ColorToken = keyof typeof colors;
 
 /**
+ * The club plan: the map the web admin draws from the club's own geometry (property line,
+ * areas, stands) where it has no imagery. Its ground is the aerial's base tone and its
+ * distance grid the aerial's contour tone (the direction's world), the same in both themes,
+ * like the picture.
+ */
+export const mapPlanColors = {
+  /** The ground under the property. */
+  mapGround: '#3B3A2D',
+  /** The distance grid, drawn faintly over the ground. */
+  mapGrid: '#D8C9A0',
+} as const;
+
+/**
  * The little pictures of each basemap in the phone's layers sheet (docs/DESIGN.md, "Layers as a
  * sheet: three basemap thumbnails"). They are imagery, not interface, so they are the same in
  * both themes; the values are the mockups' aerial stand-in and topo swatch (design-map-first

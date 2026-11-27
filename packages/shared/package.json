@@ -16,7 +16,8 @@
     "./pricing": "./src/pricing.ts",
     "./testing": "./src/testing.ts",
     "./schema-runtime": "./src/schemaRuntime.ts",
-    "./signInCopy": "./src/signInCopy.ts"
+    "./signInCopy": "./src/signInCopy.ts",
+    "./useCooldown": "./src/useCooldown.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -33,5 +34,8 @@
     "jest": "~30.5.2",
     "ts-jest": "^29.4.15",
     "typescript": "~6.0.3"
+  },
+  "peerDependencies": {
+    "react": "*"
   }
 }

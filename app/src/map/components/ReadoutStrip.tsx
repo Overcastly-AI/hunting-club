@@ -1,4 +1,4 @@
-import type { ConditionsReadout, Wording } from '@huntclub/shared';
+import { READOUT_LABELS, type ConditionsReadout, type Wording } from '@huntclub/shared';
 import { Sunrise, Sunset, type LucideIcon } from 'lucide-react-native';
 import { Text, View, useWindowDimensions } from 'react-native';
 
@@ -68,10 +68,15 @@ type CellSpec = {
 
 /** The four cells, in the order the site, the admin and the phone all use. */
 const cells = (readout: ConditionsReadout): CellSpec[] => [
-  { label: 'Sunrise', icon: Sunrise, value: readout.sunrise.short },
-  { label: 'Sunset', icon: Sunset, value: readout.sunset.short },
-  { label: 'Wind from', value: readout.wind.short, towardDeg: readout.wind.towardDeg, wide: true },
-  { label: 'Temp', value: readout.temperature.short },
+  { label: READOUT_LABELS.sunrise, icon: Sunrise, value: readout.sunrise.short },
+  { label: READOUT_LABELS.sunset, icon: Sunset, value: readout.sunset.short },
+  {
+    label: READOUT_LABELS.wind,
+    value: readout.wind.short,
+    towardDeg: readout.wind.towardDeg,
+    wide: true,
+  },
+  { label: READOUT_LABELS.temperature, value: readout.temperature.short },
 ];
 
 function Cell({
