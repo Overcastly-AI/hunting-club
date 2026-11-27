@@ -6,6 +6,7 @@ import {
   UNKNOWN_SPOKEN,
   UNKNOWN_VALUE,
   clockReadout,
+  coordinatesReadout,
   conditionsReadout,
   sunReadout,
   temperatureReadout,
@@ -198,6 +199,23 @@ describe('conditionsReadout', () => {
       untilSunset: null,
       wind: { ...UNKNOWN, fromDeg: null, towardDeg: null },
       temperature: UNKNOWN,
+    });
+  });
+});
+
+describe('coordinatesReadout', () => {
+  it('reads out a stand to five places with its hemispheres', () => {
+    expect(coordinatesReadout(40.0035, -89.994)).toEqual({
+      short: '40.00350° N, 89.99400° W',
+      spoken: '40.00350 degrees north, 89.99400 degrees west',
+    });
+    expect(coordinatesReadout(-33.8688, 151.2093).short).toBe('33.86880° S, 151.20930° E');
+  });
+
+  it('says not known for a missing coordinate', () => {
+    expect(coordinatesReadout(Number.NaN, 0)).toEqual({
+      short: UNKNOWN_VALUE,
+      spoken: UNKNOWN_SPOKEN,
     });
   });
 });

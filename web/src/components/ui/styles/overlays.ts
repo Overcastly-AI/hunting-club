@@ -1,8 +1,8 @@
 // Dialog (native <dialog>), Toast and Tooltip (Radix), Popover (a disclosure), Tabs (Radix), in the
 // map-first look (docs/DESIGN.md). Things that float over the page are plates with the floating shadow; a
 // tooltip is inverted (plate on ink); tabs are words with the orange bar under the chosen one.
-import { MOBILE_TAB_BAR_HEIGHT } from '../sizes';
-import { color, focusRing, gap, HAIR, PHONE, TAP, text, transition } from './shared';
+import { MOBILE_TAB_BAR_HEIGHT, SHELL } from '../sizes';
+import { color, focusRing, gap, HAIR, PHONE, TABLET_UP, TAP, text, transition } from './shared';
 
 /** Floating layers (toasts): a plate with a hairline edge and the popover shadow. */
 const popover = `background: ${color('plate')}; border: ${HAIR}; box-shadow: ${color('shadowPopover')};
@@ -24,6 +24,14 @@ html.ui-scroll-lock { overflow: hidden; }
 .ui-dialog__footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: ${gap(2)};
   padding: ${gap(3)} ${gap(5)} ${gap(4)}; border-top: ${HAIR}; }
 @keyframes ui-fade-in { from { opacity: 0; } }
+@keyframes ui-slide-in-end { from { opacity: 0; translate: ${gap(6)} 0; } }
+/* Side panel (tablet up): full height down the right edge, as wide as My club's side panel, with
+   the sheet's 16 px corners on its map side. On phones it is the same bottom sheet as any dialog. */
+${TABLET_UP} {
+  .ui-dialog--side { margin: 0 0 0 auto; width: min(${SHELL.sidePanelWidth}px, 100vw); height: 100dvh;
+    max-height: 100dvh; border-width: 0 0 0 1px; border-radius: var(--radius-xl) 0 0 var(--radius-xl); }
+  .ui-dialog--side[open] { animation: ui-slide-in-end var(--motion-base) var(--motion-easing); }
+}
 /* Phones: a sheet rising from the bottom (16 px top corners), the main action on top, full width. */
 ${PHONE} {
   .ui-dialog { width: 100%; max-width: 100%; margin: auto 0 0; max-height: calc(100dvh - ${gap(8)});

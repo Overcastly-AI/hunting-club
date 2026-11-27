@@ -1,18 +1,12 @@
-import {
-  pluralize,
-  STAND_STATUS_LABELS,
-  STAND_TYPE_LABELS,
-  type Area,
-  type Club,
-  type Stand,
-} from '@huntclub/shared';
+import { pluralize, STAND_TYPE_LABELS, type Area, type Club, type Stand } from '@huntclub/shared';
 import { MapPin } from 'lucide-react';
 import type { ClubApi } from '../api/types';
 import { Loadable } from '../components/Loadable';
 import { Page } from '../components/Page';
 import { standIcon } from '../components/standIcons';
 import { isOffline, useAsync } from '../components/useAsync';
-import { Badge, DataTable, EmptyState } from '../components/ui';
+import { StandStatus } from '../components/StandStatus';
+import { DataTable, EmptyState } from '../components/ui';
 import { ICON_SIZE } from '@huntclub/design';
 import { ClubMap } from '../map/ClubMap';
 
@@ -92,12 +86,7 @@ function Places(props: { stands: readonly Stand[]; areas: readonly Area[]; club:
               // Closed stands are hidden from check-in in the app (store: active = 1).
               key: 'check-in',
               header: 'Check-in',
-              cell: (s) =>
-                s.active ? (
-                  <Badge tone="success">{STAND_STATUS_LABELS.open}</Badge>
-                ) : (
-                  <Badge tone="neutral">{STAND_STATUS_LABELS.closed}</Badge>
-                ),
+              cell: (s) => <StandStatus active={s.active} />,
             },
           ]}
         />

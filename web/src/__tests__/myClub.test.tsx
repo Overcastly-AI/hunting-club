@@ -29,6 +29,9 @@ const strip = () =>
     .getAllByRole('listitem')
     .map((cell) => cell.textContent);
 
+/** The map's stands: buttons that open each stand's details. */
+const stands = () => screen.getByRole('group', { name: 'Stands' });
+
 describe('My club', () => {
   it('lists what needs the admin, most urgent first, each with the page that deals with it', async () => {
     const data = sampleData();
@@ -155,7 +158,7 @@ describe('My club', () => {
     try {
       await renderSignedIn();
       const map = await screen.findByRole('img', { name: /^Map of Oak Ridge Hunt Club/ });
-      await waitFor(() => expect(map.querySelectorAll('.plan__stand')).toHaveLength(3));
+      await waitFor(() => expect(stands().querySelectorAll('.plan__stand')).toHaveLength(3));
       expect(map.querySelector('.plan__grid')).toBeTruthy();
       expect(map.querySelectorAll('image')).toHaveLength(0);
     } finally {
@@ -169,7 +172,8 @@ describe('My club', () => {
     expect(map.getAttribute('aria-label')).toBe(
       'Map of Oak Ridge Hunt Club: the property line, 2 areas and 3 stands.',
     );
-    await waitFor(() => expect(map.querySelectorAll('.plan__stand')).toHaveLength(3));
+    // Stands open their details, so they are buttons on the layer over the picture.
+    await waitFor(() => expect(stands().querySelectorAll('.plan__stand')).toHaveLength(3));
     expect(map.querySelectorAll('.plan__area')).toHaveLength(2);
     expect(map.querySelectorAll('.plan__line')).toHaveLength(1);
     expect(screen.getByText('640 acres, 3 stands, 2 areas')).toBeTruthy();

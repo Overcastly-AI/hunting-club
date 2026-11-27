@@ -5,6 +5,7 @@ import {
   harvestReport,
   isSeason,
   localDay,
+  memberNames,
   type Area,
   type CountRow,
   type Harvest,
@@ -31,10 +32,7 @@ import {
 } from '../components/ui';
 import { toCsv } from '../csv';
 import { saveFile } from '../download';
-import { formatDate } from '../format';
-
-/** The admin's own time zone: harvest days and weeks are local calendar days. */
-const TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
+import { formatDay, TIME_ZONE } from '../format';
 
 interface ClubHarvests {
   harvests: readonly Harvest[];
@@ -201,15 +199,6 @@ function CountTable(props: { title: string; heading: string; rows: readonly Coun
     </section>
   );
 }
-
-/** Display name by user id; people who have left the club are not named. */
-function memberNames(members: readonly Member[]) {
-  const byId = new Map(members.map((m) => [m.userId, m.displayName]));
-  return (userId: string) => byId.get(userId) ?? 'Former member';
-}
-
-/** "November 15, 2026" from a calendar day (no time zone shift). */
-const formatDay = (day: string) => formatDate(`${day}T00:00:00.000Z`);
 
 /** One row per harvest in the season: what a club keeps for its own records. */
 function harvestCsv(
