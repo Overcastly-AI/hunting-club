@@ -10,10 +10,15 @@ import { SAMPLE_CLUB, SAMPLE_CONDITIONS, SAMPLE_LABELS, SAMPLE_SCALE } from './s
 /** At this width and below the hero stacks: the map on top, the pitch rising over it as a sheet. */
 export const MAP_PHONE_MAX_WIDTH = 700;
 
-/** Which part of the aerial each layout frames: its top-left corner, in aerial px. */
+/**
+ * Which part of the aerial each layout frames: its top-left corner, in aerial px. Chosen with
+ * HERO_HEIGHT so no marker or the scale bar sits under a floating plate: on a wide screen the
+ * club sits between the pitch and the readout strip, which has the band under the property to
+ * itself; on a phone the club sits below the strip. site/scripts/shoot.mjs checks it.
+ */
 export const MAP_FRAME = {
-  wide: [240, 350],
-  phone: [790, 470],
+  wide: [240, 360],
+  phone: [790, 368],
 } as const satisfies Record<string, AerialPoint>;
 
 /**
@@ -23,7 +28,7 @@ export const MAP_FRAME = {
 export const MAP_COVERED_WIDTH = 1920;
 
 /** The hero's height on a wide screen, and the map's height above the sheet on a phone. */
-export const HERO_HEIGHT = { wide: 664, phone: 300 } as const;
+export const HERO_HEIGHT = { wide: 720, phone: 400 } as const;
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 const at = ([x, y]: AerialPoint) => `left: ${x}px; top: ${y}px;`;

@@ -583,10 +583,18 @@ describe('home page map', () => {
   it('explains the map with the freshness-ring legend, drawn with the same markers', () => {
     const legend = doc.querySelector('dl.legend')!;
     const rows = [...legend.querySelectorAll(':scope > div')];
-    // The symbols are pictures of the words beside them: hidden from screen readers, so each
-    // row reads as a plain term and definition (axe: definition-list).
-    expect(legend.querySelectorAll('.sym:not([aria-hidden="true"])')).toHaveLength(0);
-    expect(rows.map((r) => r.querySelector('dt')!.textContent)).toEqual(LEGEND.map((l) => l.title));
+    // Valid HTML: the dl holds only divs, each exactly one dt then one dd. The symbol is inside
+    // the dt and hidden from screen readers (a picture of the words beside it).
+    expect([...legend.children].map((c) => c.tagName)).toEqual(rows.map(() => 'DIV'));
+    for (const row of rows) {
+      expect([...row.children].map((c) => c.tagName)).toEqual(['DT', 'DD']);
+      const sym = row.querySelector('dt > .sym')!;
+      expect(sym.getAttribute('aria-hidden')).toBe('true');
+    }
+    expect(legend.querySelectorAll('.sym')).toHaveLength(LEGEND.length);
+    expect(rows.map((r) => r.querySelector('dt > .term')!.textContent)).toEqual(
+      LEGEND.map((l) => l.title),
+    );
     for (const freshness of ['fresh', 'stale', 'faded'] as const) {
       expect(legend.querySelector(`.mk.hunter.${RING_CLASS[freshness]}`)).not.toBeNull();
     }

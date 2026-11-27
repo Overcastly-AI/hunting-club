@@ -166,10 +166,13 @@ p a { color: var(--theme-accent-text); font-weight: 650; }
 
 /* The map legend: each line has its symbol drawn on map ground. */
 .legend { margin: 0; }
-.legend > div { display: grid; grid-template-columns: 76px 1fr; gap: 0 18px; align-items: center; }
-.legend dt { grid-column: 2; align-self: end; ${textStyleCss(textScale.title3)}; font-stretch: 90%; }
-.legend dd { grid-column: 2; align-self: start; margin: 0; color: var(--theme-text-secondary); }
-.legend .sym { grid-row: 1 / span 2; grid-column: 1; }
+/* Each row is a dt/dd pair; the dt holds the symbol and the term on a subgrid of the row. */
+.legend > div { display: grid; grid-template-columns: 76px 1fr; grid-template-rows: auto auto; gap: 0 18px; }
+.legend dt { grid-column: 1 / -1; grid-row: 1 / span 2; display: grid; grid-template-columns: subgrid;
+  grid-template-rows: subgrid; ${textStyleCss(textScale.title3)}; font-stretch: 90%; }
+.legend .sym { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
+.legend .term { grid-column: 2; grid-row: 1; align-self: end; }
+.legend dd { grid-column: 2; grid-row: 2; align-self: start; margin: 0; color: var(--theme-text-secondary); }
 
 /* Steps: a real sequence, so numbered. */
 .steps { counter-reset: step; margin: 26px 0 0; }

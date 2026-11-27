@@ -50,7 +50,7 @@ const PAGES = [
 ];
 const THEMES = { dark: 'dark', daylight: 'light' };
 // Widths checked for sideways scroll, and (on the home page) for a full-bleed map hero.
-const CHECK_WIDTHS = [NARROWEST_PHONE, 1024, 1280, 1440, 1600, MAP_COVERED_WIDTH];
+const CHECK_WIDTHS = [NARROWEST_PHONE, PHONE, 768, 1024, 1280, 1440, 1600, MAP_COVERED_WIDTH];
 const TYPES = {
   '.html': 'text/html',
   '.css': 'text/css',
@@ -176,6 +176,45 @@ try {
             el.textContent.trim().slice(0, 24),
             parseFloat(getComputedStyle(el).fontSize),
           ]);
+        // Every marker (its shape and plate) and the scale bar, where they show in the map
+        // window, must stay clear of the plates floating over it (the pitch, the readout strip).
+        // On a phone the pitch is a sheet under the map, not over it: the window ends at its top.
+        const box = (r) => ({ left: r.left, top: r.top, right: r.right, bottom: r.bottom });
+        const pitch = document.querySelector('.hero .pitch');
+        const sheet = getComputedStyle(pitch).position !== 'absolute';
+        const windowBottom = sheet ? pitch.getBoundingClientRect().top : hero.bottom;
+        const clip = (r) => ({
+          left: Math.max(r.left, hero.left),
+          top: Math.max(r.top, hero.top),
+          right: Math.min(r.right, hero.right),
+          bottom: Math.min(r.bottom, windowBottom),
+        });
+        const meets = (a, b) =>
+          a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+        const plates = [...document.querySelectorAll('.hero > .plate')]
+          .filter((el) => !(sheet && el === pitch))
+          .map((el) => ({
+            name: el.className,
+            ...box(el.getBoundingClientRect()),
+          }));
+        const marks = [
+          ...[...document.querySelectorAll('.hero .world .mk')].map((mk) => ({
+            name: mk.textContent.trim() || mk.className,
+            parts: [...mk.querySelectorAll('.dot, .sq, .tag')],
+          })),
+          { name: 'scale bar', parts: [document.querySelector('.hero .scale')] },
+        ];
+        const covered = [];
+        for (const mark of marks) {
+          for (const part of mark.parts) {
+            const r = part.getBoundingClientRect();
+            if (getComputedStyle(part).display === 'none' || r.width === 0) continue;
+            const seen = clip(box(r));
+            if (seen.right <= seen.left || seen.bottom <= seen.top) continue;
+            for (const plate of plates)
+              if (meets(seen, plate)) covered.push(`${mark.name} under ${plate.name}`);
+          }
+        }
         const wrap = document.querySelector('main .wrap');
         const column = wrap.clientWidth - parseFloat(getComputedStyle(wrap).paddingLeft) * 2;
         return {
@@ -184,6 +223,7 @@ try {
             right: Math.max(innerWidth - hero.right, hero.right - map.right),
           },
           words,
+          covered: [...new Set(covered)],
           column,
         };
       });
@@ -196,6 +236,8 @@ try {
         failures.push(
           `Hero text under ${fontSize.mapLabelMin}px at ${checkWidth}px: ${JSON.stringify(small)}`,
         );
+      if (home.covered.length)
+        failures.push(`Covered at ${checkWidth}px (${theme}): ${home.covered.join('; ')}`);
       if (home.column > CONTENT_MAX_WIDTH)
         failures.push(`The content column is ${home.column}px at ${checkWidth}px`);
       await check.close();
@@ -210,5 +252,5 @@ if (failures.length) {
   process.exit(1);
 }
 console.log(
-  `No page scrolls sideways; the home map hero is full-bleed with map text of ${fontSize.mapLabelMin}px or more, and the content column at most ${CONTENT_MAX_WIDTH}px, at ${CHECK_WIDTHS.join(', ')}px. The phone menu opens and closes.`,
+  `No page scrolls sideways; the home map hero is full-bleed with map text of ${fontSize.mapLabelMin}px or more and no marker or scale bar under a plate, and the content column at most ${CONTENT_MAX_WIDTH}px, at ${CHECK_WIDTHS.join(', ')}px. The phone menu opens and closes.`,
 );
