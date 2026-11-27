@@ -114,6 +114,9 @@ Owner rule (2026-11-26): Grok Bot runs UAT and reviews UI decisions by email. Ev
 
 | Date | Thread / subject | Finding | Decision | PR |
 |---|---|---|---|---|
+| 2026-11-27 | Owner | Rejected SaaS-kit look, then First Light / Tag Board; asked for onX-style research | frontend-design skill added (#84); map-first direction approved (docs/DESIGN.md) | #84 |
+| 2026-11-27 | Redesign | Map-first built: logic #85, tokens #86, app #87, admin #88, site #89; all deployed to dev (run 31, smoke green); Grok asked to review | Done | #85–#89 |
+| 2026-11-27 | Open (owner) | Dawn scene unused after redesign: delete or reuse? How to see the app on a phone (TestFlight $99 or Android)? | Waiting on owner | — |
 | 2026-11-26 | UAT retest 23:03 (deploy 0971fd7) | 0 Blocker/Major; all fix-note items, public pages, headers, dawn, admin pass | Closed | #64–#77 |
 | 2026-11-26 | UAT 23:03 | MINOR invite page doesn't name club; POLISH /join no/invalid invite | Accepted: club name in invite fragment (shared encodeJoinUrl, textContent), invalid-invite state | #80 |
 | 2026-11-26 | UAT 23:03 | MINOR dawn SVG console errors (ridge Q) | Accepted: ridge() fix + path-parse test (no art change) | #80 |
