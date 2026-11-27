@@ -6,7 +6,7 @@
  * screens in the light theme, where every colour must come from the light theme's tokens.
  */
 import { darkTheme, lightTheme, type ThemePreference } from '@huntclub/design';
-import { privacyPolicy, RESEND_CODE_COOLDOWN_SECONDS } from '@huntclub/shared';
+import { DAY_MS, privacyPolicy, RESEND_CODE_COOLDOWN_SECONDS } from '@huntclub/shared';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { getPermissionsAsync, requestPermissionsAsync } from 'expo-notifications';
 import { readFileSync } from 'node:fs';
@@ -247,7 +247,7 @@ const CASES: Record<string, Case> = {
   'clubhouse board': {
     ui: () => (
       <ClubEntitlementContext.Provider
-        value={{ clubId: 'c1', clubName: 'Oak Ridge', featuresUntil: Date.now() + 86_400_000 }}
+        value={{ clubId: 'c1', clubName: 'Oak Ridge', featuresUntil: Date.now() + DAY_MS }}
       >
         <BoardScreen />
       </ClubEntitlementContext.Provider>

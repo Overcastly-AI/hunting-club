@@ -1,10 +1,13 @@
-import { UNKNOWN_SPOKEN, UNKNOWN_VALUE } from '../conditions/display';
 import type { LatLon } from '@huntclub/mesh';
-import { positionAge } from '@huntclub/core';
+import {
+  UNKNOWN_SPOKEN,
+  UNKNOWN_VALUE,
+  describeAge,
+  positionAge,
+  temperatureReadout,
+  windReadout,
+} from '@huntclub/shared';
 
-import { describeAge } from '../map/age';
-import { downwindBearing } from '../map/geo';
-import { degreesToCompassPoint } from './compass';
 import { currentHour, isOutdated } from './forecast';
 import type { CachedForecast } from './types';
 
@@ -36,8 +39,7 @@ export const UNKNOWN_WEATHER: WeatherDisplay = {
   updatedSpoken: null,
 };
 
-export const CALM = 'Calm';
-
+/** The cached forecast hour that covers now, worded by the shared readout (readout.ts). */
 export function weatherDisplay(
   forecast: CachedForecast | null,
   place: LatLon | null,
@@ -46,32 +48,17 @@ export function weatherDisplay(
   const hour = currentHour(forecast, place, now);
   if (!forecast || !hour) return UNKNOWN_WEATHER;
 
-  const mph = Math.round(hour.windMph);
-  const from = mph > 0 ? hour.windFromDeg : null;
-  const toward = from === null ? null : downwindBearing(from);
-  const temperature = `${Math.round(hour.temperatureF)}°F`;
+  const wind = windReadout(hour.windMph, hour.windFromDeg);
+  const temperature = temperatureReadout(hour.temperatureF);
   const age = isOutdated(forecast, now) ? describeAge(positionAge(forecast.fetchedAt, now)) : null;
 
-  let wind: string;
-  let windSpoken: string;
-  if (mph === 0) {
-    wind = CALM;
-    windSpoken = 'calm';
-  } else if (from === null || toward === null) {
-    wind = `${mph} mph`;
-    windSpoken = wind;
-  } else {
-    wind = `${degreesToCompassPoint(from)} ${mph} mph`;
-    windSpoken = `${mph} mph from ${degreesToCompassPoint(from)}, blowing toward ${degreesToCompassPoint(toward)}`;
-  }
-
   return {
-    wind,
-    windSpoken,
-    windFromDeg: from,
-    windTowardDeg: toward,
-    temperature,
-    temperatureSpoken: temperature,
+    wind: wind.short,
+    windSpoken: wind.spoken,
+    windFromDeg: wind.fromDeg,
+    windTowardDeg: wind.towardDeg,
+    temperature: temperature.short,
+    temperatureSpoken: temperature.spoken,
     updated: age ? `Updated ${age.short}` : null,
     updatedSpoken: age ? `forecast updated ${age.spoken}` : null,
   };

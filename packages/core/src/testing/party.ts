@@ -2,7 +2,7 @@
  * Test harness: a party of radios on one FakeAir, each phone running the
  * core services. Shared by every core test file.
  */
-import type { CalendarDay, SunApi } from '../sun';
+import type { CalendarDay, SunApi } from '@huntclub/shared';
 import { connectedMesh, NODES, seededRandom } from '@huntclub/mesh/testing';
 import type { FakeAirOptions, FakeRadio, FakeRadioOptions } from '@huntclub/mesh/testing';
 import {

@@ -1,7 +1,5 @@
-import { STAND_TYPE_LABELS } from '../domain/stands';
-import { classifyFreshness, positionAge } from '@huntclub/core';
+import { STAND_TYPE_LABELS, describeFreshness } from '@huntclub/shared';
 
-import { describeAge } from './age';
 import type { HunterOnMap, HunterPlace, OpenStandOnMap } from './types';
 
 /** Shown under a hunter who is walking. */
@@ -31,13 +29,9 @@ export function placeLabel(place: HunterPlace): string {
 
 /** Screen-reader label, for example "Creek Stand, Dale, updated 2 minutes ago". */
 export function hunterAccessibilityLabel(hunter: HunterOnMap, now: number): string {
-  const age = positionAge(hunter.heardAt, now);
-  const parts = [
-    placeLabel(hunter.place),
-    hunter.displayName,
-    `updated ${describeAge(age).spoken}`,
-  ];
-  if (classifyFreshness(age) === 'faded') parts.push('last known position');
+  const heard = describeFreshness(hunter.heardAt, now);
+  const parts = [placeLabel(hunter.place), hunter.displayName, `updated ${heard.spoken}`];
+  if (heard.freshness === 'faded') parts.push('last known position');
   return parts.join(', ');
 }
 

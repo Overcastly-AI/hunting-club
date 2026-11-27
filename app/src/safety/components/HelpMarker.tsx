@@ -1,7 +1,7 @@
 import { Marker } from '@maplibre/maplibre-react-native';
 import { StyleSheet, View } from 'react-native';
 
-import { describeAge } from '../../map/age';
+import { describeAge } from '@huntclub/shared';
 import { HaloText } from '../../map/components/HaloText';
 import { colors, sizes, spacing, textStyles } from '../../theme';
 import type { IncomingAlert } from '../alerts';

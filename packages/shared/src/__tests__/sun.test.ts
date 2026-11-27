@@ -1,4 +1,4 @@
-import { MINUTE_MS } from '../config';
+import { MINUTE_MS } from '../time';
 import { localCalendarDay, sunTimes } from '../sun';
 
 function expectNear(actual: Date, expectedIso: string, toleranceMinutes = 2) {

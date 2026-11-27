@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { Button } from '../../components/Button';
-import { formatShortDate } from '../../conditions/clock';
+import { formatShortDate } from '@huntclub/shared';
 import { makeStyles, spacing, textStyles } from '../../theme';
 import { BASEMAP_IDS, BASEMAPS, type BasemapId } from '../basemaps';
 import type { DownloadRequest } from '../offline';
