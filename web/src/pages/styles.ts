@@ -89,17 +89,17 @@ const clubview = `
 .clubview__plate .ui-stat-grid { border: 0; border-top: ${HAIR}; border-radius: 0; }
 .clubview__title { padding: ${gap(3)} ${gap(4)}; }
 .clubview__title h1 { margin: 0; }
-.clubview__title h1:focus { outline: none; }
 .clubview__facts { ${text('body')}; color: ${color('textSecondary')}; margin: 2px 0 0; }
 .clubview__side { position: relative; z-index: 1; display: grid; align-content: start; gap: ${gap(6)};
   margin-top: -${gap(4)}; padding: ${gap(5)} ${gap(4)} ${gap(8)}; background: ${color('plate')};
   border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
 .clubview__overdue { ${text('body')}; color: ${color('textSecondary')}; margin: 0; padding-top: ${gap(3)};
   border-top: ${HAIR}; }
-.clubview__overdue strong { ${text('readoutInline')}; color: ${color('text')}; }
 .side-section__title { ${text('title2')}; display: flex; justify-content: space-between; align-items: baseline;
   margin: 0 0 ${gap(2)}; }
 .side-section__count { color: ${color('textSecondary')}; }
+.side-section__empty-state { border-top: ${HAIR}; }
+.side-section__empty-state .ui-empty { padding: ${gap(4)} 0 ${gap(2)}; }
 .side-section__empty { ${text('body')}; color: ${color('textSecondary')}; margin: 0; padding-top: ${gap(3)}; border-top: ${HAIR}; }
 .rows { list-style: none; margin: 0; padding: 0; }
 .rows > li { border-top: ${HAIR}; }
@@ -148,6 +148,8 @@ const roster = `
 .person__name { ${text('label')}; font-weight: 750; }
 .person__role { ${text('caption')}; color: ${color('textSecondary')}; }
 .invite { display: grid; gap: ${gap(5)}; justify-items: start; }
+.invite__start { display: grid; gap: ${gap(4)}; justify-items: start; }
+.invite__start .form-note { margin: 0; }
 .invite__link { display: grid; gap: ${gap(3)}; width: 100%; }
 .invite__link .ui-input { ${text('code')}; text-overflow: ellipsis; }
 .invite__link .ui-button { justify-self: start; }
@@ -164,6 +166,8 @@ const billing = `
 .billing__free { ${text('body')}; display: flex; align-items: center; gap: ${gap(2)}; margin: ${gap(8)} 0 0;
   padding-top: ${gap(4)}; border-top: ${HAIR}; color: ${color('textSecondary')}; max-width: 760px; }
 .billing__free svg { flex: none; color: ${color('fresh')}; }
+.billing__invoices { margin-top: ${gap(3)}; }
+.billing__invoices .ui-empty { padding: ${gap(4)} 0 0; border-top: ${HAIR}; }
 `;
 
 export const pagesCss = () => [common, signin, clubview, besideMap, roster, qr, billing].join('\n');

@@ -5,7 +5,7 @@ import { App, SESSION_EXPIRED } from '../App';
 import { browserTokenStore } from '../tokenStore';
 import { fakeIdToken } from '@huntclub/shared/testing';
 import { fakeClubClient, fakeCognitoAuth, SIGNED_IN, sampleData } from '../testing/fakeClubApi';
-import { accountButton, signOutFromMenu } from '../testing/shell';
+import { accountButton, signIn, signOutFromMenu } from '../testing/shell';
 
 const KEY = SECURE_KEYS.webClubRefreshToken;
 
@@ -96,6 +96,49 @@ describe('the web session across reloads', () => {
     expect((await screen.findByText(SESSION_EXPIRED)).getAttribute('role')).toBe('status');
     expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeTruthy();
     expect(storage.getItem(KEY)).toBeNull();
+  });
+
+  it('gives a fresh visitor on a deep link plain sign-in, then opens that page', async () => {
+    const storage = memoryStorage();
+    const auth = fakeCognitoAuth();
+    auth.refresh = vi.fn(auth.refresh);
+    window.location.hash = '#/roster';
+    load(storage, auth);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeTruthy();
+    // Nothing was kept, so nothing expired: no notice, and no refresh was tried.
+    expect(screen.queryByText(SESSION_EXPIRED)).toBeNull();
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(auth.refresh).not.toHaveBeenCalled();
+    expect(window.location.hash).toBe('#/roster');
+    await signIn();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Roster' })).toBeTruthy();
+  });
+
+  it('says the session expired only for a kept one that did, and restores the deep link', async () => {
+    const storage = memoryStorage();
+    storage.setItem(KEY, 'expired');
+    const auth = fakeCognitoAuth();
+    const refresh = auth.refresh;
+    auth.refresh = vi.fn(async () => Promise.reject(new CognitoAuthError('code_expired')));
+    window.location.hash = '#/stands';
+    load(storage, auth);
+    expect(await screen.findByText(SESSION_EXPIRED)).toBeTruthy();
+    auth.refresh = refresh;
+    await signIn();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Stands and areas' })).toBeTruthy();
+  });
+
+  it('does not say expired when the refresh failed for another reason (no connection)', async () => {
+    const storage = memoryStorage();
+    storage.setItem(KEY, 'kept');
+    const auth = fakeCognitoAuth();
+    auth.refresh = vi.fn(async () => Promise.reject(new TypeError('Failed to fetch')));
+    window.location.hash = '#/roster';
+    load(storage, auth);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeTruthy();
+    expect(screen.queryByText(SESSION_EXPIRED)).toBeNull();
+    // The kept session is not thrown away for a network error.
+    expect(storage.getItem(KEY)).toBe('kept');
   });
 
   it('revokes and forgets the token on sign out', async () => {

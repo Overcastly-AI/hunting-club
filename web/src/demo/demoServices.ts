@@ -4,6 +4,7 @@
 import { ClubSession, DAY_MS, memoryTokenStore, type Member } from '@huntclub/shared';
 import { adminApi } from '../api/admin';
 import type { WebClubServices } from '../cloud';
+import { demoMapPack } from './demoPack';
 import {
   fakeClubClient,
   fakeCognitoAuth,
@@ -65,6 +66,8 @@ function demoData(scenario: DemoScenario, now: number): FakeClubData {
     createdAt: iso(now - DAY_MS),
     updatedAt: iso(now - DAY_MS),
   });
+  // A ready aerial pack, drawn under My club's plan (scripts/shoot.ts serves its archive).
+  data.mapPacks.push(demoMapPack(data.club!.id));
   const sub = data.subscription!;
   switch (scenario) {
     case 'trial':

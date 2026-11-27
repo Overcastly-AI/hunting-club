@@ -16,6 +16,7 @@ import {
   MapPackRequestSchema,
   estimateClubPack,
   mapPackKey,
+  polygonBounds,
   InviteCreateSchema,
   type Area,
   type Club,
@@ -79,7 +80,8 @@ function packFields(n: number, source: string) {
   return {
     id,
     clubId: CLUB,
-    bounds: [-90, 40, -89.99, 40.01] as [number, number, number, number],
+    // A pack covers the property line's box.
+    bounds: polygonBounds(SAMPLE_PROPERTY.boundary),
     minZoom: 8,
     maxZoom: 15,
     source,

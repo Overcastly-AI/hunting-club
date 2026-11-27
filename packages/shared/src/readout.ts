@@ -29,6 +29,14 @@ const UNKNOWN: Wording = { short: UNKNOWN_VALUE, spoken: UNKNOWN_SPOKEN };
 const known = (value: number | null | undefined): value is number =>
   typeof value === 'number' && Number.isFinite(value);
 
+/** A clock time as a readout shows and reads it ("5:08 PM"), or "—" when it is not known. */
+export function clockReadout(at: Date | number | null | undefined): Wording {
+  const ms = at instanceof Date ? at.getTime() : at;
+  if (!known(ms)) return UNKNOWN;
+  const short = formatClockTime(new Date(ms));
+  return { short, spoken: short };
+}
+
 export type WindReadout = Wording & {
   /** Where the wind blows from (for the scent cone); null when calm or unknown. */
   fromDeg: number | null;
@@ -116,13 +124,9 @@ export function sunReadout(
     const all: Wording = { short, spoken: short.toLowerCase() };
     return { sunrise: all, sunset: all, untilSunset: null };
   }
-  const clock = (date: Date): Wording => ({
-    short: formatClockTime(date),
-    spoken: formatClockTime(date),
-  });
   return {
-    sunrise: clock(times.sunrise),
-    sunset: clock(times.sunset),
+    sunrise: clockReadout(times.sunrise),
+    sunset: clockReadout(times.sunset),
     untilSunset: untilSunset(times.sunset, now),
   };
 }

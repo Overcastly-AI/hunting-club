@@ -40,6 +40,7 @@ const statTile = `
 .ui-stat-grid { ${plateFace} display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px;
   background: ${color('borderSubtle')}; overflow: hidden; list-style: none; margin: 0; padding: 0; }
 ${DESKTOP} { .ui-stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.ui-stat-grid.ui-stat-grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .ui-stat-grid > li { display: grid; background: ${color('plate')}; min-width: 0; }
 .ui-stat-tile { display: grid; align-content: start; gap: 2px; padding: ${gap(2)} ${gap(3)} ${gap(3)};
   color: ${color('text')}; text-decoration: none; min-width: 0; min-height: 76px; }

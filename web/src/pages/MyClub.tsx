@@ -1,15 +1,15 @@
 import { overdueAt } from '@huntclub/core';
+import { space } from '@huntclub/design';
 import {
   CLUB_PRICING,
   ClubCreateRequestSchema,
-  conditionsReadout,
   DISPLAY_NAME_MAX,
-  formatClockTime,
   INITIALS_MAX,
   needsYou,
   pluralize,
   SUBSCRIPTION_STATUS_LABELS,
   SUN,
+  sunReadout,
   type Area,
   type Club,
   type Invite,
@@ -20,6 +20,7 @@ import {
   type Stand,
   type Subscription,
 } from '@huntclub/shared';
+import { RadioTower } from 'lucide-react';
 import { useRef, useState, type FormEvent } from 'react';
 import type { ClubApi } from '../api/types';
 import { ConditionsStrip } from '../components/ConditionsStrip';
@@ -27,8 +28,9 @@ import { Loadable } from '../components/Loadable';
 import { Page, usePageHeadingFocus } from '../components/Page';
 import { isOffline, useAsync } from '../components/useAsync';
 import { useElementSize } from '../components/useElementSize';
-import { Banner, Button, ButtonLink, Field, Input } from '../components/ui';
-import { ClubMap } from '../map/ClubMap';
+import { Banner, Button, ButtonLink, EmptyState, Field, Input } from '../components/ui';
+import { basemapPack, useBasemap } from '../map/basemap';
+import { ClubMap, FIT_PADDING } from '../map/ClubMap';
 import { boundsCentre, planBounds } from '../map/plan';
 import { pageHref, PAGES, type PagePath } from '../shell/routes';
 import { useReloadShell } from '../shell/shellClub';
@@ -116,10 +118,20 @@ function clubFacts(club: Club, details: ClubDetails): string {
     .join(', ');
 }
 
+/** Where the club's plate floats from the map's top edge, in px (pages/styles.ts). */
+const PLATE_TOP = space[4];
+
+/** What the web says in place of live positions, which only ever travel over the mesh. */
+export const OUT_NOW_EMPTY = {
+  title: 'See who is out in the app',
+  line: 'Live positions travel only over the club radio mesh, so they show in the app, never on this website.',
+} as const;
+
 /**
  * The club on its map (docs/DESIGN.md, "Admin, My club"): the property line, areas and stands
- * edge to edge, with the club's plate and the conditions strip over it, and beside it what
- * needs the admin. Nobody's position is shown: positions only travel over the mesh.
+ * edge to edge over the club's own map pack, with the club's plate and the conditions strip on
+ * it, and beside it what needs the admin. Nobody's position is shown: positions only travel
+ * over the mesh, so "Out now" says where to see them.
  */
 function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
   const { club } = props;
@@ -133,9 +145,10 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
   const areas = loaded.areas ?? [];
   const bounds = planBounds({ boundary: club.boundary, areas, stands });
   const place = bounds ? boundsCentre(bounds) : null;
-  const readout = conditionsReadout({ place, now });
+  const sun = sunReadout(place, now);
   const overdue = place ? overdueAt(now, place, club.overdueGraceMinutes, SUN) : undefined;
   const facts = clubFacts(club, loaded);
+  const basemap = useBasemap(basemapPack(loaded.mapPacks));
 
   return (
     <section className="clubview" aria-labelledby="club-title">
@@ -145,7 +158,8 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
         areas={areas}
         stands={stands}
         label={`Map of ${club.name}: ${club.boundary ? 'the property line' : 'no property line yet'}, ${pluralize(areas.length, 'area')} and ${pluralize(stands.length, 'stand')}.`}
-        insets={{ top: plateSize.height + 24 }}
+        basemap={basemap}
+        insets={{ top: PLATE_TOP + plateSize.height + FIT_PADDING }}
         empty={
           details.status === 'ready' ? (
             <p className="plan__empty">
@@ -161,7 +175,7 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
             </h1>
             {facts ? <p className="clubview__facts">{facts}</p> : null}
           </div>
-          <ConditionsStrip readout={readout} />
+          <ConditionsStrip sun={sun} overdueAt={overdue} />
         </div>
       </ClubMap>
       <div className="clubview__side">
@@ -171,21 +185,40 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
             <a href={pageHref('billing')}>Billing</a>.
           </Banner>
         ) : null}
+        <OutNow />
         <Loadable state={details}>
           {(value) => (
             <>
               <NeedsYou items={needsYou({ club, ...value, now })} />
               {overdue === undefined ? null : (
                 <p className="clubview__overdue">
-                  If anyone is still checked in at{' '}
-                  <strong>{formatClockTime(new Date(overdue))}</strong>, the club gets an overdue
-                  alert. That is sunset plus {pluralize(club.overdueGraceMinutes, 'minute')}.
+                  The overdue alert goes to the club if anyone is still checked in at sunset plus{' '}
+                  {pluralize(club.overdueGraceMinutes, 'minute')}.
                 </p>
               )}
               <ClubSummary details={value} />
             </>
           )}
         </Loadable>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Who is out now: never known here (positions travel only over the mesh, and the web never
+ * receives one), so it says where to look instead of showing a blank or made-up list.
+ */
+function OutNow() {
+  return (
+    <section className="side-section" aria-labelledby="out-now">
+      <h2 id="out-now" className="side-section__title">
+        Out now
+      </h2>
+      <div className="side-section__empty-state">
+        <EmptyState icon={RadioTower} title={OUT_NOW_EMPTY.title} titleAs="h3">
+          {OUT_NOW_EMPTY.line}
+        </EmptyState>
       </div>
     </section>
   );
