@@ -16,6 +16,7 @@ export * from './qr';
 export * from './session';
 export * from './signInCopy';
 export * from './maps';
+export * from './propertyLine';
 export * from './legal';
 export * from './secureKeys';
 export * from './pricing';

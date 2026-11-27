@@ -1,4 +1,4 @@
-import { STAND_TYPE_ICON_NAMES, STAND_TYPES } from '@huntclub/shared';
+import { EARTH_CIRCUMFERENCE_METRES, STAND_TYPE_ICON_NAMES, STAND_TYPES } from '@huntclub/shared';
 import { STAND_ICON_COMPONENTS, standIcon } from '../components/standIcons';
 import { SAMPLE_PLAN } from '../map/sampleProperty';
 import { boundsCentre, fitPlan, planBounds, ringsLabelPoint, scaleBar } from '../map/plan';
@@ -32,15 +32,16 @@ describe('the club plan', () => {
     expect(Math.min(x0 - room.left, y0 - room.top)).toBeLessThan(0.5);
     // North is up; the same metres per px across and down.
     expect(y0).toBeLessThan(y1);
+    const metresPerDegree = EARTH_CIRCUMFERENCE_METRES / 360;
     const metresAcross =
-      (east - west) * 111_320 * Math.cos((((south + north) / 2) * Math.PI) / 180);
-    expect((x1 - x0) * metresPerPx).toBeCloseTo(metresAcross, 3);
-    expect((y1 - y0) * metresPerPx).toBeCloseTo((north - south) * 111_320, 3);
+      (east - west) * metresPerDegree * Math.cos((((south + north) / 2) * Math.PI) / 180);
+    expect((x1 - x0) * metresPerPx).toBeCloseTo(metresAcross, 1);
+    expect((y1 - y0) * metresPerPx).toBeCloseTo((north - south) * metresPerDegree, 1);
   });
 
   it('shows some ground around a lone stand', () => {
     const { metresPerPx } = fitPlan([-90, 40, -90, 40], 400, 400, insets);
-    expect(metresPerPx * 400).toBeGreaterThanOrEqual(400);
+    expect(metresPerPx * 400).toBeCloseTo(400, 6);
   });
 
   it('names an area at the middle of its north edge', () => {

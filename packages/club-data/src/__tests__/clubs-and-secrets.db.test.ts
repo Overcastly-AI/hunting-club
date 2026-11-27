@@ -1,5 +1,7 @@
 // Port of supabase/tests/database/10_clubs_and_secrets.test.sql.
 import { DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { propertyLinePolygon } from '@huntclub/shared';
+import { SAMPLE_PROPERTY } from '@huntclub/shared/sample';
 import { ANONYMOUS, SERVICE } from '../index';
 import { keys } from '../items';
 import { World, expectCode, keyOf, profile } from '../testing/world';
@@ -40,6 +42,22 @@ describe('clubs', () => {
     const club = await w.data.updateClub(w.as('ada'), oak(), { overdueGraceMinutes: 45 });
     expect(club.overdueGraceMinutes).toBe(45);
     expect(club.name).toBe('Oak Ridge');
+  });
+
+  it('an admin saves a property line; the shared rule refuses one that crosses itself; a member cannot', async () => {
+    const line = SAMPLE_PROPERTY.boundary;
+    expect((await w.data.updateClub(w.as('ada'), oak(), { boundary: line })).boundary).toEqual(
+      line,
+    );
+    const bowTie = propertyLinePolygon([
+      [-90, 40],
+      [-89.99, 40.01],
+      [-89.99, 40],
+      [-90, 40.01],
+    ]);
+    await expectCode(w.data.updateClub(w.as('ada'), oak(), { boundary: bowTie }), 'invalid');
+    await expectCode(w.data.updateClub(w.as('max'), oak(), { boundary: line }), 'forbidden');
+    expect((await w.data.getClub(SERVICE, oak())).boundary).toEqual(line);
   });
 
   it('an admin cannot update another club', async () => {

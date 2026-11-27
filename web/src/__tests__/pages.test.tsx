@@ -40,6 +40,7 @@ import { go } from '../testing/app';
 import { accountButton, requestCode, signIn } from '../testing/shell';
 import { tableRows } from '../testing/tables';
 import { SAMPLE_CAPTION } from '../pages/SignIn';
+import { DRAW_LINE_FIRST } from '../pages/MapPacks';
 import {
   COPY_INVITE,
   CREATE_INVITE,
@@ -550,7 +551,14 @@ describe('club pages', () => {
       const data = sampleData();
       const { boundary: _none, ...club } = data.club!;
       await openMaps({ ...data, club });
-      expect(await screen.findByText('Draw the property line first')).toBeTruthy();
+      const ask = (await screen.findByText('Draw the property line first')).closest('.ui-empty')!;
+      // It points to the draw tool on My club's map.
+      expect(within(ask as HTMLElement).getByText(DRAW_LINE_FIRST)).toBeTruthy();
+      expect(
+        within(ask as HTMLElement)
+          .getByRole('link', { name: 'Go to My club' })
+          .getAttribute('href'),
+      ).toBe('#/club');
       expect(screen.queryByRole('button', { name: 'Build map pack' })).toBeNull();
     });
 
@@ -558,14 +566,16 @@ describe('club pages', () => {
       const data = sampleData();
       const { boundary: _none, ...club } = data.club!;
       await openMaps({ ...data, club, mapPacks: [] });
-      expect(await screen.findByText(/Draw the property line in the app first/)).toBeTruthy();
+      expect(
+        await screen.findByText(/Draw the property line on the My club map first/),
+      ).toBeTruthy();
       expect(screen.queryByText(/Build one above/)).toBeNull();
     });
 
     it('tells an empty list to build one above when the build control is there', async () => {
       await openMaps({ ...sampleData(), mapPacks: [] });
       expect(await screen.findByText(/Build one above/)).toBeTruthy();
-      expect(screen.queryByText(/Draw the property line in the app first/)).toBeNull();
+      expect(screen.queryByText(/Draw the property line on the My club map first/)).toBeNull();
     });
   });
 

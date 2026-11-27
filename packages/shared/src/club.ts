@@ -7,6 +7,7 @@
 // is written once.
 import { z } from 'zod';
 import { CLUB_NAME_MAX } from './limits';
+import { propertyLineSchema } from './propertyLine';
 import {
   displayNameSchema,
   initialsSchema,
@@ -80,15 +81,22 @@ export const ClubSchema = z.object({
 });
 export type Club = z.infer<typeof ClubSchema>;
 
+/**
+ * What a client may send for a club: a property line must pass the shared rule (propertyLine.ts).
+ * Stored clubs (ClubSchema) are read as they are.
+ */
+const clubInput = { ...clubEditable, boundary: propertyLineSchema.optional() };
+
 /** Provisioning Lambda input: a new club. Defaults match a typical US club. */
 export const ClubCreateSchema = z.strictObject({
-  ...clubEditable,
+  ...clubInput,
   region: clubEditable.region.default('US'),
   overdueGraceMinutes: clubEditable.overdueGraceMinutes.default(30),
 });
 export type ClubCreate = z.input<typeof ClubCreateSchema>;
 
-export const ClubUpdateSchema = z.strictObject(clubEditable).partial();
+/** Admin: the club's name, size, property line, region or overdue grace (PATCH /clubs/:clubId). */
+export const ClubUpdateSchema = z.strictObject(clubInput).partial();
 export type ClubUpdate = z.input<typeof ClubUpdateSchema>;
 
 // Club secret (radio key) --------------------------------------------------------

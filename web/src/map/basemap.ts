@@ -1,9 +1,12 @@
-// The club's own map pack drawn under its plan on My club. A ready pack is a PMTiles archive
-// the map-pack builder wrote to the web bucket (packs/<clubId>/<packId>.pmtiles), so CloudFront
-// serves it from the admin's own origin: the reads are same-origin range requests
-// (connect-src 'self') and each tile is shown as a data: image (img-src 'self' data:). No
-// outside tile host, and nothing to loosen in the CSP. Offline, or with no ready pack, the
-// plan is drawn on its plain ground.
+// What the club plan is drawn on. Two sources, one picture type:
+// - Live USGS tiles (liveBasemap): the shared BASEMAPS tile templates, shown as plain images,
+//   so the CSP allows only the USGS origin in img-src (never connect-src). They need a
+//   connection; offline they simply do not show.
+// - The club's own map pack (loadBasemap): a PMTiles archive the map-pack builder wrote to the
+//   web bucket (packs/<clubId>/<packId>.pmtiles), so CloudFront serves it from the admin's own
+//   origin: same-origin range requests (connect-src 'self'), each tile shown as a data: image.
+//   It is read once, so it still shows when the live tiles cannot load.
+// With neither, the plan is drawn on its plain ground.
 import {
   fetchRangeReader,
   openPmtiles,
@@ -14,16 +17,21 @@ import {
 } from '@huntclub/pmtiles/reader';
 
 import {
+  BASEMAPS,
   basemapBySource,
   mapPackPath,
   rangeTileCount,
   tileBounds,
   tileRangeAt,
+  tileUrl,
+  USGS_MAX_TILE_ZOOM,
   type Basemap,
+  type BasemapId,
   type Bounds,
   type MapPack,
 } from '@huntclub/shared';
 import { useEffect, useState } from 'react';
+import type { Projection } from './plan';
 
 /** At most this many tiles under the plan: enough for a square mile at the deepest level. */
 export const BASEMAP_MAX_TILES = 64;
@@ -44,14 +52,43 @@ export interface BasemapPicture {
 }
 
 /**
- * The pack drawn under the plan: the newest ready aerial (the picture the design is drawn
- * for), else the newest ready topo. None while every pack is building or failed.
+ * The pack drawn under the plan: the newest ready one of the `prefer`red basemap (aerial, the
+ * picture the design is drawn for, unless the map shows another), else the newest ready one.
+ * None while every pack is building or failed.
  */
-export function basemapPack(packs: readonly MapPack[] | undefined): ReadyPack | undefined {
+export function basemapPack(
+  packs: readonly MapPack[] | undefined,
+  prefer: BasemapId = 'aerial',
+): ReadyPack | undefined {
   const ready = (packs ?? [])
     .filter((p): p is ReadyPack => p.status === 'ready' && basemapBySource(p.source) !== undefined)
     .sort((a, b) => Date.parse(b.builtAt) - Date.parse(a.builtAt));
-  return ready.find((p) => basemapBySource(p.source)!.id === 'aerial') ?? ready[0];
+  return ready.find((p) => basemapBySource(p.source)!.id === prefer) ?? ready[0];
+}
+
+/**
+ * The live USGS tiles covering a view, at the whole tile zoom nearest the view's (the deepest
+ * cached level when closer in, drawn larger): the shared BASEMAPS template, as plain images.
+ */
+export function liveBasemap(
+  id: BasemapId,
+  projection: Projection,
+  width: number,
+  height: number,
+): BasemapPicture {
+  const z = Math.max(0, Math.min(USGS_MAX_TILE_ZOOM, Math.round(projection.view.zoom)));
+  const [west, north] = projection.unproject(0, 0);
+  const [east, south] = projection.unproject(width, height);
+  const range = tileRangeAt([west, south, east, north], z);
+  const tiles: BasemapTile[] = [];
+  for (let x = range.minX; x <= range.maxX; x++)
+    for (let y = range.minY; y <= range.maxY; y++)
+      tiles.push({
+        key: `${id}/${z}/${x}/${y}`,
+        bounds: tileBounds(z, x, y),
+        href: tileUrl(id, z, x, y),
+      });
+  return { basemap: BASEMAPS[id], tiles };
 }
 
 /** The deepest zoom in the archive whose tiles over its bounds stay within `maxTiles`. */

@@ -72,7 +72,7 @@ export function adminApi(client: ClubApiClient, session?: Pick<ClubSession, 'use
     if (!id) throw new NoClubError();
     return onClub(id, call, retry);
   };
-  /** A change (invite, map pack, Checkout, billing portal): never retried on another club. */
+  /** A change (property line, invite, map pack, Checkout, billing portal): never retried on another club. */
   const changeClub = <T>(call: (clubId: string) => Promise<T>) => withClub(call, false);
 
   return {
@@ -88,6 +88,7 @@ export function adminApi(client: ClubApiClient, session?: Pick<ClubSession, 'use
       return club;
     },
     forgetUser: forget,
+    savePropertyLine: (boundary) => changeClub((id) => client.updateClub(id, { boundary })),
     listMembers: () => withClub((id) => client.listMembers(id)),
     async updateMyProfile(patch) {
       const userId = await currentUser();

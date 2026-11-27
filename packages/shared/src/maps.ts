@@ -13,6 +13,12 @@ import { WEB_DOMAINS } from './app';
  */
 const USGS_BASEMAP_ROOT = 'https://basemap.nationalmap.gov/arcgis/rest/services';
 
+/**
+ * The one host every USGS tile comes from. The web admin shows live tiles as images, so its
+ * Content-Security-Policy allows exactly this origin in img-src (infra/src/security-headers.ts).
+ */
+export const USGS_BASEMAP_ORIGIN = new URL(USGS_BASEMAP_ROOT).origin;
+
 /** Deepest cached USGS tile level. */
 export const USGS_MAX_TILE_ZOOM = 16;
 /** USGS tiles are 256 px. MapLibre zoom is 512 px based, so map zoom = tile zoom - 1. */
@@ -89,14 +95,29 @@ function clampLat(lat: number): number {
   return Math.min(MAX_MERCATOR_LAT, Math.max(-MAX_MERCATOR_LAT, lat));
 }
 
+/** The Earth's circumference at the equator in Web Mercator, in metres. */
+export const EARTH_CIRCUMFERENCE_METRES = 2 * Math.PI * 6_378_137;
+
+/**
+ * A point in Web Mercator world units: x from 0 (180° W) to 1 (180° E), y from 0 (the north
+ * edge of the map) to 1 (the south edge). One tile at zoom z is 1 / 2^z of the world.
+ */
+export function mercatorXY(lon: number, lat: number): [x: number, y: number] {
+  const phi = (clampLat(lat) * Math.PI) / 180;
+  return [(lon + 180) / 360, (1 - Math.log(Math.tan(phi) + 1 / Math.cos(phi)) / Math.PI) / 2];
+}
+
+/** The [lon, lat] of a point in Web Mercator world units (the inverse of mercatorXY). */
+export function mercatorLonLat(x: number, y: number): [lon: number, lat: number] {
+  return [x * 360 - 180, (Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180) / Math.PI];
+}
+
 /** Slippy-map tile column and row containing a point at a tile zoom. */
 export function tileXY(lon: number, lat: number, zoom: number): { x: number; y: number } {
   const n = 2 ** zoom;
-  const phi = (clampLat(lat) * Math.PI) / 180;
-  const x = Math.floor(((lon + 180) / 360) * n);
-  const y = Math.floor(((1 - Math.log(Math.tan(phi) + 1 / Math.cos(phi)) / Math.PI) / 2) * n);
+  const [wx, wy] = mercatorXY(lon, lat);
   const clamp = (v: number) => Math.min(n - 1, Math.max(0, v));
-  return { x: clamp(x), y: clamp(y) };
+  return { x: clamp(Math.floor(wx * n)), y: clamp(Math.floor(wy * n)) };
 }
 
 /** Tile columns and rows covering bounds at one TILE zoom. */
@@ -116,10 +137,9 @@ export const rangeTileCount = (r: TileRange) => (r.maxX - r.minX + 1) * (r.maxY 
 /** The [west, south, east, north] a tile covers (the inverse of tileXY). */
 export function tileBounds(z: number, x: number, y: number): Bounds {
   const n = 2 ** z;
-  const lon = (col: number) => (col / n) * 360 - 180;
-  const lat = (row: number) =>
-    (Math.atan(Math.sinh(Math.PI * (1 - (2 * row) / n))) * 180) / Math.PI;
-  return [lon(x), lat(y + 1), lon(x + 1), lat(y)];
+  const [west, north] = mercatorLonLat(x / n, y / n);
+  const [east, south] = mercatorLonLat((x + 1) / n, (y + 1) / n);
+  return [west, south, east, north];
 }
 
 /** The USGS tile ranges (per tile zoom) covering bounds over a MAP-zoom range. */

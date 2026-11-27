@@ -11,6 +11,7 @@ import type {
   Plan,
   Member,
   MemberProfileUpdate,
+  Polygon,
   Stand,
   Subscription,
   BasemapId,
@@ -50,6 +51,8 @@ export interface ClubApi {
   /** Forgets everything kept for the signed-in account (its selected club). On sign-out. */
   forgetUser(): void;
   createClub(request: ClubCreateRequest): Promise<Club>;
+  /** Admins: saves the club's property line (the shared rule checks it first); resolves to the club. */
+  savePropertyLine(boundary: Polygon): Promise<Club>;
   listMembers(): Promise<readonly Member[]>;
   /** The signed-in person's own name and initials in the club (any member may change theirs). */
   updateMyProfile(patch: MemberProfileUpdate): Promise<Member>;

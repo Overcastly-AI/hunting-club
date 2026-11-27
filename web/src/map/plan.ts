@@ -1,11 +1,17 @@
-// The club plan's maths: fitting the club's own geometry (property line, areas, stands) into a
-// box of pixels, and the scale bar. Pure, so it is tested without a browser. A club is a few
-// hundred acres, so a flat projection (longitude shrunk by the cosine of the latitude) is
-// true to well under a pixel.
-import { polygonRings, type Bounds, type Ring } from '@huntclub/shared';
+// The club plan's maths: a Web Mercator view of the ground (where it is centred and how far
+// in), fitting the club's own geometry (property line, areas, stands) into a box of pixels,
+// panning and zooming, and the scale bar. Mercator is what the USGS tiles are drawn in, so
+// the plan lies exactly on them. Pure, so it is tested without a browser.
+import {
+  EARTH_CIRCUMFERENCE_METRES,
+  mercatorLonLat,
+  mercatorXY,
+  polygonRings,
+  USGS_TILE_SIZE,
+  type Bounds,
+  type Ring,
+} from '@huntclub/shared';
 
-/** Metres per degree of latitude (and of longitude at the equator). */
-const METRES_PER_DEGREE = 111_320;
 const FEET_PER_METRE = 3.28084;
 const FEET_PER_MILE = 5280;
 
@@ -24,11 +30,33 @@ export interface Insets {
   left: number;
 }
 
+/**
+ * Where the map looks: the ground at the middle of the box, and how far in, as a tile zoom
+ * (fractional; at zoom z the world is 256 * 2^z px across, so one USGS tile is 256 px at a whole z).
+ */
+export interface View {
+  lon: number;
+  lat: number;
+  zoom: number;
+}
+
+/** How far out and in the map goes: a few states across, down to past the deepest USGS level. */
+export const VIEW_ZOOM = { min: 3, max: 20 } as const;
+
+/** Where a club with nothing drawn yet starts: the lower 48 states. */
+export const DEFAULT_VIEW: View = { lon: -96, lat: 38.5, zoom: 4 };
+
+/** How far in "Use my location" goes: a few square miles, enough to find the property. */
+export const LOCATION_ZOOM = 14;
+
 export interface Projection {
   /** [x, y] in px from the box's top left. */
   project: (lon: number, lat: number) => [number, number];
-  /** Metres on the ground per px. */
+  /** The [lon, lat] under a point in px (the inverse of project). */
+  unproject: (x: number, y: number) => [number, number];
+  /** Metres on the ground per px, at the middle of the view. */
   metresPerPx: number;
+  view: View;
 }
 
 /** Every point the plan draws, or none (a club with no property line, areas or stands yet). */
@@ -53,28 +81,83 @@ export const boundsCentre = ([west, south, east, north]: Bounds) => ({
 /** A lone stand has no extent: show at least this much ground around it, in metres. */
 const MIN_SPAN_METRES = 400;
 
+const worldPx = (zoom: number) => USGS_TILE_SIZE * 2 ** zoom;
+const metresPerWorld = (lat: number) =>
+  EARTH_CIRCUMFERENCE_METRES * Math.cos((lat * Math.PI) / 180);
+const clampZoom = (zoom: number) => Math.min(VIEW_ZOOM.max, Math.max(VIEW_ZOOM.min, zoom));
+
+/** The view's projection onto a `width` by `height` box (north up, the view's middle in the middle). */
+export function viewProjection(view: View, width: number, height: number): Projection {
+  const scale = worldPx(view.zoom);
+  const [cx, cy] = mercatorXY(view.lon, view.lat);
+  return {
+    view,
+    metresPerPx: metresPerWorld(view.lat) / scale,
+    project: (lon, lat) => {
+      const [x, y] = mercatorXY(lon, lat);
+      return [width / 2 + (x - cx) * scale, height / 2 + (y - cy) * scale];
+    },
+    unproject: (x, y) =>
+      mercatorLonLat(cx + (x - width / 2) / scale, cy + (y - height / 2) / scale),
+  };
+}
+
 /**
- * Fits `bounds` into a `width` by `height` box, centred in the space the insets leave, at the
- * same scale both ways (north up).
+ * The view that fits `bounds` into a `width` by `height` box, centred in the space the insets
+ * leave (never closer in than VIEW_ZOOM.max).
  */
-export function fitPlan(bounds: Bounds, width: number, height: number, insets: Insets): Projection {
+export function fitView(bounds: Bounds, width: number, height: number, insets: Insets): View {
   const [west, south, east, north] = bounds;
-  const { lat: midLat, lon: midLon } = boundsCentre(bounds);
-  const lonMetres = METRES_PER_DEGREE * Math.cos((midLat * Math.PI) / 180);
-  const spanX = Math.max((east - west) * lonMetres, MIN_SPAN_METRES);
-  const spanY = Math.max((north - south) * METRES_PER_DEGREE, MIN_SPAN_METRES);
+  const [x0, y0] = mercatorXY(west, north);
+  const [x1, y1] = mercatorXY(east, south);
+  const minSpan = MIN_SPAN_METRES / metresPerWorld(boundsCentre(bounds).lat);
+  const spanX = Math.max(x1 - x0, minSpan);
+  const spanY = Math.max(y1 - y0, minSpan);
   const roomX = Math.max(1, width - insets.left - insets.right);
   const roomY = Math.max(1, height - insets.top - insets.bottom);
-  const metresPerPx = Math.max(spanX / roomX, spanY / roomY);
-  const cx = insets.left + roomX / 2;
-  const cy = insets.top + roomY / 2;
-  return {
-    metresPerPx,
-    project: (lon, lat) => [
-      cx + ((lon - midLon) * lonMetres) / metresPerPx,
-      cy - ((lat - midLat) * METRES_PER_DEGREE) / metresPerPx,
-    ],
-  };
+  const zoom = Math.min(
+    VIEW_ZOOM.max,
+    Math.log2(Math.min(roomX / spanX, roomY / spanY) / USGS_TILE_SIZE),
+  );
+  const scale = worldPx(zoom);
+  // The bounds' middle sits at the room's middle; the view is the box's middle.
+  const roomMidX = insets.left + roomX / 2;
+  const roomMidY = insets.top + roomY / 2;
+  const [lon, lat] = mercatorLonLat(
+    (x0 + x1) / 2 + (width / 2 - roomMidX) / scale,
+    (y0 + y1) / 2 + (height / 2 - roomMidY) / scale,
+  );
+  return { lon, lat, zoom };
+}
+
+/** Fits `bounds` into the box (fitView), as a projection. */
+export function fitPlan(bounds: Bounds, width: number, height: number, insets: Insets): Projection {
+  return viewProjection(fitView(bounds, width, height, insets), width, height);
+}
+
+/** The view moved so the ground slides `dx`, `dy` px (a drag right moves the ground right). */
+export function panView(view: View, dx: number, dy: number): View {
+  const scale = worldPx(view.zoom);
+  const [x, y] = mercatorXY(view.lon, view.lat);
+  const [lon, lat] = mercatorLonLat(
+    Math.min(1, Math.max(0, x - dx / scale)),
+    Math.min(1, Math.max(0, y - dy / scale)),
+  );
+  return { ...view, lon, lat };
+}
+
+/** The view zoomed by `delta` levels, keeping the ground under `at` (px; default the middle) still. */
+export function zoomView(
+  view: View,
+  delta: number,
+  width: number,
+  height: number,
+  at: [number, number] = [width / 2, height / 2],
+): View {
+  const zoom = clampZoom(view.zoom + delta);
+  const before = viewProjection(view, width, height).unproject(...at);
+  const after = viewProjection({ ...view, zoom }, width, height).project(...before);
+  return panView({ ...view, zoom }, at[0] - after[0], at[1] - after[1]);
 }
 
 /** An SVG path for rings of [lon, lat] points. */

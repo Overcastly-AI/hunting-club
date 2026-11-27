@@ -219,7 +219,7 @@ export function needsYou(input: NeedsYouInput): NeedsYouItem[] {
             id: 'noPropertyLine',
             kind: 'noPropertyLine' as const,
             title: 'Draw your property line',
-            detail: 'Draw it in the app. Members see it on the map, and map packs need it.',
+            detail: 'Draw it on the club map. Members see it in the app, and map packs need it.',
             action: 'drawPropertyLine' as const,
           },
         ]),

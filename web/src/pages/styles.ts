@@ -3,7 +3,7 @@
 // rows divided by hairlines, never boxes around each part. Components draw themselves
 // (components/ui/styles); this file only places them. Theme tokens only.
 import { opacity, sizes } from '@huntclub/design';
-import { SHELL } from '../components/ui/sizes';
+import { MOBILE_TAB_BAR_HEIGHT, SHELL } from '../components/ui/sizes';
 import {
   color,
   DESKTOP,
@@ -99,6 +99,9 @@ const clubview = `
 .clubview__title { padding: ${gap(3)} ${gap(4)}; }
 .clubview__title h1 { margin: 0; }
 .clubview__facts { ${text('body')}; color: ${color('textSecondary')}; margin: 2px 0 0; }
+.clubview__line { display: flex; flex-wrap: wrap; align-items: center; gap: ${gap(2)} ${gap(3)};
+  padding: ${gap(3)} ${gap(4)}; border-top: ${HAIR}; }
+.clubview__line-note { ${text('body')}; flex: 1 1 14rem; margin: 0; }
 .clubview__side { position: relative; z-index: 1; display: grid; align-content: start; gap: ${gap(6)};
   margin-top: -${gap(4)}; padding: ${gap(5)} ${gap(4)} ${gap(8)}; background: ${color('plate')};
   border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
@@ -121,6 +124,9 @@ const clubview = `
   padding: 0 ${gap(1)}; color: ${color('text')}; text-decoration: none; border-radius: var(--radius-sm); }
 .row-link:hover { background: ${color('raised')}; }
 .row-link__label { ${text('body')}; color: ${color('textSecondary')}; }
+/* Drawing on a phone: the map fills the screen between the top bar and the tab bar. */
+${PHONE} { .clubview--drawing .clubview__map { height: calc(100dvh - ${SHELL.topBarHeight + MOBILE_TAB_BAR_HEIGHT}px);
+  min-height: ${SHELL.phoneMapHeight}px; } }
 ${TABLET_UP} { .clubview__plate { right: auto; width: min(460px, calc(100% - 2 * ${gap(4)})); top: ${gap(4)}; left: ${gap(4)}; } }
 ${DESKTOP} {
   .clubview { grid-template-columns: minmax(0, 1fr) ${SHELL.sidePanelWidth}px; height: 100vh; }
