@@ -1,21 +1,11 @@
-import {
-  READOUT_CELLS,
-  READOUT_LABELS,
-  type ConditionsReadout,
-  type ReadoutCell,
-  type Wording,
-} from '@huntclub/shared';
-import { Sunrise, Sunset, Thermometer, Wind, type LucideIcon } from 'lucide-react';
+import { clockReadout, READOUT_LABELS, type SunReadout, type Wording } from '@huntclub/shared';
+import { AlarmClock, Sunrise, Sunset } from 'lucide-react';
 import { StatGrid, StatTile } from './ui';
 
-const ICONS: Record<ReadoutCell, LucideIcon> = {
-  sunrise: Sunrise,
-  sunset: Sunset,
-  wind: Wind,
-  temperature: Thermometer,
-};
+/** The strip's word for the time the club's overdue alert goes out (sunset plus the grace). */
+export const OVERDUE_ALERT_LABEL = 'Overdue at';
 
-/** A value as it is shown ("6:52 am", "NW 6 mph", "—") and as it is read ("not known"). */
+/** A value as it is shown ("6:52 am", "—") and as it is read ("not known"). */
 export function Spoken(props: { wording: Wording }) {
   const { short, spoken } = props.wording;
   if (short === spoken) return <>{short}</>;
@@ -28,19 +18,29 @@ export function Spoken(props: { wording: Wording }) {
 }
 
 /**
- * The conditions strip (sunrise, sunset, wind, temperature): the same four cells as the phone's
- * map and the site, from the shared conditionsReadout. Sunrise and sunset only, never legal
- * shooting hours. The web holds no forecast, so wind and temperature read "—" here.
+ * The web's conditions strip: sunrise and sunset (the shared sunReadout, the same cells as the
+ * phone's map) and when the club's overdue alert goes out. Sunrise and sunset only, never legal
+ * shooting hours. The web holds no forecast, so it has no wind or temperature cells.
  */
-export function ConditionsStrip(props: { readout: ConditionsReadout }) {
+export function ConditionsStrip(props: { sun: SunReadout; overdueAt: number | undefined }) {
+  const cells = [
+    { key: 'sunrise', icon: Sunrise, label: READOUT_LABELS.sunrise, wording: props.sun.sunrise },
+    { key: 'sunset', icon: Sunset, label: READOUT_LABELS.sunset, wording: props.sun.sunset },
+    {
+      key: 'overdue',
+      icon: AlarmClock,
+      label: OVERDUE_ALERT_LABEL,
+      wording: clockReadout(props.overdueAt),
+    },
+  ];
   return (
-    <StatGrid aria-label="Conditions today">
-      {READOUT_CELLS.map((cell) => (
+    <StatGrid aria-label="Conditions today" three>
+      {cells.map((cell) => (
         <StatTile
-          key={cell}
-          icon={ICONS[cell]}
-          label={READOUT_LABELS[cell]}
-          value={<Spoken wording={props.readout[cell]} />}
+          key={cell.key}
+          icon={cell.icon}
+          label={cell.label}
+          value={<Spoken wording={cell.wording} />}
         />
       ))}
     </StatGrid>

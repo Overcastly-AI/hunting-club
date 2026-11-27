@@ -21,8 +21,8 @@ export const SESSION_EXPIRED = 'Your session expired. Sign in again.';
 
 /**
  * - restoring: a refresh token was kept (browser storage); refreshing it first.
- * - signedOut: show sign-in (with `expired` only when the kept session could not be
- *   refreshed on load; a deliberate sign-out never says the session expired).
+ * - signedOut: show sign-in (with `expired` only when a kept session had expired and was
+ *   refused on load; a fresh visitor and a deliberate sign-out never see it).
  * - signedIn: `email` is undefined when the token does not say who it is.
  */
 type Auth =
@@ -51,11 +51,14 @@ export function App(props: WebClubServices) {
     if (!session) return;
     let live = true;
     void (async () => {
+      // A fresh visitor (nothing kept) gets plain sign-in, whatever route they asked for.
       let next: Auth = { kind: 'signedOut', expired: false };
       if (await session.isSignedIn()) {
+        // "Expired" only when the kept session really expired: the refresh was refused and the
+        // session forgot it. A refresh that failed for another reason (no connection) keeps it.
         next = (await session.refresh())
           ? { kind: 'signedIn', user: await session.user() }
-          : { kind: 'signedOut', expired: true };
+          : { kind: 'signedOut', expired: !(await session.isSignedIn()) };
       }
       // Only the first answer counts: a sign-in or sign-out meanwhile wins.
       if (live) setAuth((current) => (current.kind === 'restoring' ? next : current));

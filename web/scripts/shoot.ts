@@ -3,21 +3,38 @@
 // For every page at 1280 and 390 px wide, in the dark and daylight themes, it checks:
 // no Content-Security-Policy violation, no horizontal scroll, axe with no serious or critical
 // issue, and that the invite dialog keeps focus inside. Screenshots (deviceScaleFactor 1) go to
-// docs/redesign/m2/. Uses the preinstalled Playwright (never `playwright install`).
+// docs/redesign/<folder>/ (m2 unless named), optionally only the named shots. The demo club's
+// aerial map pack (src/demo/demoPack.ts) is built once with the real map-pack builder from USGS
+// (cached in .run-ts/) and served at its key with range requests, as CloudFront serves packs.
+// Uses the preinstalled Playwright (never `playwright install`).
 //
 //   npm run build:kit -w @huntclub/web
-//   cd web && NODE_PATH=/opt/node-tools/node_modules node ../scripts/run-ts.mjs scripts/shoot.ts
+//   cd web && NODE_USE_ENV_PROXY=1 NODE_PATH=/opt/node-tools/node_modules \
+//     node ../scripts/run-ts.mjs scripts/shoot.ts [folder] [shot,shot,...]
 import { THEME_STORAGE_KEY } from '@huntclub/design';
+import { mapPackPath } from '@huntclub/shared';
 import { ADMIN_PATH } from '@huntclub/shared/app';
-import { createReadStream, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
+import {
+  createReadStream,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import { createRequire } from 'node:module';
-import { extname, join, resolve } from 'node:path';
+import { dirname, extname, join, resolve } from 'node:path';
 import { contentSecurityPolicy, PERMISSIONS_POLICY } from '../../infra/src/security-headers';
+import { buildMapPack, politeTileFetcher } from '../../packages/api/src/mapPackBuilder';
+import { demoMapPack, demoMapPackBuild } from '../src/demo/demoPack';
+import { sampleData } from '../src/testing/fakeClubApi';
 
 const WEB = process.cwd();
 const DIST = resolve(WEB, 'dist-kit');
-const OUT = resolve(WEB, '../docs/redesign/m2');
+const [FOLDER = 'm2', ONLY_SHOTS] = process.argv.slice(2);
+const OUT = resolve(WEB, '../docs/redesign', FOLDER);
+const PACK_CACHE = resolve(WEB, '.run-ts/demo-pack.pmtiles');
 const WIDTHS = [1280, 390] as const;
 const HEIGHT: Record<(typeof WIDTHS)[number], number> = { 1280: 860, 390: 844 };
 /** File name word for each stored theme preference. */
@@ -45,8 +62,13 @@ interface Page {
   close(): Promise<void>;
 }
 
-const openInvite = async (page: Page) => {
+const openInviteDialog = async (page: Page) => {
   await page.getByRole('button', { name: 'Invite members' }).click();
+  await page.waitForSelector('.ui-dialog[open]');
+};
+const openInvite = async (page: Page) => {
+  await openInviteDialog(page);
+  await page.getByRole('button', { name: 'Create invite link' }).click();
   await page.waitForSelector('.ui-dialog[open] .qr svg');
 };
 const openAccount = async (page: Page) => {
@@ -65,6 +87,7 @@ const SHOTS: readonly Shot[] = [
   { name: 'signin', scenario: 'signedOut', hash: '' },
   { name: 'my-club', scenario: 'trial', hash: '#/club' },
   { name: 'roster', scenario: 'trial', hash: '#/roster' },
+  { name: 'roster-invite-start', scenario: 'trial', hash: '#/roster', act: openInviteDialog },
   { name: 'roster-invite', scenario: 'trial', hash: '#/roster', act: openInvite },
   { name: 'stands', scenario: 'trial', hash: '#/stands' },
   { name: 'harvests', scenario: 'trial', hash: '#/harvests' },
@@ -93,11 +116,45 @@ const TYPES: Record<string, string> = {
   '.json': 'application/json',
 };
 
-/** The kit build under ADMIN_PATH, with the site's real security headers. */
-function serve(): Promise<{ server: Server; origin: string }> {
+/** The demo club's pack archive: built once from USGS by the real builder, then cached. */
+async function demoPackArchive(): Promise<Buffer> {
+  if (existsSync(PACK_CACHE)) return readFileSync(PACK_CACHE);
+  const clubId = sampleData().club!.id;
+  let archive: Buffer | undefined;
+  const pack = demoMapPack(clubId);
+  // Only the builder's two writes are needed: the pack row stays the demo's own.
+  const data = {
+    finishMapPack: async () => pack,
+    failMapPack: async () => pack,
+  } as unknown as Parameters<typeof buildMapPack>[1]['data'];
+  await buildMapPack(demoMapPackBuild(clubId), {
+    data,
+    fetchTile: politeTileFetcher({ fetch, userAgent: 'HuntClubMesh-demo-screenshots' }),
+    putObject: async (_key, body) => {
+      archive = body;
+    },
+  });
+  mkdirSync(dirname(PACK_CACHE), { recursive: true });
+  writeFileSync(PACK_CACHE, archive!);
+  return archive!;
+}
+
+/** The kit build under ADMIN_PATH, with the site's real security headers; the demo pack. */
+function serve(packArchive: Buffer): Promise<{ server: Server; origin: string }> {
   const csp = contentSecurityPolicy({ name: 'dev' });
+  const packPath = mapPackPath(demoMapPack(sampleData().club!.id));
   const server = createServer((req, res) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
+    if (url.pathname === packPath) {
+      // CloudFront answers a range of an S3 object with 206.
+      const [, from, to] = /bytes=(\d+)-(\d+)/.exec(req.headers.range ?? '')?.map(Number) ?? [];
+      res.setHeader('Content-Type', 'application/octet-stream');
+      if (from === undefined || to === undefined) return void res.end(packArchive);
+      const end = Math.min(to, packArchive.length - 1);
+      res.statusCode = 206;
+      res.setHeader('Content-Range', `bytes ${from}-${end}/${packArchive.length}`);
+      return void res.end(packArchive.subarray(from, end + 1));
+    }
     let file = url.pathname.startsWith(ADMIN_PATH)
       ? join(DIST, url.pathname.slice(ADMIN_PATH.length))
       : join(DIST, url.pathname);
@@ -136,12 +193,14 @@ async function main() {
     close(): Promise<void>;
   }
   const axeSource = readFileSync(load.resolve('axe-core/axe.min.js'), 'utf8');
-  const { server, origin } = await serve();
+  const { server, origin } = await serve(await demoPackArchive());
+  const only = ONLY_SHOTS?.split(',');
   const browser = await playwright.chromium.launch();
   const problems: string[] = [];
   let count = 0;
   try {
     for (const shot of SHOTS) {
+      if (only && !only.includes(shot.name)) continue;
       for (const width of WIDTHS) {
         for (const theme of Object.keys(THEMES) as (keyof typeof THEMES)[]) {
           if (shot.only && !shot.only.some(([w, t]) => w === width && t === theme)) continue;
@@ -166,6 +225,9 @@ async function main() {
           await page.goto(`${origin}${ADMIN_PATH}?demo=${shot.scenario}${shot.hash}`);
           await page.waitForSelector('h1');
           await page.waitForTimeout(400);
+          // My club draws its map pack once the archive is read.
+          if (shot.hash === '#/club' && shot.scenario !== 'noClub')
+            await page.waitForSelector('.plan__basemap image');
           if (shot.act) await shot.act(page);
           const csp = await page.evaluate<string[]>('window.__csp');
           for (const v of csp) problems.push(`${label}: CSP violation ${v}`);

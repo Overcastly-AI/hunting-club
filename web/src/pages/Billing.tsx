@@ -12,7 +12,7 @@ import {
   type Plan,
   type Subscription,
 } from '@huntclub/shared';
-import { CreditCard, ExternalLink, Radio } from 'lucide-react';
+import { CreditCard, ExternalLink, Radio, Receipt } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import type { ClubApi } from '../api/types';
 import { billingAlert, clubStatus } from '../billingStatus';
@@ -23,6 +23,7 @@ import {
   Banner,
   Button,
   ButtonLink,
+  EmptyState,
   RadioGroup,
   StatGrid,
   StatTile,
@@ -35,6 +36,12 @@ import { pageHref } from '../shell/routes';
 /** Billing never touches the mesh: said on every state of the page. */
 export const MESH_STAYS_FREE =
   'The radio, chat and Ask for a Hand keep working whatever the billing status.';
+
+/** The invoice list's empty state: invoices are not listed on the web yet. */
+export const NO_INVOICES = {
+  title: 'No invoices yet',
+  line: 'Invoices appear here once payments are set up.',
+} as const;
 
 /** Subscription status, and Stripe Checkout (free trial first) when the club needs to pay. */
 export function Billing(props: { api: ClubApi }) {
@@ -53,8 +60,9 @@ export function Billing(props: { api: ClubApi }) {
       <Loadable state={billing} noClub={<PlansBeforeClub />}>
         {([sub, plans]) => (
           <div className="billing">
-            <Status subscription={sub} />
+            <Status subscription={sub} plans={plans} />
             {sub && isEntitledStatus(sub.status) ? null : <Pay api={props.api} plans={plans} />}
+            <Invoices />
           </div>
         )}
       </Loadable>
@@ -100,9 +108,11 @@ function PlansBeforeClub() {
   );
 }
 
-/** What the date means: the trial's end, the last paid day of an ending plan, or renewal. */
+/** What the date means: the trial's end, a missed payment, the last paid day of an ending plan, or renewal. */
 function dateLabel(sub: Subscription): string {
   if (sub.status === 'trialing') return 'Free trial ends';
+  // A missed payment: the date has passed, so it never reads as a renewal still to come.
+  if (billingAlert(sub) === 'pastDue') return 'Payment was due';
   return sub.cancelAtPeriodEnd || sub.status === 'canceled' ? 'Ends on' : 'Renews on';
 }
 
@@ -113,8 +123,8 @@ function attention(sub: Subscription, featuresUntil: string | undefined): ReactN
     case 'pastDue':
       return (
         <Banner tone="danger" title={SUBSCRIPTION_STATUS_LABELS[sub.status]}>
-          {featuresUntil && Date.parse(featuresUntil) > now
-            ? `Club features stay on until ${formatDate(featuresUntil)}. Update the card under Manage subscription.`
+          {inGrace(featuresUntil, now)
+            ? 'Update the card under Manage subscription before the grace period ends.'
             : 'Club features are off until a payment goes through. Update the card under Manage subscription.'}
         </Banner>
       );
@@ -144,7 +154,30 @@ function attention(sub: Subscription, featuresUntil: string | undefined): ReactN
   return null;
 }
 
-function Status({ subscription }: { subscription: Subscription | null }) {
+/** Club features are still on after a missed payment. */
+const inGrace = (featuresUntil: string | undefined, now: number) =>
+  featuresUntil !== undefined && Date.parse(featuresUntil) > now;
+
+/** The grace period, as help text under Status: only while a payment is past due. */
+function graceLine(sub: Subscription, featuresUntil: string | undefined, now: number) {
+  if (billingAlert(sub, now) !== 'pastDue') return undefined;
+  return featuresUntil && inGrace(featuresUntil, now)
+    ? `Grace period: club features stay on until ${formatDate(featuresUntil)}, ${ENTITLEMENT_GRACE_DAYS} days after the paid period.`
+    : 'The grace period is over: club features are off.';
+}
+
+/** The plan's name (the plan record) and its price (CLUB_PRICING). */
+function planCell(sub: Subscription, plans: readonly Plan[]) {
+  const name = plans.find((p) => p.id === sub.planId)?.name ?? 'Club';
+  const pricing = sub.interval ? CLUB_PRICING.intervals[sub.interval] : undefined;
+  return pricing
+    ? { value: pricing.price, hint: `${name} plan, billed ${pricing.label.toLowerCase()}` }
+    : { value: name, hint: undefined };
+}
+
+/** Status, plan (name and price) and the date that matters next. */
+function Status(props: { subscription: Subscription | null; plans: readonly Plan[] }) {
+  const { subscription } = props;
   if (!subscription)
     return (
       <Banner tone="info" title="No subscription yet.">
@@ -152,36 +185,43 @@ function Status({ subscription }: { subscription: Subscription | null }) {
         club is paid for.
       </Banner>
     );
-  // While trialing, paidThrough is the trial's end.
-  const pricing = subscription.interval ? CLUB_PRICING.intervals[subscription.interval] : undefined;
+  const now = Date.now();
   const { featuresUntil } = entitlementFor(subscription.clubId, subscription);
-  const pill = clubStatus(subscription);
+  const pill = clubStatus(subscription, now);
+  const plan = planCell(subscription, props.plans);
   return (
     <>
       {attention(subscription, featuresUntil)}
-      <StatGrid aria-label="Subscription">
+      <StatGrid aria-label="Subscription" three>
         <StatTile
           label="Status"
           value={
             pill ? <StatusPill status={pill} /> : SUBSCRIPTION_STATUS_LABELS[subscription.status]
           }
+          hint={graceLine(subscription, featuresUntil, now)}
         />
-        {pricing ? <StatTile label="Plan" value={`${pricing.label} · ${pricing.price}`} /> : null}
+        <StatTile label="Plan" value={plan.value} hint={plan.hint} />
+        {/* While trialing, paidThrough is the trial's end. */}
         <StatTile
           label={dateLabel(subscription)}
           value={subscription.paidThrough ? formatDate(subscription.paidThrough) : 'Not paid yet'}
         />
-        {featuresUntil ? (
-          <StatTile label="Club features until" value={formatDate(featuresUntil)} />
-        ) : null}
       </StatGrid>
-      {subscription.paidThrough && featuresUntil ? (
-        <p className="form-note">
-          If a payment fails or the plan ends, club features stay on for {ENTITLEMENT_GRACE_DAYS}{' '}
-          days after {formatDate(subscription.paidThrough)}, until {formatDate(featuresUntil)}.
-        </p>
-      ) : null}
     </>
+  );
+}
+
+/** Invoices: not listed on the web yet, so an empty state says when they will be. */
+function Invoices() {
+  return (
+    <section className="billing__invoices" aria-labelledby="invoices">
+      <h2 id="invoices" className="section-title">
+        Invoices
+      </h2>
+      <EmptyState icon={Receipt} title={NO_INVOICES.title} titleAs="h3">
+        {NO_INVOICES.line}
+      </EmptyState>
+    </section>
   );
 }
 

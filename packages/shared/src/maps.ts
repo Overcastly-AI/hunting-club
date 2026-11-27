@@ -99,38 +99,46 @@ export function tileXY(lon: number, lat: number, zoom: number): { x: number; y: 
   return { x: clamp(x), y: clamp(y) };
 }
 
+/** Tile columns and rows covering bounds at one TILE zoom. */
+export type TileRange = { z: number; minX: number; maxX: number; minY: number; maxY: number };
+
+/** The tiles covering bounds at one tile zoom. */
+export function tileRangeAt(bounds: Readonly<Bounds>, z: number): TileRange {
+  const [west, south, east, north] = bounds;
+  const topLeft = tileXY(west, north, z);
+  const bottomRight = tileXY(east, south, z);
+  return { z, minX: topLeft.x, maxX: bottomRight.x, minY: topLeft.y, maxY: bottomRight.y };
+}
+
+/** Number of tiles in a range. */
+export const rangeTileCount = (r: TileRange) => (r.maxX - r.minX + 1) * (r.maxY - r.minY + 1);
+
+/** The [west, south, east, north] a tile covers (the inverse of tileXY). */
+export function tileBounds(z: number, x: number, y: number): Bounds {
+  const n = 2 ** z;
+  const lon = (col: number) => (col / n) * 360 - 180;
+  const lat = (row: number) =>
+    (Math.atan(Math.sinh(Math.PI * (1 - (2 * row) / n))) * 180) / Math.PI;
+  return [lon(x), lat(y + 1), lon(x + 1), lat(y)];
+}
+
 /** The USGS tile ranges (per tile zoom) covering bounds over a MAP-zoom range. */
 export function tileRanges(
   bounds: Readonly<Bounds>,
   minZoom: number,
   maxZoom: number,
-): { z: number; minX: number; maxX: number; minY: number; maxY: number }[] {
-  const [west, south, east, north] = bounds;
-  const ranges = new Map<
-    number,
-    { z: number; minX: number; maxX: number; minY: number; maxY: number }
-  >();
+): TileRange[] {
+  const ranges = new Map<number, TileRange>();
   for (let mapZoom = minZoom; mapZoom <= maxZoom; mapZoom++) {
     const z = Math.min(USGS_MAX_TILE_ZOOM, mapZoom + TILE_ZOOM_OFFSET);
-    const topLeft = tileXY(west, north, z);
-    const bottomRight = tileXY(east, south, z);
-    ranges.set(z, {
-      z,
-      minX: topLeft.x,
-      maxX: bottomRight.x,
-      minY: topLeft.y,
-      maxY: bottomRight.y,
-    });
+    ranges.set(z, tileRangeAt(bounds, z));
   }
   return [...ranges.values()];
 }
 
 /** Number of USGS tiles covering bounds over a map-zoom range. */
 export function countTiles(bounds: Readonly<Bounds>, minZoom: number, maxZoom: number): number {
-  return tileRanges(bounds, minZoom, maxZoom).reduce(
-    (sum, r) => sum + (r.maxX - r.minX + 1) * (r.maxY - r.minY + 1),
-    0,
-  );
+  return tileRanges(bounds, minZoom, maxZoom).reduce((sum, r) => sum + rangeTileCount(r), 0);
 }
 
 /** Every tile (tile zoom, column, row) covering bounds over a map-zoom range. */
@@ -165,11 +173,16 @@ export function mapPackKey(clubId: string, packId: string): string {
 }
 
 /**
- * Where a phone downloads a ready club map pack: the archive is served by the
- * environment's web domain (CloudFront) at its S3 key.
+ * A ready club map pack's path on the environment's web domain (CloudFront serves the
+ * bucket at its S3 key). The web admin reads it from its own origin with this.
  */
+export function mapPackPath(pack: { s3Key: string }): string {
+  return `/${pack.s3Key}`;
+}
+
+/** Where a phone downloads a ready club map pack: the web domain plus mapPackPath. */
 export function mapPackUrl(env: keyof typeof WEB_DOMAINS, pack: { s3Key: string }): string {
-  return `https://${WEB_DOMAINS[env]}/${pack.s3Key}`;
+  return `https://${WEB_DOMAINS[env]}${mapPackPath(pack)}`;
 }
 
 /** A ring of [lon, lat] points. */

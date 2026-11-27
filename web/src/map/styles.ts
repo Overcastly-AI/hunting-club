@@ -33,6 +33,7 @@ export const mapCss = () => `
 .plan__plate-detail--open { fill: ${themeVar('fresh')}; }
 .plan__scale-bar { fill: none; stroke: ${mapColor('text')}; stroke-width: 2; ${halo} }
 .plan__scale-label { ${text('markerDetail')}; fill: ${mapColor('text')}; ${halo} }
+.plan__credit { ${text('markerDetail')}; font-weight: 600; fill: ${mapColor('text')}; ${halo} }
 .plan__empty { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: min(36ch, calc(100% - 2 * ${gap(4)}));
   padding: ${gap(3)} ${gap(4)}; border-radius: var(--radius-lg); background: ${color('plate')};
   box-shadow: ${color('shadowPlate')}; color: ${color('text')}; ${text('body')}; margin: 0; }
