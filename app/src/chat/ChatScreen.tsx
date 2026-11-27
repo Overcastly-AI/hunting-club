@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useContext, useMemo, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,7 +9,8 @@ import { Banner } from '../components/Banner';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { SegmentedControl } from '../components/SegmentedControl';
-import { makeStyles, spacing, textStyles } from '../theme';
+import { MapStrip } from '../map/components/MapStrip';
+import { makeStyles, sizes, spacing, textStyles } from '../theme';
 import { ChatRadioContext, ChatSendError, nameOf, sendChat } from './ChatRadio';
 import { chatStore, useChatItems } from './chatStore';
 import { Composer, MessageBubble, QuickReplies, SystemCard } from './components';
@@ -26,7 +28,14 @@ import {
 const NO_RADIO =
   'Connect your radio to chat. Messages travel over the radio, no cell service needed.';
 
-/** Chat tab: Party (or Whole Club / Hunting Party) and Direct. */
+/** The composer's placeholder: who the message goes to. */
+export function composerPlaceholder(segment: ChatSegment, peerName: string | null): string {
+  if (segment === 'club') return 'Message the club';
+  if (segment === 'party') return 'Message your party';
+  return peerName ? `Message ${peerName}` : 'Message';
+}
+
+/** Chat tab: Whole club (clubs), Party and Direct, with a strip of the map above the thread. */
 export function ChatScreen() {
   const styles = useStyles();
   const radio = useContext(ChatRadioContext);
@@ -93,6 +102,7 @@ export function ChatScreen() {
           />
           {!radio ? <Banner tone="info">{NO_RADIO}</Banner> : null}
         </View>
+        <MapStrip height={sizes.chatMapStrip} onPress={() => router.navigate('/')} />
 
         {segment === 'direct' && peer === null ? (
           <FlatList
@@ -146,6 +156,10 @@ export function ChatScreen() {
             <View style={styles.footer}>
               <QuickReplies onSend={send} disabled={!radio} />
               <Composer
+                placeholder={composerPlaceholder(
+                  segment,
+                  radio && peer !== null ? nameOf(radio, peer) : null,
+                )}
                 value={draft}
                 onChange={setDraft}
                 onSend={() => send(draft)}
@@ -165,16 +179,24 @@ export function ChatScreen() {
 }
 
 const useStyles = makeStyles((theme) => ({
-  safe: { flex: 1, backgroundColor: theme.colors.surface0 },
-  flex: { flex: 1 },
-  header: { paddingHorizontal: spacing.md, paddingTop: spacing.sm, gap: spacing.sm },
-  title: { ...textStyles.title1, color: theme.colors.text },
-  list: { padding: spacing.md, gap: spacing.sm, flexGrow: 1 },
+  safe: { flex: 1, backgroundColor: theme.colors.plate },
+  // The thread sits in the deepest tone, between the plate header and the plate composer.
+  flex: { flex: 1, backgroundColor: theme.colors.canvas },
+  header: {
+    paddingHorizontal: spacing.sm + spacing.xs,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm + spacing.xs / 2,
+    gap: spacing.sm,
+    backgroundColor: theme.colors.plate,
+  },
+  title: { ...textStyles.title2, color: theme.colors.text },
+  list: { padding: spacing.sm + spacing.xs, gap: spacing.sm, flexGrow: 1 },
   inverted: { transform: [{ scaleY: -1 }] },
   footer: {
-    padding: spacing.md,
+    padding: spacing.sm + spacing.xs,
     gap: spacing.sm,
     borderTopWidth: 1,
     borderColor: theme.colors.borderSubtle,
+    backgroundColor: theme.colors.plate,
   },
 }));

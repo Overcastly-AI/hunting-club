@@ -7,7 +7,7 @@ export interface FeatureGroup {
   /** Anchor on /features. */
   readonly id: string;
   readonly title: string;
-  /** One sentence for the home page card. */
+  /** One sentence for the home page's feature list. */
   readonly summary: string;
   /** What a free hunter gets; absent for club-only features. */
   readonly free?: string;
@@ -23,6 +23,9 @@ export interface FeatureGroup {
  */
 export const CONDITIONS = 'Last known wind, sunrise and sunset, scent cone';
 
+/** The plan a feature starts on, in words: "Free" (clubs get it too) or "Club". */
+export const planWord = (group: FeatureGroup) => (group.free ? 'Free' : 'Club');
+
 export const FEATURE_GROUPS: readonly FeatureGroup[] = [
   {
     id: 'map',
@@ -37,7 +40,7 @@ export const FEATURE_GROUPS: readonly FeatureGroup[] = [
     id: 'check-in',
     title: 'Check in your way',
     summary:
-      'At a stand, at a spot or on the move. Your location is shared only while you are checked in.',
+      'Check in at a stand, at a spot or on the move, and your location is shared only while you are checked in.',
     free: 'Check in at a spot (a log, a field edge, a portable stand) or on the move while you still-hunt or stalk. Switch without checking out.',
     club: 'Also check in at a club stand, which then shows as occupied, or in a named club area.',
     shot: { label: 'The check-in sheet', aspect: '4:5' },
@@ -46,7 +49,7 @@ export const FEATURE_GROUPS: readonly FeatureGroup[] = [
     id: 'safety',
     title: 'Ask for a Hand and overdue alerts',
     summary:
-      'Ask for a Hand pings your party or club. If you are not back after sunset, they are told.',
+      'Ask for a Hand pings your party or club, and if you are not back after sunset, they are told.',
     free: 'Ask for a Hand sends your current location to your party and keeps trying until someone answers. If you are still out at sunset plus your grace time, your party gets an overdue alert.',
     club: 'Both go to the whole club and the clubhouse board. They keep working whatever a club pays.',
     shot: { label: 'Ask for a Hand on the map', aspect: '4:5' },
@@ -62,7 +65,7 @@ export const FEATURE_GROUPS: readonly FeatureGroup[] = [
   {
     id: 'harvests',
     title: 'Harvest log',
-    summary: 'Log a harvest in a few taps. It stays private unless you share it.',
+    summary: 'Log a harvest in a few taps, and it stays private unless you share it.',
     free: 'Log a harvest. It is private; you choose, one at a time, whether to share it with your party.',
     club: 'Share with the club, and admins get harvest reports and season summaries with CSV export.',
     shot: { label: 'A season harvest report', aspect: '16:10' },

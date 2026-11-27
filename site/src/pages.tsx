@@ -9,10 +9,11 @@ import { Home } from './pages/Home';
 import { Legal } from './pages/Legal';
 import { Pricing } from './pages/Pricing';
 import { PAGE_PATHS, type SitePath } from './routes';
+import type { PageAssets } from './Shell';
 
 /** The content of each registered page (the registry holds its title and description). */
-export const PAGE_CONTENT: Record<SitePath, () => ReactNode> = {
-  [PAGE_PATHS.home]: () => <Home />,
+export const PAGE_CONTENT: Record<SitePath, (assets: PageAssets) => ReactNode> = {
+  [PAGE_PATHS.home]: (assets) => <Home aerialUrl={assets.aerialUrl} />,
   [PAGE_PATHS.features]: () => <Features />,
   [PAGE_PATHS.faq]: () => <Faq />,
   [PAGE_PATHS.clubs]: () => <Clubs />,

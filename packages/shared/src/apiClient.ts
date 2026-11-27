@@ -117,6 +117,9 @@ export function createClubApiClient(options: ClubApiClientOptions) {
     getClub: (clubId: string) => call('GET', API_PATHS.club, club(clubId), ClubSchema),
     listMembers: (clubId: string) =>
       call('GET', API_PATHS.members, club(clubId), z.array(MemberSchema)),
+    /** Admin: the club's invites, used or not (Needs you counts the unused ones). */
+    listInvites: (clubId: string) =>
+      call('GET', API_PATHS.invites, club(clubId), z.array(InviteSchema)),
     createInvite: async (clubId: string, request: InviteCreate) =>
       call(
         'POST',

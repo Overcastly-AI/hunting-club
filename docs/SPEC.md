@@ -223,47 +223,40 @@ The phone's SQLite database is the source of truth in the field. For club users,
 | Harvest | id, member id, species, sex, lat, lon, stand or area id, notes, photo (local), shared with (none, party, club), harvested at | Private unless shared |
 | MapPack | id, bounds, zoom range, source, size, downloaded at | Free: USGS region; Club: the property pack |
 
-## Design system (from Design D)
+## Design system (map-first)
 
-The look is a full-screen aerial map with dark floating controls and a bottom sheet. Orange is reserved for three things: you, the main action and the selected item. Build these as theme tokens; do not hard-code colors in components.
+The look is the map-first direction, approved by the owner on 2026-11-27: docs/DESIGN.md is the source of truth for palette, type, shape and principles (it supersedes the visual spec in docs/UI_REDESIGN.md, whose structure and accessibility rules still apply). The map is every screen's background and everything else is a small, dark, dense "plate" bolted over it, reading out numbers. Plates, not cards. Orange is reserved for three things: you, the main action and the selected item. Build everything from the tokens in `@huntclub/design`; never hard-code colors.
 
-**Themes:** dark-first, with a light ("sunlight") theme for both the app and the club admin. The theme choice is System / Dark / Light (System follows the device). Both themes use the same semantic tokens (`themes` in `@huntclub/design`; values and contrast rules in docs/UI_REDESIGN.md section 4), and a test holds every text pair at 4.5:1 and every control edge at 3:1 in both. The redesign brief (docs/UI_REDESIGN.md) sets the type scale, spacing, radii, elevation and motion tokens.
+**Themes:** dark ("gunmetal") first, with a daylight ("overcast") theme for both the app and the club admin: a cool grey-green white chosen for glare, never cream. The theme choice is System / Dark / Light (System follows the device). Both themes use the same semantic tokens (`themes` in `@huntclub/design`), and a test holds every pair the direction draws at 4.5:1 for text and 3:1 for control edges and rings, in both.
 
-**Color tokens (Design D: the map and the dark theme's originals)**
+**Color tokens (dark; daylight values in docs/DESIGN.md)**
 
-| Token | Value | Use |
-|---|---|---|
-| surface | #121416 | Floating panels, bottom sheet, tab bar |
-| surface-raised | #23272B | Secondary buttons |
-| border | #2A2E33 | Dividers and outlines |
-| control-border | #7A828A | Text input and control outlines (≥3:1 against surface and surface-raised) |
-| text | #FFFFFF | Primary text |
-| text-secondary | #B8BDC2 | Labels, inactive tabs |
-| accent | #FF7A1F | You marker, primary button (Check Out), active tab only |
-| help | #F5C04E | Ask for a Hand outline and icon; stale position ring |
-| fresh | #4ADE80 | Fresh position ring, mesh connected |
-| alert | #FF5A4E | Unread badges, compass north |
-| wind | #8EC5FF | Wind arrow |
-| water-label | #C9DCDD | Creek and pond names |
-| map-halo | #0B0D0E | 3 px outline behind all map text |
-| boundary | #FFFFFF at 85% + 1 px accent inner line | Club property line |
+| Token | Direction name | Value | Use |
+|---|---|---|---|
+| canvas | pit | #0B0E10 | Page, tab bar, admin rail, text fields |
+| plate | plate | #14191C | Anything floating on the map; sheets, panels, tables |
+| raised | raised | #232B30 | Secondary buttons, table heads, the selected row |
+| border-subtle | hair | #353F45 | Hairlines between cells and rows |
+| border-control | edge | #7F8B91 | Outlines of controls (≥3:1 on every surface) |
+| text | ink | #F3F1EA | Text and readouts |
+| text-secondary | quiet | #AEB7B6 | Second-line text, inactive tabs |
+| accent | blaze | #FF7A1F | You, the main action, the selected item. Text on it is #160E06 |
+| warning | lantern | #F5C04E | Ask for a Hand (on its #2A2412 wash) |
+| fresh | fresh | #4ADE80 | Position heard just now (solid ring), "Open", mesh connected |
+| stale | stale | #F5C04E | Position not heard just now (broken ring) |
+| alert | alert | #FF5A4E | Unread badge, north arrow: the only red |
+| wind | wind | #8EC5FF | Wind arrow |
+| water-label | water-text | #C9DCDD | Creek and pond names |
+| map-halo | halo | #0B0D0E | 3 px outline behind all map text |
+| boundary | | #FFFFFF at 85% + 1 px accent inner line | Club property line |
 
-**Light sections (public marketing site only)**
+**Public site:** drawn in the same two themes as the app and the admin (dark by default, daylight when the device prefers light); there are no separate light bands.
 
-The app and the club admin use the light theme above. Marketing pages alternate dark and light bands; light bands use only these (`lightColors` in `@huntclub/design`), each at 4.5:1 or better on `bg-light`.
+**Type:** Archivo variable font only (width 75–100, weight 450–800). Words are set at normal width; anything measured (times, distances, counts, "2 min", prices) is condensed (76%) with tabular figures. Titles 800 at 88%; buttons 750 at 92%, 17 px; body 16–17 px at 450; tab labels 14 px; marker plate 15 px / 800 at 86% over a 13 px second line; map labels at least 13 px. Mixed case, left aligned; no capitals-only labels, no monospace.
 
-| Token | Value | Use |
-|---|---|---|
-| bg-light | #F4F1EA | Light section background |
-| text-on-light | #121416 | Text on a light section |
-| muted-on-light | #4A5158 | Secondary text on a light section |
-| link-on-light | #A8420A | Links on a light section |
+**Shape and size:** three radii with jobs: 6 px for a marker plate, 10–12 px for controls and plates, 16 px for the top of a sheet. Control outlines 1.5 px. Buttons 52 px (48 in a header, 64 for the one big action). Hunters are 42 px circles with a freshness ring, stands 38 px rounded squares with a type icon, each with a name plate; their tap areas are padded to 48 px. Shadows only under things floating over imagery. Minimum tap target is 48 px everywhere.
 
-**Type:** Archivo variable font (width 75–100, weight 500–800). Map labels at least 13 px; marker names 15 px / 800; sheet title 25 px / 800 at 82% width; body 16–17 px; tab labels 14 px. Use mixed case; no letter-spaced all-caps labels.
-
-**Shape and size:** controls 52 × 52 px with 14 px corners; primary buttons 62–66 px tall with 12 px corners; bottom sheet 20 px top corners; hunters are circles, stands are rounded squares with a type icon. Minimum tap target is 48 px everywhere.
-
-**Avoid:** pill-shaped chips, Inter or system fonts, gradient backgrounds, emoji, and orange on anything that isn't you, the main action or the active tab.
+**Avoid:** cards and pill-shaped chips, decoration and textures, gradient backgrounds, Inter or system fonts, emoji, and orange on anything that isn't you, the main action or the selected item.
 
 ## Screens
 

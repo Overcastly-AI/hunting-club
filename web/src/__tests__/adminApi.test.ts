@@ -13,7 +13,7 @@ import {
   SubscriptionSchema,
 } from '@huntclub/shared';
 import { adminApi } from '../api/admin';
-import { fakeClubClient, sampleData } from './fakeClubApi';
+import { fakeClubClient, sampleData } from '../testing/fakeClubApi';
 
 // The fake stands in for the real club API, so its data must be valid shared wire types.
 describe('fake club API data', () => {
@@ -66,6 +66,15 @@ describe('admin API over the shared client', () => {
       expiresAt: '2027-01-01T00:00:00.000Z',
     });
     expect(InviteSchema.parse(invite).clubId).toBe(data.club!.id);
+  });
+
+  it('lists the invites of its own club, valid against the shared schema', async () => {
+    const data = sampleData();
+    const api = adminApi(fakeClubClient(data));
+    expect(await api.listInvites()).toEqual([]);
+    const made = await api.createInvite({ role: 'guest', expiresAt: '2027-01-01T00:00:00.000Z' });
+    const invites = await api.listInvites();
+    expect(invites.map((invite) => InviteSchema.parse(invite).id)).toEqual([made.id]);
   });
 
   it('builds the club radio channel from the club secret key', async () => {

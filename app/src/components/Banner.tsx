@@ -62,13 +62,31 @@ export function Banner({ tone, title, children, action, live }: Props) {
 }
 
 const useStyles = makeStyles((theme) => ({
-  banner: { borderRadius: radii.md, padding: spacing.md, gap: spacing.sm + spacing.xs },
+  // A plate in the tone's wash with the tone's edge, like the mesh-down row and Ask for a Hand.
+  banner: {
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    padding: spacing.md,
+    gap: spacing.sm + spacing.xs,
+  },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm + spacing.xs },
   body: { flex: 1, gap: spacing.xs },
   title: { ...textStyles.label },
   text: { ...textStyles.body },
-  success: { backgroundColor: theme.colors[STATUS_TONE_COLORS.success.background] },
-  warning: { backgroundColor: theme.colors[STATUS_TONE_COLORS.warning.background] },
-  danger: { backgroundColor: theme.colors[STATUS_TONE_COLORS.danger.background] },
-  info: { backgroundColor: theme.colors[STATUS_TONE_COLORS.info.background] },
+  success: {
+    backgroundColor: theme.colors[STATUS_TONE_COLORS.success.background],
+    borderColor: theme.colors[STATUS_TONE_COLORS.success.foreground],
+  },
+  warning: {
+    backgroundColor: theme.colors[STATUS_TONE_COLORS.warning.background],
+    borderColor: theme.colors[STATUS_TONE_COLORS.warning.foreground],
+  },
+  danger: {
+    backgroundColor: theme.colors[STATUS_TONE_COLORS.danger.background],
+    borderColor: theme.colors[STATUS_TONE_COLORS.danger.foreground],
+  },
+  info: {
+    backgroundColor: theme.colors[STATUS_TONE_COLORS.info.background],
+    borderColor: theme.colors[STATUS_TONE_COLORS.info.foreground],
+  },
 }));

@@ -34,18 +34,18 @@ export function AlertScreen({ visible, title, detail, children }: Props) {
 const useStyles = makeStyles((theme) => ({
   screen: {
     flex: 1,
-    backgroundColor: theme.colors.surface0,
+    backgroundColor: theme.colors.plate,
     justifyContent: 'center',
     padding: spacing.md,
   },
   card: {
     borderWidth: sizes.hairline,
     borderColor: theme.colors.warning,
-    borderRadius: radii.sheetTop,
+    borderRadius: radii.xl,
     padding: spacing.lg,
     gap: spacing.md,
   },
-  title: { ...textStyles.sheetTitle, color: theme.colors.warning },
+  title: { ...textStyles.title1, color: theme.colors.warning },
   detail: { ...textStyles.bodyLarge, color: theme.colors.text },
   actions: { gap: spacing.sm },
 }));

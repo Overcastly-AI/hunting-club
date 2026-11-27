@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { assets } from './fixtures';
-import { DAWN_CLASS, DAWN_PAUSE_BUTTON_CLASS } from '@huntclub/design/dawnControl';
 import { channelSetWithKey, decodeJoinUrl, encodeJoinUrl, type JoinTarget } from '@huntclub/mesh';
 import { renderJoin } from '../render';
 import { showInvite } from '../join/show';
@@ -51,12 +50,9 @@ describe('the /join page', () => {
     expect(html).not.toMatch(/(src|href)="(https?:)?\/\//);
   });
 
-  it('never shows the dawn scene, its stylesheet or its pause button', () => {
-    open('https://example.com/join');
-    expect(document.querySelector(`.${DAWN_CLASS}`)).toBeNull();
-    expect(document.querySelector(`.${DAWN_PAUSE_BUTTON_CLASS}`)).toBeNull();
-    expect(html).not.toContain(assets.dawn.cssUrl);
-    expect(html).not.toContain(assets.dawn.scriptUrl);
+  it('never carries the home page map or its picture', () => {
+    expect(html).not.toContain(assets.aerialUrl);
+    expect(html).not.toContain('class="world"');
   });
 
   it('has the content for every state, with the general invite shown before the script runs', () => {

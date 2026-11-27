@@ -1,60 +1,78 @@
 /**
- * Dark and light themes (docs/UI_REDESIGN.md section 4.1, docs/SPEC.md "Design system").
- * Dark-first; the light ("sunlight") theme has the same semantic names so a component
- * written against one works in the other. Every text and control pair is held to WCAG
- * contrast by src/__tests__/theme-contrast.test.ts, for both themes.
+ * Dark and light themes: the map-first direction (docs/DESIGN.md "Palette"). Dark ("gunmetal")
+ * is the default; light is the direction's "daylight" ("overcast"): a cool grey-green white
+ * chosen for glare, never cream. Both themes have the same semantic names, so a component
+ * written against one works in the other. Every pair the direction draws is held to WCAG
+ * contrast by THEME_CONTRAST_RULES below (scripts/__tests__/theme.test.ts), in both themes.
  *
- * Orange (`accent`) is for you, the main action and the selected item only.
+ * The chrome is three tones, deepest to highest: `canvas` (the direction's pit), `plate` and
+ * `raised`. Orange (`accent`, the direction's blaze) has three jobs only: you, the main action
+ * and the selected item.
  */
 
 /** Hex colours of one theme. Every theme defines every name. */
 export interface ThemeColors {
-  /** Page field behind cards. */
+  /** The page; also the tab bar, the admin rail and text fields (the direction's pit). */
   readonly canvas: string;
-  /** Sidebar, top bar, tab bar. */
-  readonly surface0: string;
-  /** Cards. */
-  readonly surface1: string;
-  /** Inputs, secondary buttons, hover rows. */
-  readonly surface2: string;
-  /** Pressed, selected row. */
-  readonly surface3: string;
-  /** Decorative dividers and card edges only (nothing depends on seeing them). */
+  /** Anything floating on the map; sheets, panels, dialogs and tables (the direction's plate). */
+  readonly plate: string;
+  /** Secondary buttons, table heads, the selected row. */
+  readonly raised: string;
+  /** A raised control while hovered or pressed. */
+  readonly pressed: string;
+  /** Hairlines that divide cells and rows (the direction's hair; nothing depends on seeing them). */
   readonly borderSubtle: string;
-  /** Edges of inputs, checkboxes and other controls (3:1 on every surface). */
+  /** Outlines of controls (the direction's edge): 3:1 on every surface. */
   readonly borderControl: string;
+  /** Words and readouts (the direction's ink). */
   readonly text: string;
+  /** Second-line text (the direction's quiet). */
   readonly textSecondary: string;
-  /** Meta text only. */
+  /** Disabled labels and placeholders only: still 4.5:1 on every surface. */
   readonly textTertiary: string;
-  /** Fill of the main action, the selected item and you. */
+  /** Fill of the main action, the selected item and you (the direction's blaze). */
   readonly accent: string;
   readonly accentHover: string;
-  /** Edge of an accent fill (light theme: the fill alone does not read on cream). */
+  /** Edge of an accent fill. Light: ink, because orange alone does not pass 3:1 on white. */
   readonly accentBorder: string;
-  /** Text and icons on an accent fill. White on accent is banned (2.6:1). */
+  /** Text and icons on an accent fill: near-black. White on accent is banned (2.6:1). */
   readonly onAccent: string;
-  /** Links and selected nav text. */
+  /** Orange as text: links, the selected tab and nav item (the direction's blaze-ink). */
   readonly accentText: string;
-  /** 2 px focus ring with a 2 px offset, on :focus-visible only. */
+  /** Focus ring, on :focus-visible only (orange as text, so it passes 3:1). */
   readonly focusRing: string;
   readonly success: string;
   readonly successTint: string;
   readonly onSuccess: string;
+  /** A position heard just now (the solid freshness ring); "Open"; mesh connected. */
+  readonly fresh: string;
+  /** A position not heard just now (the broken freshness ring). */
+  readonly stale: string;
+  /** Ask for a Hand (the direction's lantern) and the warning tone. Never styled like 911. */
   readonly warning: string;
+  /** Ask for a Hand's wash and the warning tint (the direction's lantern-wash). */
   readonly warningTint: string;
+  /** Destructive actions and errors. */
   readonly danger: string;
   readonly dangerTint: string;
   /** Text on a filled danger button (the confirm step only). */
   readonly onDanger: string;
+  /** The unread badge and the north arrow: the only other red. */
+  readonly alert: string;
+  readonly onAlert: string;
   readonly info: string;
   readonly infoTint: string;
+  /** The wind arrow in the conditions readout. */
+  readonly wind: string;
 }
 
 /** Shadows and the dialog scrim (CSS values, not contrast-checked). */
 export interface ThemeEffects {
-  /** Dark cards separate by tone and border, so `none`. */
-  readonly shadowCard: string;
+  /**
+   * A plate floating over imagery (the map or a scene): a 1 px dark ring and a soft drop.
+   * Plates on the page have none: shadows only go under things that float over a picture.
+   */
+  readonly shadowPlate: string;
   readonly shadowPopover: string;
   readonly shadowDialog: string;
   readonly scrim: string;
@@ -67,85 +85,116 @@ export interface Theme {
   readonly effects: ThemeEffects;
 }
 
-const DARK_ACCENT = '#FF7A1F';
-const INK = '#121416';
+/** Hunter orange: the same fill in both themes. */
+const BLAZE = '#FF7A1F';
+const BLAZE_HOVER = '#FF8F40';
+/** Near-black text on orange (7.3:1). */
+const ON_BLAZE = '#160E06';
 const WHITE = '#FFFFFF';
+
+/** Dark ("gunmetal") values that more than one token uses. */
+const GUNMETAL = {
+  pit: '#0B0E10',
+  ink: '#F3F1EA',
+  green: '#4ADE80',
+  gold: '#F5C04E',
+  sky: '#8EC5FF',
+  red: '#FF5A4E',
+  onRed: '#1A0503',
+} as const;
 
 export const darkTheme = {
   colorScheme: 'dark',
   colors: {
-    canvas: '#0B0D0E',
-    surface0: INK,
-    surface1: '#1A1D20',
-    surface2: '#23272B',
-    surface3: '#2C3136',
-    borderSubtle: '#2A2E33',
-    borderControl: '#7A828A',
-    text: WHITE,
-    textSecondary: '#B8BDC2',
-    textTertiary: '#9AA2A9',
-    accent: DARK_ACCENT,
-    accentHover: '#FF8F40',
-    accentBorder: DARK_ACCENT,
-    onAccent: INK,
-    accentText: '#FF9A4D',
-    focusRing: DARK_ACCENT,
-    success: '#4ADE80',
-    successTint: '#223C2F',
-    onSuccess: INK,
-    warning: '#F5C04E',
-    warningTint: '#3D3727',
+    canvas: GUNMETAL.pit,
+    plate: '#14191C',
+    raised: '#232B30',
+    pressed: '#2A3338',
+    borderSubtle: '#353F45',
+    borderControl: '#7F8B91',
+    text: GUNMETAL.ink,
+    textSecondary: '#AEB7B6',
+    textTertiary: '#97A1A0',
+    accent: BLAZE,
+    accentHover: BLAZE_HOVER,
+    accentBorder: BLAZE,
+    onAccent: ON_BLAZE,
+    accentText: BLAZE,
+    focusRing: BLAZE,
+    success: GUNMETAL.green,
+    successTint: '#16291E',
+    onSuccess: GUNMETAL.pit,
+    fresh: GUNMETAL.green,
+    stale: GUNMETAL.gold,
+    warning: GUNMETAL.gold,
+    warningTint: '#2A2412',
+    // A touch lighter than alert, so it still reads as text on a pressed fill.
     danger: '#FF6B5E',
-    dangerTint: '#3F292A',
-    onDanger: INK,
-    info: '#8EC5FF',
-    infoTint: '#2D3844',
+    dangerTint: '#3A1C1A',
+    onDanger: GUNMETAL.onRed,
+    alert: GUNMETAL.red,
+    onAlert: GUNMETAL.onRed,
+    info: GUNMETAL.sky,
+    infoTint: '#1A2733',
+    wind: GUNMETAL.sky,
   },
   effects: {
-    shadowCard: 'none',
-    shadowPopover: '0 8px 24px rgba(0, 0, 0, 0.45)',
-    shadowDialog: '0 16px 48px rgba(0, 0, 0, 0.6)',
+    shadowPlate: '0 0 0 1px rgba(0, 0, 0, 0.6), 0 6px 18px rgba(0, 0, 0, 0.45)',
+    shadowPopover: '0 0 0 1px rgba(0, 0, 0, 0.6), 0 8px 24px rgba(0, 0, 0, 0.45)',
+    shadowDialog: '0 0 0 1px rgba(0, 0, 0, 0.6), 0 16px 48px rgba(0, 0, 0, 0.6)',
     scrim: 'rgba(0, 0, 0, 0.6)',
   },
 } as const satisfies Theme;
 
-/** "Sunlight": all body text at 7:1 or better on every surface. */
+/** Daylight ("overcast") values that more than one token uses. */
+const OVERCAST = {
+  ink: '#0E1416',
+  blazeInk: '#A8420A',
+  blue: '#1B5EA6',
+} as const;
+
+/** Daylight ("overcast"): body text at 7:1 or better on every surface. Not cream. */
 export const lightTheme = {
   colorScheme: 'light',
   colors: {
-    canvas: '#F4F1EA',
-    // The brief names no light surface-0; the sidebar and bars sit on white like cards.
-    surface0: WHITE,
-    surface1: WHITE,
-    surface2: '#ECE8DE',
-    surface3: '#E4DFD3',
-    borderSubtle: '#D9D3C5',
-    borderControl: '#6B737A',
-    text: INK,
-    textSecondary: '#3F464C',
-    textTertiary: '#586068',
-    accent: DARK_ACCENT,
-    accentHover: darkTheme.colors.accentHover,
-    accentBorder: '#A8420A',
-    onAccent: INK,
-    accentText: '#A8420A',
-    focusRing: INK,
+    canvas: '#DCE1DF',
+    plate: '#FBFCFB',
+    raised: '#E7EBE9',
+    pressed: '#E0E5E3',
+    borderSubtle: '#C9D0CD',
+    borderControl: '#66706C',
+    text: OVERCAST.ink,
+    textSecondary: '#45504D',
+    textTertiary: '#545F5B',
+    accent: BLAZE,
+    accentHover: BLAZE_HOVER,
+    // Orange is always outlined in ink in daylight, so its edge passes 3:1.
+    accentBorder: OVERCAST.ink,
+    onAccent: ON_BLAZE,
+    accentText: OVERCAST.blazeInk,
+    focusRing: OVERCAST.blazeInk,
+    // Darker than fresh: success text sits on every surface, fresh text only on a plate.
     success: '#0F6B3A',
-    successTint: '#E2EDE7',
+    successTint: '#DDEFE2',
     onSuccess: WHITE,
-    warning: '#7A4A00',
-    warningTint: '#EFE9E0',
+    fresh: '#157F3C',
+    stale: '#8A6200',
+    warning: '#6B4C00',
+    warningTint: '#FBE7B0',
     danger: '#B3261E',
-    dangerTint: '#F6E5E4',
+    dangerTint: '#F7E0DD',
     onDanger: WHITE,
-    info: '#0B5CA8',
-    infoTint: '#E2EBF5',
+    alert: '#C2281C',
+    onAlert: WHITE,
+    info: OVERCAST.blue,
+    infoTint: '#DCE8F5',
+    wind: OVERCAST.blue,
   },
   effects: {
-    shadowCard: '0 1px 2px rgba(18, 20, 22, 0.08)',
-    shadowPopover: '0 8px 24px rgba(18, 20, 22, 0.16)',
-    shadowDialog: '0 16px 48px rgba(18, 20, 22, 0.24)',
-    scrim: 'rgba(18, 20, 22, 0.5)',
+    shadowPlate: '0 0 0 1px rgba(28, 38, 34, 0.55), 0 6px 18px rgba(28, 38, 34, 0.3)',
+    shadowPopover: '0 0 0 1px rgba(28, 38, 34, 0.35), 0 8px 24px rgba(28, 38, 34, 0.2)',
+    shadowDialog: '0 0 0 1px rgba(28, 38, 34, 0.35), 0 16px 48px rgba(28, 38, 34, 0.3)',
+    scrim: 'rgba(14, 20, 22, 0.5)',
   },
 } as const satisfies Theme;
 
@@ -169,13 +218,14 @@ export const THEME_STORAGE_KEY = 'hcm-theme';
 /** Web: attribute on <html> that forces a theme (absent means "system"). */
 export const THEME_ATTRIBUTE = 'data-theme';
 
-/**
- * Contrast rules for every theme (docs/UI_REDESIGN.md 4.1). Each foreground is checked on
- * each listed background. This is a superset of the brief's pairs: text and controls are
- * checked on every surface, not only the ones the brief measured.
- */
-const SURFACES = ['canvas', 'surface0', 'surface1', 'surface2', 'surface3'] as const;
+/** Every surface text and controls sit on, deepest to highest. */
+export const SURFACES = ['canvas', 'plate', 'raised', 'pressed'] as const;
 
+/**
+ * Contrast rules for every theme: every pair the map-first direction draws (the pairs its
+ * tools/contrast.mjs checks), widened to every surface wherever the token can land on one.
+ * Each foreground is checked on each listed background, in both themes.
+ */
 export interface ContrastRule {
   readonly foreground: ThemeColorToken;
   readonly backgrounds: readonly ThemeColorToken[];
@@ -183,30 +233,43 @@ export interface ContrastRule {
   readonly kind: 'text' | 'ui';
 }
 
+const onEverySurface = (kind: ContrastRule['kind'], foregrounds: readonly ThemeColorToken[]) =>
+  foregrounds.map((foreground) => ({ foreground, backgrounds: SURFACES, kind }));
+
 export const THEME_CONTRAST_RULES: readonly ContrastRule[] = [
-  ...(
-    [
-      'text',
-      'textSecondary',
-      'textTertiary',
-      'accentText',
-      'success',
-      'warning',
-      'danger',
-      'info',
-    ] as const
-  ).map((foreground) => ({ foreground, backgrounds: SURFACES, kind: 'text' as const })),
-  ...(['borderControl', 'focusRing', 'accentBorder'] as const).map((foreground) => ({
-    foreground,
-    backgrounds: SURFACES,
-    kind: 'ui' as const,
-  })),
+  ...onEverySurface('text', [
+    'text',
+    'textSecondary',
+    'textTertiary',
+    'accentText',
+    'success',
+    'warning',
+    'danger',
+    'info',
+  ]),
+  // Control edges, the focus ring, the accent's edge and every ring, arrow or icon on chrome.
+  ...onEverySurface('ui', [
+    'borderControl',
+    'focusRing',
+    'accentBorder',
+    'fresh',
+    'stale',
+    'alert',
+    'wind',
+  ]),
+  // "Open" beside a stand and "heard 2 min ago" are fresh text, on a plate only.
+  { foreground: 'fresh', backgrounds: ['plate'], kind: 'text' },
+  // The selected segment and the on switch are inverted: plate on ink.
+  { foreground: 'plate', backgrounds: ['text'], kind: 'text' },
   { foreground: 'onAccent', backgrounds: ['accent', 'accentHover'], kind: 'text' },
   { foreground: 'onSuccess', backgrounds: ['success'], kind: 'text' },
   { foreground: 'onDanger', backgrounds: ['danger'], kind: 'text' },
-  // Status text on its own tint (badges and banners). Never text on any other tint.
+  { foreground: 'onAlert', backgrounds: ['alert'], kind: 'text' },
+  // Status text on its own tint (badges, banners, Ask for a Hand). Never text on any other tint.
   { foreground: 'success', backgrounds: ['successTint'], kind: 'text' },
   { foreground: 'warning', backgrounds: ['warningTint'], kind: 'text' },
   { foreground: 'danger', backgrounds: ['dangerTint'], kind: 'text' },
   { foreground: 'info', backgrounds: ['infoTint'], kind: 'text' },
+  // Ask for a Hand's second line ("Pings club members") is ink on the gold wash.
+  { foreground: 'text', backgrounds: ['warningTint'], kind: 'text' },
 ];

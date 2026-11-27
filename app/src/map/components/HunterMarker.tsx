@@ -1,64 +1,87 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { describeFreshness, type Freshness } from '@huntclub/shared';
+import { Text, View } from 'react-native';
 
-import { colors, opacity, sizes, spacing, textStyles } from '../../theme';
-import { classifyFreshness, positionAge, type Freshness } from '@huntclub/core';
-
-import { describeAge } from '../age';
-import { hunterAccessibilityLabel, placeLabel } from '../labels';
+import {
+  makeStyles,
+  maxFontScale,
+  opacity,
+  radii,
+  sizes,
+  textStyles,
+  useTheme,
+  type ThemeColorToken,
+} from '../../theme';
+import { hunterAccessibilityLabel, hunterPlateDetail, placeLabel } from '../labels';
 import type { HunterOnMap } from '../types';
-import { HaloText } from './HaloText';
+import { MarkerHitArea, MarkerPlate } from './MarkerPlate';
 
-type Props = { hunter: HunterOnMap; now: number };
-
-/** Ring style by freshness: solid under 2 min, dashed 2–10 min, faded after. */
-const RING: Record<Freshness, { borderColor: string; borderStyle: 'solid' | 'dashed' }> = {
-  fresh: { borderColor: colors.fresh, borderStyle: 'solid' },
-  stale: { borderColor: colors.help, borderStyle: 'dashed' },
-  faded: { borderColor: colors.textSecondary, borderStyle: 'solid' },
+type Props = {
+  hunter: HunterOnMap;
+  now: number;
+  /** Just the ring and initials, no plate (the chat's strip of map). */
+  compact?: boolean;
 };
 
 /**
- * Another hunter: initials in a circle with a freshness ring, the stand, spot
- * or area name (or "On the move") and how long ago they were heard.
+ * The freshness ring (docs/DESIGN.md "A ring that tells the truth"): solid green when the
+ * radio was heard just now, broken gold when it was not, and a faded grey ring with a faded
+ * circle for an old, last known position. An old position is never drawn as a live one.
  */
-export function HunterMarker({ hunter, now }: Props) {
-  const age = positionAge(hunter.heardAt, now);
-  const freshness = classifyFreshness(age);
+export const FRESHNESS_RING: Record<
+  Freshness,
+  { color: ThemeColorToken; borderStyle: 'solid' | 'dashed'; opacity: number }
+> = {
+  fresh: { color: 'fresh', borderStyle: 'solid', opacity: 1 },
+  stale: { color: 'stale', borderStyle: 'dashed', opacity: 1 },
+  faded: { color: 'textSecondary', borderStyle: 'solid', opacity: opacity.faded },
+};
+
+/**
+ * Another hunter: initials in a 42 px circle with the freshness ring, in a box padded to
+ * 48 px, and a plate with where they are and how long ago their radio was heard.
+ */
+export function HunterMarker({ hunter, now, compact }: Props) {
+  const styles = useStyles();
+  const theme = useTheme();
+  const view = describeFreshness(hunter.heardAt, now);
+  const ring = FRESHNESS_RING[view.freshness];
   return (
-    <View
-      accessible
-      accessibilityLabel={hunterAccessibilityLabel(hunter, now)}
-      style={styles.container}
-    >
-      {/* Only the circle fades: labels keep full contrast, and the age says how old it is. */}
-      <View style={[styles.circle, RING[freshness], freshness === 'faded' && styles.faded]}>
-        <Text style={styles.initials} numberOfLines={1}>
-          {hunter.initials}
-        </Text>
-      </View>
-      <HaloText style={styles.name} numberOfLines={1}>
-        {placeLabel(hunter.place)}
-      </HaloText>
-      <HaloText style={styles.age} numberOfLines={1}>
-        {describeAge(age).short}
-      </HaloText>
+    <View accessible accessibilityLabel={hunterAccessibilityLabel(hunter, now)} style={styles.row}>
+      <MarkerHitArea testID="hunter-hit-area">
+        {/* Only the circle fades: the plate keeps full contrast, and its age says how old. */}
+        <View
+          testID="freshness-ring"
+          style={[
+            styles.circle,
+            styles[ring.borderStyle],
+            { borderColor: theme.colors[ring.color], opacity: ring.opacity },
+          ]}
+        >
+          <Text maxFontSizeMultiplier={maxFontScale} style={styles.initials}>
+            {hunter.initials}
+          </Text>
+        </View>
+      </MarkerHitArea>
+      {compact ? null : (
+        <MarkerPlate title={placeLabel(hunter.place)} detail={hunterPlateDetail(hunter, now)} />
+      )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { alignItems: 'center', minWidth: sizes.minTapTarget, paddingTop: spacing.xs },
-  faded: { opacity: opacity.faded },
+const useStyles = makeStyles((theme) => ({
+  row: { flexDirection: 'row', alignItems: 'center' },
+  // A minimum, not a fixed size: at the largest text sizes the initials grow and the circle with them.
   circle: {
-    width: sizes.hunterMarker,
-    height: sizes.hunterMarker,
-    borderRadius: sizes.hunterMarker / 2,
+    minWidth: sizes.hunterMarker,
+    minHeight: sizes.hunterMarker,
+    borderRadius: radii.full,
     borderWidth: sizes.freshnessRing,
-    backgroundColor: colors.surface,
+    backgroundColor: theme.colors.plate,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  initials: { ...textStyles.markerName, color: colors.text },
-  name: { ...textStyles.markerName, marginTop: spacing.xs },
-  age: { color: colors.textSecondary },
-});
+  solid: { borderStyle: 'solid' },
+  dashed: { borderStyle: 'dashed' },
+  initials: { ...textStyles.markerName, color: theme.colors.text },
+}));

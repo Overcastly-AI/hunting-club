@@ -1,17 +1,18 @@
 import { useKeepAwake } from 'expo-keep-awake';
+import { Sunrise, Tablet } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { hasClubFeatures } from '@huntclub/shared';
+import { formatClockTime, hasClubFeatures, sunReadout } from '@huntclub/shared';
 import { useClubEntitlement } from '../club/entitlement';
-import { PlaceholderScreen } from '../components/PlaceholderScreen';
-import { formatClockTime } from '../conditions/clock';
+import { EmptyState } from '../components/EmptyState';
+import { Screen } from '../components/Screen';
 import { useNow } from '../hooks/useNow';
-import { sunLine, sunSentence } from '../map/components/ConditionsPanel';
+import { sunSentence } from './sunLine';
 import { nodePosition } from '../map/meshMapData';
 import { SafetyLayer } from '../safety/SafetyLayer';
-import { makeStyles, spacing, textStyles } from '../theme';
+import { ICON_SIZE, makeStyles, spacing, tabularNums, textStyles, useTheme } from '../theme';
 import { useBoardRadio, type BoardRadio } from './BoardRadio';
 import { boardLinkStatus, buildBoard } from './boardModel';
 import { BoardMap } from './components/BoardMap';
@@ -47,6 +48,7 @@ function useBoardRadioUpdates(radio: BoardRadio | null): void {
  */
 export function BoardScreen() {
   const styles = useStyles();
+  const theme = useTheme();
   useKeepAwake();
   const radio = useBoardRadio();
   const entitlement = useClubEntitlement();
@@ -56,10 +58,12 @@ export function BoardScreen() {
   if (!hasClubFeatures(entitlement, now)) {
     return (
       <>
-        <PlaceholderScreen
-          title="Clubhouse board"
-          description="The clubhouse board is part of a club subscription. Ask your club admin to sign this tablet in to the club. Ask for a Hand and overdue alerts still show here."
-        />
+        <Screen title="Clubhouse board">
+          <EmptyState icon={Tablet} title="The clubhouse board is part of a club subscription">
+            Ask your club admin to sign this tablet in to the club. Ask for a Hand and overdue
+            alerts still show here.
+          </EmptyState>
+        </Screen>
         <SafetyLayer canReply={false} onShowOnMap={() => undefined} />
       </>
     );
@@ -90,9 +94,17 @@ export function BoardScreen() {
           <Text accessibilityRole="header" style={styles.title}>
             {entitlement!.clubName}
           </Text>
-          <Text style={styles.title}>{formatClockTime(new Date(now))}</Text>
+          <Text style={[styles.title, styles.clock]}>{formatClockTime(new Date(now))}</Text>
         </View>
-        <Text style={styles.sun}>{sunSentence(sunLine(clubhouse ?? null, now))}</Text>
+        <View style={styles.sunRow}>
+          <Sunrise
+            size={ICON_SIZE.lg}
+            color={theme.colors.textSecondary}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          />
+          <Text style={styles.sun}>{sunSentence(sunReadout(clubhouse ?? null, now))}</Text>
+        </View>
         <LinkBanner {...link} />
         <ScrollView contentContainerStyle={styles.lists}>
           <OutList entries={board.out} />
@@ -107,11 +119,20 @@ export function BoardScreen() {
 const EMPTY = { myNodeNum: 0, nodes: new Map() };
 
 const useStyles = makeStyles((theme) => ({
-  root: { flex: 1, flexDirection: 'row', backgroundColor: theme.colors.surface0 },
+  root: { flex: 1, flexDirection: 'row', backgroundColor: theme.colors.plate },
   mapPane: { flex: 1 },
   listPane: { flex: 1, padding: spacing.lg, gap: spacing.md },
-  header: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    gap: spacing.md,
+  },
+  /** Club name and clock in the display style (40/48, 800), the biggest type in the app. */
   title: { ...textStyles.boardTitle, color: theme.colors.text, flexShrink: 1 },
-  sun: { ...textStyles.boardDetail, color: theme.colors.text },
+  /** Fixed-width digits, so the clock does not shift as the minutes change. */
+  clock: tabularNums,
+  sunRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  sun: { ...textStyles.boardDetail, color: theme.colors.text, flexShrink: 1 },
   lists: { gap: spacing.xl, paddingBottom: spacing.xl },
 }));

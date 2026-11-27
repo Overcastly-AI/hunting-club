@@ -1,11 +1,11 @@
-import { type MemberRole, signInCopy } from '@huntclub/shared';
+import { INITIALS_MAX, MEMBER_ROLE_LABELS, signInCopy } from '@huntclub/shared';
 
 /** Every word the club screens show. Plain language; never channels or keys (CLAUDE.md). */
 export const clubCopy = {
   section: {
     heading: 'Club',
     none: 'Hunting with a club? Scan your Club QR code with the phone camera to join.',
-    role: { admin: 'Admin', member: 'Member', guest: 'Guest' } satisfies Record<MemberRole, string>,
+    role: MEMBER_ROLE_LABELS,
     pending: 'Joined on the radio. Sign in when you have signal to finish joining the club.',
     featuresOpen: 'Club features are on.',
     featuresClosed:
@@ -23,7 +23,7 @@ export const clubCopy = {
     title: 'Join club',
     intro: 'Tell your club who you are. This shows on the club roster.',
     name: 'Your name',
-    initials: 'Initials (up to 3)',
+    initials: `Initials (up to ${INITIALS_MAX})`,
     join: 'Join club',
     joined: 'You joined the club on the radio.',
     signInToFinish: 'Sign in to finish joining',

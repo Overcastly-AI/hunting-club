@@ -10,13 +10,13 @@ export const sizes = {
   /** Width of the dark outline behind all map text. */
   mapHaloWidth: 3,
   /** Hunter marker circle (initials inside). */
-  hunterMarker: 44,
+  hunterMarker: 42,
   /** Freshness ring around a hunter marker. */
   freshnessRing: 3,
   /** Club stand marker (rounded square). */
-  standMarker: 40,
+  standMarker: 38,
   /** Your orange dot. */
-  youDot: 20,
+  youDot: 24,
   /** Pulse around your dot at its largest. */
   youPulse: 56,
   /** Small drawn icons inside controls and markers. */
@@ -25,6 +25,38 @@ export const sizes = {
   scaleBarTick: 8,
   /** Thin strokes in drawn icons and the scale bar. */
   hairline: 2,
+  /** Outline of a control (button, field, stand marker): 1.5 px, so it reads at a glance. */
+  controlBorder: 1.5,
+  /** Outline of the selected option (a basemap, a check-in mode): 2 px of accent edge. */
+  selectedBorder: 2,
+  /** The map's control column (Layers, North, Find me): one plate this wide. */
+  mapToolWidth: 58,
+  /** One control in that column. */
+  mapToolHeight: 56,
+  /** A check-in mode button (At a stand, In an area, Right here, On the move). */
+  modeButton: 58,
+  /** A row in a sheet list (stands to check in at, map layers). */
+  listRow: 56,
+  /** The radio mark at the end of a pick-one row. */
+  radioMark: 26,
+  /** The dot inside a chosen radio mark. */
+  radioDot: 14,
+  /** A basemap thumbnail's picture in the layers sheet. */
+  swatchHeight: 56,
+  /** The on/off switch's track and knob. */
+  switchWidth: 46,
+  switchHeight: 28,
+  switchKnob: 18,
+  /** The mesh status dot. */
+  meshDot: 10,
+  /** The grab handle on top of a sheet. */
+  grabberWidth: 40,
+  grabberHeight: 4,
+  /** The strip of map above the chat thread, and the peek of map above Check In. */
+  chatMapStrip: 96,
+  checkInMapPeek: 180,
+  /** The orange edge on your own message. */
+  mineEdge: 3,
 } as const;
 
 /** Opacity levels used on the map. */
@@ -37,27 +69,37 @@ export const opacity = {
   scentLine: 0.8,
   /** Pressed buttons. */
   pressed: 0.7,
+  /** Backing of a marker plate over the aerial, so busy imagery never shows through its text. */
+  markerPlate: 0.94,
+  /** Hybrid basemap: the topo map drawn over the aerial at this opacity. */
+  hybridTopo: 0.45,
 } as const;
 
-/** Corner radii in px (docs/UI_REDESIGN.md 4.4), plus the map and app names that use them. */
+/**
+ * Corner radii in px (docs/DESIGN.md "Self-critique"): three radii with jobs, plus round.
+ * Never one radius on everything regardless of hierarchy.
+ */
 const radius = {
-  /** Badges, chips in table cells. */
-  sm: 8,
-  /** Buttons, inputs, selects. */
-  md: 12,
-  /** Cards, tiles. */
-  lg: 16,
-  /** Dialogs, sheets. */
-  xl: 20,
-  /** Avatars, pills. */
+  /** A marker plate (the name tag beside a marker); badges and other small tags. */
+  sm: 6,
+  /** Controls: buttons, inputs, selects, segmented controls. */
+  md: 10,
+  /** Plates: anything floating on the map, panels, tables. */
+  lg: 12,
+  /** The top corners of a sheet; dialogs. */
+  xl: 16,
+  /** Hunters, avatars, switches: round things only. */
   full: 999,
 } as const;
 
 export const radii = {
   ...radius,
-  control: 14,
+  /** The map's control plate (Layers, North, Find me). */
+  control: radius.lg,
   /** Club stand markers. */
-  standMarker: 10,
+  standMarker: 9,
+  /** The name tag beside a marker. */
+  markerPlate: radius.sm,
   primaryButton: radius.md,
   /** Top corners of the bottom sheet. */
   sheetTop: radius.xl,

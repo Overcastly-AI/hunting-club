@@ -13,13 +13,22 @@ import {
   type Season,
   type Stand,
 } from '@huntclub/shared';
+import { ClipboardList, Download, RefreshCw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { ClubApi } from '../api/types';
-import { Field } from '../components/Field';
 import { Loadable } from '../components/Loadable';
 import { isOffline, useAsync } from '../components/useAsync';
-import { PageHeading } from '../components/PageHeading';
-import { DataTable } from '../components/DataTable';
+import { Page } from '../components/Page';
+import {
+  Banner,
+  Button,
+  DataTable,
+  EmptyState,
+  Field,
+  Input,
+  StatGrid,
+  StatTile,
+} from '../components/ui';
 import { toCsv } from '../csv';
 import { saveFile } from '../download';
 import { formatDate } from '../format';
@@ -57,35 +66,35 @@ export function Harvests(props: { api: ClubApi }) {
   );
 
   return (
-    <section aria-labelledby="harvests-title">
-      <PageHeading id="harvests-title">Harvests</PageHeading>
-      <p className="muted">Harvests that members shared with the club.</p>
-      <div className="row">
-        <Field
-          label="Season starts"
-          type="date"
-          value={season.from}
-          onChange={(e) => setSeason((s) => ({ ...s, from: e.target.value }))}
-        />
-        <Field
-          label="Season ends"
-          type="date"
-          value={season.to}
-          onChange={(e) => setSeason((s) => ({ ...s, to: e.target.value }))}
-        />
+    <Page title="Harvests" description="Harvests that members shared with the club.">
+      <div className="filters">
+        <Field label="Season starts">
+          <Input
+            type="date"
+            value={season.from}
+            onChange={(e) => setSeason((s) => ({ ...s, from: e.target.value }))}
+          />
+        </Field>
+        <Field label="Season ends">
+          <Input
+            type="date"
+            value={season.to}
+            onChange={(e) => setSeason((s) => ({ ...s, to: e.target.value }))}
+          />
+        </Field>
       </div>
       <Loadable state={club}>
         {(data) =>
           isSeason(season) ? (
             <Report data={data} season={season} onRefresh={club.reload} />
           ) : (
-            <p className="error" role="alert">
-              Pick a season end on or after its start.
-            </p>
+            <div role="alert">
+              <Banner tone="danger">Pick a season end on or after its start.</Banner>
+            </div>
           )
         }
       </Loadable>
-    </section>
+    </Page>
   );
 }
 
@@ -97,67 +106,75 @@ function Report(props: { data: ClubHarvests; season: Season; onRefresh: () => vo
   );
   const names = useMemo(() => memberNames(data.members), [data.members]);
 
+  const exportCsv = () =>
+    saveFile(
+      `harvests-${season.from}-to-${season.to}.csv`,
+      harvestCsv(report, data, names),
+      'text/csv;charset=utf-8',
+    );
+
   return (
     <>
-      <p>
-        {/* No "0 harvests" line: the empty state below says it. */}
-        {report.total > 0 ? (
-          <>
-            <strong>{report.total}</strong> {report.total === 1 ? 'harvest' : 'harvests'} from{' '}
-            {formatDay(season.from)} to {formatDay(season.to)}.{' '}
-          </>
-        ) : null}
-        <button className="button" type="button" onClick={props.onRefresh}>
+      <div className="toolbar">
+        <p className="toolbar__text">
+          {formatDay(season.from)} to {formatDay(season.to)}
+        </p>
+        <Button icon={RefreshCw} onClick={props.onRefresh}>
           Refresh
-        </button>{' '}
-        <button
-          className="button"
-          type="button"
+        </Button>
+        <Button
+          icon={Download}
           disabled={report.total === 0}
           aria-describedby={report.total === 0 ? 'export-hint' : undefined}
-          onClick={() =>
-            saveFile(
-              `harvests-${season.from}-to-${season.to}.csv`,
-              harvestCsv(report, data, names),
-              'text/csv;charset=utf-8',
-            )
-          }
+          onClick={exportCsv}
         >
           Export CSV
-        </button>
+        </Button>
         {report.total === 0 ? (
-          <span id="export-hint" className="muted">
-            {' '}
+          <span id="export-hint" className="visually-hidden">
             Nothing to export yet
           </span>
         ) : null}
-      </p>
+      </div>
       {report.total === 0 ? (
-        <p>No shared harvests in this season yet.</p>
+        <EmptyState icon={ClipboardList} title="No shared harvests in this season yet">
+          Members log harvests in the app and choose to share them with the club.
+        </EmptyState>
       ) : (
         <>
-          <CountTable title="By species" heading="Species" rows={report.bySpecies} />
-          <CountTable
-            title="By sex"
-            heading="Sex"
-            rows={HARVEST_SEXES.map((sex) => ({
-              key: sex,
-              label: HARVEST_SEX_LABELS[sex],
-              count: report.bySex[sex],
-            }))}
-          />
-          <CountTable
-            title="By member"
-            heading="Member"
-            rows={report.byMember
-              .map((r) => ({ ...r, label: names(r.key) }))
-              .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))}
-          />
-          <CountTable
-            title="By week"
-            heading="Week of"
-            rows={report.byWeek.map((r) => ({ ...r, label: formatDay(r.key) }))}
-          />
+          <StatGrid aria-label="Season at a glance">
+            <StatTile label="Harvests" value={report.total} />
+            <StatTile label="Species" value={report.bySpecies.length} />
+            <StatTile label="Members" value={report.byMember.length} />
+            <StatTile
+              label="Weeks with a harvest"
+              value={report.byWeek.filter((w) => w.count > 0).length}
+            />
+          </StatGrid>
+          <div className="count-tables">
+            <CountTable title="By species" heading="Species" rows={report.bySpecies} />
+            <CountTable
+              title="By sex"
+              heading="Sex"
+              rows={HARVEST_SEXES.map((sex) => ({
+                key: sex,
+                label: HARVEST_SEX_LABELS[sex],
+                count: report.bySex[sex],
+              }))}
+            />
+            <CountTable
+              title="By member"
+              heading="Member"
+              rows={report.byMember
+                .map((r) => ({ ...r, label: names(r.key) }))
+                .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))}
+            />
+            <CountTable
+              title="By week"
+              heading="Week of"
+              rows={report.byWeek.map((r) => ({ ...r, label: formatDay(r.key) }))}
+            />
+          </div>
         </>
       )}
     </>
@@ -166,18 +183,22 @@ function Report(props: { data: ClubHarvests; season: Season; onRefresh: () => vo
 
 function CountTable(props: { title: string; heading: string; rows: readonly CountRow[] }) {
   return (
-    <>
-      <h2>{props.title}</h2>
+    <section className="count-table" aria-label={props.title}>
+      <h2 className="section-title">{props.title}</h2>
       <DataTable
         caption={`Harvests ${props.title.toLowerCase()}`}
         rows={props.rows}
         rowKey={(r) => r.key}
         columns={[
-          { label: props.heading, cell: (r) => r.label },
-          { label: 'Harvests', cell: (r) => r.count },
+          { key: 'label', header: props.heading, cell: (r) => r.label },
+          {
+            key: 'count',
+            header: 'Harvests',
+            cell: (r) => <span className="text-readout-inline">{r.count}</span>,
+          },
         ]}
       />
-    </>
+    </section>
   );
 }
 

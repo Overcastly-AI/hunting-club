@@ -1,7 +1,7 @@
 import type { LatLon } from '@huntclub/mesh';
 import { HOUR_MS } from '@huntclub/core';
 import { MILE_M } from '../map/geo';
-import { compassPointToDegrees } from './compass';
+import { compassPointToDegrees } from '@huntclub/shared';
 import type { ForecastHour } from './types';
 
 /**

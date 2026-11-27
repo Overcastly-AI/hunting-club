@@ -72,7 +72,7 @@ function Buttons() {
           </Button>
         </Row>
       ))}
-      <Label>Sizes: sm 48, md 48, lg 56</Label>
+      <Label>Sizes: sm 48 (in a header), md 52, lg 64 (the one big action)</Label>
       <Row>
         <Button variant="primary" size="sm">
           Small
@@ -215,7 +215,9 @@ function Cards() {
         </p>
       </Card>
       <Card>
-        <p className="kit-text">A card with no header: surface-1, a 1 px border, radius-lg.</p>
+        <p className="kit-text">
+          A plate with no header: the plate tone, a hairline edge, no shadow.
+        </p>
       </Card>
     </div>
   );

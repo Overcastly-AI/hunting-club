@@ -2,7 +2,7 @@ import { SUN, overdueAt, type MemberCheckIn, type SunApi } from '@huntclub/core'
 import type { ClientState, LatLon } from '@huntclub/mesh';
 
 import type { ClubStand } from '../checkin/placement';
-import { formatClockTime } from '../conditions/clock';
+import { formatClockTime } from '@huntclub/shared';
 import { placeLabel } from '../map/labels';
 import {
   memberIdentity,
@@ -113,7 +113,7 @@ export function boardLinkStatus(
     return { text: 'Reconnecting to the board radio…', tone: 'quiet' };
   if (state === 'disconnected')
     return { text: 'Board radio not connected. Retrying…', tone: 'none' };
-  return describeMeshStatus(
+  const { text, tone } = describeMeshStatus(
     meshStatusOf(
       {
         myNodeNum: input.myNodeNum,
@@ -125,4 +125,5 @@ export function boardLinkStatus(
     ),
     now,
   );
+  return { text, tone };
 }

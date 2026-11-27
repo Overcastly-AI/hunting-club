@@ -11,16 +11,19 @@ export type CheckInChoice = {
   detail: string;
 };
 
-/** The first choice on the Check In tab, in spec order. */
+/**
+ * The modes on the Check In tab, in the design's order (docs/DESIGN.md, Check In): At a stand,
+ * In an area, Right here, On the move. Stands are optional: free parties get the last two.
+ */
 const ALL_CHOICES: readonly CheckInChoice[] = [
+  { mode: CheckInMode.Stand, label: 'At a stand', detail: 'One of the club’s stands' },
+  { mode: CheckInMode.Area, label: 'In an area', detail: 'A named club area' },
   {
     mode: CheckInMode.Spot,
     label: 'Right here',
     detail: 'Sitting at a spot. Give it a name if you like.',
   },
   { mode: CheckInMode.Moving, label: ON_THE_MOVE, detail: 'Walking, stalking or on a drive' },
-  { mode: CheckInMode.Stand, label: 'At a stand', detail: 'One of the club’s stands' },
-  { mode: CheckInMode.Area, label: 'In an area', detail: 'A named club area' },
 ];
 
 /** Choices for this hunter: club-only modes (core's CLUB_ONLY_MODES) are hidden for free users. */

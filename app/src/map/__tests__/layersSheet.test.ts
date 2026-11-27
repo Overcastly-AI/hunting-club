@@ -1,5 +1,5 @@
 // The Map layers sheet's line about the club's downloaded map pack.
-import { formatShortDate } from '../../conditions/clock';
+import { formatShortDate } from '@huntclub/shared';
 import { clubPackText } from '../components/LayersSheet';
 import { formatBytes } from '../tiles';
 

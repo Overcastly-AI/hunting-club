@@ -1,77 +1,45 @@
-import { UNKNOWN_SPOKEN, UNKNOWN_VALUE } from '../conditions/display';
 import type { LatLon } from '@huntclub/mesh';
-import { positionAge } from '@huntclub/core';
+import { describeAge, positionAge } from '@huntclub/shared';
 
-import { describeAge } from '../map/age';
-import { downwindBearing } from '../map/geo';
-import { degreesToCompassPoint } from './compass';
 import { currentHour, isOutdated } from './forecast';
 import type { CachedForecast } from './types';
 
-/** What the conditions panel and your scent cone show for wind and temperature. */
-export type WeatherDisplay = {
-  /** "NW 10 mph", "Calm", or UNKNOWN_VALUE. */
-  wind: string;
-  windSpoken: string;
-  /** Where the wind blows from (for the scent cone); null when calm or unknown. */
+/**
+ * The cached forecast hour that covers now, as the inputs of the shared conditions readout
+ * (`conditionsReadout` in @huntclub/shared words them: "NW 6 mph", "34°F", "—"). Null values
+ * mean "not known": no forecast, outside its area, or its hours have ended.
+ */
+export type WeatherNow = {
+  windMph: number | null;
+  /** Where the wind blows from, in degrees; null when NWS gives no direction. */
   windFromDeg: number | null;
-  /** Where the "blowing toward" arrow points; null when calm or unknown. */
-  windTowardDeg: number | null;
-  /** "34°F" or UNKNOWN_VALUE. */
-  temperature: string;
-  temperatureSpoken: string;
+  temperatureF: number | null;
   /** "Updated 3 hr ago" once the forecast is older than the refresh interval; else null. */
   updated: string | null;
   updatedSpoken: string | null;
 };
 
-export const UNKNOWN_WEATHER: WeatherDisplay = {
-  wind: UNKNOWN_VALUE,
-  windSpoken: UNKNOWN_SPOKEN,
+export const UNKNOWN_WEATHER: WeatherNow = {
+  windMph: null,
   windFromDeg: null,
-  windTowardDeg: null,
-  temperature: UNKNOWN_VALUE,
-  temperatureSpoken: UNKNOWN_SPOKEN,
+  temperatureF: null,
   updated: null,
   updatedSpoken: null,
 };
 
-export const CALM = 'Calm';
-
-export function weatherDisplay(
+/** The forecast hour that covers `now` at `place`, and how old the forecast is. */
+export function weatherNow(
   forecast: CachedForecast | null,
   place: LatLon | null,
   now: number,
-): WeatherDisplay {
+): WeatherNow {
   const hour = currentHour(forecast, place, now);
   if (!forecast || !hour) return UNKNOWN_WEATHER;
-
-  const mph = Math.round(hour.windMph);
-  const from = mph > 0 ? hour.windFromDeg : null;
-  const toward = from === null ? null : downwindBearing(from);
-  const temperature = `${Math.round(hour.temperatureF)}°F`;
   const age = isOutdated(forecast, now) ? describeAge(positionAge(forecast.fetchedAt, now)) : null;
-
-  let wind: string;
-  let windSpoken: string;
-  if (mph === 0) {
-    wind = CALM;
-    windSpoken = 'calm';
-  } else if (from === null || toward === null) {
-    wind = `${mph} mph`;
-    windSpoken = wind;
-  } else {
-    wind = `${degreesToCompassPoint(from)} ${mph} mph`;
-    windSpoken = `${mph} mph from ${degreesToCompassPoint(from)}, blowing toward ${degreesToCompassPoint(toward)}`;
-  }
-
   return {
-    wind,
-    windSpoken,
-    windFromDeg: from,
-    windTowardDeg: toward,
-    temperature,
-    temperatureSpoken: temperature,
+    windMph: hour.windMph,
+    windFromDeg: hour.windFromDeg,
+    temperatureF: hour.temperatureF,
     updated: age ? `Updated ${age.short}` : null,
     updatedSpoken: age ? `forecast updated ${age.spoken}` : null,
   };

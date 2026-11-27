@@ -1,7 +1,9 @@
 import { PartyError } from '@huntclub/core';
+import { ScanQrCode, Users } from 'lucide-react-native';
 import { useContext, useState } from 'react';
 import { Text } from 'react-native';
 
+import { Banner } from '../components/Banner';
 import { Button } from '../components/Button';
 import { QrScanner } from '../components/QrScanner';
 import { Screen } from '../components/Screen';
@@ -73,18 +75,29 @@ export function PartyStep({ onNext, onClubCode }: Props) {
     <Screen title={copy.title} description={copy.body}>
       {party ? (
         <>
-          <Text style={styles.body}>{party.role === 'creator' ? copy.started : copy.joined}</Text>
-          <Button variant="primary" label={copy.continue} onPress={onNext} />
+          <Banner tone="success">{party.role === 'creator' ? copy.started : copy.joined}</Banner>
+          <Button variant="primary" size="lg" label={copy.continue} onPress={onNext} />
         </>
       ) : (
         <>
-          {!service ? <Text style={styles.body}>{copy.needsRadio}</Text> : null}
-          {error ? <Text style={styles.body}>{error}</Text> : null}
-          {busy === 'joining' ? <Text style={styles.body}>{partyCopy.scan.joining}</Text> : null}
+          {!service ? <Banner tone="info">{copy.needsRadio}</Banner> : null}
+          {error ? (
+            <Banner tone="warning" live>
+              {error}
+            </Banner>
+          ) : null}
+          {busy === 'joining' ? (
+            <Banner tone="info" live>
+              {partyCopy.scan.joining}
+            </Banner>
+          ) : null}
           <Button
             variant="primary"
+            size="lg"
+            icon={Users}
             label={busy === 'starting' ? copy.starting : copy.start}
-            disabled={!service || busy !== null}
+            loading={busy === 'starting'}
+            disabled={!service || busy === 'joining'}
             onPress={() =>
               void run(
                 'starting',
@@ -94,11 +107,17 @@ export function PartyStep({ onNext, onClubCode }: Props) {
             }
           />
           <Button
+            icon={ScanQrCode}
             label={copy.scan}
             disabled={!service || busy !== null}
             onPress={() => void scan()}
           />
-          <Button label={radioCopy.pair.setUpLater} onPress={onNext} disabled={busy !== null} />
+          <Button
+            variant="tertiary"
+            label={radioCopy.pair.setUpLater}
+            onPress={onNext}
+            disabled={busy !== null}
+          />
         </>
       )}
       <Sheet visible={scanning} title={partyCopy.scan.title} onClose={() => setScanning(false)}>

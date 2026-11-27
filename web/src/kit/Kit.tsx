@@ -13,7 +13,8 @@ export function Kit() {
           <div>
             <h1 className="text-title-1 kit-title">Component kit</h1>
             <p className="kit-intro text-body-large">
-              Every UI component in every state (docs/UI_REDESIGN.md section 6). Development only.
+              Every UI component in every state, in the map-first look (docs/DESIGN.md). Development
+              only.
             </p>
           </div>
           <ThemeToggle />

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { LatLon } from '@huntclub/mesh';
 import { readDocument, writeDocument } from '../storage/documents';
-import { weatherDisplay, type WeatherDisplay } from './display';
+import { weatherNow, type WeatherNow } from './display';
 import {
   forecastToCache,
   mayAttempt,
@@ -18,12 +18,12 @@ const CACHE_FOLDER = 'weather';
 const CACHE_FILE = 'forecast.json';
 
 /**
- * Wind and temperature for `place` at `now`, for the conditions panel and your
+ * Wind and temperature for `place` at `now`, for the readout strip and your
  * scent cone. Reads the cached forecast at start so it works offline, and
  * refreshes from NWS when it can (outdated, moved, or nothing cached). Shows
  * "—" whenever no cached hour covers now at this place.
  */
-export function useConditions(place: LatLon | null, now: number): WeatherDisplay {
+export function useConditions(place: LatLon | null, now: number): WeatherNow {
   const [forecast, setForecast] = useState<CachedForecast | null>(null);
   const [loaded, setLoaded] = useState(false);
   const inFlight = useRef(false);
@@ -60,5 +60,5 @@ export function useConditions(place: LatLon | null, now: number): WeatherDisplay
     });
   }, [loaded, place, now, forecast]);
 
-  return useMemo(() => weatherDisplay(forecast, place, now), [forecast, place, now]);
+  return useMemo(() => weatherNow(forecast, place, now), [forecast, place, now]);
 }

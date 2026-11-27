@@ -13,6 +13,12 @@ export const EMAIL_OTP_CODE_LENGTH = 8;
  */
 export const EMAIL_OTP_VALID_MINUTES = 10;
 
+/**
+ * Seconds before "Send a new code" works again after a code is sent (app and web admin),
+ * so a hunter waiting on a slow inbox does not trigger Cognito's send limits.
+ */
+export const RESEND_CODE_COOLDOWN_SECONDS = 30;
+
 /** The emailed code for a challenge: how many digits, and how long it works (in words). */
 export interface EmailCodeRules {
   readonly length: number;
@@ -47,6 +53,8 @@ export const signInCopy = {
   confirm: 'Sign in',
   signingIn: 'Signing in…',
   resend: 'Send a new code',
+  /** The resend button while it waits: "Send again in 24s". */
+  resendIn: (seconds: number) => `Send again in ${seconds}s`,
   resent: 'We sent a new code.',
   useOtherEmail: 'Use a different email',
   errors: {

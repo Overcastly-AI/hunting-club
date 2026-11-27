@@ -43,7 +43,7 @@ export function Screen({ title, description, scroll = true, children }: Props) {
 const useStyles = makeStyles((theme) => ({
   safeArea: {
     flex: 1,
-    backgroundColor: theme.colors.surface0,
+    backgroundColor: theme.colors.plate,
   },
   content: {
     padding: spacing.lg,

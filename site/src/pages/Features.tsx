@@ -13,7 +13,7 @@ export function ShotPlaceholder(props: { shot: FeatureGroup['shot'] }) {
       <div className="shot-frame" role="img" aria-label={`Screenshot coming soon: ${label}`}>
         <span>Screenshot coming soon</span>
       </div>
-      <figcaption className="muted">{label}</figcaption>
+      <figcaption>{label}</figcaption>
     </figure>
   );
 }
@@ -21,27 +21,25 @@ export function ShotPlaceholder(props: { shot: FeatureGroup['shot'] }) {
 export function Features() {
   return (
     <>
-      <section className="hero">
-        <div className="wrap">
-          <h1>What {APP_NAME} does</h1>
-          <p className="lead">
-            Everything that works over the radio is free, always. Clubs add the shared setup and
-            admin tools.
-          </p>
-          <div className="actions">
-            <a className="button primary" href={GET_THE_APP.href}>
-              {GET_THE_APP.label}
-            </a>
-            <a className="button" href={PAGE_PATHS.pricing}>
-              Compare Free and Club
-            </a>
-          </div>
+      <div className="wrap page-head">
+        <h1>What {APP_NAME} does</h1>
+        <p className="lede">
+          Everything that works over the radio is free, always. Clubs add the shared setup and admin
+          tools.
+        </p>
+        <div className="actions">
+          <a className="btn go" href={GET_THE_APP.href}>
+            {GET_THE_APP.label}
+          </a>
+          <a className="btn" href={PAGE_PATHS.pricing}>
+            Compare Free and Club
+          </a>
         </div>
-      </section>
+      </div>
 
-      {FEATURE_GROUPS.map((group, i) => (
-        <section key={group.id} id={group.id} className={i % 2 === 0 ? 'band-light' : undefined}>
-          <div className="wrap feature">
+      {FEATURE_GROUPS.map((group) => (
+        <section key={group.id} id={group.id} className="band">
+          <div className="wrap two">
             <div>
               <h2>{group.title}</h2>
               {group.free ? (

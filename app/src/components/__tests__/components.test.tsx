@@ -60,7 +60,7 @@ describe('Button', () => {
       await renderIn(theme, <Button variant="primary" label="Send" disabled onPress={jest.fn()} />);
       const style = flat(button('Send').props.style);
       expect(style.opacity).toBeUndefined();
-      expect(style.backgroundColor).toBe(theme.colors.surface2);
+      expect(style.backgroundColor).toBe(theme.colors.raised);
       expect(flat(screen.getByText('Send').props.style).color).toBe(theme.colors.textTertiary);
       expect(button('Send')).toBeDisabled();
     },

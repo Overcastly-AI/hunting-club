@@ -1,4 +1,5 @@
 import type { LatLon } from '@huntclub/mesh';
+import { downwindBearing } from '@huntclub/shared';
 
 import type { Bounds } from './tiles';
 
@@ -55,11 +56,6 @@ export function destination(start: LatLon, bearingDeg: number, distance: number)
       Math.cos(d) - Math.sin(phi1) * Math.sin(phi2),
     );
   return { lat: phi2 / DEG, lon: ((lambda2 / DEG + 540) % 360) - 180 };
-}
-
-/** Wind is reported by where it blows from; scent travels the other way. */
-export function downwindBearing(windFromDeg: number): number {
-  return (((windFromDeg + 180) % 360) + 360) % 360;
 }
 
 export const SCENT_CONE = { lengthMeters: 300, halfAngleDeg: 20, arcSteps: 8 } as const;
@@ -119,15 +115,17 @@ export function compassWord(bearing: number): (typeof COMPASS_WORDS)[number] {
   return COMPASS_WORDS[Math.round((((bearing % 360) + 360) % 360) / 45) % 8]!;
 }
 
+/** "300 ft" under 1000 ft (to the nearest 10, at least 10), else "0.4 mi". */
+export function formatDistance(meters: number): string {
+  const feet = meters / FOOT_M;
+  return feet < 1000
+    ? `${Math.max(10, Math.round(feet / 10) * 10)} ft`
+    : `${(meters / MILE_M).toFixed(1)} mi`;
+}
+
 /** "0.4 mi northeast" or "300 ft south": how far and which way someone is from you. */
 export function distanceAndDirection(from: LatLon, to: LatLon): string {
-  const meters = distanceMeters(from, to);
-  const feet = meters / FOOT_M;
-  const distance =
-    feet < 1000
-      ? `${Math.max(10, Math.round(feet / 10) * 10)} ft`
-      : `${(meters / MILE_M).toFixed(1)} mi`;
-  return `${distance} ${compassWord(bearingDeg(from, to))}`;
+  return `${formatDistance(distanceMeters(from, to))} ${compassWord(bearingDeg(from, to))}`;
 }
 
 /** Smallest box the map frames around a single point (about 1 km across). */

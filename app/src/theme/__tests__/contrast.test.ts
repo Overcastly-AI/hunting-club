@@ -38,8 +38,8 @@ describe('map text contrast (spec: at least 4.5:1)', () => {
   });
 });
 
-/** Backgrounds every screen, sheet and card is drawn on (the app's surface0 and surface2). */
-const SCREEN_BACKGROUNDS = ['surface0', 'surface2'] as const satisfies readonly ThemeColorToken[];
+/** Backgrounds every screen, sheet and card is drawn on (the app's plate and raised). */
+const SCREEN_BACKGROUNDS = ['plate', 'raised'] as const satisfies readonly ThemeColorToken[];
 const THEMES = Object.entries(themes) as [ThemeName, Theme][];
 
 /** Every theme token the app's source uses as a text colour (`color: theme.colors.x`). */
@@ -60,8 +60,10 @@ describe.each(THEMES)('%s theme: app text contrast (at least 4.5:1)', (_name, th
     );
   });
 
-  // Text on an accent fill (the primary button label) is checked on the accent itself.
-  it.each(tokens.filter((t) => t !== 'onAccent'))('%s on every screen background', (fg) => {
+  // Text that only ever sits on one fill is checked on that fill, below: the primary button
+  // label on the accent, the selected segment (plate on ink), and "Open" (fresh, on a plate).
+  const ON_ONE_FILL: readonly ThemeColorToken[] = ['onAccent', 'plate', 'fresh'];
+  it.each(tokens.filter((t) => !ON_ONE_FILL.includes(t)))('%s on every screen background', (fg) => {
     for (const bg of SCREEN_BACKGROUNDS) {
       expect({ fg, bg, ratio: contrastRatio(c[fg], c[bg]) >= MIN_TEXT_CONTRAST }).toEqual({
         fg,
@@ -75,15 +77,20 @@ describe.each(THEMES)('%s theme: app text contrast (at least 4.5:1)', (_name, th
     expect(contrastRatio(c.onAccent, c.accent)).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
   });
 
+  it('the selected segment (plate on ink) and "Open" on a marker plate', () => {
+    expect(contrastRatio(c.plate, c.text)).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
+    expect(contrastRatio(c.fresh, c.plate)).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
+  });
+
   it('slide-to-confirm chevrons on their thumbs (3:1 for graphics)', () => {
     expect(contrastRatio(c.onAccent, c.accent)).toBeGreaterThanOrEqual(MIN_UI_CONTRAST);
-    expect(contrastRatio(c.surface0, c.warning)).toBeGreaterThanOrEqual(MIN_UI_CONTRAST);
+    expect(contrastRatio(c.plate, c.warning)).toBeGreaterThanOrEqual(MIN_UI_CONTRAST);
   });
 
   it('keeps disabled controls readable: tertiary text on every disabled fill', () => {
     // Button, Choice, OptionButtons and SlideToConfirm draw disabled with their own colours
     // (no fading), so the label keeps 4.5:1 in both themes.
-    for (const fill of ['surface1', 'surface2', 'surface3'] as const) {
+    for (const fill of ['plate', 'raised', 'pressed'] as const) {
       expect(contrastRatio(c.textTertiary, c[fill])).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
     }
   });

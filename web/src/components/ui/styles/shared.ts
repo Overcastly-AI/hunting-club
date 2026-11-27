@@ -1,31 +1,45 @@
 // Helpers for the component stylesheets in this folder. Colours come only from the
 // generated `--theme-*` variables (packages/design theme.ts); sizes from the design tokens.
 import {
+  BUTTON_HEIGHT,
   breakpoints,
   COMPACT_MEDIA,
   space,
   textScale,
   textStyleCss,
+  themeVar,
   type TextStyleName,
 } from '@huntclub/design';
 
 /** Phones (below the tablet breakpoint): the same query as the compact type sizes. */
 export const PHONE = `@media ${COMPACT_MEDIA}`;
+/** Tablets: from the tablet breakpoint up to desktop. */
+export const TABLET = `@media (min-width: ${breakpoints.tablet}px) and (max-width: ${breakpoints.desktop - 1}px)`;
+/** Tablet and up (not phones). */
+export const TABLET_UP = `@media (min-width: ${breakpoints.tablet}px)`;
 /** Desktop and up. */
 export const DESKTOP = `@media (min-width: ${breakpoints.desktop}px)`;
 
 /** Declarations for one shared text style. */
 export const text = (name: TextStyleName) => textStyleCss(textScale[name]);
 
-/** A theme colour variable: `color('surface-1')` → `var(--theme-surface-1)`. */
-export const color = (name: string) => `var(--theme-${name})`;
+/** A theme colour or effect, type-checked: `color('plate')` → `var(--theme-plate)`. */
+export const color = themeVar;
 
 /** A spacing token: `gap(4)` → `var(--space-4)`. */
 export const gap = (step: keyof typeof space) => `var(--space-${step})`;
 
-/** The 2 px focus ring with a 2 px offset, on :focus-visible only (section 4.1). */
+/** A control's outline: 1.5 px of `token` (the border-control edge by default). */
+export const edge = (token: Parameters<typeof themeVar>[0] = 'borderControl') =>
+  `var(--control-border) solid ${color(token)}`;
+
+/** A hairline: 1 px of border-subtle, dividing cells and rows. */
+export const HAIR = `1px solid ${color('borderSubtle')}`;
+
+/** The focus ring: 3 px of orange-as-text with a 2 px offset, on :focus-visible only. */
+export const FOCUS_OUTLINE = `outline: 3px solid ${color('focusRing')}; outline-offset: 2px;`;
 export const focusRing = (selectors: readonly string[]) =>
-  `${selectors.map((s) => `${s}:focus-visible`).join(', ')} { outline: 2px solid ${color('focus-ring')}; outline-offset: 2px; }`;
+  `${selectors.map((s) => `${s}:focus-visible`).join(', ')} { ${FOCUS_OUTLINE} }`;
 
 /** Hover and press transitions (instant under reduced motion: the variables are 0ms). */
 export const transition = (...props: string[]) =>
@@ -35,5 +49,8 @@ export const transition = (...props: string[]) =>
 export const visuallyHidden =
   'position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;';
 
-/** Every control is at least this tall (docs/UI_REDESIGN.md: 48 px, no exceptions). */
+/** Every control is at least this tall (48 px, no exceptions). */
 export const TAP = 'var(--tap-min)';
+
+/** Text fields line up with the default button (52 px). */
+export const FIELD_HEIGHT = `${BUTTON_HEIGHT.md}px`;

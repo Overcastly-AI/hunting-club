@@ -32,16 +32,24 @@ export function archivo(weight: FontWeight, width: FontWidth = fontWidth.normal)
   } as const satisfies TextStyle;
 }
 
+/**
+ * Fixed-width digits (the type scale's `tabularNums`), for numbers that change in place,
+ * such as a clock or a code being typed, so the text beside them does not jump.
+ */
+export const tabularNums = { fontVariant: ['tabular-nums'] } as const satisfies TextStyle;
+
 /** The React Native style for one textScale entry, typed exactly from that entry. */
 type TextStyleFor<E extends TextScaleEntry> = ReturnType<typeof archivo> & {
   fontSize: E['size'];
-} & (E extends { lineHeight: infer L } ? { lineHeight: L } : unknown);
+} & (E extends { lineHeight: infer L } ? { lineHeight: L } : unknown) &
+  (E extends { tabularNums: true } ? typeof tabularNums : unknown);
 
 function textStyle<E extends TextScaleEntry>(entry: E): TextStyleFor<E> {
   return {
     ...archivo(entry.weight, entry.width),
     fontSize: entry.size,
     ...(entry.lineHeight === undefined ? {} : { lineHeight: entry.lineHeight }),
+    ...(entry.tabularNums ? tabularNums : {}),
   } as TextStyleFor<E>;
 }
 

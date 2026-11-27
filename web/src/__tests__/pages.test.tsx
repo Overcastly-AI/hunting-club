@@ -13,11 +13,16 @@ import {
   ClubApiRequestError,
   WEB_DOMAINS,
 } from '@huntclub/shared';
-import { ClubSession, dawnPauseCopy, memoryTokenStore, signInCopy } from '@huntclub/shared';
-import { DAWN_CLASS, DAWN_PAUSED_CLASS, DAWN_PAUSED_KEY } from '@huntclub/design/dawnControl';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  ClubSession,
+  memoryTokenStore,
+  RESEND_CODE_COOLDOWN_SECONDS,
+  signInCopy,
+} from '@huntclub/shared';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { adminApi } from '../api/admin';
-import { App, PAGES } from '../App';
+import { App } from '../App';
+import { PAGES } from '../shell/routes';
 import * as download from '../download';
 import * as navigate from '../navigate';
 import { Loading } from '../components/Loading';
@@ -25,7 +30,18 @@ import { Root } from '../Root';
 import { globalCss } from '../theme/css';
 import { pageTitle } from '../title';
 import type { WebClubServices } from '../cloud';
-import { fakeClubClient, fakeCognitoAuth, sampleData, testCode } from './fakeClubApi';
+import {
+  fakeClubClient,
+  fakeCognitoAuth,
+  sampleData,
+  SIGNED_IN,
+  testCode,
+} from '../testing/fakeClubApi';
+import { go } from '../testing/app';
+import { accountButton } from '../testing/shell';
+import { tableRows } from '../testing/tables';
+import { SAMPLE_CAPTION } from '../pages/SignIn';
+import { NO_RADIO } from '../pages/Roster';
 
 async function requestCode() {
   fireEvent.change(await screen.findByLabelText(signInCopy.email), {
@@ -56,11 +72,6 @@ function servicesFor(client: ClubApiClient): WebClubServices {
   };
 }
 
-function go(hash: string) {
-  window.location.hash = hash;
-  window.dispatchEvent(new HashChangeEvent('hashchange'));
-}
-
 function renderApp(
   data = sampleData(),
   services: WebClubServices = {
@@ -80,25 +91,18 @@ describe('sign in', () => {
     await signIn();
     // The title is set in an effect after the signed-in render commits.
     await vi.waitFor(() => expect(document.title).toBe(`My club · Club admin · ${APP_NAME}`));
-    expect(screen.getByText('Signed in as dale@example.com')).toBeTruthy();
+    expect((await accountButton()).textContent).toContain(SIGNED_IN.email);
   });
 
-  it('shows the dawn scene behind the card, with a pause button that remembers the choice', async () => {
-    sessionStorage.clear();
+  it('floats the form over a sample property, captioned as a sample', async () => {
     renderApp();
-    const pause = await screen.findByRole('button', { name: dawnPauseCopy.pause });
-    const scene = document.querySelector(`.auth .${DAWN_CLASS}`)!;
-    expect(scene.getAttribute('aria-hidden')).toBe('true');
-    expect(pause.getAttribute('aria-pressed')).toBe('false');
-    fireEvent.click(pause);
-    expect(scene.classList.contains(DAWN_PAUSED_CLASS)).toBe(true);
-    expect(pause.textContent).toBe(dawnPauseCopy.play);
-    expect(pause.getAttribute('aria-pressed')).toBe('true');
-    expect(sessionStorage.getItem(DAWN_PAUSED_KEY)).toBe('1');
-    sessionStorage.clear();
+    await screen.findByLabelText(signInCopy.email);
+    const map = screen.getByRole('img', { name: new RegExp(`^${SAMPLE_CAPTION}`) });
+    expect(map.querySelectorAll('.plan__stand')).toHaveLength(3);
+    expect(screen.getByText(SAMPLE_CAPTION)).toBeTruthy();
     await signIn();
-    // Signed-in pages never show it.
-    expect(document.querySelector(`.${DAWN_CLASS}`)).toBeNull();
+    // Signed-in pages draw only the club's own map.
+    expect(screen.queryByText(SAMPLE_CAPTION)).toBeNull();
   });
 
   it('explains a wrong code and stays on the code step', async () => {
@@ -189,10 +193,22 @@ describe('sign in', () => {
     await screen.findByLabelText(signInCopy.code);
   });
 
-  it('sends a new code on request, with the expiry and a spam hint', async () => {
+  it('sends a new code on request after the cooldown, with the expiry and a spam hint', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     renderApp();
     await requestCode();
     expect(screen.getByText(signInCopy.codeHelp('signIn')).textContent).toMatch(/10 minutes.*spam/);
+    const wait = screen.getByRole('button', {
+      name: signInCopy.resendIn(RESEND_CODE_COOLDOWN_SECONDS),
+    }) as HTMLButtonElement;
+    expect(wait.disabled).toBe(true);
+    // One tick a second, as the countdown runs.
+    for (let i = 0; i <= RESEND_CODE_COOLDOWN_SECONDS; i++) {
+      await act(async () => {
+        vi.advanceTimersByTime(1000);
+      });
+    }
+    vi.useRealTimers();
     fireEvent.click(screen.getByRole('button', { name: signInCopy.resend }));
     expect((await screen.findByRole('status')).textContent).toBe(signInCopy.resent);
     expect(screen.getByLabelText(signInCopy.code)).toBeTruthy();
@@ -203,7 +219,7 @@ describe('sign in', () => {
     await screen.findByLabelText(signInCopy.email);
     expect(screen.getByText(APP_NAME)).toBeTruthy();
     expect(screen.getByText(APP_DESCRIPTION)).toBeTruthy();
-    expect(document.querySelector('.auth-brand img')?.getAttribute('src')).toMatch(
+    expect(document.querySelector('.signin__brand img')?.getAttribute('src')).toMatch(
       /^data:image\/svg\+xml,/,
     );
     expect(screen.getByRole('link', { name: 'Privacy' }).getAttribute('href')).toBe(
@@ -224,7 +240,9 @@ describe('club pages', () => {
   it('shows the club, with every page in the navigation', async () => {
     renderApp();
     await signIn();
-    expect(await screen.findByText('Oak Ridge Hunt Club')).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Oak Ridge Hunt Club' }),
+    ).toBeTruthy();
     const nav = screen.getByRole('navigation', { name: 'Club admin' });
     const labels = ['My club', 'Roster', 'Stands and areas', 'Harvests', 'Map packs', 'Billing'];
     for (const label of labels) {
@@ -249,10 +267,10 @@ describe('club pages', () => {
     fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Pat Lane' } });
     fireEvent.change(screen.getByLabelText('Your initials'), { target: { value: 'pl' } });
     fireEvent.click(create);
-    expect(await screen.findByText('Pine Hollow')).toBeTruthy();
-    const created = screen.getByRole('status');
-    expect(created.textContent).toBe(
-      `Club created. Start your ${CLUB_PRICING.trialDays}-day free trial on Billing.`,
+    expect(await screen.findByRole('heading', { level: 1, name: 'Pine Hollow' })).toBeTruthy();
+    const created = screen.getByText('Club created').closest('[role="status"]') as HTMLElement;
+    expect(created.textContent).toContain(
+      `Start your ${CLUB_PRICING.trialDays}-day free trial on Billing.`,
     );
     expect(within(created).getByRole('link', { name: 'Billing' }).getAttribute('href')).toBe(
       '#/billing',
@@ -280,15 +298,16 @@ describe('club pages', () => {
     renderApp({ ...sampleData(), club: null });
     await signIn();
     go('#/billing');
-    const plans = await screen.findByRole('list');
+    const plans = await screen.findByRole('list', { name: 'Prices' });
     for (const { label, price } of Object.values(CLUB_PRICING.intervals)) {
-      expect(plans.textContent).toContain(`${label}: ${price}`);
+      expect(plans.textContent).toContain(label);
+      expect(plans.textContent).toContain(price);
     }
     expect(screen.getByText(CLUB_PRICING.terms)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Create your club' }).getAttribute('href')).toBe(
       '#/club',
     );
-    expect(screen.getByText(/to start your free trial/)).toBeTruthy();
+    expect(screen.getByText(/then start the free trial here/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: CLUB_PRICING.cta })).toBeNull();
   });
 
@@ -310,11 +329,14 @@ describe('club pages', () => {
     await signIn();
     go('#/roster');
     expect(await screen.findByText('Ruth Keller')).toBeTruthy();
-    expect(screen.getByText('Guest')).toBeTruthy();
+    expect(screen.getByText('Guest until December 31, 2026')).toBeTruthy();
+    expect(screen.getByText('!db01a2c4')).toBeTruthy();
+    expect(screen.getAllByText(NO_RADIO).length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Make an invite' }));
-    expect(await screen.findByRole('img', { name: 'Club invite QR code' })).toBeTruthy();
-    const link = screen.getByTestId('invite-link').textContent!;
+    fireEvent.click(screen.getByRole('button', { name: 'Invite members' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Invite members' });
+    expect(await within(dialog).findByRole('img', { name: 'Club invite QR code' })).toBeTruthy();
+    const link = (screen.getByTestId('invite-link') as HTMLInputElement).value;
     expect(link.startsWith(`https://${WEB_DOMAINS.dev}${JOIN_WEB_PATH}#`)).toBe(true);
     expect(decodeJoinUrl(link).target).toMatchObject({
       kind: 'club',
@@ -343,13 +365,7 @@ describe('club pages', () => {
       });
       fireEvent.change(screen.getByLabelText('Season ends'), { target: { value: '2027-01-31' } });
     }
-    const table = (title: string) =>
-      screen.getByRole('heading', { name: title }).nextElementSibling as HTMLElement;
-    const rows = (title: string) =>
-      within(table(title))
-        .getAllByRole('row')
-        .slice(1)
-        .map((r) => [...r.querySelectorAll('td')].map((td) => td.textContent));
+    const rows = (title: string) => tableRows(screen.getByRole('region', { name: title }));
 
     it('summarizes the shared harvests of the season the admin picks', async () => {
       await openHarvests();
@@ -377,7 +393,7 @@ describe('club pages', () => {
       await openHarvests();
       fireEvent.change(screen.getByLabelText('Season starts'), { target: { value: '2030-01-01' } });
       fireEvent.change(screen.getByLabelText('Season ends'), { target: { value: '2030-12-31' } });
-      expect(await screen.findByText('No shared harvests in this season yet.')).toBeTruthy();
+      expect(await screen.findByText('No shared harvests in this season yet')).toBeTruthy();
       const exportCsv = screen.getByRole('button', { name: 'Export CSV' }) as HTMLButtonElement;
       expect(exportCsv.disabled).toBe(true);
       expect(screen.getByText('Nothing to export yet').id).toBe(
@@ -428,18 +444,14 @@ describe('club pages', () => {
       await signIn();
       go('#/maps');
     }
-    const packRows = async () =>
-      within(await screen.findByRole('table'))
-        .getAllByRole('row')
-        .slice(1)
-        .map((r) => [...r.querySelectorAll('td')].map((td) => td.textContent));
+    const packRows = async () => tableRows(await screen.findByRole('table'));
     const buildButton = () =>
       screen.getByRole('button', { name: 'Build map pack' }) as HTMLButtonElement;
 
     it('lists packs with their status, size and reason', async () => {
       await openMaps();
       expect(await packRows()).toEqual([
-        ['Aerial', 'Failed: USGS did not answer', '—', 'November 12, 2026'],
+        ['Aerial', 'Failed USGS did not answer', '—', 'November 12, 2026'],
         ['Topo', 'Ready', '12 MB', 'November 20, 2026'],
       ]);
     });
@@ -447,7 +459,9 @@ describe('club pages', () => {
     it('shows the estimate, starts a build, and then shows it building', async () => {
       await openMaps();
       fireEvent.click(await screen.findByRole('radio', { name: 'Aerial' }));
-      expect(screen.getByTestId('pack-estimate').textContent).toMatch(/^About [\d,]+ map tiles/);
+      expect(screen.getByRole('list', { name: 'Estimate' }).textContent).toMatch(
+        /Map tilesAbout [\d,]+DownloadAbout [\d.]+ [KM]B/,
+      );
       fireEvent.click(buildButton());
       await screen.findByText(/A map pack is being built/);
       expect((await packRows())[0]).toEqual(['Aerial', 'Being built', '—', 'November 13, 2026']);
@@ -483,7 +497,7 @@ describe('club pages', () => {
         ],
       };
       await openMaps({ ...data, club: { ...data.club!, boundary: huge } });
-      expect((await screen.findByRole('alert')).textContent).toMatch(/too big for one map pack/);
+      expect((await screen.findByRole('alert')).textContent).toMatch(/Too big for one map pack/);
       expect(buildButton().disabled).toBe(true);
     });
 
@@ -491,7 +505,7 @@ describe('club pages', () => {
       const data = sampleData();
       const { boundary: _none, ...club } = data.club!;
       await openMaps({ ...data, club });
-      expect(await screen.findByText(/Draw the property line in the app first/)).toBeTruthy();
+      expect(await screen.findByText('Draw the property line first')).toBeTruthy();
       expect(screen.queryByRole('button', { name: 'Build map pack' })).toBeNull();
     });
   });
@@ -642,14 +656,14 @@ describe('errors, empty states and navigation', () => {
     renderApp(undefined, servicesFor(client));
     await signIn();
     go('#/roster');
-    fireEvent.click(await screen.findByRole('button', { name: 'Make an invite' }));
-    const busy = screen.getByRole('button', { name: 'Making invite…' }) as HTMLButtonElement;
-    expect(busy.disabled).toBe(true);
+    fireEvent.click(await screen.findByRole('button', { name: 'Invite members' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Invite members' });
+    expect(within(dialog).getByRole('status').textContent).toBe('Making invite…');
     fail(new ClubApiRequestError('forbidden', 403));
-    expect((await screen.findByRole('alert')).textContent).toBe(
+    expect((await within(dialog).findByRole('alert')).textContent).toContain(
       'Could not make the invite. Try again.',
     );
-    expect(screen.getByRole('button', { name: 'Make an invite' })).toBeTruthy();
+    expect(within(dialog).getByRole('button', { name: 'Try again' })).toBeTruthy();
   });
 
   it('makes no invite when the radio key cannot be read (no orphan invites)', async () => {
@@ -659,8 +673,8 @@ describe('errors, empty states and navigation', () => {
     renderApp(undefined, servicesFor(client));
     await signIn();
     go('#/roster');
-    fireEvent.click(await screen.findByRole('button', { name: 'Make an invite' }));
-    expect((await screen.findByRole('alert')).textContent).toBe(
+    fireEvent.click(await screen.findByRole('button', { name: 'Invite members' }));
+    expect((await screen.findByRole('alert')).textContent).toContain(
       'Could not make the invite. Try again.',
     );
     expect(createInvite).not.toHaveBeenCalled();
@@ -671,9 +685,8 @@ describe('errors, empty states and navigation', () => {
       renderApp();
       await signIn();
       go('#/roster');
-      fireEvent.click(await screen.findByRole('button', { name: 'Make an invite' }));
-      await screen.findByTestId('invite-link');
-      return screen.getByTestId('invite-link').textContent!;
+      fireEvent.click(await screen.findByRole('button', { name: 'Invite members' }));
+      return ((await screen.findByTestId('invite-link')) as HTMLInputElement).value;
     }
     const clipboard = (writeText?: (text: string) => Promise<void>) =>
       Object.defineProperty(navigator, 'clipboard', {
@@ -690,14 +703,15 @@ describe('errors, empty states and navigation', () => {
       expect(writeText).toHaveBeenCalledWith(link);
     });
 
-    it('selects the link in a read-only field when the browser will not copy', async () => {
+    it('keeps the link in a read-only field to copy by hand when the browser will not copy', async () => {
       clipboard(vi.fn(async () => Promise.reject(new Error('denied'))));
       const link = await invite();
       fireEvent.click(screen.getByRole('button', { name: 'Copy link' }));
-      const field = (await screen.findByLabelText('Copy this link')) as HTMLInputElement;
+      expect(await screen.findByRole('button', { name: 'Could not copy' })).toBeTruthy();
+      const field = screen.getByLabelText('Or send this link') as HTMLInputElement;
       expect(field.readOnly).toBe(true);
       expect(field.value).toBe(link);
-      expect(document.activeElement).toBe(field);
+      fireEvent.focus(field);
       expect([field.selectionStart, field.selectionEnd]).toEqual([0, link.length]);
       expect(screen.queryByRole('button', { name: 'Copied' })).toBeNull();
       clipboard(undefined);
@@ -736,15 +750,12 @@ describe('errors, empty states and navigation', () => {
     await signIn();
     go('#/roster');
     expect(
-      await screen.findByText(
-        'No other members yet. Make an invite below and share it with your hunters.',
-      ),
+      await screen.findByText("No other members yet. Invite your hunters with the club's QR code."),
     ).toBeTruthy();
-    expect(screen.getByText(/The new member joins the club radio channel\./)).toBeTruthy();
     go('#/stands');
-    expect(await screen.findByRole('heading', { level: 2, name: 'Stands (0)' })).toBeTruthy();
-    expect(screen.getByText('No stands yet.')).toBeTruthy();
-    expect(screen.getByText('No areas yet.')).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 2, name: 'Stands 0' })).toBeTruthy();
+    expect(screen.getByText('No stands yet')).toBeTruthy();
+    expect(screen.getByText('No areas yet')).toBeTruthy();
   });
 
   it('counts members other than the signed-in admin', async () => {
@@ -761,18 +772,15 @@ describe('errors, empty states and navigation', () => {
     renderApp();
     await signIn();
     go('#/stands');
-    const standsHeading = await screen.findByRole('heading', {
-      level: 2,
-      name: /^Stands \(\d+\)$/,
-    });
-    const stands = screen.getByRole('table', { name: standsHeading.textContent! });
-    expect(stands.getAttribute('aria-labelledby')).toBe(standsHeading.id);
-    expect(stands.querySelector('caption')).toBeNull();
-    expect(
-      within(stands).getByRole('columnheader', { name: 'Available for check-in' }),
-    ).toBeTruthy();
-    const areasHeading = screen.getByRole('heading', { level: 2, name: /^Areas \(\d+\)$/ });
-    expect(screen.getByRole('table', { name: areasHeading.textContent! })).toBeTruthy();
+    await screen.findByRole('heading', { level: 2, name: 'Stands 3' });
+    const stands = screen.getByRole('table', { name: 'Stands (3)' });
+    expect(within(stands).getByRole('columnheader', { name: 'Check-in' })).toBeTruthy();
+    expect(tableRows(stands)).toContainEqual(['Field Blind', 'Ground blind', 'North 40', 'Closed']);
+    expect(screen.getByRole('heading', { level: 2, name: 'Areas 2' })).toBeTruthy();
+    expect(tableRows(screen.getByRole('table', { name: 'Areas (2)' }))).toEqual([
+      ['Creek Bottom', '1'],
+      ['North 40', '2'],
+    ]);
   });
 
   it('asks for a club before map packs', async () => {
@@ -783,19 +791,34 @@ describe('errors, empty states and navigation', () => {
     expect(screen.getByRole('link', { name: 'Go to My club' }).getAttribute('href')).toBe('#/club');
   });
 
-  it('puts each table in a labelled scroll region; roster and stands stack on phones', async () => {
+  it('puts each table in a labelled scroll region that becomes labelled rows at 390 px', async () => {
     renderApp();
     await signIn();
-    go('#/roster');
-    const region = await screen.findByRole('region', { name: 'Club members' });
-    expect(region.getAttribute('tabindex')).toBe('0');
-    const table = within(region).getByRole('table', { name: 'Club members' });
-    expect(table.classList.contains('stack')).toBe(true);
-    expect(within(table).getAllByRole('cell')[0]!.getAttribute('data-label')).toBe('Name');
-    go('#/stands');
-    expect(
-      (await screen.findByRole('table', { name: /^Stands \(/ })).classList.contains('stack'),
-    ).toBe(true);
+    for (const [hash, name] of [
+      ['#/roster', 'Club members'],
+      ['#/stands', 'Stands (3)'],
+      ['#/maps', 'Club map packs, newest first'],
+    ] as const) {
+      go(hash);
+      const region = await screen.findByRole('region', { name });
+      expect(region.getAttribute('tabindex')).toBe('0');
+      const table = within(region).getByRole('table', { name });
+      // Under 640 px each row is a card: every cell after the first carries its column's word.
+      const headers = within(table)
+        .getAllByRole('columnheader')
+        .map((th) => th.textContent);
+      const cells = [...table.querySelectorAll('tbody tr:first-child td')].slice(1);
+      expect(cells.map((td) => td.querySelector('.ui-table__label')?.textContent)).toEqual(
+        headers.slice(1),
+      );
+    }
+    // At 390 px (the phone query) the head is hidden and rows stack; nothing scrolls sideways.
+    const phone = globalCss().split('@media (max-width: 639px)').slice(1).join('');
+    expect(phone).toMatch(/\.ui-table thead \{ position: absolute; width: 1px/);
+    expect(phone).toMatch(
+      /\.ui-table, \.ui-table tbody, \.ui-table tr, \.ui-table td \{ display: block; \}/,
+    );
+    expect(phone).toMatch(/\.ui-table-wrap \{ overflow-x: visible; \}/);
   });
 
   it('focuses the new page heading on a route change and marks the current tab', async () => {
@@ -812,30 +835,10 @@ describe('errors, empty states and navigation', () => {
       .getAllByRole('link')
       .filter((link) => link.hasAttribute('aria-current'));
     expect(current.map((link) => link.textContent)).toEqual(['Stands and areas']);
-    expect(globalCss()).toMatch(/\.nav a\[aria-current='page'\] \{[^}]*text-decoration: underline/);
-  });
-
-  it('keeps Sign out and who is signed in in the footer, and the nav one row on phones', async () => {
-    renderApp();
-    await signIn();
-    const footer = screen.getByRole('contentinfo');
-    expect(within(footer).getByText('Signed in as dale@example.com')).toBeTruthy();
-    expect(within(footer).getByRole('button', { name: 'Sign out' })).toBeTruthy();
-    const nav = screen.getByRole('navigation', { name: 'Club admin' });
-    expect(within(nav).queryByRole('button')).toBeNull();
-    expect(
-      within(nav)
-        .getAllByRole('link')
-        .map((a) => a.textContent),
-    ).toEqual(PAGES.map((p) => p.label));
-    const css = globalCss();
-    expect(css).toMatch(/\.app-footer \{[^}]*margin-top: var\(--space-lg\)/);
-    expect(css).toMatch(
-      /@media \(max-width: 639px\) \{\s*\.nav \{ flex-wrap: nowrap; overflow-x: auto; \}/,
+    // The selected item is raised with the orange edge, never a colour alone.
+    expect(globalCss()).toMatch(
+      /\.shell-nav__item\[aria-current='page'\], \.shell-nav__item--current \{[^}]*box-shadow: inset 3px 0 0 var\(--theme-accent\)/,
     );
-    // The heading that takes focus on a route change shows its ring only for the keyboard.
-    expect(css).toMatch(/h1:focus \{ outline: none; \}/);
-    expect(css).toMatch(/h1:focus-visible \{ outline: 3px solid/);
   });
 
   it('announces loading as a status and offers a skip link to the page', async () => {
@@ -850,11 +853,14 @@ describe('errors, empty states and navigation', () => {
     expect(within(container).getByRole('status').textContent).toBe('Loading…');
   });
 
-  it('lays out each billing choice as a row', async () => {
+  it('lays out each billing choice as a row of one list', async () => {
     renderApp({ ...sampleData(), subscription: null });
     await signIn();
     go('#/billing');
     const yearly = await screen.findByRole('radio', { name: /Yearly/ });
-    expect(yearly.parentElement?.classList.contains('row')).toBe(true);
+    expect(yearly.closest('label')?.classList.contains('ui-radio--card')).toBe(true);
+    expect(yearly.closest('.ui-radio-list')?.querySelectorAll('input[type="radio"]')).toHaveLength(
+      2,
+    );
   });
 });

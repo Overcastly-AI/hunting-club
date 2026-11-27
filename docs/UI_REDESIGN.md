@@ -1,5 +1,7 @@
 # UI redesign brief
 
+> **Superseded on visuals (owner decision, 2026-11-27).** The visual spec here (colours, the light "sunlight" theme on cream, card styling, radii, shadows, type widths) is replaced by the map-first direction in [docs/DESIGN.md](DESIGN.md). The structural, layout and accessibility requirements below (shell, page structure, component list and behaviour, 48 px targets, contrast, keyboard and axe checks) still apply.
+
 The UI Director's redesign brief of 2026-11-26 (email "Hunt Club Mesh UI feedback — 2026-11-26 — redesign"), copied here as the design spec for phases P1 to P5. The coordinator decisions below override the brief where they differ.
 
 ## Coordinator decisions (override the brief)
@@ -12,7 +14,7 @@ The UI Director's redesign brief of 2026-11-26 (email "Hunt Club Mesh UI feedbac
 ## How P1a implements section 4
 
 - Tokens live in `packages/design`: `src/theme.ts` (dark and light semantic colours, shadows, scrim, theme constants and the contrast rules), `src/type.ts` (type scale), `src/sizes.ts` (spacing, radii, breakpoints, motion), `src/css.ts` (generated CSS and the theme bootstrap script).
-- The original Design D tokens (`colors`, `lightColors`) stay for the map and the current screens; where one is the same colour as a theme token, it takes its value from the theme.
+- The original Design D tokens (`colors`) stay for the map and the current screens; where one is the same colour as a theme token, it takes its value from the theme.
 - CSS variables are generated: `--theme-*` for the semantic theme tokens (for example `--theme-surface-1`, `--theme-text-secondary`, `--theme-shadow-dialog`), `--space-1` … `--space-16` plus the `xs`–`xl` aliases, `--radius-sm` … `--radius-full`, `--motion-fast`, `--motion-base`, `--motion-easing`. The existing `--color-*` variables are unchanged, so current pages look the same until P2 moves them to `--theme-*`. A page adopts the native control colours with `color-scheme: var(--theme-color-scheme)`.
 - Theme selection: `:root` is dark, `[data-theme="light"]` is light, and with no attribute ("system") light applies under `@media (prefers-color-scheme: light)`. The choice is stored in localStorage `hcm-theme`; the bootstrap script (its own file, loaded in `<head>`, no inline script) sets `data-theme` before first paint.
 - `packages/design/scripts/__tests__/theme.test.ts` checks every text pair at 4.5:1 and every control edge and focus ring at 3:1 on every surface, in both themes (a superset of the pairs in 4.1), and fails the build if any pair drops under its threshold.

@@ -1,42 +1,27 @@
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { colors, radii, sizes, spacing, textStyles } from '../../theme';
+import { StandSquare } from '../../components/StandSquare';
+import { makeStyles } from '../../theme';
 import { OPEN_STAND, openStandAccessibilityLabel } from '../labels';
 import type { OpenStandOnMap } from '../types';
-import { HaloText } from './HaloText';
-import { StandTypeIcon } from '../../components/icons';
+import { MarkerHitArea, MarkerPlate } from './MarkerPlate';
 
-/** A club stand nobody is in: rounded square with the stand-type icon, name and "Open". */
+/**
+ * A club stand nobody is in: a 38 px rounded square with the stand-type icon, in a box padded
+ * to 48 px, and a plate with its name and "Open" in fresh green.
+ */
 export function OpenStandMarker({ stand }: { stand: OpenStandOnMap }) {
+  const styles = useStyles();
   return (
-    <View
-      accessible
-      accessibilityLabel={openStandAccessibilityLabel(stand)}
-      style={styles.container}
-    >
-      <View style={styles.square}>
-        <StandTypeIcon type={stand.type} color={colors.text} />
-      </View>
-      <HaloText style={styles.name} numberOfLines={1}>
-        {stand.name}
-      </HaloText>
-      <HaloText style={styles.open}>{OPEN_STAND}</HaloText>
+    <View accessible accessibilityLabel={openStandAccessibilityLabel(stand)} style={styles.row}>
+      <MarkerHitArea testID="stand-hit-area">
+        <StandSquare testID="stand-square" type={stand.type} />
+      </MarkerHitArea>
+      <MarkerPlate title={stand.name} detail={OPEN_STAND} detailTone="fresh" />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { alignItems: 'center', minWidth: sizes.minTapTarget, paddingTop: spacing.xs },
-  square: {
-    width: sizes.standMarker,
-    height: sizes.standMarker,
-    borderRadius: radii.standMarker,
-    borderWidth: sizes.hairline,
-    borderColor: colors.text,
-    backgroundColor: colors.surfaceRaised,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  name: { ...textStyles.markerName, marginTop: spacing.xs },
-  open: { color: colors.fresh },
-});
+const useStyles = makeStyles((theme) => ({
+  row: { flexDirection: 'row', alignItems: 'center' },
+}));
