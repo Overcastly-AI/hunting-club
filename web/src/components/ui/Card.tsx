@@ -35,10 +35,16 @@ export function Card(props: {
   );
 }
 
-/** The readout strip: labelled cells on one plate, four across from 1024 px, two below. */
-export function StatGrid(props: { children: ReactNode; 'aria-label'?: string }) {
+/**
+ * The readout strip: labelled cells on one plate, four across from 1024 px, two below; a strip
+ * of exactly three cells (`three`) is three across at every width, so no cell sits alone.
+ */
+export function StatGrid(props: { children: ReactNode; 'aria-label'?: string; three?: boolean }) {
   return (
-    <ul className="ui-stat-grid" aria-label={props['aria-label']}>
+    <ul
+      className={cx('ui-stat-grid', props.three && 'ui-stat-grid--three')}
+      aria-label={props['aria-label']}
+    >
       {props.children}
     </ul>
   );

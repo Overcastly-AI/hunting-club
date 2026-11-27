@@ -7,7 +7,6 @@ import {
   CLUB_PRICING,
   type ClubApiClient,
   emailCodeRules,
-  ENTITLEMENT_GRACE_DAYS,
   INITIALS_MAX,
   LEGAL_PATHS,
   ClubApiRequestError,
@@ -38,24 +37,28 @@ import {
   testCode,
 } from '../testing/fakeClubApi';
 import { go } from '../testing/app';
-import { accountButton } from '../testing/shell';
+import { accountButton, requestCode, signIn } from '../testing/shell';
 import { tableRows } from '../testing/tables';
 import { SAMPLE_CAPTION } from '../pages/SignIn';
-import { NO_RADIO } from '../pages/Roster';
+import { CREATE_INVITE, NO_RADIO } from '../pages/Roster';
 
-async function requestCode() {
-  fireEvent.change(await screen.findByLabelText(signInCopy.email), {
-    target: { value: 'dale@example.com' },
-  });
-  fireEvent.click(screen.getByRole('button', { name: signInCopy.sendCode }));
-  return screen.findByLabelText(signInCopy.code);
+/** Opens the invite dialog (which makes nothing yet) and asks for the link. */
+async function createInviteLink() {
+  fireEvent.click(await screen.findByRole('button', { name: 'Invite members' }));
+  const dialog = await screen.findByRole('dialog', { name: 'Invite members' });
+  fireEvent.click(within(dialog).getByRole('button', { name: CREATE_INVITE }));
+  return dialog;
 }
 
-async function signIn() {
-  fireEvent.change(await requestCode(), { target: { value: testCode() } });
-  fireEvent.click(screen.getByRole('button', { name: signInCopy.confirm }));
-  await screen.findByRole('navigation', { name: 'Club admin' });
-}
+/** Every call that changes club data on the server: none may run just from opening a page. */
+const WRITES = [
+  'createClub',
+  'createInvite',
+  'requestMapPack',
+  'startCheckout',
+  'openBillingPortal',
+  'redeemInvite',
+] as const;
 
 /** An inline field error: shown under the input, which is marked invalid and points to it. */
 function expectFieldError(input: HTMLElement, message: string) {
@@ -333,10 +336,10 @@ describe('club pages', () => {
     expect(screen.getByText('!db01a2c4')).toBeTruthy();
     expect(screen.getAllByText(NO_RADIO).length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Invite members' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Invite members' });
+    const dialog = await createInviteLink();
     expect(await within(dialog).findByRole('img', { name: 'Club invite QR code' })).toBeTruthy();
     const link = (screen.getByTestId('invite-link') as HTMLInputElement).value;
+    expect(within(dialog).getByText(/^Works until /)).toBeTruthy();
     expect(link.startsWith(`https://${WEB_DOMAINS.dev}${JOIN_WEB_PATH}#`)).toBe(true);
     expect(decodeJoinUrl(link).target).toMatchObject({
       kind: 'club',
@@ -344,6 +347,28 @@ describe('club pages', () => {
       // The invite page names the club ("Join <club name>").
       clubName: sampleData().club!.name,
     });
+  });
+
+  it('makes no invite until the admin asks: opening the roster or the dialog writes nothing', async () => {
+    const client = fakeClubClient(sampleData());
+    const writes = WRITES.filter((name) => name in client).map((name) =>
+      vi.spyOn(client, name as keyof ClubApiClient),
+    );
+    renderApp(undefined, servicesFor(client));
+    await signIn();
+    go('#/roster');
+    fireEvent.click(await screen.findByRole('button', { name: 'Invite members' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Invite members' });
+    // Let every effect of the open dialog run.
+    await act(async () => new Promise((done) => setTimeout(done, 50)));
+    for (const write of writes) expect(write).not.toHaveBeenCalled();
+    expect(within(dialog).queryByRole('img', { name: 'Club invite QR code' })).toBeNull();
+    expect(screen.queryByTestId('invite-link')).toBeNull();
+    // Closing it makes nothing either; asking makes exactly one.
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Done' }));
+    await createInviteLink();
+    await screen.findByTestId('invite-link');
+    expect(client.createInvite).toHaveBeenCalledTimes(1);
   });
 
   it('lists stands with plain-language types, and areas', async () => {
@@ -531,14 +556,12 @@ describe('club pages', () => {
     go('#/billing');
     expect(await screen.findByText('Active')).toBeTruthy();
     const yearly = CLUB_PRICING.intervals.year;
-    expect(screen.getByText(`${yearly.label} · ${yearly.price}`)).toBeTruthy();
+    expect(screen.getByText(yearly.price)).toBeTruthy();
+    expect(screen.getByText('Club plan, billed yearly')).toBeTruthy();
     expect(screen.getByText('Renews on')).toBeTruthy();
     expect(screen.getByText('August 1, 2027')).toBeTruthy();
-    expect(
-      screen.getByText(
-        `If a payment fails or the plan ends, club features stay on for ${ENTITLEMENT_GRACE_DAYS} days after August 1, 2027, until August 15, 2027.`,
-      ),
-    ).toBeTruthy();
+    // The grace period is said only once a payment is past due.
+    expect(screen.queryByText(/grace period/i)).toBeNull();
     expect(screen.queryByRole('button', { name: CLUB_PRICING.cta })).toBeNull();
   });
 
@@ -670,8 +693,7 @@ describe('errors, empty states and navigation', () => {
     renderApp(undefined, servicesFor(client));
     await signIn();
     go('#/roster');
-    fireEvent.click(await screen.findByRole('button', { name: 'Invite members' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Invite members' });
+    const dialog = await createInviteLink();
     expect(within(dialog).getByRole('status').textContent).toBe('Making invite…');
     fail(new ClubApiRequestError('forbidden', 403));
     expect((await within(dialog).findByRole('alert')).textContent).toContain(
@@ -687,7 +709,7 @@ describe('errors, empty states and navigation', () => {
     renderApp(undefined, servicesFor(client));
     await signIn();
     go('#/roster');
-    fireEvent.click(await screen.findByRole('button', { name: 'Invite members' }));
+    await createInviteLink();
     expect((await screen.findByRole('alert')).textContent).toContain(
       'Could not make the invite. Try again.',
     );
@@ -699,7 +721,7 @@ describe('errors, empty states and navigation', () => {
       renderApp();
       await signIn();
       go('#/roster');
-      fireEvent.click(await screen.findByRole('button', { name: 'Invite members' }));
+      await createInviteLink();
       return ((await screen.findByTestId('invite-link')) as HTMLInputElement).value;
     }
     const clipboard = (writeText?: (text: string) => Promise<void>) =>

@@ -10,10 +10,15 @@ import {
   estimatePack,
   formatBytes,
   mapPackKey,
+  mapPackPath,
   mapPackUrl,
   polygonBounds,
   polygonRings,
+  rangeTileCount,
+  tileBounds,
+  tileRangeAt,
   tileUrl,
+  tileXY,
   tilesInBounds,
 } from '../maps';
 
@@ -28,6 +33,27 @@ describe('shared map maths', () => {
     const tiles = [...tilesInBounds(SMALL, 10, 14)];
     expect(tiles).toHaveLength(countTiles(SMALL, 10, 14));
     expect(new Set(tiles.map((t) => `${t.z}/${t.x}/${t.y}`)).size).toBe(tiles.length);
+  });
+
+  it('bounds a tile exactly where tileXY puts a point, and covers bounds with whole tiles', () => {
+    const [west, south, east, north] = tileBounds(16, 16_000, 24_000);
+    expect(west).toBeLessThan(east);
+    expect(south).toBeLessThan(north);
+    // A point just inside each corner is in that tile.
+    for (const [lon, lat] of [
+      [west + 1e-9, north - 1e-9],
+      [east - 1e-9, south + 1e-9],
+    ] as const) {
+      expect(tileXY(lon, lat, 16)).toEqual({ x: 16_000, y: 24_000 });
+    }
+    const range = tileRangeAt(SMALL, 15);
+    const first = tileBounds(15, range.minX, range.minY);
+    const last = tileBounds(15, range.maxX, range.maxY);
+    expect(first[0]).toBeLessThanOrEqual(SMALL[0]);
+    expect(first[3]).toBeGreaterThanOrEqual(SMALL[3]);
+    expect(last[2]).toBeGreaterThanOrEqual(SMALL[2]);
+    expect(last[1]).toBeLessThanOrEqual(SMALL[1]);
+    expect(rangeTileCount(range)).toBe(countTiles(SMALL, 14, 14));
   });
 
   it('estimates a pack against the shared caps', () => {
@@ -52,6 +78,7 @@ describe('shared map maths', () => {
       }),
     ).toEqual([-90, 40, -89.99, 40.01]);
     expect(mapPackKey('c1', 'p1')).toBe('packs/c1/p1.pmtiles');
+    expect(mapPackPath({ s3Key: mapPackKey('c1', 'p1') })).toBe('/packs/c1/p1.pmtiles');
     expect(mapPackUrl('dev', { s3Key: mapPackKey('c1', 'p1') })).toBe(
       'https://huntclub-dev.jaycobjones.com/packs/c1/p1.pmtiles',
     );

@@ -5,6 +5,7 @@ import {
   SUN_UP_ALL_DAY,
   UNKNOWN_SPOKEN,
   UNKNOWN_VALUE,
+  clockReadout,
   conditionsReadout,
   sunReadout,
   temperatureReadout,
@@ -160,6 +161,17 @@ describe('sunReadout', () => {
     expect(sunReadout(undefined, 1, NORMAL)).toEqual(none);
     expect(sunReadout({ lat: Number.NaN, lon: 0 }, 1, NORMAL)).toEqual(none);
     expect(sunReadout(PLACE, Number.NaN, NORMAL)).toEqual(none);
+  });
+});
+
+describe('clockReadout', () => {
+  it('reads a clock time, from a Date or epoch ms, and a dash when there is none', () => {
+    const short = formatClockTime(SUNSET);
+    expect(clockReadout(SUNSET)).toEqual({ short, spoken: short });
+    expect(clockReadout(SUNSET.getTime())).toEqual({ short, spoken: short });
+    for (const none of [undefined, null, Number.NaN, new Date(Number.NaN)]) {
+      expect(clockReadout(none)).toEqual(UNKNOWN);
+    }
   });
 });
 

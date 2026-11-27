@@ -1,7 +1,11 @@
-import { DAY_MS, READOUT_LABELS, UNKNOWN_VALUE, type Member } from '@huntclub/shared';
+import { DAY_MS, polygonBounds, READOUT_LABELS, type MapPack, type Member } from '@huntclub/shared';
 import { screen, waitFor, within } from '@testing-library/react';
+import { OVERDUE_ALERT_LABEL } from '../components/ConditionsStrip';
+import { SAMPLE_PROPERTY } from '../map/sampleProperty';
+import { OUT_NOW_EMPTY } from '../pages/MyClub';
 import { renderSignedIn } from '../testing/app';
 import { sampleData } from '../testing/fakeClubApi';
+import { packArchive, packFetch } from '../testing/packArchive';
 
 const iso = (ms: number) => new Date(ms).toISOString();
 
@@ -73,24 +77,83 @@ describe('My club', () => {
     expect(await needsYou()).toEqual([]);
   });
 
-  it('reads out sunrise and sunset at the property, never shooting hours; wind and temperature are not known here', async () => {
+  it('reads out sunrise, sunset and the overdue alert time at the property, never shooting hours, and no wind or temperature', async () => {
     await renderSignedIn();
     await screen.findByRole('heading', { level: 1, name: 'Oak Ridge Hunt Club' });
     const cells = strip();
-    expect(cells.map((c) => c!.replace(/\d.*$/, '').replace(UNKNOWN_VALUE, ''))).toEqual([
+    expect(cells.map((c) => c!.replace(/\d.*$/, ''))).toEqual([
       READOUT_LABELS.sunrise,
       READOUT_LABELS.sunset,
-      `${READOUT_LABELS.wind}not known`,
-      `${READOUT_LABELS.temperature}not known`,
+      OVERDUE_ALERT_LABEL,
     ]);
-    expect(cells[0]).toMatch(/\d{1,2}:\d{2} (AM|PM)/);
-    expect(cells[1]).toMatch(/\d{1,2}:\d{2} (AM|PM)/);
+    for (const cell of cells) expect(cell).toMatch(/\d{1,2}:\d{2} (AM|PM)$/);
+    // The alert is sunset plus the club's grace (30 minutes).
+    const minutes = (cell: string) => {
+      const [, h, m, ampm] = cell.match(/(\d{1,2}):(\d{2}) (AM|PM)$/)!;
+      return ((Number(h) % 12) + (ampm === 'PM' ? 12 : 0)) * 60 + Number(m);
+    };
+    expect(minutes(cells[2]!) - minutes(cells[1]!)).toBe(30);
+    expect(document.body.textContent).not.toMatch(
+      new RegExp(`${READOUT_LABELS.wind}|${READOUT_LABELS.temperature}`),
+    );
     await waitFor(() =>
       expect(
-        screen.getByText(/the club gets an overdue alert\. That is sunset plus 30 minutes\./),
+        screen.getByText(/overdue alert goes to the club .* at sunset plus 30 minutes\./),
       ).toBeTruthy(),
     );
     expect(document.body.textContent).not.toMatch(/shooting|first light|last light/i);
+  });
+
+  it('says live positions are in the app, never a blank or made-up Out now list', async () => {
+    await renderSignedIn();
+    const section = (await screen.findByRole('heading', { level: 2, name: 'Out now' })).closest(
+      'section',
+    )!;
+    expect(
+      within(section).getByRole('heading', { level: 3, name: OUT_NOW_EMPTY.title }),
+    ).toBeTruthy();
+    expect(within(section).getByText(OUT_NOW_EMPTY.line)).toBeTruthy();
+    expect(section.querySelector('.ui-empty__icon svg')).toBeTruthy();
+    expect(within(section).queryByRole('listitem')).toBeNull();
+  });
+
+  it("draws the club's ready map pack under the plan, read from its own origin", async () => {
+    const data = sampleData();
+    const pack = data.mapPacks.find(
+      (p): p is Extract<MapPack, { status: 'ready' }> => p.status === 'ready',
+    )!;
+    const fetch = packFetch(pack, packArchive(polygonBounds(SAMPLE_PROPERTY.boundary)));
+    vi.stubGlobal('fetch', fetch);
+    try {
+      await renderSignedIn(data);
+      const map = await screen.findByRole('img', { name: /^Map of Oak Ridge Hunt Club/ });
+      await waitFor(() =>
+        expect(map.querySelectorAll('.plan__basemap image').length).toBeGreaterThan(0),
+      );
+      expect(map.querySelector('.plan__credit')!.textContent).toBe('USGS The National Map');
+      for (const [url] of fetch.mock.calls) expect(url).toBe(`/${pack.s3Key}`);
+      for (const image of map.querySelectorAll('image')) {
+        expect(image.getAttribute('href')).toMatch(/^data:image\/jpeg;base64,/);
+      }
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('draws the plan alone when the pack cannot be read (offline)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Promise.reject(new TypeError('Failed to fetch'))),
+    );
+    try {
+      await renderSignedIn();
+      const map = await screen.findByRole('img', { name: /^Map of Oak Ridge Hunt Club/ });
+      await waitFor(() => expect(map.querySelectorAll('.plan__stand')).toHaveLength(3));
+      expect(map.querySelector('.plan__grid')).toBeTruthy();
+      expect(map.querySelectorAll('image')).toHaveLength(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('draws the property line, areas and stands, and names the club and what it holds', async () => {
@@ -104,6 +167,6 @@ describe('My club', () => {
     expect(map.querySelectorAll('.plan__line')).toHaveLength(1);
     expect(screen.getByText('640 acres, 3 stands, 2 areas')).toBeTruthy();
     // No positions: nobody's location reaches the club service.
-    expect(screen.queryByText(/Out now/)).toBeNull();
+    expect(map.querySelectorAll('.plan__hunter, circle')).toHaveLength(0);
   });
 });

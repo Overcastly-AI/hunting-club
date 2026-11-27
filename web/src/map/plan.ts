@@ -140,3 +140,24 @@ export function scaleBar(metresPerPx: number, maxPx: number): ScaleBar {
   const metres = feet / FEET_PER_METRE;
   return { px: metres / metresPerPx, metres, label: feetLabel(feet) };
 }
+
+/** Room kept between a marker's plate and the map's edge, in px. */
+export const PLATE_EDGE_ROOM = 8;
+
+/**
+ * Which side of its marker a plate goes: the right, unless it would cross the map's right edge
+ * there and fits on the left (a stand on the property's east side).
+ */
+export function plateSide(
+  markerX: number,
+  offset: number,
+  plateWidth: number,
+  mapWidth: number,
+): 'right' | 'left' {
+  const fitsRight = markerX + offset + plateWidth <= mapWidth - PLATE_EDGE_ROOM;
+  if (fitsRight) return 'right';
+  const fitsLeft = markerX - offset - plateWidth >= PLATE_EDGE_ROOM;
+  if (fitsLeft) return 'left';
+  // Neither fits (a very narrow map): the side with more room.
+  return markerX > mapWidth / 2 ? 'left' : 'right';
+}

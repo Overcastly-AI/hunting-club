@@ -1,19 +1,27 @@
 /**
- * A minimal PMTiles v3 writer (https://github.com/protomaps/PMTiles/blob/main/spec/v3/spec.md)
+ * A minimal PMTiles v3 writer (format.ts has the layout)
  * for raster map packs: tiles sorted by Hilbert tile id (clustered), gzip-compressed
  * directories and JSON metadata, tiles stored as-is (already JPEG/PNG), identical
  * tiles stored once. Small archives (a club's property) are built in memory.
  */
 import { gzipSync } from 'node:zlib';
+import {
+  COMPRESSION,
+  E7,
+  type Entry,
+  HEADER_BYTES,
+  HEADER_FIELD as F,
+  MAGIC,
+  ROOT_SECTION_BYTES,
+  type TileType,
+  VERSION,
+  zxyToTileId,
+} from './format';
 
-/** PMTiles tile types (spec §3.1). */
-export const TILE_TYPE = { unknown: 0, mvt: 1, png: 2, jpeg: 3, webp: 4, avif: 5 } as const;
-export type TileType = (typeof TILE_TYPE)[keyof typeof TILE_TYPE];
+export { TILE_TYPE, type TileType, zxyToTileId } from './format';
 
-const COMPRESSION = { none: 1, gzip: 2 } as const;
-const HEADER_BYTES = 127;
 /** The spec keeps the header plus root directory within the first 16 KiB. */
-const ROOT_MAX_BYTES = 16_384 - HEADER_BYTES;
+const ROOT_MAX_BYTES = ROOT_SECTION_BYTES - HEADER_BYTES;
 
 export interface Tile {
   z: number;
@@ -28,38 +36,6 @@ export interface ArchiveOptions {
   bounds: readonly [number, number, number, number];
   /** Free-form JSON metadata (attribution, name, …). */
   metadata?: Record<string, unknown>;
-}
-
-interface Entry {
-  tileId: number;
-  offset: number;
-  length: number;
-  runLength: number;
-}
-
-/** Hilbert tile id of z/x/y (spec §2.1): tiles of all lower zooms come first. */
-export function zxyToTileId(z: number, x: number, y: number): number {
-  if (z > 26) throw new RangeError('zoom above 26 is not supported');
-  const n = 2 ** z;
-  if (x < 0 || y < 0 || x >= n || y >= n)
-    throw new RangeError(`tile ${z}/${x}/${y} is out of range`);
-  let id = (4 ** z - 1) / 3;
-  let tx = x;
-  let ty = y;
-  for (let s = n / 2; s >= 1; s /= 2) {
-    const rx = tx & s ? 1 : 0;
-    const ry = ty & s ? 1 : 0;
-    id += s * s * ((3 * rx) ^ ry);
-    // Rotate the quadrant so the curve stays continuous.
-    if (ry === 0) {
-      if (rx === 1) {
-        tx = s - 1 - tx;
-        ty = s - 1 - ty;
-      }
-      [tx, ty] = [ty, tx];
-    }
-  }
-  return id;
 }
 
 class Bytes {
@@ -116,7 +92,7 @@ function buildDirectories(entries: Entry[]): { root: Buffer; leaves: Buffer } {
   }
 }
 
-const e7 = (deg: number) => Math.round(deg * 1e7);
+const e7 = (deg: number) => Math.round(deg * E7);
 
 /** Builds a complete .pmtiles archive. Throws on duplicate or out-of-range tiles. */
 export function writePmtiles(tiles: Iterable<Tile>, options: ArchiveOptions): Buffer {
@@ -167,33 +143,33 @@ export function writePmtiles(tiles: Iterable<Tile>, options: ArchiveOptions): Bu
   const dataOffset = leavesOffset + leaves.length;
 
   const header = Buffer.alloc(HEADER_BYTES);
-  header.write('PMTiles', 0, 'ascii');
-  header.writeUInt8(3, 7);
+  header.write(MAGIC, 0, 'ascii');
+  header.writeUInt8(VERSION, F.version);
   const u64 = (value: number, at: number) => header.writeBigUInt64LE(BigInt(value), at);
-  u64(rootOffset, 8);
-  u64(root.length, 16);
-  u64(metadataOffset, 24);
-  u64(metadata.length, 32);
-  u64(leavesOffset, 40);
-  u64(leaves.length, 48);
-  u64(dataOffset, 56);
-  u64(data.length, 64);
-  u64(sorted.length, 72); // addressed tiles
-  u64(entries.length, 80); // tile entries
-  u64(contents.size, 88); // tile contents
-  header.writeUInt8(1, 96); // clustered
-  header.writeUInt8(COMPRESSION.gzip, 97); // internal compression
-  header.writeUInt8(COMPRESSION.none, 98); // tiles are JPEG/PNG already
-  header.writeUInt8(options.tileType, 99);
-  header.writeUInt8(minZoom, 100);
-  header.writeUInt8(maxZoom, 101);
-  header.writeInt32LE(e7(west), 102);
-  header.writeInt32LE(e7(south), 106);
-  header.writeInt32LE(e7(east), 110);
-  header.writeInt32LE(e7(north), 114);
-  header.writeUInt8(minZoom, 118); // center zoom
-  header.writeInt32LE(e7((west + east) / 2), 119);
-  header.writeInt32LE(e7((south + north) / 2), 123);
+  u64(rootOffset, F.rootOffset);
+  u64(root.length, F.rootLength);
+  u64(metadataOffset, F.metadataOffset);
+  u64(metadata.length, F.metadataLength);
+  u64(leavesOffset, F.leavesOffset);
+  u64(leaves.length, F.leavesLength);
+  u64(dataOffset, F.dataOffset);
+  u64(data.length, F.dataLength);
+  u64(sorted.length, F.addressedTiles);
+  u64(entries.length, F.tileEntries);
+  u64(contents.size, F.tileContents);
+  header.writeUInt8(1, F.clustered);
+  header.writeUInt8(COMPRESSION.gzip, F.internalCompression);
+  header.writeUInt8(COMPRESSION.none, F.tileCompression); // tiles are JPEG/PNG already
+  header.writeUInt8(options.tileType, F.tileType);
+  header.writeUInt8(minZoom, F.minZoom);
+  header.writeUInt8(maxZoom, F.maxZoom);
+  header.writeInt32LE(e7(west), F.west);
+  header.writeInt32LE(e7(south), F.south);
+  header.writeInt32LE(e7(east), F.east);
+  header.writeInt32LE(e7(north), F.north);
+  header.writeUInt8(minZoom, F.centerZoom);
+  header.writeInt32LE(e7((west + east) / 2), F.centerLon);
+  header.writeInt32LE(e7((south + north) / 2), F.centerLat);
 
   return Buffer.concat([header, root, metadata, leaves, data]);
 }

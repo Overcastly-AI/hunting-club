@@ -6,7 +6,7 @@ import {
   type Member,
   type MemberRole,
 } from '@huntclub/shared';
-import { Plus, Search } from 'lucide-react';
+import { Link2, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
 import type { ClubApi } from '../api/types';
 import { Loadable } from '../components/Loadable';
@@ -53,7 +53,9 @@ function roleLine(m: Member, me: string | undefined): string {
 
 type Filter = 'all' | MemberRole;
 
+/** The invite dialog: nothing is made until the admin asks (`idle`), then busy, then the link. */
 type InviteState =
+  | { kind: 'idle' }
   | { kind: 'busy' }
   | { kind: 'error'; message: string }
   | { kind: 'ready'; joinUrl: string; expiresAt: string };
@@ -69,13 +71,15 @@ function otherMembers(list: readonly Member[], me: string | undefined): number {
 /** Members, their roles and radios, and the invite QR for new members. */
 export function Roster(props: { api: ClubApi }) {
   const members = useAsync(() => props.api.listMembers(), [props.api], { keepLastOn: isOffline });
-  // The invite is made by the click that opens the dialog (never by an effect, which could
-  // run twice and leave an unused invite behind).
+  // Opening the dialog makes nothing: the invite is made only by its "Create invite link"
+  // button (never on open, and never by an effect, which could run twice and leave unused
+  // invites behind).
   const [invite, setInvite] = useState<InviteState | null>(null);
   const ready = members.status === 'ready';
   const makeInvite = () => {
     setInvite({ kind: 'busy' });
-    void createInviteLink(props.api).then(setInvite);
+    // A dialog closed while the invite was being made stays closed.
+    void createInviteLink(props.api).then((next) => setInvite((open) => (open ? next : open)));
   };
 
   return (
@@ -85,7 +89,7 @@ export function Roster(props: { api: ClubApi }) {
       // Invites need a club: only offered once the roster has loaded.
       actions={
         ready ? (
-          <Button variant="primary" icon={Plus} onClick={makeInvite}>
+          <Button variant="primary" icon={Plus} onClick={() => setInvite({ kind: 'idle' })}>
             Invite members
           </Button>
         ) : null
@@ -93,7 +97,7 @@ export function Roster(props: { api: ClubApi }) {
     >
       <Loadable state={members}>{(list) => <Members list={list} />}</Loadable>
       {invite ? (
-        <InviteDialog state={invite} onRetry={makeInvite} onClose={() => setInvite(null)} />
+        <InviteDialog state={invite} onCreate={makeInvite} onClose={() => setInvite(null)} />
       ) : null}
     </Page>
   );
@@ -220,8 +224,11 @@ async function createInviteLink(api: ClubApi): Promise<InviteState> {
   }
 }
 
-/** The invite's QR code and link, with Copy link. */
-function InviteDialog(props: { state: InviteState; onRetry: () => void; onClose: () => void }) {
+/** The button that makes the invite: the only thing that writes one. */
+export const CREATE_INVITE = 'Create invite link';
+
+/** Create invite link, then the invite's QR code and link, with Copy link and its expiry. */
+function InviteDialog(props: { state: InviteState; onCreate: () => void; onClose: () => void }) {
   const { state } = props;
   return (
     <Dialog
@@ -236,6 +243,16 @@ function InviteDialog(props: { state: InviteState; onRetry: () => void; onClose:
       }
     >
       <div aria-live="polite">
+        {state.kind === 'idle' ? (
+          <div className="invite__start">
+            <p className="form-note">
+              The link works for {INVITE_DAYS} days, for as many hunters as you send it to.
+            </p>
+            <Button variant="primary" icon={Link2} onClick={props.onCreate}>
+              {CREATE_INVITE}
+            </Button>
+          </div>
+        ) : null}
         {state.kind === 'busy' ? (
           <p className="loading" role="status">
             Making invite…
@@ -246,7 +263,7 @@ function InviteDialog(props: { state: InviteState; onRetry: () => void; onClose:
             tone="danger"
             live
             action={
-              <Button size="sm" onClick={props.onRetry}>
+              <Button size="sm" onClick={props.onCreate}>
                 Try again
               </Button>
             }
