@@ -2,7 +2,7 @@ import type { Area, Stand } from '@huntclub/shared';
 import type { ClubApi } from '../api/types';
 import { DataTable } from '../components/DataTable';
 import { Loadable } from '../components/Loadable';
-import { PageHeading } from '../components/PageHeading';
+import { Page } from '../components/Page';
 import { isOffline, useAsync } from '../components/useAsync';
 import { STAND_TYPE_LABELS } from '../format';
 
@@ -16,12 +16,11 @@ export function StandsAndAreas(props: { api: ClubApi }) {
   );
 
   return (
-    <section aria-labelledby="stands-title">
-      <PageHeading id="stands-title">Stands and areas</PageHeading>
+    <Page title="Stands and areas">
       <Loadable state={places}>
         {([stands, areas]) => <Places stands={stands} areas={areas} />}
       </Loadable>
-    </section>
+    </Page>
   );
 }
 

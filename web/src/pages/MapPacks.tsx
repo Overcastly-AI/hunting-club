@@ -15,7 +15,7 @@ import { useState } from 'react';
 import { NoClubError, type ClubApi } from '../api/types';
 import { Loadable } from '../components/Loadable';
 import { DataTable } from '../components/DataTable';
-import { PageHeading } from '../components/PageHeading';
+import { Page } from '../components/Page';
 import { isOffline, useAsync } from '../components/useAsync';
 import { formatDate } from '../format';
 
@@ -60,12 +60,10 @@ export function MapPacks(props: { api: ClubApi }) {
   );
 
   return (
-    <section aria-labelledby="packs-title">
-      <PageHeading id="packs-title">Map packs</PageHeading>
-      <p>
-        A map pack covers your property line in full detail. Members download it in the app, so the
-        map works with no cell service.
-      </p>
+    <Page
+      title="Map packs"
+      description="Download the property in full detail before you go. Maps work with no cell service."
+    >
       <Loadable state={state}>
         {([club, packs]) => (
           <>
@@ -89,7 +87,7 @@ export function MapPacks(props: { api: ClubApi }) {
           </>
         )}
       </Loadable>
-    </section>
+    </Page>
   );
 }
 

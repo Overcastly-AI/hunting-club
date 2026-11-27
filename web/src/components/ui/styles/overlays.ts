@@ -1,4 +1,4 @@
-// Dialog (native <dialog>), Toast and Tooltip (Radix), Tabs (Radix).
+// Dialog (native <dialog>), Toast and Tooltip (Radix), Popover (a disclosure), Tabs (Radix).
 import { MOBILE_TAB_BAR_HEIGHT } from '../sizes';
 import { color, focusRing, gap, PHONE, TAP, text, transition } from './shared';
 
@@ -59,6 +59,21 @@ const tooltip = `
 .ui-tooltip__arrow { fill: ${color('surface-2')}; }
 `;
 
+const popoverCss = `
+.ui-popover { position: relative; }
+.ui-popover__trigger { font: inherit; color: inherit; min-height: ${TAP}; margin: 0; border: 0; border-radius: var(--radius-md);
+  background: transparent; cursor: pointer; ${transition('background-color')} }
+.ui-popover__trigger:hover, .ui-popover__trigger[aria-expanded='true'] { background: ${color('surface-2')}; }
+.ui-popover__panel { ${popover} position: absolute; z-index: 90; width: max-content; min-width: 240px;
+  max-width: min(340px, calc(100vw - 2 * ${gap(4)})); padding: ${gap(2)}; border-radius: var(--radius-md);
+  animation: ui-fade-in var(--motion-base) var(--motion-easing); }
+.ui-popover__panel[hidden] { display: none; }
+.ui-popover__panel--bottom-start { top: calc(100% + ${gap(2)}); left: 0; }
+.ui-popover__panel--bottom-end { top: calc(100% + ${gap(2)}); right: 0; }
+.ui-popover__panel--top-start { bottom: calc(100% + ${gap(2)}); left: 0; }
+.ui-popover__panel--right-end { bottom: 0; left: calc(100% + ${gap(2)}); }
+`;
+
 const tabs = `
 .ui-tabs__list { display: flex; gap: ${gap(1)}; border-bottom: 1px solid ${color('border-subtle')}; overflow-x: auto;
   margin-bottom: ${gap(6)}; }
@@ -74,6 +89,11 @@ const tabs = `
 `;
 
 export const overlaysCss = () =>
-  [focusRing(['.ui-tabs__tab', '.ui-tabs__panel', '.ui-toast']), dialog, toast, tooltip, tabs].join(
-    '\n',
-  );
+  [
+    focusRing(['.ui-tabs__tab', '.ui-tabs__panel', '.ui-toast', '.ui-popover__trigger']),
+    dialog,
+    toast,
+    tooltip,
+    popoverCss,
+    tabs,
+  ].join('\n');

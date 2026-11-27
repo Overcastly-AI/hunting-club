@@ -1,4 +1,3 @@
-import { logoMarkSvg } from '@huntclub/design';
 import {
   APP_DESCRIPTION,
   APP_NAME,
@@ -13,16 +12,15 @@ import {
 } from '@huntclub/shared';
 import { lazy, Suspense, useState, type FormEvent } from 'react';
 import { Field } from '../components/Field';
-import { PageHeading } from '../components/PageHeading';
+import { LogoMark } from '../components/LogoMark';
+import { usePageHeadingFocus } from '../components/Page';
+import { PageHeader } from '../components/ui';
 
 /**
  * The dawn scene behind the card: its own lazy chunk (sprites and CSS), so the form never waits
  * for it and signed-in pages never download it.
  */
 const DawnBackground = lazy(() => import('../components/DawnBackground'));
-
-/** The logo mark as an image source (decorative: the app name is written next to it). */
-const LOGO_SRC = `data:image/svg+xml,${encodeURIComponent(logoMarkSvg())}`;
 
 type Busy = null | 'send' | 'resend' | 'confirm';
 
@@ -44,6 +42,7 @@ export function SignIn(props: {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(props.notice ?? null);
   const [busy, setBusy] = useState<Busy>(null);
+  const heading = usePageHeadingFocus();
 
   async function run(kind: Exclude<Busy, null>, step: () => Promise<void>) {
     if (busy) return;
@@ -113,13 +112,13 @@ export function SignIn(props: {
       </Suspense>
       <section className="auth-card" aria-labelledby="sign-in-title">
         <div className="auth-brand">
-          <img src={LOGO_SRC} alt="" width={48} height={48} />
+          <LogoMark size={48} />
           <div>
             <p className="auth-app-name">{APP_NAME}</p>
             <p className="muted">{APP_DESCRIPTION}</p>
           </div>
         </div>
-        <PageHeading id="sign-in-title">{copy.title}</PageHeading>
+        <PageHeader title={copy.title} titleId="sign-in-title" titleRef={heading} />
         {challenge === null ? (
           <form onSubmit={sendCode} noValidate>
             <p>{copy.intro}</p>

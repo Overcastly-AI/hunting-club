@@ -17,7 +17,8 @@ import { ClubSession, dawnPauseCopy, memoryTokenStore, signInCopy } from '@huntc
 import { DAWN_CLASS, DAWN_PAUSED_CLASS, DAWN_PAUSED_KEY } from '@huntclub/design/dawnControl';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { adminApi } from '../api/admin';
-import { App, PAGES } from '../App';
+import { App } from '../App';
+import { PAGES } from '../shell/routes';
 import * as download from '../download';
 import * as navigate from '../navigate';
 import { Loading } from '../components/Loading';

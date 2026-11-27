@@ -9,18 +9,19 @@ import { useState, type FormEvent } from 'react';
 import type { ClubApi } from '../api/types';
 import { Field } from '../components/Field';
 import { Loadable } from '../components/Loadable';
-import { PageHeading } from '../components/PageHeading';
+import { Page } from '../components/Page';
 import { isOffline, useAsync } from '../components/useAsync';
 import { SUBSCRIPTION_STATUS_LABELS } from '../format';
+import { useReloadShell } from '../shell/shellClub';
 
 /** Your club, or a form to start one. Payment is on the Billing page. */
 export function MyClub(props: { api: ClubApi }) {
   const state = useAsync(() => props.api.getClub(), [props.api]);
   const [created, setCreated] = useState(false);
+  const reloadShell = useReloadShell();
 
   return (
-    <section aria-labelledby="club-title">
-      <PageHeading id="club-title">My club</PageHeading>
+    <Page title="My club">
       <Loadable state={state}>
         {(club) =>
           club ? (
@@ -31,12 +32,13 @@ export function MyClub(props: { api: ClubApi }) {
               onCreated={() => {
                 setCreated(true);
                 state.reload();
+                reloadShell(); // the shell names the new club
               }}
             />
           )
         }
       </Loadable>
-    </section>
+    </Page>
   );
 }
 

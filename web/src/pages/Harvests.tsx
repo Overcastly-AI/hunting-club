@@ -18,7 +18,7 @@ import type { ClubApi } from '../api/types';
 import { Field } from '../components/Field';
 import { Loadable } from '../components/Loadable';
 import { isOffline, useAsync } from '../components/useAsync';
-import { PageHeading } from '../components/PageHeading';
+import { Page } from '../components/Page';
 import { DataTable } from '../components/DataTable';
 import { toCsv } from '../csv';
 import { saveFile } from '../download';
@@ -57,9 +57,7 @@ export function Harvests(props: { api: ClubApi }) {
   );
 
   return (
-    <section aria-labelledby="harvests-title">
-      <PageHeading id="harvests-title">Harvests</PageHeading>
-      <p className="muted">Harvests that members shared with the club.</p>
+    <Page title="Harvests" description="Harvests that members shared with the club.">
       <div className="row">
         <Field
           label="Season starts"
@@ -85,7 +83,7 @@ export function Harvests(props: { api: ClubApi }) {
           )
         }
       </Loadable>
-    </section>
+    </Page>
   );
 }
 

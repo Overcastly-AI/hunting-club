@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ClubApi } from '../api/types';
 import { DataTable, type Column } from '../components/DataTable';
 import { Loadable } from '../components/Loadable';
-import { PageHeading } from '../components/PageHeading';
+import { Page } from '../components/Page';
 import { QrCode } from '../components/QrCode';
 import { isOffline, useAsync } from '../components/useAsync';
 import { ROLE_LABELS, formatDate } from '../format';
@@ -82,8 +82,7 @@ export function Roster(props: { api: ClubApi }) {
   };
 
   return (
-    <section aria-labelledby="roster-title">
-      <PageHeading id="roster-title">Roster</PageHeading>
+    <Page title="Roster" description="Everyone in your club and who can do what.">
       <Loadable state={members}>
         {(list) => (
           <>
@@ -144,7 +143,7 @@ export function Roster(props: { api: ClubApi }) {
           ) : null}
         </>
       ) : null}
-    </section>
+    </Page>
   );
 }
 

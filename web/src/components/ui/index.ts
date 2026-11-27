@@ -18,6 +18,7 @@ export { Dialog } from './Dialog';
 export { EmptyState } from './EmptyState';
 export { Field, Input, Select, Textarea, type SelectOption } from './Field';
 export { PageHeader } from './PageHeader';
+export { Popover, type PopoverPlacement } from './Popover';
 export { LoadingRegion, Skeleton, SkeletonText } from './Skeleton';
 export { Tabs, type TabItem } from './Tabs';
 export { ThemeToggle } from './ThemeToggle';

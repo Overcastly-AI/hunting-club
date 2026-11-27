@@ -2,6 +2,7 @@ import { ADMIN_PATH, CHECKOUT_RETURN_PATHS } from '@huntclub/shared';
 import { lazy, Suspense, type ReactNode } from 'react';
 import type { WebClubServices } from './cloud';
 import { Loading } from './components/Loading';
+import { PublicShell } from './shell/PublicShell';
 
 // Each entry path loads only its own code: the Checkout pages don't pull in the admin,
 // and the admin doesn't pull in the mesh codec until an invite is made.
@@ -67,8 +68,8 @@ const isAdminPath = (path: string) => path === ADMIN_ROOT || path.startsWith(`${
 
 function Page(props: { children: ReactNode }) {
   return (
-    <main className="layout">
-      <Suspense fallback={<Loading />}>{props.children}</Suspense>
-    </main>
+    <Suspense fallback={<Loading />}>
+      <PublicShell>{props.children}</PublicShell>
+    </Suspense>
   );
 }
