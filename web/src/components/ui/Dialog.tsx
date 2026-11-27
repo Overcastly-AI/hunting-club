@@ -23,6 +23,8 @@ export function Dialog(props: {
   footer?: ReactNode;
   /** The close button's word (default "Close"). */
   closeLabel?: string;
+  /** The <dialog>'s id, for the opener's aria-controls (it stays in the page while closed). */
+  id?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
@@ -50,6 +52,7 @@ export function Dialog(props: {
   return (
     <dialog
       ref={ref}
+      id={props.id}
       className="ui-dialog"
       tabIndex={-1}
       aria-labelledby={`${id}-title`}

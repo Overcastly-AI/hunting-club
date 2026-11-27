@@ -71,6 +71,8 @@ export const opacity = {
   pressed: 0.7,
   /** Backing of a marker plate over the aerial, so busy imagery never shows through its text. */
   markerPlate: 0.94,
+  /** A map behind a form (web sign-in): the aerial over the plain ground, so it reads as a quiet backdrop. */
+  backdrop: 0.4,
   /** Hybrid basemap: the topo map drawn over the aerial at this opacity. */
   hybridTopo: 0.45,
 } as const;

@@ -4,7 +4,12 @@
  * updates the same club and adds only what is missing. Uses the repository functions
  * (no raw items), as the service.
  */
-import { ENTITLEMENT_GRACE_DAYS, type StandType } from '@huntclub/shared';
+import {
+  DISPLAY_NAME_MAX,
+  ENTITLEMENT_GRACE_DAYS,
+  initialsFor,
+  type StandType,
+} from '@huntclub/shared';
 import { SERVICE, userActor } from '../actor';
 import type { ClubData } from '../index';
 
@@ -48,14 +53,18 @@ export interface DevSeedResult {
   featuresUntil: string | undefined;
 }
 
-/** Display name and initials from an email's local part ("jane.doe@x" → "Jane Doe", "JD"). */
+/** Who the seed admin is when nothing else names them. */
+const FALLBACK_PROFILE = { displayName: 'UAT Admin', initials: 'UA' } as const;
+
+/**
+ * Display name and initials from an email's local part, the name exactly as typed
+ * ("jonesjaycob.uitest@x" → "jonesjaycob.uitest", "JU"). Never split and title-cased: that
+ * invents a name ("Jonesjaycob Uitest") the person never gave.
+ */
 export function profileFromEmail(email: string) {
-  const words = (email.split('@')[0] ?? '').split(/[._+-]+/).filter(Boolean);
-  const displayName = words.map((w) => w[0]!.toUpperCase() + w.slice(1)).join(' ') || 'UAT Admin';
-  const initials = (
-    words.length > 1 ? words[0]![0]! + words[1]![0]! : displayName.slice(0, 2)
-  ).toUpperCase();
-  return { displayName, initials };
+  const displayName = (email.split('@')[0] ?? '').trim().slice(0, DISPLAY_NAME_MAX);
+  if (!displayName) return { ...FALLBACK_PROFILE };
+  return { displayName, initials: initialsFor(displayName) || FALLBACK_PROFILE.initials };
 }
 
 export async function seedDevClub(data: ClubData, input: DevSeedInput): Promise<DevSeedResult> {

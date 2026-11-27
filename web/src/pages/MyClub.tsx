@@ -20,7 +20,7 @@ import {
   type Stand,
   type Subscription,
 } from '@huntclub/shared';
-import { RadioTower } from 'lucide-react';
+import { CircleCheck, RadioTower } from 'lucide-react';
 import { useRef, useState, type FormEvent } from 'react';
 import type { ClubApi } from '../api/types';
 import { ConditionsStrip } from '../components/ConditionsStrip';
@@ -42,7 +42,7 @@ export function MyClub(props: { api: ClubApi }) {
   const reloadShell = useReloadShell();
 
   return (
-    <Loadable state={state} padded>
+    <Loadable state={state} padded skeleton="map">
       {(club) =>
         club ? (
           <ClubView api={props.api} club={club} created={created} />
@@ -127,6 +127,18 @@ export const OUT_NOW_EMPTY = {
   line: 'Live positions travel only over the club radio mesh, so they show in the app, never on this website.',
 } as const;
 
+/** The map with nothing on it yet: the plan is drawn in the app, on the ground. */
+export const MAP_EMPTY = {
+  title: 'Nothing on the map yet',
+  line: 'Draw the property line, areas and stands in the app. They show here when it syncs.',
+} as const;
+
+/** Needs you with nothing in it. */
+export const NEEDS_YOU_EMPTY = {
+  title: 'Nothing needs you',
+  line: 'Billing, guest passes, invites and map packs show here when they need you.',
+} as const;
+
 /**
  * The club on its map (docs/DESIGN.md, "Admin, My club"): the property line, areas and stands
  * edge to edge over the club's own map pack, with the club's plate and the conditions strip on
@@ -160,13 +172,7 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
         label={`Map of ${club.name}: ${club.boundary ? 'the property line' : 'no property line yet'}, ${pluralize(areas.length, 'area')} and ${pluralize(stands.length, 'stand')}.`}
         basemap={basemap}
         insets={{ top: PLATE_TOP + plateSize.height + FIT_PADDING }}
-        empty={
-          details.status === 'ready' ? (
-            <p className="plan__empty">
-              No property line, areas or stands yet. Draw them in the app and they show here.
-            </p>
-          ) : null
-        }
+        empty={details.status === 'ready' ? MAP_EMPTY : null}
       >
         <div className="clubview__plate" ref={plate}>
           <div className="clubview__title">
@@ -186,7 +192,7 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
           </Banner>
         ) : null}
         <OutNow />
-        <Loadable state={details}>
+        <Loadable state={details} skeleton="table">
           {(value) => (
             <>
               <NeedsYou items={needsYou({ club, ...value, now })} />
@@ -233,7 +239,11 @@ function NeedsYou(props: { items: readonly NeedsYouItem[] }) {
         <span className="side-section__count text-readout-inline">{props.items.length}</span>
       </h2>
       {props.items.length === 0 ? (
-        <p className="side-section__empty">Nothing needs you right now.</p>
+        <div className="side-section__empty-state">
+          <EmptyState icon={CircleCheck} title={NEEDS_YOU_EMPTY.title} titleAs="h3">
+            {NEEDS_YOU_EMPTY.line}
+          </EmptyState>
+        </div>
       ) : (
         <ul className="rows">
           {props.items.map((item) => {

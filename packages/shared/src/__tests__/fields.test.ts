@@ -1,4 +1,13 @@
-import { idSchema, INITIALS_MAX, suggestInitials, userIdSchema } from '../fields';
+import { idSchema, initialsFor, INITIALS_MAX, suggestInitials, userIdSchema } from '../fields';
+
+describe('initialsFor', () => {
+  it('reads an email local part as words, and leaves a name as it is', () => {
+    expect(initialsFor('jane.doe@example.com')).toBe('JD');
+    expect(initialsFor('jonesjaycob.uitest')).toBe('JU');
+    expect(initialsFor('Dale Morgan')).toBe('DM');
+    expect(initialsFor('')).toBe('');
+  });
+});
 
 it('accepts real Cognito subs, including ones without RFC 9562 variant bits', () => {
   // A dev pool sub whose 4th group starts with "f" (failed z.uuid(); seed:dev, Request #9).

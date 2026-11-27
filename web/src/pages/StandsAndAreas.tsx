@@ -32,7 +32,7 @@ export function StandsAndAreas(props: { api: ClubApi }) {
           : undefined
       }
     >
-      <Loadable state={places}>
+      <Loadable state={places} skeleton="table">
         {([stands, areas, club]) => <Places stands={stands} areas={areas} club={club} />}
       </Loadable>
     </Page>
@@ -131,7 +131,10 @@ function Places(props: { stands: readonly Stand[]; areas: readonly Area[]; club:
         compact
         label={`Map of the club: ${pluralize(areas.length, 'area')} and ${pluralize(stands.length, 'stand')}.`}
         insets={{ top: 24, right: 24, bottom: 40, left: 24 }}
-        empty={<p className="plan__empty">Nothing to draw yet.</p>}
+        empty={{
+          title: 'Nothing to draw yet',
+          line: 'Place stands and draw areas in the app, at the spot.',
+        }}
       />
     </div>
   );

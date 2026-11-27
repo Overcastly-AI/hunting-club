@@ -119,7 +119,7 @@ export function SignInScreen({ onDone }: { onDone: () => void }) {
         <>
           <Text style={styles.body}>{copy.codeSent(challenge.email)}</Text>
           <Field
-            label={copy.code}
+            label={copy.code(challenge.kind)}
             hint={copy.codeHelp(challenge.kind)}
             value={code}
             onChangeText={(text) => setCode(codeDigits(text))}

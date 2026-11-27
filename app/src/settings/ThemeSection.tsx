@@ -5,6 +5,7 @@ import { SegmentedControl } from '../components/SegmentedControl';
 import {
   makeStyles,
   textStyles,
+  THEME_LABEL,
   THEME_PREFERENCE_LABELS,
   THEME_PREFERENCES,
   useThemePreference,
@@ -15,7 +16,7 @@ export function ThemeSection() {
   const styles = useStyles();
   const { preference, setPreference } = useThemePreference();
   return (
-    <Card title="Theme">
+    <Card title={THEME_LABEL}>
       <SegmentedControl
         segments={THEME_PREFERENCES}
         labels={THEME_PREFERENCE_LABELS}

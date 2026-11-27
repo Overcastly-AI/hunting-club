@@ -57,7 +57,7 @@ export function Billing(props: { api: ClubApi }) {
       description="Your club's plan, payment and invoices."
       actions={subscription ? <ManageSubscription api={props.api} /> : null}
     >
-      <Loadable state={billing} noClub={<PlansBeforeClub />}>
+      <Loadable state={billing} noClub={<PlansBeforeClub />} skeleton="stats">
         {([sub, plans]) => (
           <div className="billing">
             <Status subscription={sub} plans={plans} />

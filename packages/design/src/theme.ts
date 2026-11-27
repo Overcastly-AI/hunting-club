@@ -206,6 +206,8 @@ export type ThemeColorToken = keyof ThemeColors;
 export const THEME_PREFERENCES = ['system', 'dark', 'light'] as const;
 export type ThemePreference = (typeof THEME_PREFERENCES)[number];
 export const DEFAULT_THEME_PREFERENCE: ThemePreference = 'system';
+/** The theme setting's name (the app's Settings and the admin's account menu and More sheet). */
+export const THEME_LABEL = 'Theme';
 /** Word for each theme choice (the app's Settings → Theme and the admin's theme menu). */
 export const THEME_PREFERENCE_LABELS = {
   system: 'System',

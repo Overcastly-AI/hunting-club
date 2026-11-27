@@ -32,7 +32,7 @@ async function signInWith(challenge: CodeChallenge) {
   await fireEvent.changeText(screen.getByLabelText(signInCopy.email), challenge.email);
   await fireEvent.press(screen.getByRole('button', { name: signInCopy.sendCode }));
   await waitFor(() => expect(session.requestCode).toHaveBeenCalled());
-  const field = await screen.findByLabelText(signInCopy.code);
+  const field = await screen.findByLabelText(signInCopy.code(challenge.kind));
   return { session, onDone, field };
 }
 
@@ -122,7 +122,7 @@ describe('Send a new code', () => {
     await waitFor(() => expect(session.requestCode).toHaveBeenCalledTimes(2));
     expect(session.requestCode).toHaveBeenLastCalledWith(challenge.email);
     expect(await screen.findByText(signInCopy.resent)).toBeTruthy();
-    expect(screen.getByLabelText(signInCopy.code).props.value).toBe('');
+    expect(screen.getByLabelText(signInCopy.code(challenge.kind)).props.value).toBe('');
     expect(screen.getByRole('button', { name: signInCopy.resendIn(30) })).toBeDisabled();
   });
 });

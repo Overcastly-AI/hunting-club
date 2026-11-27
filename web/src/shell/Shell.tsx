@@ -1,7 +1,7 @@
 import { ICON_SIZE } from '@huntclub/design';
 import type { SignedInUser } from '@huntclub/shared';
 import { Ellipsis } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import type { ClubApi } from '../api/types';
 import { BILLING_ALERT_LABELS, billingAlert, type BillingAlert } from '../billingStatus';
 import { cx } from '../components/ui/cx';
@@ -32,6 +32,7 @@ export function Shell(props: {
 }) {
   const club = useShellClub(props.api);
   const [moreOpen, setMoreOpen] = useState(false);
+  const moreSheet = useId();
   const alert = club.status === 'ready' ? billingAlert(club.value.subscription) : undefined;
   const current = PAGES.find((p) => p.path === props.path);
   const currentInMore = current && 'inMore' in current ? current : undefined;
@@ -68,6 +69,8 @@ export function Shell(props: {
                   type="button"
                   className={cx('shell-nav__item', currentInMore && 'shell-nav__item--current')}
                   aria-haspopup="dialog"
+                  aria-expanded={moreOpen}
+                  aria-controls={moreSheet}
                   onClick={() => setMoreOpen(true)}
                 >
                   <span className="shell-nav__icon">
@@ -92,7 +95,13 @@ export function Shell(props: {
         >
           <div className="shell-content">{props.children}</div>
         </main>
-        <Dialog open={moreOpen} onClose={() => setMoreOpen(false)} title={MORE_LABEL}>
+        {/* The dialog moves focus into the sheet on open and back to the More tab on close. */}
+        <Dialog
+          id={moreSheet}
+          open={moreOpen}
+          onClose={() => setMoreOpen(false)}
+          title={MORE_LABEL}
+        >
           <nav aria-label="More pages">
             <ul className="shell-more">
               {PAGES.filter((p) => 'inMore' in p).map((page) => (

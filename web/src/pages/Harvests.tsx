@@ -68,14 +68,14 @@ export function Harvests(props: { api: ClubApi }) {
   return (
     <Page title="Harvests" description="Harvests that members shared with the club.">
       <div className="filters">
-        <Field label="Season starts">
+        <Field label="Season starts" className="filters__date">
           <Input
             type="date"
             value={season.from}
             onChange={(e) => setSeason((s) => ({ ...s, from: e.target.value }))}
           />
         </Field>
-        <Field label="Season ends">
+        <Field label="Season ends" className="filters__date">
           <Input
             type="date"
             value={season.to}
@@ -83,7 +83,7 @@ export function Harvests(props: { api: ClubApi }) {
           />
         </Field>
       </div>
-      <Loadable state={club}>
+      <Loadable state={club} skeleton="stats">
         {(data) =>
           isSeason(season) ? (
             <Report data={data} season={season} onRefresh={club.reload} />

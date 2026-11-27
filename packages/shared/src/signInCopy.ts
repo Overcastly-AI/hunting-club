@@ -47,7 +47,8 @@ export const signInCopy = {
   codeSent: (email: string) => `Enter the code from the email we sent to ${email}.`,
   codeHelp: (kind: CodeChallenge['kind']) =>
     `The code works for ${emailCodeRules(kind).validFor}. Not in your inbox? Check your spam folder.`,
-  code: 'Code from the email',
+  /** The code field's label, from the code length rule: "8-digit code". */
+  code: (kind: CodeChallenge['kind']) => `${emailCodeRules(kind).length}-digit code`,
   codeIncomplete: (kind: CodeChallenge['kind']) =>
     `Enter all ${emailCodeRules(kind).length} digits of the code from the email.`,
   confirm: 'Sign in',

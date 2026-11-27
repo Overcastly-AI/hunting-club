@@ -1,4 +1,11 @@
-import { THEME_ATTRIBUTE, THEME_STORAGE_KEY } from '@huntclub/design';
+import {
+  THEME_ATTRIBUTE,
+  THEME_LABEL,
+  THEME_PREFERENCE_LABELS,
+  THEME_PREFERENCES,
+  THEME_STORAGE_KEY,
+} from '@huntclub/design';
+import { globalCss } from '../theme/css';
 import { ADMIN_PATH, LEGAL_PATHS, signInCopy } from '@huntclub/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { SESSION_EXPIRED } from '../App';
@@ -92,6 +99,30 @@ describe('the account menu', () => {
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('system');
     localStorage.removeItem(THEME_STORAGE_KEY);
   });
+
+  it('offers the same Theme control, with the same words, in the desktop menu and the phone More sheet', async () => {
+    await renderSignedIn();
+    const words = (group: HTMLElement) =>
+      within(group)
+        .getAllByRole('radio')
+        .map((r) => r.closest('label')!.textContent);
+    const expected = THEME_PREFERENCES.map((p) => THEME_PREFERENCE_LABELS[p]);
+    const menu = await openAccountMenu();
+    expect(words(within(menu).getByRole('group', { name: THEME_LABEL }))).toEqual(expected);
+    fireEvent.keyDown(menu, { key: 'Escape' });
+    fireEvent.click(within(nav()).getByRole('button', { name: MORE_LABEL }));
+    const sheet = await screen.findByRole('dialog', { name: MORE_LABEL });
+    expect(words(within(sheet).getByRole('group', { name: THEME_LABEL }))).toEqual(expected);
+  });
+});
+
+describe('the club switcher', () => {
+  it('opens 4 px under its button, as wide as the rail, and full width under the phone top bar', () => {
+    const css = globalCss();
+    expect(css).toContain(
+      '.shell-club .ui-popover__panel.shell-club__panel { top: calc(100% + var(--space-1)); left: 0; right: 0; width: auto;',
+    );
+  });
 });
 
 describe('signing out', () => {
@@ -111,18 +142,25 @@ describe('dialogs', () => {
   it('open modally and take focus, so the page behind is inert until they close', async () => {
     const showModal = vi.spyOn(HTMLDialogElement.prototype, 'showModal');
     await renderSignedIn(sampleData(), '#/roster');
-    const invite = await screen.findByRole('button', { name: 'Invite members' });
-    invite.focus();
-    fireEvent.click(invite);
-    const dialog = await screen.findByRole('dialog', { name: 'Invite members' });
+    const more = within(nav()).getByRole('button', { name: MORE_LABEL });
+    // The More tab says whether its sheet is open, and which element the sheet is.
+    expect(more.getAttribute('aria-expanded')).toBe('false');
+    const sheetId = more.getAttribute('aria-controls')!;
+    expect(document.getElementById(sheetId)?.tagName).toBe('DIALOG');
+    more.focus();
+    fireEvent.click(more);
+    const dialog = await screen.findByRole('dialog', { name: MORE_LABEL });
+    expect(dialog.id).toBe(sheetId);
+    expect(more.getAttribute('aria-expanded')).toBe('true');
     // showModal() makes everything outside the dialog inert: Tab can only reach its controls
-    // (checked in a real browser by scripts/shoot.ts).
+    // (checked in a real browser by scripts/shoot.ts). Focus moves into the sheet.
     expect(showModal).toHaveBeenCalledTimes(1);
-    expect(document.activeElement).toBe(dialog);
+    expect(dialog.contains(document.activeElement)).toBe(true);
     fireEvent(dialog, new Event('cancel', { cancelable: true }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    // Focus is back on the button that opened it.
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Invite members' }));
+    // Focus is back on the tab that opened it.
+    expect(document.activeElement).toBe(more);
+    expect(more.getAttribute('aria-expanded')).toBe('false');
     showModal.mockRestore();
   });
 });
@@ -133,7 +171,7 @@ describe('accessibility of every page', () => {
     async (label, path) => {
       const { container } = await renderSignedIn(sampleData(), pageHref(path));
       await screen.findByRole('heading', { level: 1 });
-      await waitFor(() => expect(screen.queryByText('Loading…')).toBeNull());
+      await waitFor(() => expect(container.querySelector('[aria-busy="true"]')).toBeNull());
       const serious = (await axeViolations(container)).filter((v) =>
         /\((serious|critical)\)/.test(v),
       );
