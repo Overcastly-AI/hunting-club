@@ -138,10 +138,11 @@ export function fakeClubApi(
   return api;
 }
 
-/** A session stub: signed in or not, no network. */
-export function fakeSession(signedIn: boolean): ClubSession {
+/** A session stub: signed in (as `userId`, USER_ID by default) or not, no network. */
+export function fakeSession(signedIn: boolean, userId: string = USER_ID): ClubSession {
   return {
     isSignedIn: async () => signedIn,
+    user: async () => (signedIn ? { userId } : undefined),
     accessToken: async () => (signedIn ? 'token' : undefined),
     refresh: async () => signedIn,
     requestCode: jest.fn(),

@@ -99,6 +99,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 - 17:23 UTC: first automatic Deploy dev (run 45866729496, #56) succeeded with smoke. Merged since 16:30: #47 DRY, #48 smoke + webhook 400, #49 TestFlight, #50 dev seed, #51 SignUp-first, #52 site 404/SPA, #53 web UI review fixes, #54 app icons, #55 legal drafts, #56 auto-deploy, #57 app legal screens.
 - 18:35 UTC: web worker = marketing site Phase 1 (site/, /app move, pages, /join, OG); club-data worker = CLUB_PRICING + monthly/yearly + 14-day trial in Billing. #58 UAT retest fixes merged; #59 user-id fix open.
 - 2026-11-27: #92–#96 merged and deployed to dev. #96 added the sample PMTiles pack deploy, the shared code entry and "Available" wording, one invite path, and a manual Android screenshot workflow (`app-screenshots.yml`). That workflow has not run yet: the owner must start it from the Actions tab (the coordinator token can't dispatch it).
+- 2026-11-27: #98 (web stand detail drawer on the club map) and #99 (selected club cleared on sign-out, 403 no-access state) merged.
 - All workers paused 15:15 UTC (remaining work waits on owner: GitHub dev env/variable, Stripe, Apple Team ID/Android fingerprints, field test).
 - Was in progress: M12 app side (onboarding worker); map packs #41 backend → app (club-data); #41 review then web Map packs admin (web).
 
@@ -115,6 +116,8 @@ Owner rule (2026-11-26): Grok Bot runs UAT and reviews UI decisions by email. Ev
 
 | Date | Thread / subject | Finding | Decision | PR |
 |---|---|---|---|---|
+| 2026-11-27 | UAT retest 18:50 | MAJOR: the previous user's club was kept after sign-out, giving 403s on every admin page | Accepted | #99 |
+| 2026-11-27 | UAT retest 18:50 | POLISH: the generic error on a 403 | Accepted: "You don't have access to this club." | #99 |
 | 2026-11-27 | UAT retest 14:57 | 3 polish items | Accepted | #92 |
 | 2026-11-27 | UI Director review 15:08 | 17 items | Accepted. Pushbacks kept: no live "Out now" on the web (positions are mesh-only); wind and temperature dropped on the web rather than widening the CSP; shell widths 232/88 kept per DESIGN.md; axe instead of Lighthouse (0 violations) | #93–#96 |
 | 2026-11-27 | Open (Grok) | Which screen and width show the grey dot and the 1024px strip? Neither reproduces | Asked Grok | — |

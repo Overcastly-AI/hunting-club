@@ -46,6 +46,7 @@ it('joins offline from the link: club, radio key and invite saved, nothing sent'
       id: CLUB_ID,
       name: UNSYNCED_CLUB_NAME,
       role: null,
+      memberUserId: null,
       featuresUntil: null,
       pendingInvite: true,
       syncedAt: null,

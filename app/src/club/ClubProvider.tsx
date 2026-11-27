@@ -3,7 +3,12 @@
  * session, and sync. Provides the cached entitlement to club-only screens.
  * Nothing here runs for a free user until they join a club or tap Sign in.
  */
-import type { ClubApiClient, ClubSession, MemberJoin } from '@huntclub/shared';
+import {
+  clubsForAccount,
+  type ClubApiClient,
+  type ClubSession,
+  type MemberJoin,
+} from '@huntclub/shared';
 import { useSQLiteContext } from 'expo-sqlite';
 import {
   type ReactNode,
@@ -35,6 +40,10 @@ export type ClubServices = {
 };
 
 export type ClubState = {
+  /**
+   * The clubs to list: the signed-in account's own (and invites waiting). Clubs another
+   * account synced on this phone stay saved, hidden until that account signs back in.
+   */
   clubs: LocalClub[];
   signedIn: boolean;
   /** The hunter's own name and initials from onboarding (prefills joining a club). */
@@ -105,10 +114,10 @@ export function ClubStateProvider({
 
   const reload = useCallback(
     () =>
-      Promise.all([loadClubs(db), session.isSignedIn(), loadClubMapPacks(db)]).then(
-        async ([loaded, isSignedIn, packs]) => {
+      Promise.all([loadClubs(db), session.isSignedIn(), session.user(), loadClubMapPacks(db)]).then(
+        async ([loaded, isSignedIn, user, packs]) => {
           const radio = loaded[0] ? await loadRadioClub(db, secrets, loaded[0]) : null;
-          setClubs(loaded);
+          setClubs(clubsForAccount(loaded, isSignedIn ? user?.userId : undefined));
           setSignedIn(isSignedIn);
           setRadioClub(radio);
           setMapPacks(packs);

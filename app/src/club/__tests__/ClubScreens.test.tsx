@@ -1,21 +1,25 @@
 // Club mode on the Party/Club tab and the join screen, on an in-memory database and a
 // fake club API (no network, no native modules).
+import { Fragment } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import { saveProfile } from '../../db/appState';
 import { clubWrapper } from '../../test-utils/clubFixture';
 import {
+  CLUB_ID,
   clubJoinUrl,
   fakeClubApi,
   fakeSession,
   memorySecureStorage,
   partyJoinUrl,
+  USER_ID,
 } from '../../test-utils/fakeClubApi';
 import { ClubSection } from '../ClubSection';
 import type { ClubServices } from '../ClubProvider';
 import { JoinClubScreen } from '../JoinClubScreen';
 import { clubCopy } from '../copy';
-import { joinClubFromLink } from '../sync';
+import { loadClubs } from '../store';
+import { joinClubFromLink, syncClub } from '../sync';
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), replace: jest.fn() } }));
 jest.mock('expo-sqlite', () => ({ useSQLiteContext: jest.fn() }));
@@ -73,6 +77,30 @@ it('when signed in, syncs on open and shows club mode with features on', async (
   expect(screen.getByText(clubCopy.section.role.member)).toBeTruthy();
   expect(screen.getByText(clubCopy.section.featuresOpen)).toBeTruthy();
   expect(api.redeemInvite).toHaveBeenCalledTimes(1);
+});
+
+it("hides another account's club after a user switch, keeps it saved, and shows it again for its own account", async () => {
+  const session = fakeSession(true, '00000000-0000-4000-8000-0000000000bb');
+  const { db, wrap } = await setup({ session, api: fakeClubApi(), secrets: memorySecureStorage() });
+  // The first account (USER_ID) joined and synced Oak Ridge on this phone.
+  await joinClubFromLink(
+    db,
+    memorySecureStorage(),
+    clubJoinUrl(),
+    { displayName: 'Max', initials: 'MX' },
+    NOW,
+  );
+  await syncClub(db, fakeClubApi(), CLUB_ID, NOW);
+
+  const view = await render(wrap(<ClubSection now={() => NOW} />));
+  expect(await screen.findByText(clubCopy.section.none)).toBeTruthy();
+  expect(screen.queryByText('Oak Ridge')).toBeNull();
+  expect((await loadClubs(db)).map((c) => c.name)).toEqual(['Oak Ridge']); // kept, only hidden
+
+  session.user = async () => ({ userId: USER_ID }); // its own account signs back in
+  // A fresh provider (keyed), as after signing in: it reads the clubs again.
+  await view.rerender(<Fragment key="again">{wrap(<ClubSection now={() => NOW} />)}</Fragment>);
+  expect(await screen.findByText('Oak Ridge')).toBeTruthy();
 });
 
 it('joins from a Club QR code with a name and initials', async () => {
