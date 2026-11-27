@@ -12,10 +12,16 @@ import {
   normalizeDisplayName,
   RADIO_NAME_BYTES,
   storedDisplayNameSchema,
+  storedInitialsSchema,
   suggestInitials,
   utf8Length,
 } from '../names';
-import { parseMemberProfile } from '../club';
+import {
+  MemberJoinSchema,
+  MemberProfileUpdateSchema,
+  MemberSchema,
+  parseMemberProfile,
+} from '../club';
 
 describe('utf8Length and fitUtf8', () => {
   it('counts bytes the way the radio does', () => {
@@ -103,6 +109,12 @@ describe('initialsSchema', () => {
     expect(initialsSchema.safeParse('ABCD').success).toBe(false);
     expect(initialsSchema.safeParse('J.').success).toBe(false);
   });
+
+  it('still reads stored initials of three accented letters, but never writes them', () => {
+    expect(storedInitialsSchema.safeParse('ÉØÜ').success).toBe(true);
+    expect(storedInitialsSchema.safeParse(' ').success).toBe(false);
+    expect(initialsSchema.safeParse('ÉØÜ').success).toBe(false);
+  });
 });
 
 describe('initialsFor', () => {
@@ -148,5 +160,28 @@ describe('parseMemberProfile', () => {
       parseMemberProfile({ displayName: 'J'.repeat(DISPLAY_NAME_MAX + 1), initials: 'J' }),
     ).toBeNull();
     expect(parseMemberProfile({ displayName: 'Jake', initials: '' })).toBeNull();
+  });
+});
+
+describe('stored members', () => {
+  const stored = {
+    clubId: '00000000-0000-4000-8000-000000000001',
+    userId: '64d824c8-a0d1-70a9-fdfc-1f8138e91b49',
+    role: 'member',
+    createdAt: '2026-11-26T00:00:00.000Z',
+    updatedAt: '2026-11-26T00:00:00.000Z',
+  };
+
+  it('load with names and initials saved before the rules', () => {
+    expect(
+      MemberSchema.safeParse({ ...stored, displayName: 'jane+uat_1', initials: 'ÉØÜ' }).success,
+    ).toBe(true);
+  });
+
+  it('cannot be written with them', () => {
+    expect(MemberProfileUpdateSchema.safeParse({ initials: 'ÉØÜ' }).success).toBe(false);
+    expect(MemberJoinSchema.safeParse({ displayName: 'Élodie', initials: 'ÉØÜ' }).success).toBe(
+      false,
+    );
   });
 });

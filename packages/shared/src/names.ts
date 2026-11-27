@@ -112,6 +112,13 @@ export const initialsSchema = z
     message: 'initials must fit the radio short name',
   });
 
+/**
+ * Initials as stored. Read leniently, like storedDisplayNameSchema, so initials saved before
+ * the radio byte limit (for example three accented letters) still load; every write goes
+ * through initialsSchema.
+ */
+export const storedInitialsSchema = z.string().trim().min(1);
+
 /** The initials rule in words (under the field, and as its error). */
 export const INITIALS_HINT = `Up to ${INITIALS_MAX} letters or numbers, shown on the map`;
 export const INITIALS_PROBLEM = `Enter your initials: up to ${INITIALS_MAX} letters or numbers.`;

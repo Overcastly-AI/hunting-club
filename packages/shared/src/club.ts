@@ -7,7 +7,12 @@
 // is written once.
 import { z } from 'zod';
 import { CLUB_NAME_MAX } from './limits';
-import { displayNameSchema, initialsSchema, storedDisplayNameSchema } from './names';
+import {
+  displayNameSchema,
+  initialsSchema,
+  storedDisplayNameSchema,
+  storedInitialsSchema,
+} from './names';
 import { BILLING_INTERVALS } from './pricing';
 import {
   HarvestSexSchema,
@@ -122,6 +127,7 @@ export const MemberSchema = z
     userId: userIdSchema,
     ...memberProfile,
     displayName: storedDisplayNameSchema,
+    initials: storedInitialsSchema,
     ...memberAccess,
     ...timestamps,
   })
