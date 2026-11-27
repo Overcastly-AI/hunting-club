@@ -133,3 +133,35 @@ describe('the club name on /join', () => {
     expect(open(`${base}&name=Oak%E2%80%AE%0ARidge`).heading).toBe('Join Oak Ridge');
   });
 });
+
+describe('the /join script when only the URL fragment changes', () => {
+  const club = {
+    kind: 'club',
+    clubId: 'club-1',
+    inviteToken: 'ab'.repeat(32),
+    clubName: 'Oak Ridge Hunt Club',
+  } as const;
+  const valid = new URL(encodeJoinUrl({ channelSet, target: club }, { form: 'web' }));
+  const hashChanged = () =>
+    new Promise((done) => addEventListener('hashchange', done, { once: true }));
+
+  it('shows the missing or invalid state when a valid link is edited to a bad one', async () => {
+    document.documentElement.innerHTML = html.replace(/^<!doctype html><html[^>]*>|<\/html>$/g, '');
+    history.replaceState(null, '', `/join${valid.hash}`);
+    await import('../join/main'); // runs once for the loaded page, and listens for hash changes
+    expect(visibleText(document.body)).toContain('Join Oak Ridge Hunt Club');
+    expect(document.querySelector(`[${JOIN_HOOKS.qr}] svg`)).not.toBeNull();
+
+    const changed = hashChanged();
+    location.hash = '#cs=AAAA'; // the page is not reloaded
+    await changed;
+    const text = visibleText(document.body);
+    expect(text).toContain(JOIN_INVALID_NEXT_STEP);
+    expect(text).not.toContain('Oak Ridge');
+    expect(document.querySelector(`[${JOIN_HOOKS.qr}] svg`)).toBeNull();
+    expect(
+      [...document.querySelectorAll('h1 [data-join-state]')].find((el) => !el.closest('[hidden]'))
+        ?.textContent,
+    ).toBe(JOIN_INVALID_HEADING);
+  });
+});

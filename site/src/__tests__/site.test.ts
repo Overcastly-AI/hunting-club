@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 // (jsdom only for DOMParser: the pages are still rendered as static HTML strings.)
+import { AERIAL_WORLD } from '@huntclub/design/aerial';
 import {
   contrastRatio,
   MIN_TEXT_CONTRAST,
@@ -24,7 +25,7 @@ import { renderJoin, renderNotFound, renderPage } from '../render';
 import { cspViolations } from '../csp';
 import { FAQ, FAQ_PREVIEW } from '../faq';
 import { CONDITIONS, FEATURE_GROUPS, planWord } from '../features';
-import { MAP_FRAME, MAP_PHONE_MAX_WIDTH } from '../map/mapCss';
+import { HERO_HEIGHT, MAP_COVERED_WIDTH, MAP_FRAME, MAP_PHONE_MAX_WIDTH } from '../map/mapCss';
 import { AT, MAP_DESCRIPTION, READOUT_LABELS, RING_CLASS } from '../map/MapView';
 import {
   hunterFreshness,
@@ -516,6 +517,19 @@ describe('home page map', () => {
     expect(css).toContain(`.world { position: absolute; left: -${wx}px; top: -${wy}px;`);
     const phone = css.slice(css.indexOf(`@media (max-width: ${MAP_PHONE_MAX_WIDTH}px)`));
     expect(phone).toContain(`.world { left: -${px}px; top: -${py}px; }`);
+  });
+
+  it('keeps the map hero full-bleed: the framed aerial reaches both edges at every width', () => {
+    const { width, height } = AERIAL_WORLD;
+    // Wide frame: the window's left edge is wx into the aerial, so it must reach 1600 px.
+    expect(width - MAP_FRAME.wide[0]).toBeGreaterThanOrEqual(MAP_COVERED_WIDTH);
+    expect(height - MAP_FRAME.wide[1]).toBeGreaterThanOrEqual(HERO_HEIGHT.wide);
+    // Phone frame: up to the width where the hero stacks, over the map's height.
+    expect(width - MAP_FRAME.phone[0]).toBeGreaterThanOrEqual(MAP_PHONE_MAX_WIDTH);
+    expect(height - MAP_FRAME.phone[1]).toBeGreaterThanOrEqual(HERO_HEIGHT.phone);
+    // The hero is the section's own full width, never inside the page's centred column.
+    expect(css).toMatch(/\.hero\.mapview \{ height: /);
+    expect(doc.querySelector('.wrap .hero')).toBeNull();
   });
 
   it('explains the map with the freshness-ring legend, drawn with the same markers', () => {

@@ -9,7 +9,7 @@ export function joinStateOf(hash: string): JoinState {
 
 /**
  * Shows the state for this invite, points "Open in Hunt Club Mesh" at the app link and
- * draws the QR code for a phone camera. Reads the URL only; never sends or logs it (the
+ * draws the QR code for a phone camera (main.ts runs it again whenever the fragment changes). Reads the URL only; never sends or logs it (the
  * fragment holds the radio channel key).
  */
 export function showInvite(doc: Document, href: string): JoinState {
@@ -20,19 +20,17 @@ export function showInvite(doc: Document, href: string): JoinState {
     el.hidden = !(el.getAttribute(JOIN_HOOKS.state) ?? '').split(' ').includes(state);
   }
   const clubName = state === 'club' ? joinClubName(hash) : null;
-  if (clubName) {
+  for (const el of doc.querySelectorAll<HTMLElement>(`[${JOIN_HOOKS.clubName}]`)) {
+    // The prerendered words are kept the first time, so a later hash change can restore them.
+    el.dataset.joinDefault ??= el.textContent ?? '';
     // textContent, never innerHTML: the name comes from the link and is shown as plain text.
-    for (const el of doc.querySelectorAll<HTMLElement>(`[${JOIN_HOOKS.clubName}]`)) {
-      el.textContent = joinClubHeading(clubName);
-    }
+    el.textContent = clubName ? joinClubHeading(clubName) : el.dataset.joinDefault;
   }
   const app = appJoinUrl(hash);
-  if (app) {
-    for (const link of doc.querySelectorAll<HTMLAnchorElement>(`[${JOIN_HOOKS.open}]`)) {
-      link.href = app;
-    }
-    const qr = doc.querySelector<HTMLElement>(`[${JOIN_HOOKS.qr}]`);
-    if (qr) qr.innerHTML = qrSvg(href, { label: JOIN_QR_LABEL, size: 240 });
+  for (const link of doc.querySelectorAll<HTMLAnchorElement>(`[${JOIN_HOOKS.open}]`)) {
+    if (app) link.href = app;
   }
+  const qr = doc.querySelector<HTMLElement>(`[${JOIN_HOOKS.qr}]`);
+  if (qr) qr.innerHTML = app ? qrSvg(href, { label: JOIN_QR_LABEL, size: 240 }) : '';
   return state;
 }

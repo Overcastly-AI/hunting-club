@@ -508,6 +508,20 @@ describe('club pages', () => {
       expect(await screen.findByText('Draw the property line first')).toBeTruthy();
       expect(screen.queryByRole('button', { name: 'Build map pack' })).toBeNull();
     });
+
+    it('tells an empty list to draw the property line when there is no build control', async () => {
+      const data = sampleData();
+      const { boundary: _none, ...club } = data.club!;
+      await openMaps({ ...data, club, mapPacks: [] });
+      expect(await screen.findByText(/Draw the property line in the app first/)).toBeTruthy();
+      expect(screen.queryByText(/Build one above/)).toBeNull();
+    });
+
+    it('tells an empty list to build one above when the build control is there', async () => {
+      await openMaps({ ...sampleData(), mapPacks: [] });
+      expect(await screen.findByText(/Build one above/)).toBeTruthy();
+      expect(screen.queryByText(/Draw the property line in the app first/)).toBeNull();
+    });
   });
 
   it('shows the plan, price and renewal date, the grace period, and no payment button', async () => {
