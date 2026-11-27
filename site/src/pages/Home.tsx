@@ -145,7 +145,9 @@ export function Home(props: { aerialUrl: string }) {
           <dl className="legend rows">
             {LEGEND.map((row) => (
               <div key={row.title}>
-                <span className="sym">{row.sym}</span>
+                <span className="sym" aria-hidden="true">
+                  {row.sym}
+                </span>
                 <dt>{row.title}</dt>
                 <dd>{row.text}</dd>
               </div>

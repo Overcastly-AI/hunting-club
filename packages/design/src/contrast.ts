@@ -4,6 +4,9 @@
  */
 export const MIN_TEXT_CONTRAST = 4.5;
 
+/** Body and second-line text in the daylight theme, on every surface (glare; WCAG AAA). */
+export const MIN_DAYLIGHT_BODY_CONTRAST = 7;
+
 /** WCAG 2.2 non-text contrast (1.4.11): control outlines against what is next to them. */
 export const MIN_UI_CONTRAST = 3;
 

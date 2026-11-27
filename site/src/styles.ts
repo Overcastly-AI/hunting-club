@@ -1,4 +1,5 @@
 import {
+  breakpoints,
   BUTTON_HEIGHT,
   COMPACT_MEDIA,
   fontFaceCss,
@@ -11,13 +12,21 @@ import {
   themeCss,
 } from '@huntclub/design';
 import { mapCss } from './map/mapCss';
-
-/** Phones and small tablets: the header is the logo and one Menu button. */
-export const PHONE_HEADER_MAX_WIDTH = 860;
+import {
+  MENU_OPEN_CLASS,
+  MENU_SHEET_ID,
+  MENU_TOGGLE_CLASS,
+  PHONE_HEADER_HEIGHT,
+  PHONE_HEADER_MEDIA,
+} from './menu/menu';
 /** Below this the page's two-column layouts stack, and the gutters narrow. */
 export const NARROW_MAX_WIDTH = 700;
 /** The narrowest phone the layout must fit with no sideways scrolling. */
 export const NARROWEST_PHONE = 360;
+/** The content column on wide screens (1440 to 1920 px and up), inside the gutters. */
+export const CONTENT_MAX_WIDTH = 1120;
+/** From this width, lists of features sit in two columns. */
+export const FEATURE_COLUMNS_MIN_WIDTH = breakpoints.desktop;
 /** The page's side gutters: wide screens, and phones (16 px, the design's phone gutter). */
 export const GUTTER = { wide: 40, phone: 16 } as const;
 
@@ -32,7 +41,7 @@ export const SIZED_CONTROLS = [
   '.skip-link',
   '.site-nav a',
   '.nav-list a',
-  '.menu summary',
+  `.${MENU_TOGGLE_CLASS}`,
   '.faq summary',
 ] as const;
 
@@ -73,7 +82,7 @@ p a { color: var(--theme-accent-text); font-weight: 650; }
 .lede { font-size: ${rem(19)}; line-height: 1.45; color: var(--theme-text-secondary); max-width: 34em; }
 .fine { font-size: ${rem(16)}; color: var(--theme-text-secondary); }
 .ic { flex: none; }
-.wrap { max-width: 1200px; margin: 0 auto; padding: 0 ${GUTTER.wide}px; }
+.wrap { max-width: ${CONTENT_MAX_WIDTH + 2 * GUTTER.wide}px; margin: 0 auto; padding: 0 ${GUTTER.wide}px; }
 .skip-link { position: absolute; left: var(--space-4); top: -100px; z-index: 5; display: inline-flex; align-items: center;
   min-height: var(--tap-min); padding: 0 var(--space-4); background: var(--theme-plate); }
 .skip-link:focus { top: var(--space-4); }
@@ -107,21 +116,31 @@ p a { color: var(--theme-accent-text); font-weight: 650; }
 .site-nav a[aria-current] { color: var(--theme-text); box-shadow: inset 0 -3px 0 var(--theme-accent-text); }
 .bar .btn { min-height: ${BUTTON_HEIGHT.sm}px; padding: 0 16px; }
 .header-actions { display: flex; gap: 12px; }
-.menu { display: none; margin-left: auto; }
-.menu summary { ${textStyleCss(textScale.button)}; display: inline-flex; align-items: center; min-height: var(--tap-min);
-  padding: 0 var(--space-4); border: ${sizes.controlBorder}px solid var(--theme-border-control); border-radius: ${radii.md}px;
-  cursor: pointer; list-style: none; }
-.menu summary::-webkit-details-marker { display: none; }
-.menu[open] summary { background: var(--theme-raised); }
+/* Phones: the header is one row, the logo and a Menu button; the links open as a sheet under it. */
+.${MENU_TOGGLE_CLASS} { ${textStyleCss(textScale.button)}; display: none; align-items: center; margin-left: auto;
+  min-height: var(--tap-min); min-width: 88px; justify-content: center; padding: 0 var(--space-4);
+  border: ${sizes.controlBorder}px solid var(--theme-border-control); border-radius: ${radii.md}px;
+  background: transparent; color: var(--theme-text); cursor: pointer; }
+.${MENU_TOGGLE_CLASS}[aria-expanded="true"] { background: var(--theme-raised); }
+#${MENU_SHEET_ID} { position: fixed; top: ${PHONE_HEADER_HEIGHT}px; left: 0; right: 0; z-index: 10;
+  max-height: calc(100dvh - ${PHONE_HEADER_HEIGHT}px); overflow-y: auto; overscroll-behavior: contain;
+  padding: 0 ${GUTTER.phone}px var(--space-4); background: var(--theme-plate); box-shadow: var(--theme-shadow-popover); }
 .nav-list a { display: flex; align-items: center; min-height: 56px; padding: 0 var(--space-1); font-weight: 650;
   text-decoration: none; border-top: 1px solid var(--theme-border-subtle); }
-@media (max-width: ${PHONE_HEADER_MAX_WIDTH}px) {
-  .bar { padding: 0 12px 0 ${GUTTER.phone}px; gap: 8px; min-height: 60px; }
+#${MENU_SHEET_ID} .nav-list { margin: 0; }
+#${MENU_SHEET_ID} .nav-list li:first-child a { border-top: 0; }
+@media ${PHONE_HEADER_MEDIA} {
+  html { scroll-padding-top: ${PHONE_HEADER_HEIGHT}px; }
+  html.${MENU_OPEN_CLASS}, html.${MENU_OPEN_CLASS} body { overflow: hidden; }
+  /* The hairline is drawn inside the 64 px, so the sheet meets the header exactly. */
+  .site-header { position: sticky; top: 0; z-index: 10; border-bottom: 0; box-shadow: inset 0 -1px 0 var(--theme-border-subtle); }
+  .bar { height: ${PHONE_HEADER_HEIGHT}px; min-height: ${PHONE_HEADER_HEIGHT}px; flex-wrap: nowrap; gap: 8px; padding: 0 12px 0 ${GUTTER.phone}px; }
+  .brand { min-width: 0; }
   .site-nav, .header-actions { display: none; }
-  .menu { display: block; }
-  .menu[open] { order: 3; flex-basis: 100%; margin: 0 0 var(--space-3); }
-  .menu[open] summary { margin-left: auto; }
-  .menu[open] { display: flex; flex-direction: column; }
+  .${MENU_TOGGLE_CLASS} { display: inline-flex; flex: none; }
+}
+@media not ${PHONE_HEADER_MEDIA} {
+  #${MENU_SHEET_ID} { display: none; }
 }
 
 /* Sections: divided by hairlines, never boxed. */
@@ -138,8 +157,11 @@ p a { color: var(--theme-accent-text); font-weight: 650; }
 .rows h3 { margin-bottom: 2px; }
 .rows p { margin: 0; color: var(--theme-text-secondary); }
 .rows h3 .tap { color: var(--theme-text); text-decoration-color: var(--theme-accent-text); text-underline-offset: 4px; }
-.rows.cols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 48px; }
-.rows.cols > :nth-last-child(2) { border-bottom: 1px solid var(--theme-border-subtle); }
+.rows.cols { display: grid; grid-template-columns: 1fr; }
+@media (min-width: ${FEATURE_COLUMNS_MIN_WIDTH}px) {
+  .rows.cols { grid-template-columns: 1fr 1fr; column-gap: 48px; }
+  .rows.cols > :nth-last-child(2) { border-bottom: 1px solid var(--theme-border-subtle); }
+}
 .plan-word { ${textStyleCss(textScale.badge)}; color: var(--theme-text-secondary); margin-left: 8px; }
 
 /* The map legend: each line has its symbol drawn on map ground. */
@@ -227,9 +249,7 @@ p a { color: var(--theme-accent-text); font-weight: 650; }
   .wrap { padding: 0 ${GUTTER.phone}px; }
   .band { padding: 52px 0; }
   .page-head { padding: 36px 0 24px; }
-  .two, .split, .rows.cols { grid-template-columns: 1fr; gap: 28px; }
-  .rows.cols { gap: 0; }
-  .rows.cols > :nth-last-child(2) { border-bottom: 0; }
+  .two, .split { grid-template-columns: 1fr; gap: 28px; }
   .split > div, .split > div + div { padding: 0; border: 0; }
   .split > div + div { padding-top: 28px; border-top: 1px solid var(--theme-border-subtle); }
   .split .btn, .actions .btn { width: 100%; }

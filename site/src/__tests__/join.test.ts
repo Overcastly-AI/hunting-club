@@ -40,12 +40,16 @@ function open(href: string) {
 }
 
 describe('the /join page', () => {
-  it('is noindex with no canonical, sends no referrer, and loads only its own script', () => {
+  it('is noindex with no canonical, sends no referrer, and loads only its own scripts', () => {
     expect(html).toContain('<meta name="robots" content="noindex"/>');
     expect(html).toContain('<meta name="referrer" content="no-referrer"/>');
     expect(html).not.toContain('rel="canonical"');
     expect(html).toContain(`<title>${JOIN_PAGE.title}</title>`);
-    expect(html.match(/<script[^>]*>/g)).toEqual([`<script type="module" src="${SCRIPT}">`]);
+    // The header menu's (on every page) and the invite reader.
+    expect(html.match(/<script[^>]*>/g)).toEqual([
+      `<script type="module" src="${assets.menuScriptUrl}">`,
+      `<script type="module" src="${SCRIPT}">`,
+    ]);
     // No third-party scripts, fonts, images or stylesheets.
     expect(html).not.toMatch(/(src|href)="(https?:)?\/\//);
   });

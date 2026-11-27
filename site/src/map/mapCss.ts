@@ -16,8 +16,11 @@ export const MAP_FRAME = {
   phone: [790, 470],
 } as const satisfies Record<string, AerialPoint>;
 
-/** The widest screen the hero must fill edge to edge (the aerial is framed to cover it). */
-export const MAP_COVERED_WIDTH = 1600;
+/**
+ * The widest screen the hero must fill edge to edge. Past the point where the wide frame
+ * would run out of picture, the aerial slides left just enough to reach the right edge.
+ */
+export const MAP_COVERED_WIDTH = 1920;
 
 /** The hero's height on a wide screen, and the map's height above the sheet on a phone. */
 export const HERO_HEIGHT = { wide: 664, phone: 300 } as const;
@@ -52,7 +55,7 @@ export function mapCss(): string {
   return `
 /* The map window: .world is the whole aerial behind it, moved to frame the club. */
 .mapview { position: relative; overflow: hidden; background: var(--color-map-ground); }
-.world { position: absolute; left: -${wx}px; top: -${wy}px; width: ${width}px; height: ${height}px; }
+.world { position: absolute; left: max(-${wx}px, calc(100% - ${width}px)); top: -${wy}px; width: ${width}px; height: ${height}px; }
 .world-map { display: block; width: ${width}px; height: ${height}px; max-width: none; }
 .lbl, .mk, .scent { position: absolute; }
 .lbl { transform: translate(-50%, -50%); color: var(--color-text); ${textStyleCss(textScale.mapLabel)}; line-height: 1.2;
