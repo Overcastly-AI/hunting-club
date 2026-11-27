@@ -9,7 +9,7 @@ import { NOT_FOUND_TITLE, NotFound } from './pages/NotFound';
 import { Shell } from './shell/Shell';
 import { currentPath, HOME_PATH, PAGES, type PagePath } from './shell/routes';
 import { ADMIN_TITLE, useDocumentTitle } from './title';
-import { SignedInUserContext } from './signedInUser';
+import { SignedInUserContext, signOutAndForget } from './signedInUser';
 
 const SIGN_IN_TITLE = 'Sign in';
 
@@ -107,12 +107,13 @@ export function App(props: WebClubServices) {
   }
 
   // Back to /app/ with no hash (the next sign-in starts on the first page), then revoke the
-  // refresh token and clear it from this browser. Never "session expired": this was asked for.
+  // refresh token and forget everything kept for this account (signOutAndForget). Never
+  // "session expired": this was asked for.
   const signOut = () => {
     window.history.replaceState(null, '', ADMIN_PATH);
     setPath(HOME_PATH);
     setAuth({ kind: 'signedOut', expired: false });
-    void session.signOut();
+    void signOutAndForget(session, api);
   };
 
   return (

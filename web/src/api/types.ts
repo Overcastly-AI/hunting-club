@@ -28,12 +28,26 @@ export class NoClubError extends Error {
 }
 
 /**
+ * The club API refused the selected club to this account (403) and the account administers
+ * no other club: e.g. it was removed, or another account chose the club on this browser.
+ * The choice is already dropped; pages say "You don't have access to this club".
+ */
+export class NoClubAccessError extends Error {
+  constructor() {
+    super('No access to this club');
+    this.name = 'NoClubAccessError';
+  }
+}
+
+/**
  * What the admin pages need from the club API. Every entity is the shared wire type from
  * @huntclub/shared (never a local copy). api/admin.ts implements it over the shared
  * typed client (createClubApiClient).
  */
 export interface ClubApi {
   getClub(): Promise<Club | null>;
+  /** Forgets everything kept for the signed-in account (its selected club). On sign-out. */
+  forgetUser(): void;
   createClub(request: ClubCreateRequest): Promise<Club>;
   listMembers(): Promise<readonly Member[]>;
   /** The club's invites, used or not (for Needs you on My club). */
