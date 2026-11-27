@@ -3,7 +3,6 @@
 // page. Read-only: stands are placed and edited in the app, at the spot.
 import { ICON_SIZE } from '@huntclub/design';
 import {
-  coordinatesReadout,
   HARVEST_SEX_LABELS,
   memberNames,
   recentStandHarvests,
@@ -26,7 +25,7 @@ export const STAND_HARVESTS_UNKNOWN =
   'Harvests could not be loaded. Try again when you are online.';
 
 /**
- * The stand's name, type, status, area, notes and place, and the latest harvests members shared
+ * The stand's name, type, status, area and notes (names, not coordinates: docs/SPEC.md), and the latest harvests members shared
  * from it. `stand` null: closed. Lists that failed to load are undefined. Esc, the close button
  * and a tap outside close it, and focus goes back to the marker.
  */
@@ -60,7 +59,6 @@ function areaLine(stand: Stand, areas?: readonly Area[]) {
 function StandDetails(props: Parameters<typeof StandDrawer>[0] & { stand: Stand }) {
   const { stand } = props;
   const Icon = standIcon(stand.type);
-  const place = coordinatesReadout(stand.lat, stand.lon);
   const notes = stand.notes?.trim();
   return (
     <>
@@ -84,15 +82,6 @@ function StandDetails(props: Parameters<typeof StandDrawer>[0] & { stand: Stand 
             <dd className="stand-facts__notes">{notes}</dd>
           </div>
         ) : null}
-        <div className="stand-facts__row">
-          <dt>Coordinates</dt>
-          <dd>
-            <span className="text-readout-inline" aria-hidden="true">
-              {place.short}
-            </span>
-            <span className="visually-hidden">{place.spoken}</span>
-          </dd>
-        </div>
       </dl>
       <RecentHarvests stand={stand} harvests={props.harvests} members={props.members} />
     </>

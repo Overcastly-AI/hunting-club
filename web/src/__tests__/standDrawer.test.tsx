@@ -1,5 +1,4 @@
 import {
-  coordinatesReadout,
   HARVEST_SEX_LABELS,
   STAND_STATUS_LABELS,
   STAND_TYPE_LABELS,
@@ -26,7 +25,7 @@ async function openMyClub(data: FakeClubData, stand: Stand) {
   return { ...view, marker };
 }
 
-/** The open drawer's facts as "Label: value" (the spoken coordinates, not the shown ones). */
+/** The open drawer's facts as "Label: value". */
 const facts = (drawer: HTMLElement) =>
   [...drawer.querySelectorAll('.stand-facts__row')].map(
     (row) =>
@@ -36,7 +35,7 @@ const facts = (drawer: HTMLElement) =>
 const closed = () => waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
 describe('stand details on the club map', () => {
-  it("opens from a stand's marker with its name, type, status, area and place, and closes with the close button", async () => {
+  it("opens from a stand's marker with its name, type, status and area (never coordinates), and closes with the close button", async () => {
     const data = sampleData();
     const stand = sampleStand(data, 'Big Oak Ladder');
     const { marker } = await openMyClub(data, stand);
@@ -48,12 +47,12 @@ describe('stand details on the club map', () => {
     const drawer = await screen.findByRole('dialog', { name: stand.name });
     expect(drawer.classList.contains('ui-dialog--side')).toBe(true);
     expect(within(drawer).getByText('In North 40')).toBeTruthy();
-    const place = coordinatesReadout(stand.lat, stand.lon);
     expect(facts(drawer)).toEqual([
       `Type: ${STAND_TYPE_LABELS.ladder}`,
       `Check-in: ${STAND_STATUS_LABELS.open}`,
-      `Coordinates: ${place.short}${place.spoken}`,
     ]);
+    // Names, not coordinates (docs/SPEC.md).
+    expect(drawer.textContent).not.toMatch(/Coordinates|°|40\.01/);
     // The open stand is the selected item on the map.
     expect(marker.classList.contains('plan__stand--selected')).toBe(true);
 

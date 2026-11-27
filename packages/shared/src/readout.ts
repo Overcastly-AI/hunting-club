@@ -73,24 +73,6 @@ export function temperatureReadout(fahrenheit: number | null | undefined): Wordi
   return { short, spoken: short };
 }
 
-/** Decimal places of a coordinates readout: 5 is about a metre on the ground. */
-export const COORDINATE_DECIMALS = 5;
-
-/** "40.00350° N, 89.99400° W" (spoken "40.00350 degrees north, 89.99400 degrees west"). */
-export function coordinatesReadout(lat: number, lon: number): Wording {
-  if (!known(lat) || !known(lon)) return UNKNOWN;
-  const part = (value: number, positive: string, negative: string) => ({
-    value: Math.abs(value).toFixed(COORDINATE_DECIMALS),
-    hemisphere: value < 0 ? negative : positive,
-  });
-  const parts = [part(lat, 'N', 'S'), part(lon, 'E', 'W')];
-  const words: Record<string, string> = { N: 'north', S: 'south', E: 'east', W: 'west' };
-  return {
-    short: parts.map((p) => `${p.value}° ${p.hemisphere}`).join(', '),
-    spoken: parts.map((p) => `${p.value} degrees ${words[p.hemisphere]}`).join(', '),
-  };
-}
-
 /** The sunset countdown, and its number alone ("2 h 14 min") for a readout over "until sunset". */
 export type UntilSunset = Wording & { span: string };
 
