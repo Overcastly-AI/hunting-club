@@ -10,15 +10,21 @@ type Props<T extends string> = {
   /** Shows one option as selected (white outline), for pick-one rows. */
   selected?: T;
   disabled?: boolean;
+  /** Two equal columns (the chat's quick replies) instead of a wrapping row. */
+  grid?: boolean;
 };
 
-/** A wrapping row of rounded-rectangle buttons (never pills): quick replies, species picks. */
+/**
+ * A wrapping row (or a two-column grid) of squared buttons, never pills: quick replies,
+ * species picks. The picked one has a 2 px ink edge.
+ */
 export function OptionButtons<T extends string>({
   options,
   onPress,
   accessibilityLabelFor,
   selected,
   disabled,
+  grid,
 }: Props<T>) {
   const styles = useStyles();
   return (
@@ -33,6 +39,7 @@ export function OptionButtons<T extends string>({
           onPress={() => onPress(option)}
           style={({ pressed }) => [
             styles.option,
+            grid && styles.half,
             selected === option && styles.selected,
             pressed && styles.pressed,
             disabled && styles.disabled,
@@ -49,16 +56,19 @@ const useStyles = makeStyles((theme) => ({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   option: {
     minHeight: sizes.minTapTarget,
-    borderRadius: radii.primaryButton,
-    borderWidth: sizes.hairline,
-    borderColor: theme.colors.raised,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: theme.colors.borderControl,
     backgroundColor: theme.colors.raised,
     paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
     justifyContent: 'center',
   },
-  selected: { borderColor: theme.colors.text },
-  pressed: { backgroundColor: theme.colors.pressed, borderColor: theme.colors.pressed },
+  // Two per row: each takes half the row less half the gap.
+  half: { flexGrow: 1, flexBasis: '40%', paddingHorizontal: spacing.sm },
+  selected: { borderWidth: sizes.selectedBorder, borderColor: theme.colors.text },
+  pressed: { backgroundColor: theme.colors.pressed },
   disabled: { backgroundColor: theme.colors.plate, borderColor: theme.colors.borderSubtle },
   disabledText: { color: theme.colors.textTertiary },
-  text: { ...textStyles.label, color: theme.colors.text },
+  text: { ...textStyles.button, color: theme.colors.text, textAlign: 'center' },
 }));

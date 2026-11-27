@@ -1,3 +1,6 @@
+import { createElement, type ReactNode } from 'react';
+import { View } from 'react-native';
+
 import type { LatLon } from '@huntclub/mesh';
 
 /**
@@ -11,7 +14,24 @@ export const fakeLocationManager = {
   getCurrentPosition: jest.fn(async (): Promise<unknown> => null),
 };
 
-export const fakeMapLibreModule = { LocationManager: fakeLocationManager };
+/**
+ * Stand-ins for the map's components, so screens with a map (the map strips above Chat and
+ * Check In) render in Jest. The map and its markers draw their React children as plain
+ * views, which is what the screen tests audit (the markers' plates, labels and tap areas);
+ * the basemap, sources and layers draw nothing.
+ */
+const drawChildren = ({ children, testID }: { children?: ReactNode; testID?: string }) =>
+  createElement(View, { testID }, children);
+const drawNothing = () => null;
+
+export const fakeMapLibreModule = {
+  LocationManager: fakeLocationManager,
+  Map: drawChildren,
+  Marker: drawChildren,
+  Camera: drawNothing,
+  GeoJSONSource: drawChildren,
+  Layer: drawNothing,
+};
 
 /** Puts the phone at `place` (or nowhere with null). */
 export function placePhone(place: LatLon | null): void {

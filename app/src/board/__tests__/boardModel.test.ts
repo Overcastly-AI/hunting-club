@@ -133,7 +133,7 @@ describe('boardLinkStatus', () => {
 
   it('shows the mesh status once connected', () => {
     expect(boardLinkStatus('ready', heard, T0 + 5_000)).toEqual({
-      text: 'Mesh: 1 radio · heard 5s ago',
+      text: 'Mesh: 1 radio, heard 5s ago',
       tone: 'ok',
     });
     expect(boardLinkStatus('ready', heard, T0 + HOUR_MS).tone).toBe('quiet');

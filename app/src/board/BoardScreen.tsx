@@ -9,7 +9,7 @@ import { useClubEntitlement } from '../club/entitlement';
 import { EmptyState } from '../components/EmptyState';
 import { Screen } from '../components/Screen';
 import { useNow } from '../hooks/useNow';
-import { sunSentence } from '../map/components/ConditionsPanel';
+import { sunSentence } from './sunLine';
 import { nodePosition } from '../map/meshMapData';
 import { SafetyLayer } from '../safety/SafetyLayer';
 import { ICON_SIZE, makeStyles, spacing, tabularNums, textStyles, useTheme } from '../theme';

@@ -1,6 +1,7 @@
 import { NOW, hunterFixture, openStandFixture } from '../../test-utils/mapFixtures';
 import {
   hunterAccessibilityLabel,
+  hunterPlateDetail,
   openStandAccessibilityLabel,
   placeLabel,
   yourAccessibilityLabel,
@@ -14,7 +15,7 @@ describe('placeLabel', () => {
     expect(placeLabel({ kind: 'spot' })).toBe('Spot');
     expect(placeLabel({ kind: 'moving' })).toBe('On the move');
     expect(placeLabel({ kind: 'moving', areaName: 'Creek Bottom' })).toBe(
-      'On the move · Creek Bottom',
+      'On the move in Creek Bottom',
     );
   });
 });
@@ -41,6 +42,13 @@ describe('hunterAccessibilityLabel', () => {
     expect(hunterAccessibilityLabel(hunterFixture(-30), NOW)).toBe(
       'Creek Stand, Dale, updated time unknown',
     );
+  });
+});
+
+describe('hunterPlateDetail', () => {
+  it('says who and how long ago, in the shared freshness wording', () => {
+    expect(hunterPlateDetail(hunterFixture(2), NOW)).toBe('Dale, 2 min ago');
+    expect(hunterPlateDetail(hunterFixture(0), NOW)).toBe('Dale, just now');
   });
 });
 

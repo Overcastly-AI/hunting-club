@@ -65,11 +65,17 @@ export function temperatureReadout(fahrenheit: number | null | undefined): Wordi
   return { short, spoken: short };
 }
 
+/** The sunset countdown, and its number alone ("2 h 14 min") for a readout over "until sunset". */
+export type UntilSunset = Wording & { span: string };
+
+/** The words under a countdown's `span` on the phone's map sheet. */
+export const UNTIL_SUNSET = 'until sunset';
+
 /**
  * "2 h 14 min until sunset" ("2 hours 14 minutes until sunset" spoken), rounded
  * up to the minute so it never says 0. Null once the sun has set.
  */
-export function untilSunset(sunset: Date, now: number): Wording | null {
+export function untilSunset(sunset: Date, now: number): UntilSunset | null {
   const left = sunset.getTime() - now;
   if (!Number.isFinite(left) || left <= 0) return null;
   const totalMinutes = Math.ceil(left / MINUTE_MS);
@@ -80,9 +86,11 @@ export function untilSunset(sunset: Date, now: number): Wording | null {
     hours ? pluralize(hours, 'hour') : '',
     minutes ? pluralize(minutes, 'minute') : '',
   ];
+  const span = short.join(' ');
   return {
-    short: `${short.join(' ')} until sunset`,
-    spoken: `${spoken.filter(Boolean).join(' ')} until sunset`,
+    span,
+    short: `${span} ${UNTIL_SUNSET}`,
+    spoken: `${spoken.filter(Boolean).join(' ')} ${UNTIL_SUNSET}`,
   };
 }
 
@@ -90,7 +98,7 @@ export type SunReadout = {
   sunrise: Wording;
   sunset: Wording;
   /** Null after sunset, on a polar day or night, and with no place. */
-  untilSunset: Wording | null;
+  untilSunset: UntilSunset | null;
 };
 
 /** Sunrise and sunset today at `place`, offline. No place yet: "—" for both. */
@@ -137,7 +145,7 @@ export type ReadoutCell = (typeof READOUT_CELLS)[number];
 export const READOUT_LABELS: Record<ReadoutCell, string> = {
   sunrise: 'Sunrise',
   sunset: 'Sunset',
-  wind: 'Wind',
+  wind: 'Wind from',
   temperature: 'Temp',
 };
 

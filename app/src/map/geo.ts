@@ -115,15 +115,17 @@ export function compassWord(bearing: number): (typeof COMPASS_WORDS)[number] {
   return COMPASS_WORDS[Math.round((((bearing % 360) + 360) % 360) / 45) % 8]!;
 }
 
+/** "300 ft" under 1000 ft (to the nearest 10, at least 10), else "0.4 mi". */
+export function formatDistance(meters: number): string {
+  const feet = meters / FOOT_M;
+  return feet < 1000
+    ? `${Math.max(10, Math.round(feet / 10) * 10)} ft`
+    : `${(meters / MILE_M).toFixed(1)} mi`;
+}
+
 /** "0.4 mi northeast" or "300 ft south": how far and which way someone is from you. */
 export function distanceAndDirection(from: LatLon, to: LatLon): string {
-  const meters = distanceMeters(from, to);
-  const feet = meters / FOOT_M;
-  const distance =
-    feet < 1000
-      ? `${Math.max(10, Math.round(feet / 10) * 10)} ft`
-      : `${(meters / MILE_M).toFixed(1)} mi`;
-  return `${distance} ${compassWord(bearingDeg(from, to))}`;
+  return `${formatDistance(distanceMeters(from, to))} ${compassWord(bearingDeg(from, to))}`;
 }
 
 /** Smallest box the map frames around a single point (about 1 km across). */

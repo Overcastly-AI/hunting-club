@@ -55,7 +55,7 @@ describe('accessibility rules from docs/SPEC.md', () => {
   });
 
   it('never truncates sunrise/sunset times or tab labels', () => {
-    const files = ['map/components/ConditionsPanel.tsx', 'app/(tabs)/_layout.tsx'];
+    const files = ['map/components/ReadoutStrip.tsx', 'app/(tabs)/_layout.tsx'];
     for (const file of files) {
       const source = readFileSync(join(SRC, file), 'utf8');
       expect({ file, singleLine: /numberOfLines=\{1\}/.test(source) }).toEqual({

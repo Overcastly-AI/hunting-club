@@ -23,8 +23,15 @@ export function placeLabel(place: HunterPlace): string {
     case 'spot':
       return place.name ?? UNNAMED_SPOT;
     case 'moving':
-      return place.areaName ? `${ON_THE_MOVE} · ${place.areaName}` : ON_THE_MOVE;
+      return place.areaName ? `${ON_THE_MOVE} in ${place.areaName}` : ON_THE_MOVE;
   }
+}
+
+/** A hunter plate's second line: who and how long ago their radio was heard ("Dale B., 2 min ago"). */
+export function hunterPlateDetail(hunter: HunterOnMap, now: number): string {
+  const { short } = describeFreshness(hunter.heardAt, now);
+  // Mid-sentence: "Dale B., just now", "Dale B., time unknown".
+  return `${hunter.displayName}, ${short.charAt(0).toLowerCase()}${short.slice(1)}`;
 }
 
 /** Screen-reader label, for example "Creek Stand, Dale, updated 2 minutes ago". */

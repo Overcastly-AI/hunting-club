@@ -1,4 +1,5 @@
 import {
+  basemapSwatch,
   boundary,
   colors,
   fontAxisLimits,
@@ -19,6 +20,7 @@ import { archivo, mapTextHalo, maxFontScale, tabularNums, textStyles } from './t
 
 export {
   archivo,
+  basemapSwatch,
   boundary,
   colors,
   fontAxisLimits,

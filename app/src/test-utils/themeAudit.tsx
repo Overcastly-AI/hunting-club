@@ -1,4 +1,4 @@
-import type { Theme, ThemePreference } from '@huntclub/design';
+import { basemapSwatch, type Theme, type ThemePreference } from '@huntclub/design';
 import type { ReactElement } from 'react';
 import { StyleSheet } from 'react-native';
 import type { TestInstance } from 'test-renderer';
@@ -35,11 +35,20 @@ function colorsOf(node: TestInstance): [string, string][] {
 }
 
 /**
- * Every colour on the rendered screen that is not one of `theme`'s tokens, for example a
- * static dark colour left behind in the light theme. Empty when the screen follows the theme.
+ * Imagery, not interface: the basemap thumbnails in the layers sheet are little pictures of
+ * the map, which is the same picture in both themes (docs/DESIGN.md "Palette").
+ */
+const IMAGERY = Object.values(basemapSwatch);
+
+/**
+ * Every colour on the rendered screen that is not one of `theme`'s tokens (or imagery), for
+ * example a static dark colour left behind in the light theme. Empty when the screen follows
+ * the theme.
  */
 export function offThemeColors(container: TestInstance, theme: Theme): string[] {
-  const allowed = new Set(Object.values(theme.colors).map((value) => value.toUpperCase()));
+  const allowed = new Set(
+    [...Object.values(theme.colors), ...IMAGERY].map((value) => value.toUpperCase()),
+  );
   return container
     .queryAll(() => true)
     .flatMap((node) =>

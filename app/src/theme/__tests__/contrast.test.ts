@@ -60,8 +60,10 @@ describe.each(THEMES)('%s theme: app text contrast (at least 4.5:1)', (_name, th
     );
   });
 
-  // Text on an accent fill (the primary button label) is checked on the accent itself.
-  it.each(tokens.filter((t) => t !== 'onAccent'))('%s on every screen background', (fg) => {
+  // Text that only ever sits on one fill is checked on that fill, below: the primary button
+  // label on the accent, the selected segment (plate on ink), and "Open" (fresh, on a plate).
+  const ON_ONE_FILL: readonly ThemeColorToken[] = ['onAccent', 'plate', 'fresh'];
+  it.each(tokens.filter((t) => !ON_ONE_FILL.includes(t)))('%s on every screen background', (fg) => {
     for (const bg of SCREEN_BACKGROUNDS) {
       expect({ fg, bg, ratio: contrastRatio(c[fg], c[bg]) >= MIN_TEXT_CONTRAST }).toEqual({
         fg,
@@ -73,6 +75,11 @@ describe.each(THEMES)('%s theme: app text contrast (at least 4.5:1)', (_name, th
 
   it('primary button label on the accent', () => {
     expect(contrastRatio(c.onAccent, c.accent)).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
+  });
+
+  it('the selected segment (plate on ink) and "Open" on a marker plate', () => {
+    expect(contrastRatio(c.plate, c.text)).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
+    expect(contrastRatio(c.fresh, c.plate)).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
   });
 
   it('slide-to-confirm chevrons on their thumbs (3:1 for graphics)', () => {

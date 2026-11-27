@@ -10,8 +10,9 @@ type Props<T extends string> = {
 };
 
 /**
- * Segmented control, as on the club admin: segments in a bordered raised tray; the
- * selected one is filled with the accent (orange is for the selected item).
+ * Segmented control (docs/DESIGN.md, the chat's Whole club / Party / Direct): segments in one
+ * bordered control, divided by its edge. The selected segment is inverted, plate on ink, so
+ * orange stays for you, the main action and the selected map item.
  */
 export function SegmentedControl<T extends string>({
   segments,
@@ -22,7 +23,7 @@ export function SegmentedControl<T extends string>({
   const styles = useStyles();
   return (
     <View accessibilityRole="tablist" style={styles.row}>
-      {segments.map((segment) => {
+      {segments.map((segment, index) => {
         const isSelected = segment === selected;
         return (
           <Pressable
@@ -33,6 +34,7 @@ export function SegmentedControl<T extends string>({
             onPress={() => onSelect(segment)}
             style={({ pressed }) => [
               styles.segment,
+              index > 0 && styles.divided,
               isSelected && styles.selected,
               pressed && !isSelected && styles.pressed,
             ]}
@@ -50,23 +52,22 @@ export function SegmentedControl<T extends string>({
 const useStyles = makeStyles((theme) => ({
   row: {
     flexDirection: 'row',
-    gap: spacing.xs,
-    padding: spacing.xs,
-    borderWidth: 1,
+    borderWidth: sizes.controlBorder,
     borderColor: theme.colors.borderControl,
     borderRadius: radii.md,
-    backgroundColor: theme.colors.raised,
+    overflow: 'hidden',
   },
   segment: {
     flex: 1,
     minHeight: sizes.minTapTarget,
-    borderRadius: radii.sm,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
   },
-  pressed: { backgroundColor: theme.colors.pressed },
-  selected: { backgroundColor: theme.colors.accent },
+  divided: { borderLeftWidth: sizes.controlBorder, borderColor: theme.colors.borderControl },
+  pressed: { backgroundColor: theme.colors.raised },
+  selected: { backgroundColor: theme.colors.text },
   label: { ...textStyles.label, color: theme.colors.textSecondary, textAlign: 'center' },
-  selectedLabel: { color: theme.colors.onAccent },
+  selectedLabel: { color: theme.colors.plate },
 }));

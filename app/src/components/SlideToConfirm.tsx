@@ -8,7 +8,9 @@ import {
   type LayoutChangeEvent,
 } from 'react-native';
 
-import { makeStyles, radii, sizes, spacing, textStyles } from '../theme';
+import { ChevronRight } from 'lucide-react-native';
+
+import { ICON_SIZE, makeStyles, radii, sizes, spacing, textStyles, useTheme } from '../theme';
 import { clampSlide, slideConfirms } from './slide';
 
 type Props = {
@@ -35,6 +37,7 @@ export function SlideToConfirm({
   tone = 'primary',
 }: Props) {
   const styles = useStyles();
+  const theme = useTheme();
   const [travel, setTravel] = useState(0);
   const [x] = useState(() => new Animated.Value(0));
   // The pan responder is created once; it reads the latest props and track size from these refs.
@@ -96,12 +99,11 @@ export function SlideToConfirm({
             { transform: [{ translateX: travel > 0 ? x : 0 }] },
           ]}
         >
-          <View
-            style={[
-              styles.chevron,
-              tone === 'help' && styles.helpChevron,
-              disabled && styles.disabledChevron,
-            ]}
+          <ChevronRight
+            size={ICON_SIZE.lg}
+            color={theme.colors[disabled ? 'textTertiary' : tone === 'help' ? 'plate' : 'onAccent']}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
           />
         </Animated.View>
       </View>
@@ -112,21 +114,20 @@ export function SlideToConfirm({
 
 const INSET = spacing.xs;
 const THUMB = sizes.primaryButtonMaxHeight - 2 * INSET;
-const CHEVRON = 12;
 
 const useStyles = makeStyles((theme) => ({
   wrap: { gap: spacing.sm },
+  // The track sits in the deepest tone with a control edge; the thumb is the main action.
   track: {
     minHeight: sizes.primaryButtonMaxHeight,
-    borderRadius: radii.primaryButton,
-    backgroundColor: theme.colors.raised,
-    borderWidth: 1,
-    borderColor: theme.colors.borderSubtle,
+    borderRadius: radii.lg,
+    backgroundColor: theme.colors.canvas,
+    borderWidth: sizes.controlBorder,
+    borderColor: theme.colors.borderControl,
     justifyContent: 'center',
   },
   label: {
-    ...textStyles.label,
-    fontSize: textStyles.bodyLarge.fontSize,
+    ...textStyles.button,
     color: theme.colors.text,
     textAlign: 'center',
     paddingLeft: THUMB + spacing.md,
@@ -138,26 +139,19 @@ const useStyles = makeStyles((theme) => ({
     left: INSET,
     width: THUMB,
     height: THUMB,
-    borderRadius: radii.primaryButton - INSET / 2,
+    borderRadius: radii.lg - INSET / 2,
     backgroundColor: theme.colors.accent,
+    borderWidth: sizes.controlBorder,
+    borderColor: theme.colors.accentBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  helpThumb: { backgroundColor: theme.colors.warning },
-  chevron: {
-    width: CHEVRON,
-    height: CHEVRON,
-    borderTopWidth: sizes.hairline + 1,
-    borderRightWidth: sizes.hairline + 1,
-    borderColor: theme.colors.onAccent,
-    transform: [{ rotate: '45deg' }],
-  },
-  // Gold thumb: dark ink in the dark theme, white on the light theme's deep gold.
-  helpChevron: { borderColor: theme.colors.plate },
+  // Gold thumb (Ask for a Hand), its chevron in the plate colour: dark ink in the dark theme,
+  // white on the light theme's deep gold.
+  helpThumb: { backgroundColor: theme.colors.warning, borderColor: theme.colors.warning },
   // Disabled is its own look, not a fade: tertiary text and a grey thumb, 4.5:1 in both themes.
   disabledTrack: { backgroundColor: theme.colors.plate },
   disabledText: { color: theme.colors.textTertiary },
-  disabledThumb: { backgroundColor: theme.colors.pressed },
-  disabledChevron: { borderColor: theme.colors.textTertiary },
+  disabledThumb: { backgroundColor: theme.colors.pressed, borderColor: theme.colors.borderSubtle },
   reason: { ...textStyles.body, color: theme.colors.textSecondary },
 }));
