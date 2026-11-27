@@ -10,6 +10,7 @@ Source of truth: docs/SPEC.md. Read it before starting any milestone.
 - Stay wire-compatible with stock Meshtastic firmware. No custom firmware.
 - Members never see channels, keys, presets or regions outside Advanced settings.
 - Use theme tokens only; no hard-coded colors. Font: Archivo.
+- Any UI or visual design work (web, site, app): load the `frontend-design` skill (`.claude/skills/frontend-design/SKILL.md`) first and follow it (owner rule, 2026-11-27). Design must be specific to hunting and the field, never the generic SaaS card kit.
 - Min tap target 48px, min map text 13px, body 16px+.
 - Never show legal shooting hours. Sunrise and sunset only.
 - Ask for a Hand pings your party or club. Never style or word anything like a 911 call.
