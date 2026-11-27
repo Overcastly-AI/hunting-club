@@ -1,6 +1,11 @@
 import { runInNewContext } from 'node:vm';
 import { colors } from '../../src/colors';
-import { contrastRatio, MIN_TEXT_CONTRAST, MIN_UI_CONTRAST } from '../../src/contrast';
+import {
+  contrastRatio,
+  MIN_DAYLIGHT_BODY_CONTRAST,
+  MIN_TEXT_CONTRAST,
+  MIN_UI_CONTRAST,
+} from '../../src/contrast';
 import {
   rootVariablesCss,
   textClasses,
@@ -12,6 +17,7 @@ import { BUTTON_HEIGHT, STATUS_TONE_COLORS, STATUS_TONES } from '../../src/compo
 import { radii, space, spacing } from '../../src/sizes';
 import {
   THEME_ATTRIBUTE,
+  DAYLIGHT_BODY_TOKENS,
   THEME_CONTRAST_RULES,
   THEME_PREFERENCE_LABELS,
   THEME_PREFERENCES,
@@ -51,10 +57,14 @@ describe('theme contrast (fails the build if any pair drops under its threshold)
     );
   });
 
-  it('keeps body text at 7:1 or better on every daylight surface (glare)', () => {
-    const c = themes.light.colors;
-    for (const bg of SURFACES) expect(contrastRatio(c.text, c[bg])).toBeGreaterThanOrEqual(7);
-  });
+  it.each(DAYLIGHT_BODY_TOKENS.flatMap((fg) => SURFACES.map((bg) => [fg, bg] as const)))(
+    'keeps daylight %s at 7:1 or better on %s (glare)',
+    (fg, bg) => {
+      expect(MIN_DAYLIGHT_BODY_CONTRAST).toBe(7);
+      const c = themes.light.colors;
+      expect(contrastRatio(c[fg], c[bg])).toBeGreaterThanOrEqual(MIN_DAYLIGHT_BODY_CONTRAST);
+    },
+  );
 
   it('covers every pair the map-first direction checks, in both themes', () => {
     // docs/DESIGN.md: [foreground, background] by the direction's token names, mapped to ours.

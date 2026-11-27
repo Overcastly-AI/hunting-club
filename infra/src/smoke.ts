@@ -177,11 +177,16 @@ export async function runSmoke(config: EnvConfig, fetch: SmokeFetch): Promise<Sm
     expect(body.includes(`<title>${JOIN_PAGE.title}</title>`), 'not the invite page');
     expect(body.includes('<meta name="robots" content="noindex"/>'), 'no noindex meta');
     expect(referrer === 'no-referrer', `referrer-policy is ${referrer ?? 'missing'}`);
-    const script = /<script type="module" src="(\/assets\/[^"]+\.js)">/.exec(body)?.[1];
-    expect(Boolean(script), 'no self-hosted script');
-    const js = await fetch(`${site}${script}`);
-    expect(js.status === 200, `GET ${script} → ${js.status}`);
-    return `GET → 200, noindex, no-referrer, ${script} → 200`;
+    // Its own invite script and the header menu's: every module script is self-hosted.
+    const scripts = [...body.matchAll(/<script type="module" src="(\/assets\/[^"]+\.js)">/g)].map(
+      (m) => m[1]!,
+    );
+    expect(scripts.length > 0, 'no self-hosted script');
+    for (const script of scripts) {
+      const js = await fetch(`${site}${script}`);
+      expect(js.status === 200, `GET ${script} → ${js.status}`);
+    }
+    return `GET → 200, noindex, no-referrer, ${scripts.join(', ')} → 200`;
   });
 
   // Security headers (security-headers.ts): the same CSP everywhere; /join sends no referrer.

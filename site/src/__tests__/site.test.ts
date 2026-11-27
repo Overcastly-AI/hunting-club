@@ -2,9 +2,14 @@
 // (jsdom only for DOMParser: the pages are still rendered as static HTML strings.)
 import { AERIAL_WORLD } from '@huntclub/design/aerial';
 import {
+  breakpoints,
   contrastRatio,
+  DAYLIGHT_BODY_TOKENS,
+  fontSize,
+  MIN_DAYLIGHT_BODY_CONTRAST,
   MIN_TEXT_CONTRAST,
   MIN_UI_CONTRAST,
+  ROOT_FONT_PX,
   sizes,
   themes,
   themeVariables,
@@ -25,7 +30,13 @@ import { renderJoin, renderNotFound, renderPage } from '../render';
 import { cspViolations } from '../csp';
 import { FAQ, FAQ_PREVIEW } from '../faq';
 import { CONDITIONS, FEATURE_GROUPS, planWord } from '../features';
-import { HERO_HEIGHT, MAP_COVERED_WIDTH, MAP_FRAME, MAP_PHONE_MAX_WIDTH } from '../map/mapCss';
+import {
+  HERO_HEIGHT,
+  MAP_COVERED_WIDTH,
+  MAP_FRAME,
+  MAP_PHONE_MAX_WIDTH,
+  mapCss,
+} from '../map/mapCss';
 import { AT, MAP_DESCRIPTION, READOUT_LABELS, RING_CLASS } from '../map/MapView';
 import {
   hunterFreshness,
@@ -37,7 +48,7 @@ import {
 import { BETA_POINTS } from '../pages/Download';
 import { HOME_PROMISE, LEGEND } from '../pages/Home';
 import { CLUB_ALTERNATIVE, CLUB_AMOUNT, CLUB_UNIT, COMPARISON } from '../pages/Pricing';
-import { AERIAL, assets, CSS, FONT, FORWARD_SCRIPT } from './fixtures';
+import { AERIAL, assets, CSS, FONT, FORWARD_SCRIPT, MENU_SCRIPT } from './fixtures';
 import {
   canonicalUrl,
   CLUB_PRICE_LINE,
@@ -60,10 +71,19 @@ import {
 } from '../routes';
 import { MESHTASTIC_ATTRIBUTION } from '../Shell';
 import {
+  MENU_LABELS,
+  MENU_OPEN_CLASS,
+  MENU_SHEET_ID,
+  MENU_TOGGLE_CLASS,
+  PHONE_HEADER_HEIGHT,
+  PHONE_HEADER_MEDIA,
+} from '../menu/menu';
+import {
+  CONTENT_MAX_WIDTH,
+  FEATURE_COLUMNS_MIN_WIDTH,
   GUTTER,
   NARROW_MAX_WIDTH,
   NARROWEST_PHONE,
-  PHONE_HEADER_MAX_WIDTH,
   siteCss,
   SIZED_CONTROLS,
 } from '../styles';
@@ -130,12 +150,14 @@ describe.each(pages)('page $route.path', ({ route, html }) => {
     }
   });
 
-  it('ships no JavaScript except the home page bookmark forward (no analytics)', () => {
+  it('ships no JavaScript but the header menu and the home bookmark forward (no analytics)', () => {
     const home = route.path === '/';
     const data = count(html, /<script type="application\/ld\+json">/g);
     const classic = html.match(/<script src="[^"]*"><\/script>/g) ?? [];
+    const modules = html.match(/<script type="module" src="[^"]*"><\/script>/g) ?? [];
     expect(classic).toEqual(home ? [`<script src="${FORWARD_SCRIPT}"></script>`] : []);
-    expect(count(html, /<script/gi)).toBe(classic.length + data);
+    expect(modules).toEqual([`<script type="module" src="${MENU_SCRIPT}"></script>`]);
+    expect(count(html, /<script/gi)).toBe(classic.length + modules.length + data);
   });
 
   it('colours the browser bar like the header, in each theme', () => {
@@ -221,7 +243,10 @@ describe('404 page', () => {
     expect(notFound).toContain(`<title>${NOT_FOUND_PAGE.title}</title>`);
     expect(notFound).toContain('<a class="btn go" href="/">Go to the home page</a>');
     expect(notFound).toContain(`<a class="btn" href="${ADMIN_PATH}">`);
-    expect(count(notFound, /<script/gi)).toBe(0);
+    // Only the header menu's script.
+    expect(notFound.match(/<script[^>]*>/g)).toEqual([
+      `<script type="module" src="${MENU_SCRIPT}">`,
+    ]);
   });
 });
 
@@ -264,14 +289,19 @@ describe('links', () => {
     }
   });
 
-  it('show the nav in the header, and again in a "Menu" disclosure for phones', () => {
+  it('show the nav in the header, and again in a Menu sheet for phones', () => {
     const header = home.slice(home.indexOf('<header'), home.indexOf('</header>'));
-    const menu = header.slice(header.indexOf('<details'));
+    const toggleAt = header.indexOf(`<button type="button" class="${MENU_TOGGLE_CLASS}"`);
+    const menu = header.slice(toggleAt);
     for (const link of [...NAV_LINKS, SIGN_IN, GET_THE_APP]) {
-      expect(header.slice(0, header.indexOf('<details'))).toContain(`href="${link.href}"`);
+      expect(header.slice(0, toggleAt)).toContain(`href="${link.href}"`);
       expect(menu).toContain(`<a href="${link.href}">${link.label}</a>`);
     }
-    expect(home).toContain('<details class="menu"><summary>Menu</summary>');
+    // A real button naming what it controls; the sheet stays closed until the script opens it.
+    expect(home).toContain(
+      `<button type="button" class="${MENU_TOGGLE_CLASS}" aria-expanded="false" aria-controls="${MENU_SHEET_ID}">${MENU_LABELS.closed}</button>`,
+    );
+    expect(home).toContain(`<nav id="${MENU_SHEET_ID}" aria-label="Main menu" hidden="">`);
     expect(header).toContain(
       `<a class="btn go" href="${GET_THE_APP.href}">${GET_THE_APP.label}</a>`,
     );
@@ -514,15 +544,23 @@ describe('home page map', () => {
     expect(css).toMatch(/\.mapview \{[^}]*overflow: hidden/);
     const [wx, wy] = MAP_FRAME.wide;
     const [px, py] = MAP_FRAME.phone;
-    expect(css).toContain(`.world { position: absolute; left: -${wx}px; top: -${wy}px;`);
+    expect(css).toContain(
+      `.world { position: absolute; left: max(-${wx}px, calc(100% - ${AERIAL_WORLD.width}px)); top: -${wy}px;`,
+    );
     const phone = css.slice(css.indexOf(`@media (max-width: ${MAP_PHONE_MAX_WIDTH}px)`));
     expect(phone).toContain(`.world { left: -${px}px; top: -${py}px; }`);
   });
 
   it('keeps the map hero full-bleed: the framed aerial reaches both edges at every width', () => {
     const { width, height } = AERIAL_WORLD;
-    // Wide frame: the window's left edge is wx into the aerial, so it must reach 1600 px.
-    expect(width - MAP_FRAME.wide[0]).toBeGreaterThanOrEqual(MAP_COVERED_WIDTH);
+    // Wide frame: the window's left edge is wx into the aerial, or less once the window is
+    // wider than the rest of the picture (left: max(-wx, 100% - width)), up to 1920 px.
+    expect(MAP_COVERED_WIDTH).toBe(1920);
+    expect(width).toBeGreaterThanOrEqual(MAP_COVERED_WIDTH);
+    const left = (window: number) => Math.max(-MAP_FRAME.wide[0], window - width);
+    for (const window of [1024, 1280, 1440, 1600, 1760, MAP_COVERED_WIDTH]) {
+      expect([window, left(window) <= 0 && left(window) + width >= window]).toEqual([window, true]);
+    }
     expect(height - MAP_FRAME.wide[1]).toBeGreaterThanOrEqual(HERO_HEIGHT.wide);
     // Phone frame: up to the width where the hero stacks, over the map's height.
     expect(width - MAP_FRAME.phone[0]).toBeGreaterThanOrEqual(MAP_PHONE_MAX_WIDTH);
@@ -532,10 +570,31 @@ describe('home page map', () => {
     expect(doc.querySelector('.wrap .hero')).toBeNull();
   });
 
+  it('sets every word on the map, its plates and the "Example club" note at map text size or more', () => {
+    expect(fontSize.mapLabelMin).toBeGreaterThanOrEqual(12);
+    const sizesPx = [...mapCss().matchAll(/font-size: ([\d.]+)(rem|px)/g)].map(
+      ([, n, unit]) => Number(n) * (unit === 'rem' ? ROOT_FONT_PX : 1),
+    );
+    expect(sizesPx.length).toBeGreaterThan(5);
+    for (const px of sizesPx) expect(px).toBeGreaterThanOrEqual(fontSize.mapLabelMin);
+    expect(css).toMatch(/\.map-note \{[^}]*font-size: /);
+  });
+
   it('explains the map with the freshness-ring legend, drawn with the same markers', () => {
     const legend = doc.querySelector('dl.legend')!;
     const rows = [...legend.querySelectorAll(':scope > div')];
-    expect(rows.map((r) => r.querySelector('dt')!.textContent)).toEqual(LEGEND.map((l) => l.title));
+    // Valid HTML: the dl holds only divs, each exactly one dt then one dd. The symbol is inside
+    // the dt and hidden from screen readers (a picture of the words beside it).
+    expect([...legend.children].map((c) => c.tagName)).toEqual(rows.map(() => 'DIV'));
+    for (const row of rows) {
+      expect([...row.children].map((c) => c.tagName)).toEqual(['DT', 'DD']);
+      const sym = row.querySelector('dt > .sym')!;
+      expect(sym.getAttribute('aria-hidden')).toBe('true');
+    }
+    expect(legend.querySelectorAll('.sym')).toHaveLength(LEGEND.length);
+    expect(rows.map((r) => r.querySelector('dt > .term')!.textContent)).toEqual(
+      LEGEND.map((l) => l.title),
+    );
     for (const freshness of ['fresh', 'stale', 'faded'] as const) {
       expect(legend.querySelector(`.mk.hunter.${RING_CLASS[freshness]}`)).not.toBeNull();
     }
@@ -548,11 +607,34 @@ describe('home page map', () => {
 });
 
 describe('phone first', () => {
-  const phoneRules = css.slice(css.indexOf(`@media (max-width: ${PHONE_HEADER_MAX_WIDTH}px)`));
+  const phoneRules = css.slice(css.indexOf(`@media ${PHONE_HEADER_MEDIA} {`));
+  const ruleBody = (selector: string) => rules.find((r) => r.selector === selector)?.body ?? '';
 
-  it('collapses the header to the logo and one Menu button', () => {
+  it('collapses the header to one 64 px row: the logo and one Menu button, never wrapping', () => {
+    expect(PHONE_HEADER_HEIGHT).toBe(64);
     expect(phoneRules).toMatch(/\.site-nav, \.header-actions \{ display: none; \}/);
-    expect(phoneRules).toMatch(/\.menu \{ display: block; \}/);
+    expect(phoneRules).toContain(`.${MENU_TOGGLE_CLASS} { display: inline-flex; flex: none; }`);
+    expect(phoneRules).toMatch(
+      new RegExp(`\\.bar \\{ height: ${PHONE_HEADER_HEIGHT}px;[^}]*flex-wrap: nowrap;`),
+    );
+    // On wide screens neither the toggle nor the sheet shows.
+    expect(ruleBody(`.${MENU_TOGGLE_CLASS}`)).toContain('display: none;');
+    expect(css).toContain(
+      `@media not ${PHONE_HEADER_MEDIA} {\n  #${MENU_SHEET_ID} { display: none; }`,
+    );
+  });
+
+  it('opens the menu as a full-width sheet fixed under the header, locking the page under it', () => {
+    const sheet = ruleBody(`#${MENU_SHEET_ID}`);
+    expect(sheet).toContain('position: fixed;');
+    expect(sheet).toContain(`top: ${PHONE_HEADER_HEIGHT}px; left: 0; right: 0;`);
+    expect(sheet).toContain('background: var(--theme-plate);');
+    expect(sheet).toContain('box-shadow: var(--theme-shadow-popover);');
+    expect(phoneRules).toContain(
+      `html.${MENU_OPEN_CLASS}, html.${MENU_OPEN_CLASS} body { overflow: hidden; }`,
+    );
+    // The header stays on screen, so the sheet always opens right under it.
+    expect(phoneRules).toMatch(/\.site-header \{ position: sticky; top: 0;/);
   });
 
   it('gives every sized link and control the 48 px tap target', () => {
@@ -593,9 +675,26 @@ describe('phone first', () => {
     expect(mapPhone).toMatch(/\.hero \.pitch \{[^}]*width: auto/);
     // Every multi-column grid becomes one column on a phone.
     const narrow = css.slice(css.indexOf(`@media (max-width: ${NARROW_MAX_WIDTH}px)`));
-    expect(narrow).toMatch(/\.two, \.split, \.rows\.cols \{ grid-template-columns: 1fr;/);
+    expect(narrow).toMatch(/\.two, \.split \{ grid-template-columns: 1fr;/);
+    // Feature lists are one column until there is room for two.
+    expect(ruleBody('.rows.cols')).toContain('grid-template-columns: 1fr;');
     expect(narrow).toMatch(/\.plan-heads \{ grid-template-columns: 1fr; \}/);
     expect(GUTTER.phone).toBe(16);
+  });
+});
+
+describe('wide screens', () => {
+  it('centres the content in a 1120 px column, outside the gutters', () => {
+    expect(CONTENT_MAX_WIDTH).toBe(1120);
+    expect(css).toContain(
+      `.wrap { max-width: ${CONTENT_MAX_WIDTH + 2 * GUTTER.wide}px; margin: 0 auto; padding: 0 ${GUTTER.wide}px; }`,
+    );
+  });
+
+  it('sets feature lists in two columns from the desktop width', () => {
+    expect(FEATURE_COLUMNS_MIN_WIDTH).toBe(breakpoints.desktop);
+    const wide = css.slice(css.indexOf(`@media (min-width: ${FEATURE_COLUMNS_MIN_WIDTH}px) {`));
+    expect(wide).toMatch(/^[^}]*\.rows\.cols \{ grid-template-columns: 1fr 1fr;/);
   });
 });
 
@@ -609,11 +708,20 @@ describe('theme colours', () => {
   const ONLY_ON: Record<string, string> = { fresh: 'plate', 'on-accent': 'accent' };
   const EDGES = ['border', 'border-color', 'outline', 'border-left', 'border-top', 'border-bottom'];
 
+  /** Body and second-line text as CSS names (`textSecondary` → `text-secondary`). */
+  const DAYLIGHT_BODY = new Set<string>(
+    DAYLIGHT_BODY_TOKENS.map((t) => t.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)),
+  );
+
   it.each(Object.keys(themes) as (keyof typeof themes)[])(
-    'holds every pair the %s theme draws to 4.5:1 for text and 3:1 for edges',
+    'holds every pair the %s theme draws to 4.5:1 for text (7:1 for daylight body) and 3:1 for edges',
     (name) => {
       const vars = themeVariables(themes[name]);
       const hex = (token: string) => vars[`--theme-${token}`]!;
+      const minText = (token: string) =>
+        name === 'light' && DAYLIGHT_BODY.has(token)
+          ? MIN_DAYLIGHT_BODY_CONTRAST
+          : MIN_TEXT_CONTRAST;
       let checked = 0;
       for (const { selector, body } of rules) {
         const ground = tokenOf(body, 'background');
@@ -625,7 +733,7 @@ describe('theme colours', () => {
               selector,
               text,
               g,
-              expect.toSatisfy((r: number) => r >= MIN_TEXT_CONTRAST),
+              expect.toSatisfy((r: number) => r >= minText(text)),
             ]);
           }
         }

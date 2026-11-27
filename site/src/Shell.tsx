@@ -1,6 +1,7 @@
 import { FAVICON_ICO, FAVICON_SVG, logoMarkSvg } from '@huntclub/design';
 import { APP_NAME, SAFETY_NOTE } from '@huntclub/shared';
 import type { ReactNode } from 'react';
+import { MENU_LABELS, MENU_SHEET_ID, MENU_TOGGLE_CLASS } from './menu/menu';
 import { jsonLd } from './structuredData';
 import {
   canonicalUrl,
@@ -23,6 +24,8 @@ export interface PageAssets {
   readonly cssUrl: string;
   /** The home page's bookmark forward (HASH_FORWARD_SCRIPT) as a content-hashed file. */
   readonly forwardScriptUrl: string;
+  /** The phone header menu's script (src/menu/main.ts), a self-hosted module on every page. */
+  readonly menuScriptUrl: string;
   /** The home hero's aerial picture (@huntclub/design/aerial), a content-hashed SVG file. */
   readonly aerialUrl: string;
 }
@@ -94,6 +97,7 @@ export function Document(props: { meta: PageMeta; assets: PageAssets; children: 
         <link rel="preload" as="font" type="font/woff2" href={assets.fontUrl} crossOrigin="" />
         <link rel="stylesheet" href={assets.cssUrl} />
         {meta.blockingScriptSrc ? <script src={meta.blockingScriptSrc} /> : null}
+        <script type="module" src={assets.menuScriptUrl} />
         {meta.scriptSrc ? <script type="module" src={meta.scriptSrc} /> : null}
         {(meta.structuredData ?? []).map((data, i) => (
           <script
@@ -158,15 +162,20 @@ function Header(props: { current: string | undefined }) {
           </a>
         </div>
         {/*
-          No JavaScript: a native disclosure, labelled with a word, holds the menu on phones,
-          where the header is just the logo and this one button.
+          Phones: the header is the logo and this one button. The menu script (./menu, a
+          self-hosted file on every page) opens the sheet; the footer repeats every link.
         */}
-        <details className="menu">
-          <summary>Menu</summary>
-          <nav aria-label="Main menu">
-            <LinkList links={[...NAV_LINKS, SIGN_IN, GET_THE_APP]} label="Main menu" />
-          </nav>
-        </details>
+        <button
+          type="button"
+          className={MENU_TOGGLE_CLASS}
+          aria-expanded="false"
+          aria-controls={MENU_SHEET_ID}
+        >
+          {MENU_LABELS.closed}
+        </button>
+        <nav id={MENU_SHEET_ID} aria-label="Main menu" hidden>
+          <LinkList links={[...NAV_LINKS, SIGN_IN, GET_THE_APP]} label="Main menu" />
+        </nav>
       </div>
     </header>
   );
