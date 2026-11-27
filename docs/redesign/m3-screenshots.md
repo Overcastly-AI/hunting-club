@@ -1,6 +1,25 @@
 # Proposal: app screenshots in CI (M3)
 
-Status: proposal only. Nothing here is added to `.github/workflows/`. The coordinator decides.
+Status: built, manual only. `.github/workflows/app-screenshots.yml` runs on `workflow_dispatch`
+alone (never on push or pull requests), so it spends free minutes only when someone runs it
+(Actions > App screenshots > Run workflow). The shots come back as the `app-screenshots-390`
+artifact. The app side is `app/src/screenshot` (dev builds only; see "Needed in the app first")
+and the driver is `app/scripts/android-screenshots.ts`. The rest of this page is the proposal it
+was built from; where they differ, the build notes below say so.
+
+Build notes:
+
+- Trigger: manual only, not on app pull requests (the coordinator's call).
+- The debug build is an Expo dev client, so it loads its JavaScript from Metro, started in the
+  job with `EXPO_PUBLIC_SCREENSHOT_MODE=1`. A release bundle has `__DEV__` false, so Metro drops
+  the screenshot mode entirely.
+- The sample club is `@huntclub/shared/sample` (shared with the web). The stand-in radio fills
+  Check In, Chat and the map (three radios, the open stand) without Bluetooth; the clock is fixed
+  to 3:40 PM in central Illinois on November 14, 2026, with the emulator in America/Chicago and
+  its GPS in the property. The basemap and the weather strip still load from USGS and the
+  National Weather Service, so they can differ between runs.
+- The Android build steps are shared with CI's Android job
+  (`.github/actions/android-debug-build`).
 
 ## Why
 

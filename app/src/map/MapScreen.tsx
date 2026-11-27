@@ -55,12 +55,20 @@ const CONDITIONS_MIN_ZOOM = 8;
 type MapView = { center: LatLon; zoom: number };
 type Panel = 'layers' | 'download' | 'checkOut' | 'askForHand' | 'harvest' | null;
 
-type Props = {
+export type MapScreenProps = {
   /** Hunters, open stands and mesh status; defaults to the app store the radio will feed. */
   dataSource?: MapDataSource;
+  /** Where the map opens (default: the continental US). */
+  initialView?: { center: [number, number]; zoom: number };
+  /** Opens a panel (Layers) or closes any, when it changes (the dev-only screenshot mode). */
+  panel?: 'layers' | null;
 };
 
-export function MapScreen({ dataSource }: Props) {
+export function MapScreen({
+  dataSource,
+  initialView = CONTINENTAL_US_VIEW,
+  panel: requestedPanel,
+}: MapScreenProps) {
   const styles = useStyles();
   const data = useMapData(dataSource);
   const { radio, current } = useCheckInState();
@@ -72,10 +80,16 @@ export function MapScreen({ dataSource }: Props) {
   const [basemap, setBasemap] = useState<BasemapView>(DEFAULT_BASEMAP);
   const [layers, setLayers] = useState<MapLayerVisibility>(ALL_LAYERS_ON);
   const [view, setView] = useState<MapView>({
-    center: { lon: CONTINENTAL_US_VIEW.center[0], lat: CONTINENTAL_US_VIEW.center[1] },
-    zoom: CONTINENTAL_US_VIEW.zoom,
+    center: { lon: initialView.center[0], lat: initialView.center[1] },
+    zoom: initialView.zoom,
   });
-  const [panel, setPanel] = useState<Panel>(null);
+  const [panel, setPanel] = useState<Panel>(requestedPanel ?? null);
+  // A new requested panel opens (or closes) it, during render (no effect round trip).
+  const [lastRequest, setLastRequest] = useState(requestedPanel);
+  if (requestedPanel !== lastRequest) {
+    setLastRequest(requestedPanel);
+    if (requestedPanel !== undefined) setPanel(requestedPanel);
+  }
   const [downloadBounds, setDownloadBounds] = useState<Bounds | null>(null);
   const { position: you, locate } = useYourLocation();
   const { packs, progress, start, remove } = useMapPacks();
@@ -121,7 +135,7 @@ export function MapScreen({ dataSource }: Props) {
         {...MAP_CHROME_OFF}
         onRegionDidChange={onRegionChange}
       >
-        <Camera ref={cameraRef} initialViewState={CONTINENTAL_US_VIEW} />
+        <Camera ref={cameraRef} initialViewState={initialView} />
         <MapLayers data={data} alerts={alerts} now={now} layers={layers} />
         {/* No scent cone while the wind is calm or unknown, or with its layer off. */}
         {you ? (
