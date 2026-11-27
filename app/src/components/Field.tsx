@@ -38,6 +38,9 @@ export function Field({ label, hint, error, hideLabel, style, onFocus, onBlur, .
         accessibilityLabel={label}
         accessibilityHint={described || undefined}
         placeholderTextColor={theme.colors.textTertiary}
+        // iOS draws its keyboard to match the app's theme, not only the phone's (Android's
+        // keyboard follows the phone and ignores this).
+        keyboardAppearance={theme.colorScheme}
         style={[
           styles.input,
           error ? styles.invalid : null,

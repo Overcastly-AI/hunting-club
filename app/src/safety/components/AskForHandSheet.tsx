@@ -60,6 +60,6 @@ export function AskForHandSheet({ visible, onClose }: Props) {
 }
 
 const useStyles = makeStyles((theme) => ({
-  title: { ...textStyles.sheetTitle, color: theme.colors.warning },
+  title: { ...textStyles.title2, color: theme.colors.warning },
   body: { ...textStyles.bodyLarge, color: theme.colors.text },
 }));

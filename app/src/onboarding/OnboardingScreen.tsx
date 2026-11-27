@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
 
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
@@ -7,7 +6,6 @@ import type { MyProfile } from '../db/appState';
 import type { DownloadRequest } from '../map/offline';
 import { PartyStep } from '../party/PartyStep';
 import { PairRadioStep } from '../radio/ui/PairRadioStep';
-import { spacing } from '../theme';
 import { onboardingCopy } from './copy';
 import { MapDownloadStep } from './MapDownloadStep';
 import { NameStep } from './NameStep';
@@ -67,13 +65,7 @@ export function OnboardingScreen({
   }
   return (
     <Screen title={onboardingCopy.welcome.title} description={onboardingCopy.welcome.body}>
-      <View style={styles.actions}>
-        <Button variant="primary" label={onboardingCopy.welcome.start} onPress={next} />
-      </View>
+      <Button variant="primary" size="lg" label={onboardingCopy.welcome.start} onPress={next} />
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  actions: { gap: spacing.md },
-});

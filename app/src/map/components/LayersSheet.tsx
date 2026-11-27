@@ -1,13 +1,17 @@
-import { Alert, Text, View } from 'react-native';
+import { Download, Map as MapIcon, Trash2 } from 'lucide-react-native';
+import { Alert, Text } from 'react-native';
 
+import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
-import { makeStyles, spacing, textStyles } from '../../theme';
+import { Card } from '../../components/Card';
+import { EmptyState } from '../../components/EmptyState';
+import { SegmentedControl } from '../../components/SegmentedControl';
+import { makeStyles, textStyles, type StatusTone } from '../../theme';
 import { BASEMAP_IDS, BASEMAPS, basemapBySource, type BasemapId } from '../basemaps';
 import type { LocalClubMapPack } from '../../club/mapPacks';
 import { formatShortDate } from '../../conditions/clock';
-import type { MapPack } from '../mapPacks';
+import type { MapPack, MapPackStatus } from '../mapPacks';
 import { formatBytes } from '../tiles';
-import { Choice } from '../../components/Choice';
 import { Sheet } from '../../components/Sheet';
 
 type Props = {
@@ -28,6 +32,18 @@ export function packStatusText(pack: MapPack, percentage: number | undefined): s
   if (pack.status === 'downloading') return `Downloading ${Math.floor(percentage ?? 0)}%`;
   return pack.sizeBytes ? `Ready offline · ${formatBytes(pack.sizeBytes)}` : 'Ready offline';
 }
+
+/** The badge tone beside a downloaded area's status (the word says it too). */
+export const PACK_STATUS_TONE: Record<MapPackStatus, StatusTone> = {
+  complete: 'success',
+  downloading: 'info',
+  failed: 'warning',
+};
+
+/** Topo and Aerial, for the segmented control. */
+const BASEMAP_LABELS = Object.fromEntries(
+  BASEMAP_IDS.map((id) => [id, BASEMAPS[id].label]),
+) as Record<BasemapId, string>;
 
 /** "Club map: downloaded Nov 26, 48 MB". */
 export function clubPackText(pack: LocalClubMapPack): string {
@@ -56,39 +72,49 @@ export function LayersSheet({
 
   return (
     <Sheet visible={visible} title="Map layers" onClose={onClose}>
-      <View accessibilityRole="radiogroup" style={styles.group}>
-        {BASEMAP_IDS.map((id) => (
-          <Choice
-            key={id}
-            label={BASEMAPS[id].label}
-            selected={id === basemap}
-            onPress={() => onSelect(id)}
-          />
-        ))}
-      </View>
+      <SegmentedControl
+        segments={BASEMAP_IDS}
+        labels={BASEMAP_LABELS}
+        selected={basemap}
+        onSelect={onSelect}
+      />
       <Text style={styles.credit}>Map data: {BASEMAPS[basemap].attribution}</Text>
       {clubPack && <Text style={styles.credit}>{clubPackText(clubPack)}</Text>}
 
-      <Button variant="primary" label="Download the map for this area" onPress={onDownload} />
+      <Button
+        variant="primary"
+        icon={Download}
+        label="Download the map for this area"
+        onPress={onDownload}
+      />
 
       <Text accessibilityRole="header" style={styles.heading}>
         Downloaded areas
       </Text>
       {packs.length === 0 ? (
-        <Text style={styles.credit}>
-          None yet. Download the area you hunt so the map works with no signal.
-        </Text>
+        <EmptyState icon={MapIcon} title="No areas saved yet">
+          Download the area you hunt so the map works with no signal.
+        </EmptyState>
       ) : (
         packs.map((pack) => (
-          <View key={pack.id} style={styles.packRow}>
-            <View style={styles.packText}>
-              <Text style={styles.packName}>
-                {pack.name} · {basemapBySource(pack.source)?.label ?? pack.source}
-              </Text>
-              <Text style={styles.credit}>{packStatusText(pack, progress[pack.id])}</Text>
-            </View>
-            <Button label="Delete" onPress={() => confirmDelete(pack)} />
-          </View>
+          <Card
+            key={pack.id}
+            title={`${pack.name} · ${basemapBySource(pack.source)?.label ?? pack.source}`}
+            status={
+              <Badge
+                tone={PACK_STATUS_TONE[pack.status]}
+                label={packStatusText(pack, progress[pack.id])}
+              />
+            }
+          >
+            <Button
+              variant="danger"
+              icon={Trash2}
+              label="Delete"
+              accessibilityHint={`Deletes ${pack.name} from this phone`}
+              onPress={() => confirmDelete(pack)}
+            />
+          </Card>
         ))
       )}
     </Sheet>
@@ -96,10 +122,6 @@ export function LayersSheet({
 }
 
 const useStyles = makeStyles((theme) => ({
-  group: { gap: spacing.sm },
-  heading: { ...textStyles.label, color: theme.colors.text },
+  heading: { ...textStyles.title3, color: theme.colors.text },
   credit: { ...textStyles.body, color: theme.colors.textSecondary },
-  packRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  packText: { flex: 1 },
-  packName: { ...textStyles.label, color: theme.colors.text },
 }));

@@ -2,6 +2,7 @@ import {
   codeDigits,
   emailCodeRules,
   EMAIL_OTP_CODE_LENGTH,
+  RESEND_CODE_COOLDOWN_SECONDS,
   SIGN_UP_CODE_LENGTH,
   signInCopy,
 } from '../signInCopy';
@@ -22,6 +23,11 @@ describe('emailed code rules', () => {
     expect(signInCopy.codeIncomplete('signIn')).toContain('8 digits');
     expect(signInCopy.codeHelp('signUp')).toContain('24 hours');
     expect(signInCopy.intro).not.toMatch(/\d/);
+  });
+
+  it('wait 30 seconds before a new code, and say how long is left', () => {
+    expect(RESEND_CODE_COOLDOWN_SECONDS).toBe(30);
+    expect(signInCopy.resendIn(24)).toBe('Send again in 24s');
   });
 
   it('keep every digit of a paste and drop everything else', () => {

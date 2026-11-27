@@ -1,12 +1,9 @@
 // Club mode on the Party/Club tab and the join screen, on an in-memory database and a
 // fake club API (no network, no native modules).
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import type { ReactNode } from 'react';
 
 import { saveProfile } from '../../db/appState';
-import { migrate } from '../../db/migrate';
-import { migrations } from '../../db/migrations';
-import { createTestDatabase } from '../../test-utils/nodeSqlite';
+import { clubWrapper } from '../../test-utils/clubFixture';
 import {
   clubJoinUrl,
   fakeClubApi,
@@ -15,8 +12,7 @@ import {
   partyJoinUrl,
 } from '../../test-utils/fakeClubApi';
 import { ClubSection } from '../ClubSection';
-import { ProfileProvider } from '../../profile/ProfileProvider';
-import { type ClubServices, ClubStateProvider } from '../ClubProvider';
+import type { ClubServices } from '../ClubProvider';
 import { JoinClubScreen } from '../JoinClubScreen';
 import { clubCopy } from '../copy';
 import { joinClubFromLink } from '../sync';
@@ -26,18 +22,7 @@ jest.mock('expo-sqlite', () => ({ useSQLiteContext: jest.fn() }));
 
 const NOW = Date.parse('2026-11-26T12:00:00Z');
 
-async function setup(services: ClubServices) {
-  const db = createTestDatabase();
-  await migrate(db, migrations);
-  const wrap = (children: ReactNode) => (
-    <ProfileProvider db={db}>
-      <ClubStateProvider db={db} services={services} now={() => NOW}>
-        {children}
-      </ClubStateProvider>
-    </ProfileProvider>
-  );
-  return { db, wrap };
-}
+const setup = (services: ClubServices) => clubWrapper(services, () => NOW);
 
 it('shows how to join when the phone has no club (free user: no API calls)', async () => {
   const api = fakeClubApi();

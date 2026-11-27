@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
     width: QR_SCANNER_SIZE,
     height: QR_SCANNER_SIZE,
     alignSelf: 'center',
-    borderRadius: radii.control,
+    borderRadius: radii.lg,
     overflow: 'hidden',
   },
 });

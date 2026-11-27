@@ -1,13 +1,18 @@
 import { ChannelUrlError, decodeJoinUrl } from '@huntclub/mesh';
-import { type MemberJoin, MemberJoinSchema } from '@huntclub/shared';
+import {
+  DISPLAY_NAME_MAX,
+  INITIALS_MAX,
+  type MemberJoin,
+  MemberJoinSchema,
+} from '@huntclub/shared';
 import { router } from 'expo-router';
+import { LogIn, UserPlus } from 'lucide-react-native';
 import { useState } from 'react';
-import { Text } from 'react-native';
 
+import { Banner } from '../components/Banner';
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
 import { Field } from '../components/Field';
-import { makeStyles, textStyles } from '../theme';
 import { useClub } from './ClubProvider';
 import { clubCopy } from './copy';
 import { SIGN_IN_ROUTE } from './routes';
@@ -27,7 +32,6 @@ function linkKind(url: string | null): 'club' | 'party' | 'bad' {
 
 /** Opened by a Club QR code (huntclub://join?…&club=…&invite=…). Works offline. */
 export function JoinClubScreen({ url, onDone }: { url: string | null; onDone: () => void }) {
-  const styles = useStyles();
   const { join, signedIn, cloudAvailable, myProfile } = useClub();
   const [joined, setJoined] = useState(false);
   const kind = linkKind(url);
@@ -35,24 +39,32 @@ export function JoinClubScreen({ url, onDone }: { url: string | null; onDone: ()
   if (kind !== 'club' || !url) {
     return (
       <Screen title={copy.title}>
-        <Text style={styles.body}>{kind === 'party' ? copy.notClub : copy.badLink}</Text>
-        <Button label={copy.done} onPress={onDone} />
+        {kind === 'party' ? (
+          <Banner tone="info">{copy.notClub}</Banner>
+        ) : (
+          <Banner tone="warning">{copy.badLink}</Banner>
+        )}
+        <Button variant="primary" label={copy.done} onPress={onDone} />
       </Screen>
     );
   }
 
   if (joined) {
+    // One main action: finish joining when sign-in is possible, otherwise Done.
+    const canSignIn = !signedIn && cloudAvailable;
     return (
       <Screen title={copy.title}>
-        <Text style={styles.body}>{copy.joined}</Text>
-        {!signedIn && cloudAvailable ? (
+        <Banner tone="success">{copy.joined}</Banner>
+        {canSignIn ? (
           <Button
             variant="primary"
+            size="lg"
+            icon={LogIn}
             label={copy.signInToFinish}
             onPress={() => router.replace(SIGN_IN_ROUTE)}
           />
         ) : null}
-        <Button label={copy.done} onPress={onDone} />
+        <Button variant={canSignIn ? 'secondary' : 'primary'} label={copy.done} onPress={onDone} />
       </Screen>
     );
   }
@@ -84,6 +96,8 @@ function JoinForm({
         label={copy.name}
         value={displayName}
         onChangeText={setDisplayName}
+        maxLength={DISPLAY_NAME_MAX}
+        autoCapitalize="words"
         autoComplete="name"
       />
       <Field
@@ -91,10 +105,12 @@ function JoinForm({
         value={initials}
         onChangeText={setInitials}
         autoCapitalize="characters"
-        maxLength={3}
+        maxLength={INITIALS_MAX}
       />
       <Button
         variant="primary"
+        size="lg"
+        icon={UserPlus}
         label={copy.join}
         disabled={!profile.success}
         onPress={() => profile.success && onJoin(profile.data)}
@@ -102,7 +118,3 @@ function JoinForm({
     </Screen>
   );
 }
-
-const useStyles = makeStyles((theme) => ({
-  body: { ...textStyles.body, color: theme.colors.text },
-}));

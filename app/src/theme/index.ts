@@ -15,7 +15,7 @@ import {
 import { fontSources } from './fonts';
 import { makeStyles } from './makeStyles';
 import { ThemeProvider, resolveThemeName, useTheme, useThemePreference } from './ThemeProvider';
-import { archivo, mapTextHalo, maxFontScale, textStyles } from './typography';
+import { archivo, mapTextHalo, maxFontScale, tabularNums, textStyles } from './typography';
 
 export {
   archivo,
@@ -35,6 +35,7 @@ export {
   sizes,
   spacing,
   resolveThemeName,
+  tabularNums,
   textStyles,
   ThemeProvider,
   useTheme,
