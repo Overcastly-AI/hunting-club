@@ -5,7 +5,12 @@ import { party } from '@huntclub/core/testing';
 import { generatePartyChannelSet } from '@huntclub/mesh';
 import { connectedMesh, seededRandom, tick } from '@huntclub/mesh/testing';
 
-import { DEFAULT_SERVICES_OPTIONS, type RadioClub, RadioServices } from '../RadioServices';
+import {
+  DEFAULT_SERVICES_OPTIONS,
+  type RadioClub,
+  RadioServices,
+  type RadioServicesOptions,
+} from '../RadioServices';
 
 // Simulated time: the radio writes' pacing (200 ms each) passes instantly.
 beforeEach(() => jest.useFakeTimers());
@@ -85,4 +90,68 @@ it('stays a free party without a club', async () => {
   expect(s.chatRadio.segmentOfChannel(0)).toBe('party');
   expect(s.chatRadio.channelOf('party')).toBe(0);
   expect(await clubChannelOf(s)).toBe('already');
+});
+
+describe('after a user switch (the club channel follows the signed-in account)', () => {
+  const clubA = club({ clubId: '00000000-0000-4000-8000-0000000000a1' });
+  const clubB = club({
+    clubId: '00000000-0000-4000-8000-0000000000b1',
+    channelSet: generatePartyChannelSet({ random: seededRandom(7), name: 'Club' }),
+  });
+  const pskOf = (set: RadioClub['channelSet']) => set!.settings[0]!.psk;
+  /** A radio still on A's club channel, as account A left it. */
+  async function radioOnA(options: Partial<RadioServicesOptions>) {
+    const { clients, radios } = await connectedMesh([
+      { nodeNum: 0x1234, channels: clubA.channelSet!.settings },
+    ]);
+    const provision = jest.spyOn(clients[0], 'provision');
+    const s = new RadioServices(clients[0], { ...DEFAULT_SERVICES_OPTIONS, ...options });
+    created.push(s);
+    /** Every primary key the services wrote to the radio. */
+    const written = () => provision.mock.calls.map(([plan]) => plan.channels[0]?.psk);
+    return { s, radio: radios[0], written };
+  }
+
+  it("A to B: B's club replaces A's on the radio, and A's key is never written", async () => {
+    const { s, radio, written } = await radioOnA({
+      club: clubB,
+      hiddenClubChannels: [clubA.channelSet!],
+    });
+    expect(await clubChannelOf(s)).toBe('applied');
+    expect(radio.channels[0]!.settings!.psk).toEqual(pskOf(clubB.channelSet));
+    expect(written()).not.toContainEqual(pskOf(clubA.channelSet));
+  });
+
+  it("A to B with no club: A's channel comes off, only a party channel is used", async () => {
+    const { s, radio, written } = await radioOnA({ hiddenClubChannels: [clubA.channelSet!] });
+    expect(await clubChannelOf(s)).toBe('removed');
+    expect(radio.channels[0]!.settings!.psk).not.toEqual(pskOf(clubA.channelSet));
+    expect(written()).not.toContainEqual(pskOf(clubA.channelSet));
+    expect(s.checkInRadio.audience).toBe('party');
+    expect(s.chatRadio.segmentOfChannel(0)).toBe('party');
+  });
+
+  it("A comes back: A's club is used again (already on the radio)", async () => {
+    const { s, radio, written } = await radioOnA({ club: clubA });
+    expect(await clubChannelOf(s)).toBe('already');
+    expect(radio.channels[0]!.settings!.psk).toEqual(pskOf(clubA.channelSet));
+    expect(written()).toEqual([]);
+    expect(s.checkInRadio.audience).toBe('club');
+  });
+
+  it('no club, radio on its party channel: the party channel is left alone', async () => {
+    const { phones } = await party({ size: 2 });
+    const client = phones[0]!.client;
+    const before = client.channels.get(0)?.settings?.psk;
+    const provision = jest.spyOn(client, 'provision');
+    const s = new RadioServices(client, {
+      ...DEFAULT_SERVICES_OPTIONS,
+      hiddenClubChannels: [clubA.channelSet!],
+    });
+    created.push(s);
+    for (const p of phones) p.receipts.stop();
+    expect(await clubChannelOf(s)).toBe('already');
+    expect(provision).not.toHaveBeenCalled();
+    expect(client.channels.get(0)?.settings?.psk).toEqual(before);
+  });
 });

@@ -10,6 +10,7 @@ import { CORE_CONFIG } from '../config';
 import { FREE_PARTY_MAX_MEMBERS, PartyFullError } from '../party';
 import { PartyError, PartyService, SOLO_CHANNEL_NAME } from '../partyService';
 import { MemoryPartyStore } from '../partyStore';
+import { applyChannelSet } from '../radioChannels';
 import { MINUTE_MS } from '../config';
 import { T0, party, type Phone } from '../testing/party';
 
@@ -179,6 +180,27 @@ describe('party lifecycle', () => {
     // Bob can start or join another party now.
     await settle(b!.party.join(a!.party.qrLink()!));
     expect(b!.party.current?.id).toBe(a!.party.current!.id);
+  });
+
+  it("reprovision(): a radio left on another account's club channel goes back to the party's", async () => {
+    const { hunters } = await fourHunters();
+    const [a, b] = hunters;
+    await settle(a!.party.create());
+    await settle(b!.party.join(a!.party.qrLink()!));
+    const partyKey = b!.radio.channels[0]!.settings!.psk;
+    const clubKey = generatePartyChannelSet({ random: seededRandom(99), name: 'Club' });
+    await settle(applyChannelSet(b!.client, clubKey));
+    expect(b!.radio.channels[0]!.settings!.psk).toEqual(clubKey.settings[0]!.psk);
+
+    await settle(b!.party.reprovision());
+    expect(b!.radio.channels[0]!.settings!.psk).toEqual(partyKey);
+    expect(b!.party.current?.id).toBe(a!.party.current!.id);
+    // With no party: a fresh private channel, never the club's.
+    await settle(b!.party.leave());
+    await settle(applyChannelSet(b!.client, clubKey));
+    await settle(b!.party.reprovision());
+    expect(b!.radio.channels[0]!.settings!.psk).not.toEqual(clubKey.settings[0]!.psk);
+    expect(b!.radio.channels[0]!.settings!.name).toBe(SOLO_CHANNEL_NAME);
   });
 
   it('refuses club links, bad links, a second party, and actions without a radio', async () => {

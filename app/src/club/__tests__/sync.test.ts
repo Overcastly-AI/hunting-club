@@ -18,7 +18,7 @@ import {
   loadClubStands,
   loadClubs,
   loadPendingInvite,
-  loadRadioClub,
+  loadClubRadio,
   UNSYNCED_CLUB_NAME,
 } from '../store';
 import { NotAClubLinkError, joinClubFromLink, syncAllClubs, syncClub } from '../sync';
@@ -134,19 +134,35 @@ it('gives the radio the club: stands, areas, grace time and the club channels fr
   const d = await db();
   await joinClubFromLink(d, secrets, clubJoinUrl(), profile, NOW);
   await syncClub(d, fakeClubApi(), CLUB_ID, NOW);
-  const [club] = await loadClubs(d);
-  const radio = await loadRadioClub(d, secrets, club!);
+  const { club: radio, hiddenClubChannels } = await loadClubRadio(d, secrets, await loadClubs(d));
+  expect(hiddenClubChannels).toEqual([]);
   expect(radio).toMatchObject({ clubId: CLUB_ID, graceMinutes: 30, areas: [] });
-  expect(radio.stands.map((s) => s.meshId)).toEqual([1, 2]);
-  expect(radio.channelSet).toEqual(decodeJoinUrl(clubJoinUrl()).channelSet);
+  expect(radio!.stands.map((s) => s.meshId)).toEqual([1, 2]);
+  expect(radio!.channelSet).toEqual(decodeJoinUrl(clubJoinUrl()).channelSet);
 });
 
 it('leaves the channels out when the saved link is for another club', async () => {
   const d = await db();
   await joinClubFromLink(d, secrets, clubJoinUrl(), profile, NOW);
   await secrets.set(SECURE_KEYS.clubJoinLink, clubJoinUrl('00000000-0000-4000-8000-0000000000ff'));
-  const [club] = await loadClubs(d);
-  expect((await loadRadioClub(d, secrets, club!)).channelSet).toBeUndefined();
+  expect((await loadClubRadio(d, secrets, await loadClubs(d))).club!.channelSet).toBeUndefined();
+});
+
+it("returns a hidden club's channels only as channels never to use, and no club", async () => {
+  const d = await db();
+  await joinClubFromLink(d, secrets, clubJoinUrl(), profile, NOW);
+  // The saved club is hidden from the signed-in account (clubsForAccount listed none).
+  expect(await loadClubRadio(d, secrets, [])).toEqual({
+    club: null,
+    hiddenClubChannels: [decodeJoinUrl(clubJoinUrl()).channelSet],
+  });
+});
+
+it('has no club and nothing hidden on a phone without a club', async () => {
+  expect(await loadClubRadio(await db(), secrets, [])).toEqual({
+    club: null,
+    hiddenClubChannels: [],
+  });
 });
 
 it('fetches the club map packs with the club, and a failed download never fails the sync', async () => {

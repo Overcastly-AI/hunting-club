@@ -8,6 +8,8 @@ import {
   type ReactNode,
 } from 'react';
 
+import type { ChannelSet } from '@huntclub/mesh';
+
 import { BoardRadioContext } from '../board/BoardRadio';
 import { ChatRadioContext } from '../chat/ChatRadio';
 import { CheckInRadioContext } from '../checkin/CheckInRadio';
@@ -40,8 +42,10 @@ type Props = RadioControllerDeps & {
   children: ReactNode;
   /** Settings for the core services (defaults: free party). Read once, at mount. */
   services?: Partial<RadioServicesOptions>;
-  /** The phone's club (from the club layer); changing it rebuilds the services. */
+  /** The signed-in account's club (from the club layer); changing it rebuilds the services. */
   club?: RadioClub | null;
+  /** Hidden clubs' channels (another account's): never used (RadioServicesOptions). */
+  hiddenClubChannels?: readonly ChannelSet[];
   /** Where the map's data goes (defaults to the app's store). */
   mapStore?: MapDataStore;
 };
@@ -55,6 +59,7 @@ export function RadioProvider({
   children,
   services: serviceOptions,
   club,
+  hiddenClubChannels,
   mapStore = mapDataStore,
   ...deps
 }: Props) {
@@ -75,8 +80,12 @@ export function RadioProvider({
     ...serviceOptions,
   }));
   const options = useMemo<RadioServicesOptions>(
-    () => (club ? { ...baseOptions, club } : baseOptions),
-    [baseOptions, club],
+    () => ({
+      ...baseOptions,
+      ...(club ? { club } : {}),
+      ...(hiddenClubChannels?.length ? { hiddenClubChannels } : {}),
+    }),
+    [baseOptions, club, hiddenClubChannels],
   );
   const [services, setServices] = useState<RadioServices | null>(null);
 

@@ -9,6 +9,7 @@ import {
   type ClubSession,
   type MemberJoin,
 } from '@huntclub/shared';
+import type { ChannelSet } from '@huntclub/mesh';
 import { useSQLiteContext } from 'expo-sqlite';
 import {
   type ReactNode,
@@ -26,7 +27,7 @@ import { useProfile } from '../profile/ProfileProvider';
 import { ClubEntitlementContext, entitlementOf } from './entitlement';
 import type { RadioClub } from '../radio/RadioServices';
 import type { SecureStorage } from '../storage/secure';
-import { type LocalClub, loadClubs, loadRadioClub } from './store';
+import { type ClubRadio, type LocalClub, loadClubRadio, loadClubs } from './store';
 import { type LocalClubMapPack, type MapPackSync, loadClubMapPacks } from './mapPacks';
 import { joinClubFromLink, syncAllClubs } from './sync';
 
@@ -51,8 +52,10 @@ export type ClubState = {
   /** False until the club API is deployed and configured. */
   cloudAvailable: boolean;
   session: ClubSession;
-  /** The club this phone hunts with on the radio (the first one joined), or null. */
+  /** The club the radio hunts with: the first listed for the signed-in account, or null. */
   radioClub: RadioClub | null;
+  /** Channels of a club hidden from the signed-in account: never put on the radio. */
+  hiddenClubChannels: readonly ChannelSet[];
   /** Saves a club from a Club QR code / invite link (offline), then syncs if possible. */
   join(url: string, profile: MemberJoin): Promise<string>;
   /** Redeems pending invites and refreshes every club. Needs sign-in and internet. */
@@ -62,6 +65,8 @@ export type ClubState = {
 };
 
 const ClubContext = createContext<ClubState | null>(null);
+
+const NO_CLUB_RADIO: ClubRadio = { club: null, hiddenClubChannels: [] };
 
 /** Club map packs on this phone; empty outside ClubProvider (free users) and before the first sync. */
 const ClubMapPacksContext = createContext<readonly LocalClubMapPack[]>([]);
@@ -109,17 +114,19 @@ export function ClubStateProvider({
   const [clubs, setClubs] = useState<LocalClub[]>([]);
   const [signedIn, setSignedIn] = useState(false);
   const myProfile: MyProfile | null = useProfile().profile ?? null;
-  const [radioClub, setRadioClub] = useState<RadioClub | null>(null);
+  const [radio, setRadio] = useState<ClubRadio>(NO_CLUB_RADIO);
   const [mapPacks, setMapPacks] = useState<LocalClubMapPack[]>([]);
 
   const reload = useCallback(
     () =>
       Promise.all([loadClubs(db), session.isSignedIn(), session.user(), loadClubMapPacks(db)]).then(
         async ([loaded, isSignedIn, user, packs]) => {
-          const radio = loaded[0] ? await loadRadioClub(db, secrets, loaded[0]) : null;
-          setClubs(clubsForAccount(loaded, isSignedIn ? user?.userId : undefined));
+          // The radio and the paid features follow the clubs listed for this account.
+          const visible = clubsForAccount(loaded, isSignedIn ? user?.userId : undefined);
+          const nextRadio = await loadClubRadio(db, secrets, visible);
+          setClubs(visible);
           setSignedIn(isSignedIn);
-          setRadioClub(radio);
+          setRadio(nextRadio);
           setMapPacks(packs);
         },
       ),
@@ -153,14 +160,15 @@ export function ClubStateProvider({
       clubs,
       signedIn,
       myProfile,
-      radioClub,
+      radioClub: radio.club,
+      hiddenClubChannels: radio.hiddenClubChannels,
       cloudAvailable: api !== undefined,
       session,
       join,
       sync,
       reload,
     }),
-    [api, clubs, join, myProfile, radioClub, reload, session, signedIn, sync],
+    [api, clubs, join, myProfile, radio, reload, session, signedIn, sync],
   );
   const firstPaid = clubs.map(entitlementOf).find((e) => e !== null) ?? null;
 

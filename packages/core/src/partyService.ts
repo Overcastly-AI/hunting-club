@@ -216,6 +216,30 @@ export class PartyService extends Emitter<PartyServiceEvents> {
     return this.exclusive(() => this.leaveNow());
   }
 
+  /**
+   * Puts this service's own channels back on the radio: the saved party's (after the
+   * club's, in a club), else the club's alone, else a fresh private channel. For a radio
+   * that still holds channels this phone must not use (another account's club).
+   */
+  async reprovision(): Promise<void> {
+    return this.exclusive(async () => {
+      const party = this.party;
+      if (party) {
+        await this.provision(decodeJoinUrl(party.joinLink).channelSet);
+        if (party.channelIndex !== this.partyChannel) {
+          party.channelIndex = this.partyChannel;
+          await this.store.save(party);
+        }
+        return;
+      }
+      await this.provision(
+        this.clubChannelSet ??
+          generatePartyChannelSet({ random: this.ctx.random, name: SOLO_CHANNEL_NAME }),
+        { alone: true },
+      );
+    });
+  }
+
   dispose(): void {
     this.offHeard();
   }

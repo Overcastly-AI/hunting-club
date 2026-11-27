@@ -40,8 +40,9 @@ export function AppRadioProvider({ children }: { children: ReactNode }) {
     [db],
   );
   const services = useMemo(() => ({ partyStore: sqlitePartyStore(db) }), [db]);
-  // Club check-in, whole-club chat and the club channel, once the phone has joined a club.
-  const { radioClub } = useClub();
+  // Club check-in, whole-club chat and the club channel of the signed-in account's club;
+  // another account's club channel is never used.
+  const { radioClub, hiddenClubChannels } = useClub();
   const { profile } = useProfile();
   return (
     <RadioProvider
@@ -51,6 +52,7 @@ export function AppRadioProvider({ children }: { children: ReactNode }) {
       clientOptions={clientOptions}
       services={services}
       club={radioClub}
+      hiddenClubChannels={hiddenClubChannels}
     >
       <OwnerSync profile={profile} />
       {children}
