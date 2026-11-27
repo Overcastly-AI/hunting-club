@@ -3,6 +3,7 @@
 // given time zone, never legal shooting hours.
 import type { Harvest } from './club';
 import { HARVEST_SEXES, type HarvestSex } from './enums';
+import { DAY_MS } from './time';
 
 /** Plain words for harvest sex (app and web admin). */
 export const HARVEST_SEX_LABELS: Record<HarvestSex, string> = {
@@ -36,8 +37,6 @@ export interface HarvestReport {
   /** Every week of the season (Sunday start), including weeks with none. */
   byWeek: CountRow[];
 }
-
-const DAY_MS = 86_400_000;
 
 /** The calendar day (YYYY-MM-DD) of an instant in a time zone. */
 export function localDay(iso: string, timeZone: string): string {

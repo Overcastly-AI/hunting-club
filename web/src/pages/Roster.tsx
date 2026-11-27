@@ -1,5 +1,5 @@
 import { encodeJoinUrl } from '@huntclub/mesh';
-import type { Member } from '@huntclub/shared';
+import { DAY_MS, type Member } from '@huntclub/shared';
 import { useEffect, useRef, useState } from 'react';
 import type { ClubApi } from '../api/types';
 import { DataTable, type Column } from '../components/DataTable';
@@ -12,7 +12,6 @@ import { useSignedInUser } from '../signedInUser';
 
 /** How long a new member invite stays valid. */
 const INVITE_DAYS = 14;
-const DAY_MS = 86_400_000;
 
 const MEMBER_COLUMNS: readonly Column<Member>[] = [
   { label: 'Name', cell: (m) => m.displayName },

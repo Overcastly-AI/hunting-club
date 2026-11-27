@@ -2,6 +2,7 @@ import { createClubApiClient, ClubApiRequestError } from '../apiClient';
 import { apiPath, API_PATHS } from '../apiPaths';
 import { entitlementFor, ENTITLEMENT_GRACE_DAYS, hasClubFeatures } from '../api';
 import { DOWNLOAD_LIMITS } from '../maps';
+import { DAY_MS } from '../time';
 import { scriptedFetch } from './fakeFetch';
 
 const CLUB = '00000000-0000-4000-8000-000000000001';
@@ -153,9 +154,7 @@ describe('club API client', () => {
 describe('entitlementFor', () => {
   it('opens features until paid-through plus the grace period for entitled statuses', () => {
     const e = entitlementFor(CLUB, { status: 'past_due', paidThrough: ISO });
-    expect(Date.parse(e.featuresUntil!) - Date.parse(ISO)).toBe(
-      ENTITLEMENT_GRACE_DAYS * 86_400_000,
-    );
+    expect(Date.parse(e.featuresUntil!) - Date.parse(ISO)).toBe(ENTITLEMENT_GRACE_DAYS * DAY_MS);
   });
 
   it('keeps features closed when canceled or without a subscription', () => {

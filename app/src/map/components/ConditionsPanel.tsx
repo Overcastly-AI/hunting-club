@@ -1,11 +1,9 @@
 import { Text, View } from 'react-native';
 
-import { SUN } from '@huntclub/core';
 import type { LatLon } from '@huntclub/mesh';
+import { sunReadout, type SunReadout } from '@huntclub/shared';
 
 import { WindArrowIcon } from '../../components/icons';
-import { formatClockTime } from '../../conditions/clock';
-import { UNKNOWN_VALUE } from '../../conditions/display';
 import { makeStyles, radii, sizes, spacing, textStyles } from '../../theme';
 import { UNKNOWN_WEATHER, type WeatherDisplay } from '../../weather/display';
 
@@ -17,15 +15,6 @@ type Props = {
   weather?: WeatherDisplay;
 };
 
-/** Sunrise and sunset only; never legal shooting hours. */
-export function sunLine(place: LatLon | null, now: number): { sunrise: string; sunset: string } {
-  if (!place) return { sunrise: UNKNOWN_VALUE, sunset: UNKNOWN_VALUE };
-  const times = SUN.sunTimes(SUN.localCalendarDay(new Date(now)), place.lat, place.lon);
-  if (times.kind === 'polarDay') return { sunrise: 'Up all day', sunset: 'Up all day' };
-  if (times.kind === 'polarNight') return { sunrise: 'Down all day', sunset: 'Down all day' };
-  return { sunrise: formatClockTime(times.sunrise), sunset: formatClockTime(times.sunset) };
-}
-
 /** Joins words with no-break spaces so a line never breaks inside one phrase ("7:03 AM"). */
 const keepTogether = (text: string) => text.replace(/ /g, '\u00A0');
 
@@ -33,28 +22,29 @@ const keepTogether = (text: string) => text.replace(/ /g, '\u00A0');
  * "Sunrise 7:03 AM" and "Sunset 4:26 PM" as two unbreakable phrases. The panel
  * may wrap between them at large text sizes, but never truncates or splits a time.
  */
-export function sunPhrases(sun: { sunrise: string; sunset: string }): [string, string] {
-  return [keepTogether(`Sunrise ${sun.sunrise}`), keepTogether(`Sunset ${sun.sunset}`)];
+export function sunPhrases(sun: Pick<SunReadout, 'sunrise' | 'sunset'>): [string, string] {
+  return [keepTogether(`Sunrise ${sun.sunrise.short}`), keepTogether(`Sunset ${sun.sunset.short}`)];
 }
 
 /** "Sunrise 7:03 AM · Sunset 4:26 PM": wraps only after the dot, never inside a time. */
-export function sunSentence(sun: { sunrise: string; sunset: string }): string {
+export function sunSentence(sun: Pick<SunReadout, 'sunrise' | 'sunset'>): string {
   const [sunrisePhrase, sunsetPhrase] = sunPhrases(sun);
   return `${sunrisePhrase}\u00A0· ${sunsetPhrase}`;
 }
 
 export function ConditionsPanel({ place, now, weather = UNKNOWN_WEATHER }: Props) {
   const styles = useStyles();
-  const { sunrise, sunset } = sunLine(place, now);
+  // Sunrise and sunset only; never legal shooting hours.
+  const sun = sunReadout(place, now);
   const spoken = [
-    `Sunrise ${sunrise}, sunset ${sunset}.`,
+    `Sunrise ${sun.sunrise.spoken}, sunset ${sun.sunset.spoken}.`,
     `Wind ${weather.windSpoken}.`,
     `Temperature ${weather.temperatureSpoken}.`,
     weather.updatedSpoken ? `${weather.updatedSpoken}.` : null,
   ];
   return (
     <View accessible accessibilityLabel={spoken.filter(Boolean).join(' ')} style={styles.panel}>
-      <Text style={styles.primary}>{sunSentence({ sunrise, sunset })}</Text>
+      <Text style={styles.primary}>{sunSentence(sun)}</Text>
       <View style={styles.row}>
         <View style={styles.windGroup}>
           <Text style={styles.secondary}>

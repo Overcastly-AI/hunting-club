@@ -1,5 +1,5 @@
 // The dev test club seed: creates the club once, then only refreshes it.
-import { ENTITLEMENT_GRACE_DAYS } from '@huntclub/shared';
+import { DAY_MS, ENTITLEMENT_GRACE_DAYS } from '@huntclub/shared';
 import { SERVICE, UAT_CLUB, seedDevClub, userActor } from '../index';
 import { World } from '../testing/world';
 
@@ -30,7 +30,7 @@ it('creates the UAT club with the admin, a property line, one area and three sta
 
 it('gives the club features for 90 days from the day it runs', async () => {
   const { featuresUntil } = await seedDevClub(w.data, input());
-  const days = (Date.parse(featuresUntil!) - w.clock.now().getTime()) / 86_400_000;
+  const days = (Date.parse(featuresUntil!) - w.clock.now().getTime()) / DAY_MS;
   expect(Math.round(days)).toBe(UAT_CLUB.featureDays);
   expect(UAT_CLUB.featureDays).toBeGreaterThan(ENTITLEMENT_GRACE_DAYS);
 });

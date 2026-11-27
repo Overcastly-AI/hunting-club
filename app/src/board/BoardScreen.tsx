@@ -4,13 +4,12 @@ import { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { hasClubFeatures } from '@huntclub/shared';
+import { formatClockTime, hasClubFeatures, sunReadout } from '@huntclub/shared';
 import { useClubEntitlement } from '../club/entitlement';
 import { EmptyState } from '../components/EmptyState';
 import { Screen } from '../components/Screen';
-import { formatClockTime } from '../conditions/clock';
 import { useNow } from '../hooks/useNow';
-import { sunLine, sunSentence } from '../map/components/ConditionsPanel';
+import { sunSentence } from '../map/components/ConditionsPanel';
 import { nodePosition } from '../map/meshMapData';
 import { SafetyLayer } from '../safety/SafetyLayer';
 import { ICON_SIZE, makeStyles, spacing, tabularNums, textStyles, useTheme } from '../theme';
@@ -104,7 +103,7 @@ export function BoardScreen() {
             accessibilityElementsHidden
             importantForAccessibility="no-hide-descendants"
           />
-          <Text style={styles.sun}>{sunSentence(sunLine(clubhouse ?? null, now))}</Text>
+          <Text style={styles.sun}>{sunSentence(sunReadout(clubhouse ?? null, now))}</Text>
         </View>
         <LinkBanner {...link} />
         <ScrollView contentContainerStyle={styles.lists}>

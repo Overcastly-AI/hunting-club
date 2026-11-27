@@ -8,7 +8,7 @@ import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
-import { formatClockTime, formatShortDate } from '../conditions/clock';
+import { formatClockTime, formatShortDate } from '@huntclub/shared';
 import { makeStyles, spacing, textStyles } from '../theme';
 import { SEX_LABELS, SHARE_LABELS } from './form';
 import { HarvestRadioContext, shareHarvest } from './HarvestRadio';
