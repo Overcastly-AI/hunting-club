@@ -1,14 +1,17 @@
-// Drawing the property line on the web (club admins only; the club API checks that too). Tap or
-// click the map to add corners, drag a corner to move it, tap the first corner or Close shape to
-// finish, then Save. Every corner is a 48 px button: focus selects it, the arrow keys move it,
-// Delete removes it. "Add corner" puts one at the cross in the middle of the map, so the whole
-// line can be drawn from the keyboard. The state is draw.ts; whether a line may be saved is the
-// shared rule (propertyLineProblem), and saving goes through the shared club API client.
+// Drawing a shape on the web, the property line or an area (club admins only; the club API checks
+// that too). Tap or click the map to add corners, drag a corner to move it, tap the first corner
+// or Close shape to finish, then Save. Every corner is a 48 px button: focus selects it, the arrow
+// keys move it, Delete removes it. "Add corner" puts one at the cross in the middle of the map,
+// so the whole shape can be drawn from the keyboard. The state is draw.ts; whether a shape may be
+// saved is its shared rule (DRAW_SUBJECTS), and saving goes through the shared club API client.
 import { radii, sizes } from '@huntclub/design';
 import {
+  AREA_PROBLEMS,
+  areaProblem,
   ClubApiRequestError,
   pluralize,
   PROPERTY_LINE_PROBLEMS,
+  propertyLineProblem,
   ringAcres,
   type Polygon,
 } from '@huntclub/shared';
@@ -22,7 +25,14 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { useId, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import {
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+  type ReactNode,
+} from 'react';
 import { Button } from '../components/ui';
 import { cx } from '../components/ui/cx';
 import { mapPoint, TAP_SLOP, type MapFrame } from './ClubMap';
@@ -42,7 +52,13 @@ type Dispatch = (action: DrawAction) => void;
 const centre = (frame: MapFrame) => frame.projection.unproject(frame.width / 2, frame.height / 2);
 
 /** The line being drawn and its corners, over the map. */
-export function DrawLayer(props: { frame: MapFrame; state: DrawState; dispatch: Dispatch }) {
+export function DrawLayer(props: {
+  frame: MapFrame;
+  state: DrawState;
+  dispatch: Dispatch;
+  /** The corners' group name (default: the property line's). */
+  label?: string;
+}) {
   const { frame, state, dispatch } = props;
   const { projection, width, height } = frame;
   const points = state.corners.map(([lon, lat]) => projection.project(lon, lat));
@@ -104,7 +120,7 @@ export function DrawLayer(props: { frame: MapFrame; state: DrawState; dispatch: 
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       role="group"
-      aria-label="Property line corners"
+      aria-label={props.label ?? 'Property line corners'}
     >
       {state.closed ? (
         <g aria-hidden="true">
@@ -121,10 +137,7 @@ export function DrawLayer(props: { frame: MapFrame; state: DrawState; dispatch: 
                 .join(' ')}
             />
           ) : null}
-          <path
-            className="draw__cross"
-            d={`M${width / 2 - CROSS} ${height / 2} H${width / 2 + CROSS} M${width / 2} ${height / 2 - CROSS} V${height / 2 + CROSS}`}
-          />
+          <Cross width={width} height={height} />
         </g>
       )}
       {points.map(([x, y], index) => {
@@ -165,26 +178,101 @@ export function DrawLayer(props: { frame: MapFrame; state: DrawState; dispatch: 
   );
 }
 
-/** Plain words for the club API's refusals of a property line. */
-function saveError(error: unknown): string {
+/** The cross in the middle of the map: where Add corner and Put at the cross put things. */
+export function Cross(props: { width: number; height: number }) {
+  const x = props.width / 2;
+  const y = props.height / 2;
+  return (
+    <path
+      className="draw__cross"
+      aria-hidden="true"
+      d={`M${x - CROSS} ${y} H${x + CROSS} M${x} ${y - CROSS} V${y + CROSS}`}
+    />
+  );
+}
+
+/**
+ * A phone's editing bar along the map's bottom: `children` (fields, notes), then a row of
+ * `lead` (a count), More tools and the main `action`. More tools opens `panel` above it; Esc
+ * closes it and gives focus back to its button. It is not called More: the tab bar has one.
+ */
+export function ToolsBar(props: {
+  label: string;
+  panel: ReactNode;
+  lead?: ReactNode;
+  action: ReactNode;
+  children?: ReactNode;
+}) {
+  const [more, setMore] = useState(false);
+  const moreButton = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key !== 'Escape' || !more) return;
+    e.preventDefault();
+    setMore(false);
+    moreButton.current?.focus();
+  };
+  return (
+    <div className="draw-bar" role="group" aria-label={props.label} onKeyDown={onKeyDown}>
+      {more ? (
+        <div id={panelId} className="draw-bar__more">
+          {props.panel}
+        </div>
+      ) : null}
+      {props.children}
+      <div className="draw-bar__row">
+        {props.lead ?? <span className="draw-bar__space" />}
+        <Button
+          ref={moreButton}
+          size="sm"
+          icon={more ? ChevronDown : Ellipsis}
+          aria-expanded={more}
+          aria-controls={more ? panelId : undefined}
+          onClick={() => setMore((open) => !open)}
+        >
+          More tools
+        </Button>
+        {props.action}
+      </div>
+    </div>
+  );
+}
+
+/** What is being drawn: its name in words, its Save button, and its shared rule and words. */
+export interface DrawSubject {
+  noun: string;
+  save: string;
+  rule: (polygon: Polygon) => string | null;
+  problems: Readonly<Record<string, string>>;
+}
+
+export const DRAW_SUBJECTS = {
+  line: {
+    noun: 'property line',
+    save: 'Save line',
+    rule: propertyLineProblem,
+    problems: PROPERTY_LINE_PROBLEMS,
+  },
+  area: { noun: 'area', save: 'Save area', rule: areaProblem, problems: AREA_PROBLEMS },
+} as const satisfies Record<string, DrawSubject>;
+
+/** Plain words for the club API's refusals of a save (of a shape, a stand or a deletion). */
+export function saveError(error: unknown, noun: string): string {
   if (error instanceof ClubApiRequestError) {
     switch (error.code) {
       case 'invalid':
         return error.message;
       case 'forbidden':
-        return 'Only club admins can change the property line.';
+        return `Only club admins can change the ${noun}.`;
       case 'network':
         return 'No connection. Try again when you are online.';
     }
   }
-  return 'Could not save the property line. Try again.';
+  return `Could not save the ${noun}. Try again.`;
 }
 
-/** What the line still needs before it can be saved. */
-const STILL_NEEDED = {
-  open: 'Close the shape to save it: tap the first corner, or Close shape.',
-  ...PROPERTY_LINE_PROBLEMS,
-} as const;
+/** What an open shape still needs before it can be saved. */
+const OPEN = 'Close the shape to save it: tap the first corner, or Close shape.';
 
 function Action(props: {
   icon: LucideIcon;
@@ -212,28 +300,36 @@ export function DrawControls(props: {
   onSave: (boundary: Polygon) => Promise<void>;
   onCancel: () => void;
   layout?: 'plate' | 'bar';
+  /** What is drawn (default: the property line). */
+  subject?: DrawSubject;
+  /** More fields for what is drawn (an area's name, its delete), shown with the count. */
+  fields?: ReactNode;
+  /** A check of those fields before the shape's own: what to fix, or null. */
+  validate?: () => string | null;
 }) {
   const { state, dispatch } = props;
+  const subject: DrawSubject = props.subject ?? DRAW_SUBJECTS.line;
+  const stillNeeded = (problem: string) =>
+    problem === 'open' ? OPEN : (subject.problems[problem] ?? problem);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [more, setMore] = useState(false);
-  const moreButton = useRef<HTMLButtonElement>(null);
-  const panelId = useId();
-  const problem = drawProblem(state);
+  const problem = drawProblem(state, subject.rule);
   const n = state.corners.length;
   const act = (action: DrawAction) => {
     setError(null);
     dispatch(action);
   };
   const save = async () => {
-    // The shared rule first: a line it refuses is never sent.
-    if (problem) return setError(STILL_NEEDED[problem]);
+    // The fields, then the shared rule: a shape it refuses is never sent.
+    const invalid = props.validate?.();
+    if (invalid) return setError(invalid);
+    if (problem) return setError(stillNeeded(problem));
     setBusy(true);
     setError(null);
     try {
       await props.onSave(drawnPolygon(state));
     } catch (e) {
-      setError(saveError(e));
+      setError(saveError(e, subject.noun));
       setBusy(false);
     }
   };
@@ -260,7 +356,7 @@ export function DrawControls(props: {
   );
   const notes = (
     <>
-      {state.closed && problem ? <p className="draw__problem">{STILL_NEEDED[problem]}</p> : null}
+      {state.closed && problem ? <p className="draw__problem">{stillNeeded(problem)}</p> : null}
       {error ? (
         <p className="draw__error" role="alert">
           {error}
@@ -294,7 +390,7 @@ export function DrawControls(props: {
   );
   const saveButton = (
     <Button variant="primary" size="sm" loading={busy} onClick={() => void save()}>
-      Save line
+      {subject.save}
     </Button>
   );
   const cancel = (
@@ -303,52 +399,31 @@ export function DrawControls(props: {
     </Button>
   );
 
-  if (props.layout === 'bar') {
-    // Esc closes More tools and gives focus back to its button.
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || !more) return;
-      e.preventDefault();
-      setMore(false);
-      moreButton.current?.focus();
-    };
+  if (props.layout === 'bar')
     return (
-      <div
-        className="draw-bar"
-        role="group"
-        aria-label="Drawing the property line"
-        onKeyDown={onKeyDown}
-      >
-        {more ? (
-          <div id={panelId} className="draw-bar__more">
+      <ToolsBar
+        label={`Drawing the ${subject.noun}`}
+        panel={
+          <>
             {how}
             <div className="draw__actions">
               {tools}
               {cancel}
             </div>
-          </div>
-        ) : null}
+          </>
+        }
+        lead={count}
+        action={saveButton}
+      >
+        {props.fields}
         {notes}
-        <div className="draw-bar__row">
-          {count}
-          <Button
-            ref={moreButton}
-            size="sm"
-            icon={more ? ChevronDown : Ellipsis}
-            aria-expanded={more}
-            aria-controls={more ? panelId : undefined}
-            onClick={() => setMore((open) => !open)}
-          >
-            More tools
-          </Button>
-          {saveButton}
-        </div>
-      </div>
+      </ToolsBar>
     );
-  }
   return (
     <div className="draw">
       {how}
       {count}
+      {props.fields}
       {notes}
       <div className="draw__actions">{tools}</div>
       <div className="draw__actions">

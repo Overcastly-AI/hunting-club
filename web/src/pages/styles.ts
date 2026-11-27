@@ -111,6 +111,8 @@ const clubview = `
   margin: 0 0 ${gap(2)}; }
 .side-section__count { color: ${color('textSecondary')}; }
 .side-section__empty-state { border-top: ${HAIR}; }
+.side-section__tools { display: grid; gap: ${gap(3)}; padding-top: ${gap(3)}; border-top: ${HAIR}; }
+.side-section__hint { ${text('body')}; color: ${color('textSecondary')}; margin: 0; }
 .side-section__empty-state .ui-empty { padding: ${gap(4)} 0 ${gap(2)}; }
 .your-name .form-plate { padding-top: ${gap(3)}; border-top: ${HAIR}; }
 .rows { list-style: none; margin: 0; padding: 0; }
@@ -124,7 +126,9 @@ const clubview = `
   padding: 0 ${gap(1)}; color: ${color('text')}; text-decoration: none; border-radius: var(--radius-sm); }
 .row-link:hover { background: ${color('raised')}; }
 .row-link__label { ${text('body')}; color: ${color('textSecondary')}; }
-/* Drawing on a phone: the map fills the screen between the top bar and the tab bar. */
+/* Drawing on a phone: the map fills the screen between the top bar and the tab bar (and an
+   editor opened from below the map scrolls it to just under the top bar). */
+${PHONE} { .clubview { scroll-margin-top: ${SHELL.topBarHeight}px; } }
 ${PHONE} { .clubview--drawing .clubview__map { height: calc(100dvh - ${SHELL.topBarHeight + MOBILE_TAB_BAR_HEIGHT}px);
   min-height: ${SHELL.phoneMapHeight}px; } }
 ${TABLET_UP} { .clubview__plate { right: auto; width: min(460px, calc(100% - 2 * ${gap(4)})); top: ${gap(4)}; left: ${gap(4)}; } }

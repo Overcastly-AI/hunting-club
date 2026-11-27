@@ -1,5 +1,7 @@
-import { ClubCreateSchema, ClubUpdateSchema } from '../club';
+import { AreaCreateSchema, AreaUpdateSchema, ClubCreateSchema, ClubUpdateSchema } from '../club';
 import {
+  AREA_PROBLEMS,
+  areaProblem,
   PROPERTY_LINE_LIMITS,
   PROPERTY_LINE_PROBLEMS,
   propertyLinePolygon,
@@ -95,5 +97,29 @@ describe('the property line rule', () => {
     expect(
       ClubCreateSchema.safeParse({ name: 'Oak', boundary: propertyLinePolygon(square(1)) }).success,
     ).toBe(false);
+  });
+});
+
+describe('the area rule', () => {
+  it('is the shape rule alone: corners and sides that do not cross, any size', () => {
+    // Smaller than a property may be (a food plot) and bigger than a pack: both fine for an area.
+    expect(areaProblem(propertyLinePolygon(square(0.0005)))).toBeNull();
+    expect(areaProblem(propertyLinePolygon(square(1)))).toBeNull();
+    expect(areaProblem(propertyLinePolygon(square(0.01).slice(0, 2)))).toBe('tooFewPoints');
+    const bowTie = propertyLinePolygon([
+      [-90, 40],
+      [-89.99, 40.01],
+      [-89.99, 40],
+      [-90, 40.01],
+    ]);
+    expect(areaProblem(bowTie)).toBe('crosses');
+    const create = AreaCreateSchema.safeParse({ name: 'Bow Tie', boundary: bowTie });
+    expect(create.success).toBe(false);
+    expect(create.error!.issues[0]!.message).toBe(AREA_PROBLEMS.crosses);
+    expect(AreaUpdateSchema.safeParse({ boundary: bowTie }).success).toBe(false);
+    expect(
+      AreaCreateSchema.safeParse({ name: 'Plot', boundary: propertyLinePolygon(square(0.0005)) })
+        .success,
+    ).toBe(true);
   });
 });

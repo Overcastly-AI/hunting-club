@@ -108,6 +108,25 @@ export function fakeClubApi(
     listMembers: offline(() => [member]),
     listStands: offline(() => [stand(1, 'Creek Stand'), stand(2, 'Ridge Ladder')]),
     listAreas: offline(() => []),
+    // The app reads stands and areas; only the web admin edits them.
+    createStand: offline(() => {
+      throw new ClubApiRequestError('forbidden', 403);
+    }),
+    updateStand: offline(() => {
+      throw new ClubApiRequestError('forbidden', 403);
+    }),
+    deleteStand: offline(() => {
+      throw new ClubApiRequestError('forbidden', 403);
+    }),
+    createArea: offline(() => {
+      throw new ClubApiRequestError('forbidden', 403);
+    }),
+    updateArea: offline(() => {
+      throw new ClubApiRequestError('forbidden', 403);
+    }),
+    deleteArea: offline(() => {
+      throw new ClubApiRequestError('forbidden', 403);
+    }),
     listHarvests: offline(() => []),
     listInvites: offline(() => []),
     createInvite: offline(() => {

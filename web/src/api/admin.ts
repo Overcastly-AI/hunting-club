@@ -80,7 +80,7 @@ export function adminApi(client: ClubApiClient, session?: Pick<ClubSession, 'use
     if (!id) throw new NoClubError();
     return onClub(id, call, retry);
   };
-  /** A change (property line, invite, map pack, Checkout, billing portal): never retried on another club. */
+  /** A change (property line, stand, area, invite, map pack, Checkout, billing portal): never retried on another club. */
   const changeClub = <T>(call: (clubId: string) => Promise<T>) => withClub(call, false);
 
   return {
@@ -127,6 +127,12 @@ export function adminApi(client: ClubApiClient, session?: Pick<ClubSession, 'use
     listInvites: () => withClub((id) => client.listInvites(id)),
     listStands: () => withClub((id) => client.listStands(id)),
     listAreas: () => withClub((id) => client.listAreas(id)),
+    createStand: (stand) => changeClub((id) => client.createStand(id, stand)),
+    updateStand: (standId, patch) => changeClub((id) => client.updateStand(id, standId, patch)),
+    deleteStand: (standId) => changeClub((id) => client.deleteStand(id, standId)),
+    createArea: (area) => changeClub((id) => client.createArea(id, area)),
+    updateArea: (areaId, patch) => changeClub((id) => client.updateArea(id, areaId, patch)),
+    deleteArea: (areaId) => changeClub((id) => client.deleteArea(id, areaId)),
     listHarvests: () => withClub((id) => client.listHarvests(id)),
     listMapPacks: () => withClub((id) => client.listMapPacks(id)),
     requestMapPack: (basemap) => changeClub((id) => client.requestMapPack(id, { basemap })),

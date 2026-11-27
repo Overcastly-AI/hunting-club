@@ -22,7 +22,11 @@ import {
   SubscriptionResponseSchema,
 } from './api';
 import {
+  type AreaCreate,
+  AreaCreateSchema,
   AreaSchema,
+  type AreaUpdate,
+  AreaUpdateSchema,
   HarvestSchema,
   ClubSchema,
   type ClubUpdate,
@@ -35,7 +39,11 @@ import {
   MemberProfileUpdateSchema,
   MemberSchema,
   PlanSchema,
+  type StandCreate,
+  StandCreateSchema,
   StandSchema,
+  type StandUpdate,
+  StandUpdateSchema,
 } from './club';
 import { CLUB_API_ERRORS, type ClubApiError } from './enums';
 import { type FetchLike, readJson } from './http';
@@ -146,7 +154,25 @@ export function createClubApiClient(options: ClubApiClientOptions) {
       ),
     listStands: (clubId: string) =>
       call('GET', API_PATHS.stands, club(clubId), z.array(StandSchema)),
+    /** Admin: places a stand (the server assigns its id and radio id). */
+    createStand: async (clubId: string, stand: StandCreate) =>
+      call('POST', API_PATHS.stands, club(clubId), StandSchema, StandCreateSchema.parse(stand)),
+    /** Admin: moves, renames or retypes a stand. */
+    updateStand: async (clubId: string, id: string, patch: StandUpdate) =>
+      call('PATCH', API_PATHS.stand, { clubId, id }, StandSchema, StandUpdateSchema.parse(patch)),
+    /** Admin: removes a stand. */
+    deleteStand: (clubId: string, id: string) =>
+      call('DELETE', API_PATHS.stand, { clubId, id }, z.undefined()),
     listAreas: (clubId: string) => call('GET', API_PATHS.areas, club(clubId), z.array(AreaSchema)),
+    /** Admin: adds an area (its shape checked by the shared rule first). */
+    createArea: async (clubId: string, area: AreaCreate) =>
+      call('POST', API_PATHS.areas, club(clubId), AreaSchema, AreaCreateSchema.parse(area)),
+    /** Admin: renames an area or redraws it. */
+    updateArea: async (clubId: string, id: string, patch: AreaUpdate) =>
+      call('PATCH', API_PATHS.area, { clubId, id }, AreaSchema, AreaUpdateSchema.parse(patch)),
+    /** Admin: removes an area. */
+    deleteArea: (clubId: string, id: string) =>
+      call('DELETE', API_PATHS.area, { clubId, id }, z.undefined()),
     /** The club's harvests the caller may see (their own, plus everyone's shared ones). */
     listHarvests: (clubId: string) =>
       call('GET', API_PATHS.harvests, club(clubId), z.array(HarvestSchema)),

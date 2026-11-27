@@ -2,7 +2,7 @@
 // the map's own colours (the same in both themes, like the picture); stands and their plates
 // are chrome, so they follow the theme.
 import { boundary, opacity, sizes, themeVar } from '@huntclub/design';
-import { color, gap, HAIR, PHONE, TAP, text } from '../components/ui/styles/shared';
+import { color, gap, HAIR, PHONE, TAP, text, visuallyHidden } from '../components/ui/styles/shared';
 import { DRAW_BAR_HEIGHT } from './plan';
 
 /** A map colour from @huntclub/design (`--color-*`, not themed). */
@@ -84,8 +84,10 @@ export const mapCss = () => `
   min-height: ${DRAW_BAR_HEIGHT}px; padding: ${gap(2)} ${gap(3)}; background: ${color('plate')}; border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   box-shadow: ${color('shadowPlate')}; }
 .draw-bar__row { display: flex; align-items: center; gap: ${gap(2)}; }
-.draw-bar__row .draw__count { flex: 1; min-width: 0; }
+.draw-bar__row .draw__count, .draw-bar__space { flex: 1; min-width: 0; }
 .draw-bar__more { display: grid; gap: ${gap(2)}; padding-bottom: ${gap(2)}; border-bottom: ${HAIR}; }
+/* A phone keeps the stand editor short: the how-to is read out, not shown. */
+${PHONE} { .draw--stand .draw__how { ${visuallyHidden} } }
 ${PHONE} { .plan__controls { right: ${gap(2)}; bottom: ${gap(6)}; max-width: calc(100% - 2 * ${gap(2)}); } }
 .plan__empty { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: min(36ch, calc(100% - 2 * ${gap(4)}));
   padding: ${gap(3)} ${gap(4)}; border-radius: var(--radius-lg); background: ${color('plate')};
@@ -99,6 +101,10 @@ ${PHONE} { .plan__controls { right: ${gap(2)}; bottom: ${gap(6)}; max-width: cal
 .stand-facts dd { ${text('body')}; margin: 0; min-width: 0; }
 .stand-facts__type { display: flex; align-items: center; gap: ${gap(2)}; }
 .stand-facts__notes { white-space: pre-line; overflow-wrap: anywhere; }
+.stand-edit { margin-top: ${gap(4)}; }
+.draw__confirm { display: grid; gap: ${gap(2)}; flex: 1 1 100%; }
+.draw__fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: ${gap(3)}; }
+.plan__area-button .plan__label { pointer-events: none; }
 .stand-harvests { display: grid; gap: ${gap(3)}; justify-items: start; margin-top: ${gap(6)}; }
 .stand-harvests > .rows { justify-self: stretch; }
 .stand-harvests__title { ${text('title3')}; margin: 0; }

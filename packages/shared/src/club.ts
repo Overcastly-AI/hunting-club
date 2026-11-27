@@ -7,7 +7,7 @@
 // is written once.
 import { z } from 'zod';
 import { CLUB_NAME_MAX } from './limits';
-import { propertyLineSchema } from './propertyLine';
+import { areaShapeSchema, propertyLineSchema } from './propertyLine';
 import {
   displayNameSchema,
   initialsSchema,
@@ -262,15 +262,17 @@ const placeFields = {
 const placeIdentity = { id: idSchema, clubId: idSchema, meshId: meshIdSchema };
 
 const areaEditable = { ...placeFields, boundary: polygonSchema };
+/** What a client may send for an area: its shape must pass the shared rule (propertyLine.ts). */
+const areaInput = { ...areaEditable, boundary: areaShapeSchema };
 
 export const AreaSchema = z.object({ ...placeIdentity, ...areaEditable, ...timestamps });
 export type Area = z.infer<typeof AreaSchema>;
 export const AreaCreateSchema = z.strictObject({
-  ...areaEditable,
+  ...areaInput,
   active: placeFields.active.default(true),
 });
 export type AreaCreate = z.input<typeof AreaCreateSchema>;
-export const AreaUpdateSchema = z.strictObject(areaEditable).partial();
+export const AreaUpdateSchema = z.strictObject(areaInput).partial();
 export type AreaUpdate = z.input<typeof AreaUpdateSchema>;
 
 const standEditable = {

@@ -1,6 +1,10 @@
 import type { ChannelSet } from '@huntclub/mesh';
 import type {
   Area,
+  AreaCreate,
+  AreaUpdate,
+  StandCreate,
+  StandUpdate,
   Club,
   ClubCreateRequest,
   Harvest,
@@ -68,6 +72,14 @@ export interface ClubApi {
   getClubChannelSet(): Promise<ChannelSet>;
   listStands(): Promise<readonly Stand[]>;
   listAreas(): Promise<readonly Area[]>;
+  /** Admins: places, moves, renames, retypes and removes stands (the shared schemas check them). */
+  createStand(stand: StandCreate): Promise<Stand>;
+  updateStand(id: string, patch: StandUpdate): Promise<Stand>;
+  deleteStand(id: string): Promise<void>;
+  /** Admins: draws, renames, redraws and removes areas (the shared shape rule checks them). */
+  createArea(area: AreaCreate): Promise<Area>;
+  updateArea(id: string, patch: AreaUpdate): Promise<Area>;
+  deleteArea(id: string): Promise<void>;
   getSubscription(): Promise<Subscription | null>;
   /** Stripe's customer portal URL for the club's subscription (admins only). */
   openBillingPortal(): Promise<string>;

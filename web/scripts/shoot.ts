@@ -83,6 +83,17 @@ const openStand = async (page: Page) => {
   await page.waitForSelector('.ui-dialog--side[open] .stand-facts');
   await page.waitForTimeout(250);
 };
+/** My club with a placed stand open in the stand editor (from its details: Edit stand). */
+const editStand = async (page: Page) => {
+  await openStand(page);
+  await page.getByRole('button', { name: 'Edit stand' }).click();
+  await page.waitForSelector('.draw__stand');
+};
+/** My club with an area open in the area editor (from the Stands and areas list). */
+const editArea = async (page: Page) => {
+  await page.getByRole('button', { name: 'Edit North 40' }).click();
+  await page.waitForSelector('.draw__corner');
+};
 const openClubSwitcher = async (page: Page) => {
   await page.getByRole('button', { name: /Club:/ }).click();
   await page.waitForTimeout(250);
@@ -136,6 +147,8 @@ const SHOTS: readonly Shot[] = [
   { name: 'signin-code', scenario: 'signedOut', hash: '', act: codeStep },
   { name: 'my-club', scenario: 'trial', hash: '#/club' },
   { name: 'my-club-stand', scenario: 'trial', hash: '#/club', act: openStand },
+  { name: 'my-club-stand-edit', scenario: 'trial', hash: '#/club', act: editStand },
+  { name: 'my-club-area-edit', scenario: 'trial', hash: '#/club', act: editArea },
   { name: 'roster', scenario: 'trial', hash: '#/roster' },
   { name: 'roster-invite', scenario: 'trial', hash: '#/roster', act: openInvite },
   { name: 'roster-empty', scenario: 'alone', hash: '#/roster', only: ONCE_EACH },

@@ -1,6 +1,9 @@
-// The property line rule: one source for the club API (which refuses a bad line in the club
-// create and update requests, club.ts) and the web admin's draw tool (which says why first).
-// A line is a GeoJSON Polygon or MultiPolygon; each outer ring is checked.
+// The shape rules for drawn polygons: one source for the club API (which refuses a bad property
+// line in the club create and update requests, and a bad area in the area requests, club.ts) and
+// the web admin's draw tool (which says why first). A shape is a GeoJSON Polygon or
+// MultiPolygon; each outer ring is checked. Every shape needs enough corners and sides that do
+// not cross; a property line must also be big enough to be a property and small enough for a
+// map pack.
 import { z } from 'zod';
 import { polygonSchema, type Polygon } from './fields';
 import { BASEMAP_IDS, estimateClubPack, type Ring } from './maps';
@@ -18,8 +21,10 @@ export const PROPERTY_LINE_LIMITS = {
   minAcres: 1,
 } as const;
 
-export type PropertyLineProblem =
-  'tooFewPoints' | 'tooManyPoints' | 'crosses' | 'tooSmall' | 'tooBig';
+/** What any drawn shape can get wrong. */
+export type ShapeProblem = 'tooFewPoints' | 'tooManyPoints' | 'crosses';
+
+export type PropertyLineProblem = ShapeProblem | 'tooSmall' | 'tooBig';
 
 /** What the draw tool says, and the club API's refusal message. */
 export const PROPERTY_LINE_PROBLEMS: Record<PropertyLineProblem, string> = {
@@ -28,6 +33,13 @@ export const PROPERTY_LINE_PROBLEMS: Record<PropertyLineProblem, string> = {
   crosses: 'The line crosses itself. Move a corner so the sides do not cross.',
   tooSmall: `The property must be at least ${PROPERTY_LINE_LIMITS.minAcres} acre.`,
   tooBig: 'The property is too big for one map pack. Draw a smaller area.',
+};
+
+/** What the draw tool says about an area, and the club API's refusal message. */
+export const AREA_PROBLEMS: Record<ShapeProblem, string> = {
+  tooFewPoints: `An area needs at least ${PROPERTY_LINE_LIMITS.minPoints} corners.`,
+  tooManyPoints: `An area can have up to ${PROPERTY_LINE_LIMITS.maxPoints} corners.`,
+  crosses: PROPERTY_LINE_PROBLEMS.crosses,
 };
 
 /** A ring's corners: no closing repeat and no corner twice in a row. */
@@ -121,16 +133,23 @@ function outerRings(polygon: { type: string; coordinates: unknown }): Ring[] {
     : [ring(coordinates[0])];
 }
 
-/** Why a property line is refused, or null when it is a good one. */
-export function propertyLineProblem(polygon: {
-  type: string;
-  coordinates: unknown;
-}): PropertyLineProblem | null {
+type Shape = { type: string; coordinates: unknown };
+
+/** Why a drawn shape is refused (corners, crossing sides), or null when it is a good one. */
+export function shapeProblem(polygon: Shape): ShapeProblem | null {
   const rings = outerRings(polygon);
   if (rings.length === 0 || rings.some((r) => r.length < PROPERTY_LINE_LIMITS.minPoints))
     return 'tooFewPoints';
   if (rings.some((r) => r.length > PROPERTY_LINE_LIMITS.maxPoints)) return 'tooManyPoints';
   if (rings.some(ringCrossesItself)) return 'crosses';
+  return null;
+}
+
+/** Why a property line is refused, or null when it is a good one. */
+export function propertyLineProblem(polygon: Shape): PropertyLineProblem | null {
+  const shape = shapeProblem(polygon);
+  if (shape) return shape;
+  const rings = outerRings(polygon);
   if (rings.reduce((sum, r) => sum + ringAcres(r), 0) < PROPERTY_LINE_LIMITS.minAcres)
     return 'tooSmall';
   // Every basemap's map pack must be buildable: the same size rule the map-pack request uses.
@@ -139,8 +158,21 @@ export function propertyLineProblem(polygon: {
   return null;
 }
 
+/** Why an area is refused, or null when it is a good one (the shape rule alone). */
+export const areaProblem = (polygon: Shape): ShapeProblem | null => shapeProblem(polygon);
+
+/** A schema for a drawn shape that refuses what `problem` refuses, in `words`. */
+const shapeSchema = <P extends string>(
+  problem: (polygon: Shape) => P | null,
+  words: Record<P, string>,
+) =>
+  polygonSchema.superRefine((polygon, ctx) => {
+    const found = problem(polygon);
+    if (found) ctx.addIssue({ code: 'custom', message: words[found] });
+  });
+
 /** A property line the club API accepts (club create and update requests). */
-export const propertyLineSchema = polygonSchema.superRefine((polygon, ctx) => {
-  const problem = propertyLineProblem(polygon);
-  if (problem) ctx.addIssue({ code: 'custom', message: PROPERTY_LINE_PROBLEMS[problem] });
-});
+export const propertyLineSchema = shapeSchema(propertyLineProblem, PROPERTY_LINE_PROBLEMS);
+
+/** An area the club API accepts (area create and update requests). */
+export const areaShapeSchema = shapeSchema(areaProblem, AREA_PROBLEMS);

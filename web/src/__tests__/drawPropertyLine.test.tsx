@@ -17,27 +17,12 @@ import { DEFAULT_VIEW, DRAW_BAR_HEIGHT, panView, viewProjection, zoomView } from
 import { SAMPLE_PLAN } from '../map/sampleProperty';
 import { renderSignedIn } from '../testing/app';
 import { sampleData } from '../testing/fakeClubApi';
+import { ground, MAP_H, MAP_W, tap, translateOf, usePointerEvents } from '../testing/mapPointer';
 
-/**
- * jsdom's PointerEvent drops the mouse fields (clientX, button) a test gives it: a MouseEvent
- * with a pointerId stands in, as browsers' PointerEvent is.
- */
-class TestPointerEvent extends MouseEvent {
-  readonly pointerId: number;
-  constructor(type: string, init: MouseEventInit & { pointerId?: number } = {}) {
-    super(type, init);
-    this.pointerId = init.pointerId ?? 1;
-  }
-}
-beforeEach(() => vi.stubGlobal('PointerEvent', TestPointerEvent));
-afterEach(() => {
-  vi.unstubAllGlobals();
-  vi.restoreAllMocks();
-});
+usePointerEvents();
 
-/** jsdom lays nothing out: every map is its 960 by 640 fallback, at the page's top left. */
-const W = 960;
-const H = 640;
+const W = MAP_W;
+const H = MAP_H;
 
 const lonLat = (x: number, y: number) =>
   viewProjection({ lon: -90, lat: 40, zoom: 16 }, W, H).unproject(x, y);
@@ -182,19 +167,8 @@ describe('live basemap tiles', () => {
   });
 });
 
-/** The ground of My club's map (the picture that takes taps and drags). */
-const ground = () => screen.getByRole('img', { name: /^Map of Oak Ridge Hunt Club/ });
-const tap = (x: number, y: number) => {
-  fireEvent.pointerDown(ground(), { clientX: x, clientY: y, pointerId: 1 });
-  fireEvent.pointerUp(ground(), { clientX: x, clientY: y, pointerId: 1 });
-};
 const corners = () => within(screen.getByRole('group', { name: 'Property line corners' }));
-const cornerAt = (el: Element) =>
-  el
-    .getAttribute('transform')!
-    .match(/translate\(([-\d.]+) ([-\d.]+)\)/)!
-    .slice(1)
-    .map(Number) as [number, number];
+const cornerAt = translateOf;
 
 /** My club for a club with no property line yet, zoomed in to about 2 m per px. */
 async function noLineYet() {

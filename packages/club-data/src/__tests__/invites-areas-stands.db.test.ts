@@ -1,5 +1,6 @@
 // Port of supabase/tests/database/40_invites_areas_stands.test.sql: invites (admins
 // only), areas and stands (members read, admins write).
+import { propertyLinePolygon } from '@huntclub/shared';
 import { SERVICE } from '../index';
 import { POLYGON, World, expectCode } from '../testing/world';
 
@@ -78,6 +79,19 @@ describe('areas', () => {
       boundary: POLYGON,
     });
     expect(area).toMatchObject({ name: 'Creek Bottom', active: true, meshId: 2 });
+  });
+
+  it('the shared shape rule refuses an area that crosses itself', async () => {
+    const bowTie = propertyLinePolygon([
+      [-90, 40],
+      [-89.99, 40.01],
+      [-89.99, 40],
+      [-90, 40.01],
+    ]);
+    await expectCode(
+      w.data.createArea(w.as('ada'), oak(), { name: 'Bow Tie', boundary: bowTie }),
+      'invalid',
+    );
   });
 
   it('an expired guest sees no areas', async () => {

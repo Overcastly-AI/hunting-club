@@ -166,6 +166,13 @@ export function ClubMap(props: {
   onStandSelect?: (stand: PlanStand) => void;
   /** The stand whose details are open: its marker is drawn as the selected item. */
   selectedStandId?: string | null;
+  /** Makes each area's name a button that calls this with it (an admin edits the area). */
+  onAreaSelect?: (area: PlanArea) => void;
+  /**
+   * Brings a point into the open map once per `key` (what an editor opened): across the middle,
+   * halfway between `top` px (a plate's bottom) and the controls. `top` 0 waits for it.
+   */
+  focus?: { key: string; at: [number, number]; top: number } | null;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const size = useElementSize(box, FALLBACK_SIZE);
@@ -209,6 +216,19 @@ export function ClubMap(props: {
   useEffect(() => {
     if (pin && !view && shown.current) setView(shown.current);
   }, [pin]);
+  const focused = useRef<string | null>(null);
+  const focus = props.focus;
+  useEffect(() => {
+    if (!focus) {
+      focused.current = null;
+      return;
+    }
+    if (focus.top <= 0 || focused.current === focus.key || !shown.current) return;
+    focused.current = focus.key;
+    const bottom = height - footer - (interactive ? controlsSize.height + EDGE : EDGE);
+    const centred = { ...shown.current, lon: focus.at[0], lat: focus.at[1] };
+    setView(panView(centred, 0, (focus.top + bottom) / 2 - height / 2));
+  }, [focus?.key, focus?.top]);
   const frame = (): DOMRect | undefined => box.current?.getBoundingClientRect();
   const live = props.live && projection ? liveBasemap(props.live, projection, width, height) : null;
   // The pack shows under live tiles of its own basemap only, so the credit is always one.
@@ -310,6 +330,16 @@ export function ClubMap(props: {
           />
         ) : null}
       </svg>
+      {/* Like the names they are, only where there is room beside the stands (tablet up). */}
+      {projection && props.onAreaSelect && areaNames ? (
+        <AreaButtons
+          areas={props.areas}
+          projection={projection}
+          width={width}
+          height={height}
+          onSelect={props.onAreaSelect}
+        />
+      ) : null}
       {projection && props.onStandSelect ? (
         <StandButtons
           stands={props.stands}
@@ -465,8 +495,9 @@ function Drawing(
           <path className="plan__line-inner" d={ringsPath(boundary, projection)} />
         </>
       ) : null}
-      {/* Small maps leave names to the lists beside them: labels would sit on the stands. */}
-      {!props.areaNames
+      {/* Small maps leave names to the lists beside them: labels would sit on the stands. Areas
+          that open for editing are buttons, drawn on the layer above (AreaButtons). */}
+      {!props.areaNames || props.onAreaSelect
         ? null
         : props.areas.map((area) => {
             const at = ringsLabelPoint(polygonRings(area.boundary));
@@ -561,6 +592,70 @@ function Grid(props: { step: number; origin: [number, number]; width: number; he
         ...ys.map((y) => `M0 ${y.toFixed(1)} H${width}`),
       ].join(' ')}
     />
+  );
+}
+
+/**
+ * The areas' names as buttons, on a layer over the picture (an admin opens an area to edit it):
+ * each name sits where the plan puts it, over a 48 px tall target, and opens with a tap, Enter
+ * or Space. The layer lets every other tap through to the map.
+ */
+function AreaButtons(props: {
+  areas: readonly PlanArea[];
+  projection: Projection;
+  width: number;
+  height: number;
+  onSelect: (area: PlanArea) => void;
+}) {
+  const { width, height } = props;
+  return (
+    <svg
+      className="plan__svg plan__stands"
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      role="group"
+      aria-label="Areas"
+    >
+      {props.areas.map((area) => {
+        const at = ringsLabelPoint(polygonRings(area.boundary));
+        if (!at) return null;
+        const [x, y] = props.projection.project(...at);
+        const open = () => props.onSelect(area);
+        const wide = Math.max(
+          HIT,
+          textWidth(area.name, fontSize.mapLabelMin, fontWidth.markerDetail) + 2 * PLATE_PAD,
+        );
+        return (
+          <g
+            key={area.id}
+            transform={`translate(${x.toFixed(1)} ${(y + AREA_LABEL_DROP).toFixed(1)})`}
+            className="plan__stand--button plan__area-button"
+            role="button"
+            tabIndex={0}
+            aria-label={`${area.name}, area`}
+            onClick={open}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter' && e.key !== ' ') return;
+              e.preventDefault();
+              open();
+            }}
+          >
+            <rect
+              className="plan__stand-hit"
+              x={-wide / 2}
+              y={-HIT / 2 - 4}
+              width={wide}
+              height={HIT}
+              rx={radii.md}
+            />
+            <text className="plan__label" textAnchor="middle">
+              {area.name}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
   );
 }
 
