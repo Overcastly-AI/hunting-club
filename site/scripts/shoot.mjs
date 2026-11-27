@@ -50,7 +50,7 @@ const PAGES = [
 ];
 const THEMES = { dark: 'dark', daylight: 'light' };
 // Widths checked for sideways scroll, and (on the home page) for a full-bleed map hero.
-const CHECK_WIDTHS = [NARROWEST_PHONE, PHONE, 768, 1024, 1280, 1440, 1600, MAP_COVERED_WIDTH];
+const CHECK_WIDTHS = [NARROWEST_PHONE, PHONE, 600, 768, 1024, 1280, 1440, 1600, MAP_COVERED_WIDTH];
 const TYPES = {
   '.html': 'text/html',
   '.css': 'text/css',
