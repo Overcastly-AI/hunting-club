@@ -1,4 +1,4 @@
-import { INITIALS_MAX, MEMBER_ROLE_LABELS, signInCopy } from '@huntclub/shared';
+import { MEMBER_ROLE_LABELS, signInCopy } from '@huntclub/shared';
 
 /** Every word the club screens show. Plain language; never channels or keys (CLAUDE.md). */
 export const clubCopy = {
@@ -22,8 +22,6 @@ export const clubCopy = {
   join: {
     title: 'Join club',
     intro: 'Tell your club who you are. This shows on the club roster.',
-    name: 'Your name',
-    initials: `Initials (up to ${INITIALS_MAX})`,
     join: 'Join club',
     joined: 'You joined the club on the radio.',
     signInToFinish: 'Sign in to finish joining',

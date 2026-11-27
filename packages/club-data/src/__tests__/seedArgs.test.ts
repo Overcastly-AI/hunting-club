@@ -41,4 +41,9 @@ it('takes the display name from an email exactly as typed, and initials from its
   });
   expect(profileFromEmail('uat@example.com')).toEqual({ displayName: 'uat', initials: 'U' });
   expect(profileFromEmail('@example.com')).toEqual({ displayName: 'UAT Admin', initials: 'UA' });
+  // A local part the name rules refuse (underscore) is not used as a name.
+  expect(profileFromEmail('jane_doe+uat@example.com')).toEqual({
+    displayName: 'UAT Admin',
+    initials: 'UA',
+  });
 });

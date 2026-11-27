@@ -164,6 +164,32 @@ describe('club API client', () => {
     });
   });
 
+  it("updates a member's name with PATCH, normalized by the shared rule, and refuses a bad one", async () => {
+    const USER = '64d824c8-a0d1-70a9-fdfc-1f8138e91b49';
+    const member = {
+      clubId: CLUB,
+      userId: USER,
+      displayName: 'Jane Doe',
+      initials: 'JD',
+      role: 'admin',
+      createdAt: ISO,
+      updatedAt: ISO,
+    };
+    const { api, calls } = client([{ status: 200, body: member }]);
+    expect(
+      await api.updateMemberProfile(CLUB, USER, { displayName: '  Jane   Doe ', initials: 'JD' }),
+    ).toEqual(member);
+    expect(calls[0]).toMatchObject({
+      method: 'PATCH',
+      url: `https://api.test/clubs/${CLUB}/members/${USER}`,
+      body: { displayName: 'Jane Doe', initials: 'JD' },
+    });
+    await expect(
+      api.updateMemberProfile(CLUB, USER, { displayName: 'jane_doe' }),
+    ).rejects.toThrow();
+    expect(calls).toHaveLength(1);
+  });
+
   it('validates the redeem request before sending it', async () => {
     const { api, calls } = client([]);
     await expect(

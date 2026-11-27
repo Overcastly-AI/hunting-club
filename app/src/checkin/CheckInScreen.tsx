@@ -53,8 +53,9 @@ export function slideLabel(changing: boolean, place: string | null): string {
  * Check In tab (docs/DESIGN.md, Check In): a peek of the map, then where you are hunting (at a
  * stand, in an area, right here or on the move), the club's stands nearest first, when an
  * overdue alert would go out, and the slider. Stands are optional: every mode works without one.
+ * `onCheckedIn` runs after a check-in is sent (not a change of mode), e.g. for the name prompt.
  */
-export function CheckInScreen() {
+export function CheckInScreen({ onCheckedIn }: { onCheckedIn?: () => void } = {}) {
   const styles = useStyles();
   const { radio, current } = useCheckInState();
   const now = useNow();
@@ -179,7 +180,9 @@ export function CheckInScreen() {
           <SlideToConfirm
             label={slideLabel(changing, pickedName ?? null)}
             onConfirm={() => {
-              if (result.ok) checkIn(result.placement);
+              if (!result.ok) return;
+              checkIn(result.placement);
+              if (!changing) onCheckedIn?.();
             }}
             disabled={!!missing}
             disabledReason={missing}

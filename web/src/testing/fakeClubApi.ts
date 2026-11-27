@@ -18,6 +18,7 @@ import {
   mapPackKey,
   polygonBounds,
   InviteCreateSchema,
+  MemberProfileUpdateSchema,
   type Area,
   type Club,
   type Harvest,
@@ -241,6 +242,12 @@ export function fakeClubClient(data: FakeClubData = sampleData()): ClubApiClient
     },
     getClub: async () => clubOrThrow(),
     listMembers: async () => data.members,
+    async updateMemberProfile(_clubId, userId, patch) {
+      const member = data.members.find((m) => m.userId === userId);
+      if (!member) throw new ClubApiRequestError('not_found', 404);
+      Object.assign(member, MemberProfileUpdateSchema.parse(patch));
+      return member;
+    },
     listInvites: async () => data.invites,
     async createInvite(clubId, request) {
       const now = new Date().toISOString();

@@ -1,8 +1,10 @@
 import { createTestDatabase } from '../../test-utils/nodeSqlite';
 import {
+  loadNameSkippedAt,
   loadOnboardedAt,
   loadProfile,
   loadThemePreference,
+  markNameSkipped,
   markOnboarded,
   saveProfile,
   saveThemePreference,
@@ -27,6 +29,15 @@ describe('app state', () => {
 
     await saveProfile(db, { displayName: 'Jake Smith', initials: 'JS' });
     expect(await loadProfile(db)).toEqual({ displayName: 'Jake Smith', initials: 'JS' });
+  });
+
+  it('remembers when the hunter skipped the name prompt', async () => {
+    const db = createTestDatabase();
+    await migrate(db, migrations);
+    expect(await loadNameSkippedAt(db)).toBeNull();
+
+    await markNameSkipped(db, 5_678);
+    expect(await loadNameSkippedAt(db)).toBe(5_678);
   });
 
   it('starts on the System theme and remembers the hunter’s choice', async () => {

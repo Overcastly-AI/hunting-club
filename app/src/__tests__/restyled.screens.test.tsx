@@ -43,6 +43,7 @@ import { ALL_LAYERS_ON, MAP_LAYER_LABELS } from '../map/layers';
 import { MESH_QUIET_DETAIL } from '../map/meshStatus';
 import type { MapPack } from '../map/mapPacks';
 import { onboardingCopy } from '../onboarding/copy';
+import { nameCopy } from '../profile/copy';
 import { PermissionsStep } from '../onboarding/PermissionsStep';
 import { radioCopy } from '../radio/copy';
 import { PairRadioScreen } from '../radio/ui/PairRadioScreen';
@@ -315,7 +316,7 @@ const CASES: Record<string, Case> = {
       ),
     ready: clubCopy.join.intro,
     buttons: [clubCopy.join.join],
-    fields: [clubCopy.join.name, clubCopy.join.initials],
+    fields: [nameCopy.nameLabel, nameCopy.initialsLabel],
   },
   'join club, joined (sign in to finish)': {
     ui: async () =>
@@ -324,8 +325,8 @@ const CASES: Record<string, Case> = {
       ),
     ready: clubCopy.join.intro,
     then: async () => {
-      await fireEvent.changeText(screen.getByLabelText(clubCopy.join.name), 'Max');
-      await fireEvent.changeText(screen.getByLabelText(clubCopy.join.initials), 'mx');
+      await fireEvent.changeText(screen.getByLabelText(nameCopy.nameLabel), 'Max');
+      await fireEvent.changeText(screen.getByLabelText(nameCopy.initialsLabel), 'mx');
       await fireEvent.press(screen.getByRole('button', { name: clubCopy.join.join }));
       await screen.findByText(clubCopy.join.joined);
     },

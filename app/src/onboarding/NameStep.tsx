@@ -1,55 +1,30 @@
-import { DISPLAY_NAME_MAX, INITIALS_MAX, suggestInitials } from '@huntclub/shared';
-import { useState } from 'react';
+import type { Owner } from '@huntclub/mesh';
 
-import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
-import { Field } from '../components/Field';
 import type { MyProfile } from '../db/appState';
+import { nameCopy } from '../profile/copy';
+import { NameForm } from '../profile/ProfileFields';
 import { onboardingCopy } from './copy';
-import { parseProfile } from './profile';
 
 type Props = {
   initial?: MyProfile | null;
+  /** The radio paired in the step before, if any: its name is the default. */
+  radio?: Partial<Owner> | null;
   onNext: (profile: MyProfile) => void;
+  /** Leaves the name unset: the first check-in asks once more. */
+  onSkip: () => void;
 };
 
-/** Onboarding "Enter your name and initials". Initials follow the name until edited. */
-export function NameStep({ initial, onNext }: Props) {
-  const copy = onboardingCopy.name;
-  const [displayName, setDisplayName] = useState(initial?.displayName ?? '');
-  const [initials, setInitials] = useState(initial?.initials ?? '');
-  const [initialsEdited, setInitialsEdited] = useState(Boolean(initial));
-  const profile = parseProfile({ displayName, initials });
-
+/** Onboarding "Enter your name and initials" (the name prompt at first run). */
+export function NameStep({ initial, radio, onNext, onSkip }: Props) {
   return (
-    <Screen title={copy.title} description={copy.body}>
-      <Field
-        label={copy.nameLabel}
-        value={displayName}
-        maxLength={DISPLAY_NAME_MAX}
-        autoCapitalize="words"
-        autoComplete="name"
-        onChangeText={(text) => {
-          setDisplayName(text);
-          if (!initialsEdited) setInitials(suggestInitials(text));
-        }}
-      />
-      <Field
-        label={copy.initialsLabel}
-        value={initials}
-        maxLength={INITIALS_MAX}
-        autoCapitalize="characters"
-        onChangeText={(text) => {
-          setInitialsEdited(true);
-          setInitials(text);
-        }}
-      />
-      <Button
-        variant="primary"
-        size="lg"
-        label={copy.continue}
-        disabled={!profile}
-        onPress={() => profile && onNext(profile)}
+    <Screen title={nameCopy.title} description={nameCopy.body}>
+      <NameForm
+        initial={initial}
+        radio={radio}
+        saveLabel={onboardingCopy.name.continue}
+        onSave={onNext}
+        onSkip={onSkip}
       />
     </Screen>
   );

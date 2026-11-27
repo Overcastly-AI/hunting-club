@@ -60,7 +60,7 @@ async function audit(ui: ReactElement) {
 
 describe('onboarding at 200 % text', () => {
   it('welcome', async () => {
-    const problems = await audit(
+    const { view } = await renderWithRadio(
       <OnboardingScreen
         onFinish={jest.fn()}
         onProfile={jest.fn()}
@@ -68,7 +68,7 @@ describe('onboarding at 200 % text', () => {
         onDownloadMap={jest.fn()}
       />,
     );
-    expect(problems).toEqual([]);
+    expect(a11yProblems(view.container)).toEqual([]);
   });
 
   it('pair your radio', async () => {
@@ -82,7 +82,19 @@ describe('onboarding at 200 % text', () => {
   });
 
   it('name and initials', async () => {
-    expect(await audit(<NameStep onNext={jest.fn()} />)).toEqual([]);
+    expect(await audit(<NameStep onNext={jest.fn()} onSkip={jest.fn()} />)).toEqual([]);
+  });
+
+  it('name prompt, prefilled from the radio', async () => {
+    expect(
+      await audit(
+        <NameStep
+          radio={{ longName: 'Dale Earl', shortName: 'DE' }}
+          onNext={jest.fn()}
+          onSkip={jest.fn()}
+        />,
+      ),
+    ).toEqual([]);
   });
 
   it('permissions', async () => {

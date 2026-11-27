@@ -10,6 +10,7 @@ import type {
   MapPackRequestResponse,
   Plan,
   Member,
+  MemberProfileUpdate,
   Stand,
   Subscription,
   BasemapId,
@@ -50,6 +51,8 @@ export interface ClubApi {
   forgetUser(): void;
   createClub(request: ClubCreateRequest): Promise<Club>;
   listMembers(): Promise<readonly Member[]>;
+  /** The signed-in person's own name and initials in the club (any member may change theirs). */
+  updateMyProfile(patch: MemberProfileUpdate): Promise<Member>;
   /** The club's invites, used or not (for Needs you on My club). */
   listInvites(): Promise<readonly Invite[]>;
   createInvite(request: InviteCreate): Promise<Invite>;

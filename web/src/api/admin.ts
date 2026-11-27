@@ -1,5 +1,6 @@
 import {
   chooseClub,
+  ClubApiRequestError,
   isNoClubAccess,
   type ClubApiClient,
   type ClubChoice,
@@ -88,6 +89,12 @@ export function adminApi(client: ClubApiClient, session?: Pick<ClubSession, 'use
     },
     forgetUser: forget,
     listMembers: () => withClub((id) => client.listMembers(id)),
+    async updateMyProfile(patch) {
+      const userId = await currentUser();
+      // Only reachable signed in; without a session there is no one to rename.
+      if (!userId) throw new ClubApiRequestError('forbidden', 403);
+      return changeClub((id) => client.updateMemberProfile(id, userId, patch));
+    },
     createInvite: (request) => changeClub((id) => client.createInvite(id, request)),
     async getClubChannelSet() {
       // The key never leaves this function except inside the invite link; never log it.

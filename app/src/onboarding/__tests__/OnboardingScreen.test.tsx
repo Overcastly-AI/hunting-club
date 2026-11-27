@@ -4,6 +4,7 @@ import { partyCopy } from '../../party/copy';
 import { radioCopy } from '../../radio/copy';
 import { renderWithRadio } from '../../test-utils/renderWithRadio';
 import { resetBluetoothForTests } from '../../test-utils/resetBluetooth';
+import { nameCopy } from '../../profile/copy';
 import { onboardingCopy } from '../copy';
 import { OnboardingScreen } from '../OnboardingScreen';
 
@@ -41,7 +42,7 @@ describe('OnboardingScreen', () => {
     expect(screen.getByText(partyCopy.step.title)).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: radioCopy.pair.setUpLater }));
 
-    await fireEvent.changeText(screen.getByLabelText(onboardingCopy.name.nameLabel), 'Jake Smith');
+    await fireEvent.changeText(screen.getByLabelText(nameCopy.nameLabel), 'Jake Smith');
     expect(onFinish).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByRole('button', { name: onboardingCopy.name.continue }));
 

@@ -297,6 +297,14 @@ ALTER TABLE app_state ADD COLUMN theme_preference TEXT NOT NULL DEFAULT '${DEFAU
   CHECK (theme_preference IN (${sqlList(THEME_PREFERENCES)}));
 `;
 
+/**
+ * When the hunter chose "Skip for now" on the name prompt at their first check-in, so it
+ * is not asked again (they can still set a name on the Party tab).
+ */
+const nameSkipped = `
+ALTER TABLE app_state ADD COLUMN name_skipped_at INTEGER;
+`;
+
 export const migrations: readonly Migration[] = [
   { version: 1, name: 'initial local schema', sql: initialSchema },
   { version: 2, name: 'map pack downloads', sql: mapPackDownloads },
@@ -309,4 +317,5 @@ export const migrations: readonly Migration[] = [
   { version: 9, name: 'chat history', sql: chatHistory },
   { version: 10, name: 'club map packs', sql: clubMapPacks },
   { version: 11, name: 'theme preference', sql: themePreference },
+  { version: 12, name: 'name prompt skipped', sql: nameSkipped },
 ];

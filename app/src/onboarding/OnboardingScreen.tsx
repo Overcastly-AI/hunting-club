@@ -5,6 +5,7 @@ import { Screen } from '../components/Screen';
 import type { MyProfile } from '../db/appState';
 import type { DownloadRequest } from '../map/offline';
 import { PartyStep } from '../party/PartyStep';
+import { useRadio } from '../radio/RadioProvider';
 import { PairRadioStep } from '../radio/ui/PairRadioStep';
 import { onboardingCopy } from './copy';
 import { MapDownloadStep } from './MapDownloadStep';
@@ -44,6 +45,8 @@ export function OnboardingScreen({
   onDownloadMap,
 }: Props) {
   const [index, setIndex] = useState(0);
+  // The radio paired in the step before names the hunter by default.
+  const { radio } = useRadio();
   const step = ONBOARDING_STEPS[index];
   const next = () => (index + 1 < ONBOARDING_STEPS.length ? setIndex(index + 1) : onFinish());
 
@@ -54,7 +57,14 @@ export function OnboardingScreen({
     return <PermissionsStep onNext={next} />;
   }
   if (step === 'name') {
-    return <NameStep initial={profile} onNext={(p) => void onProfile(p).then(next)} />;
+    return (
+      <NameStep
+        initial={profile}
+        radio={radio}
+        onNext={(p) => void onProfile(p).then(next)}
+        onSkip={next}
+      />
+    );
   }
   if (step === 'party') {
     return <PartyStep onNext={next} onClubCode={onClubCode} />;
