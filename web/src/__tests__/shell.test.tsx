@@ -11,7 +11,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { SESSION_EXPIRED } from '../App';
 import { BILLING_ALERT_LABELS } from '../billingStatus';
 import { axeViolations } from '../components/ui/__tests__/axe';
-import { accountAvatarName } from '../shell/Account';
+import { accountIdentity } from '../shell/Account';
 import { MORE_LABEL } from '../shell/Shell';
 import { PAGES, pageHref } from '../shell/routes';
 import { go, renderSignedIn } from '../testing/app';
@@ -63,15 +63,27 @@ describe('navigation', () => {
 });
 
 describe('the account menu', () => {
-  it('takes its initials from the shared email stand-in, never a name made up from the email', () => {
+  it("shows the member's saved name and initials, with the email in the menu", async () => {
+    const data = sampleData();
+    const me = data.members.find((m) => m.userId === SIGNED_IN.userId)!;
+    me.initials = 'DX'; // saved initials win over ones from the name
+    await renderSignedIn(data);
+    const button = await accountButton();
+    await waitFor(() => expect(within(button).getByText(me.displayName)).toBeTruthy());
+    expect(button.querySelector('.ui-avatar')?.textContent).toBe('DX');
+    const menu = await openAccountMenu();
+    expect(within(menu).getByText(me.displayName)).toBeTruthy();
+    expect(within(menu).getByText(SIGNED_IN.email)).toBeTruthy();
+  });
+
+  it('with no club, writes only the email, with initials from its shared stand-in', () => {
     const user = (email?: string) => ({ userId: SIGNED_IN.userId, ...(email ? { email } : {}) });
-    expect(accountAvatarName(user('jane.doe@example.com'))).toBe(
-      emailStandInName('jane.doe@example.com'),
-    );
-    // An underscore is no name: "?" in the avatar, not "JD".
-    expect(accountAvatarName(user('jane_doe@example.com'))).toBe('');
-    expect(accountAvatarName(user())).toBe('');
-    expect(accountAvatarName(undefined)).toBe('');
+    expect(accountIdentity({ user: user('jane_doe@example.com'), me: null })).toEqual({
+      name: undefined,
+      avatar: { name: emailStandInName('jane_doe@example.com') },
+    });
+    expect(accountIdentity({ user: user(), me: null }).avatar.name).toBe('');
+    expect(accountIdentity({ user: undefined, me: null }).avatar.name).toBe('');
   });
 
   it('is the only place with Sign out, and holds who is signed in, Theme, Privacy and Terms', async () => {

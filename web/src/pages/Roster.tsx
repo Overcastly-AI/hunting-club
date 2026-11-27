@@ -147,7 +147,7 @@ function Members(props: { list: readonly Member[]; onInvite: () => void }) {
       sortValue: (m) => m.displayName,
       cell: (m) => (
         <span className="person">
-          <Avatar name={m.displayName} you={m.userId === me} />
+          <Avatar name={m.displayName} initials={m.initials} you={m.userId === me} />
           <span className="person__text">
             <span className="person__name">{m.displayName}</span>
             <span className="person__role">{roleLine(m, me)}</span>
