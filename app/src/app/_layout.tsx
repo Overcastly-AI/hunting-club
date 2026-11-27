@@ -10,6 +10,7 @@ import { createAppClubServices } from '../club/cloud';
 import { DATABASE_NAME, initDatabase } from '../db';
 import { ProfileProvider } from '../profile/ProfileProvider';
 import { AppRadioProvider } from '../radio/AppRadioProvider';
+import { screenshotMode } from '../screenshot';
 import { fontSources, ThemeProvider, useTheme } from '../theme';
 
 void SplashScreen.preventAutoHideAsync();
@@ -32,7 +33,10 @@ export default function RootLayout() {
   }
 
   return (
-    <SQLiteProvider databaseName={DATABASE_NAME} onInit={initDatabase}>
+    <SQLiteProvider
+      databaseName={DATABASE_NAME}
+      onInit={screenshotMode?.initDatabase ?? initDatabase}
+    >
       <AppProviders>
         <AppStack />
       </AppProviders>
@@ -66,11 +70,13 @@ function AppStack() {
  */
 function AppProviders({ children }: { children: ReactNode }) {
   const db = useSQLiteContext();
+  // The dev-only screenshot mode puts its stand-in radio here instead (src/screenshot).
+  const Radio = screenshotMode?.RadioStandIn ?? AppRadioProvider;
   return (
     <ThemeProvider db={db}>
       <ProfileProvider db={db}>
         <ClubProvider services={clubServices}>
-          <AppRadioProvider>{children}</AppRadioProvider>
+          <Radio>{children}</Radio>
         </ClubProvider>
       </ProfileProvider>
     </ThemeProvider>

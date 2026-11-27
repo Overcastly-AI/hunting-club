@@ -8,7 +8,7 @@ import { MarkerHitArea, MarkerPlate } from './MarkerPlate';
 
 /**
  * A club stand nobody is in: a 38 px rounded square with the stand-type icon, in a box padded
- * to 48 px, and a plate with its name and "Open" in fresh green.
+ * to 48 px, and a plate with its name and "Available" in fresh green.
  */
 export function OpenStandMarker({ stand }: { stand: OpenStandOnMap }) {
   const styles = useStyles();

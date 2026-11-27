@@ -4,9 +4,9 @@
 // no Content-Security-Policy violation, no horizontal scroll, axe with no serious or critical
 // issue, and that the phone's More sheet takes focus and gives it back to the More tab. Screenshots (deviceScaleFactor 1) go to
 // docs/redesign/<folder>/ (m2 unless named), optionally only the named shots. The sample
-// property's aerial map pack (src/map/samplePack.ts) is built once with the real map-pack
-// builder from USGS (cached in .run-ts/) and served with range requests, as CloudFront serves
-// packs: at the demo club's key (My club) and at the public sample key (sign-in).
+// property's committed aerial map pack (sample-pack/, built by scripts/sample-pack.ts) is
+// served with range requests, as CloudFront serves packs: at the demo club's key (My club)
+// and at the public sample key (sign-in).
 // Uses the preinstalled Playwright (never `playwright install`).
 //
 //   npm run build:kit -w @huntclub/web
@@ -15,27 +15,19 @@
 import { THEME_STORAGE_KEY } from '@huntclub/design';
 import { mapPackPath } from '@huntclub/shared';
 import { ADMIN_PATH } from '@huntclub/shared/app';
-import {
-  createReadStream,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs';
+import { createReadStream, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import { createRequire } from 'node:module';
-import { dirname, extname, join, resolve } from 'node:path';
+import { extname, join, resolve } from 'node:path';
 import { contentSecurityPolicy, PERMISSIONS_POLICY } from '../../infra/src/security-headers';
-import { buildMapPack, politeTileFetcher } from '../../packages/api/src/mapPackBuilder';
-import { SAMPLE_PACK, samplePack, samplePackBuild } from '../src/map/samplePack';
+import { SAMPLE_PACK, samplePack } from '../src/map/samplePack';
 import { sampleData } from '../src/testing/fakeClubApi';
+import { samplePackFile } from './samplePackFile';
 
 const WEB = process.cwd();
 const DIST = resolve(WEB, 'dist-kit');
 const [FOLDER = 'm2', ONLY_SHOTS] = process.argv.slice(2);
 const OUT = resolve(WEB, '../docs/redesign', FOLDER);
-const PACK_CACHE = resolve(WEB, '.run-ts/demo-pack.pmtiles');
 const WIDTHS = [1280, 390] as const;
 const HEIGHT: Record<(typeof WIDTHS)[number], number> = { 1280: 860, 390: 844 };
 /** File name word for each stored theme preference. */
@@ -145,29 +137,6 @@ const TYPES: Record<string, string> = {
   '.json': 'application/json',
 };
 
-/** The sample pack's archive: built once from USGS by the real builder, then cached. */
-async function samplePackArchive(): Promise<Buffer> {
-  if (existsSync(PACK_CACHE)) return readFileSync(PACK_CACHE);
-  const clubId = sampleData().club!.id;
-  let archive: Buffer | undefined;
-  const pack = samplePack(clubId);
-  // Only the builder's two writes are needed: the pack row stays the demo's own.
-  const data = {
-    finishMapPack: async () => pack,
-    failMapPack: async () => pack,
-  } as unknown as Parameters<typeof buildMapPack>[1]['data'];
-  await buildMapPack(samplePackBuild(clubId), {
-    data,
-    fetchTile: politeTileFetcher({ fetch, userAgent: 'HuntClubMesh-demo-screenshots' }),
-    putObject: async (_key, body) => {
-      archive = body;
-    },
-  });
-  mkdirSync(dirname(PACK_CACHE), { recursive: true });
-  writeFileSync(PACK_CACHE, archive!);
-  return archive!;
-}
-
 /** The kit build under ADMIN_PATH, with the site's real security headers; the sample pack. */
 function serve(packArchive: Buffer): Promise<{ server: Server; origin: string }> {
   const csp = contentSecurityPolicy({ name: 'dev' });
@@ -222,7 +191,7 @@ async function main() {
     close(): Promise<void>;
   }
   const axeSource = readFileSync(load.resolve('axe-core/axe.min.js'), 'utf8');
-  const { server, origin } = await serve(await samplePackArchive());
+  const { server, origin } = await serve(readFileSync(samplePackFile(WEB)));
   const only = ONLY_SHOTS?.split(',');
   const browser = await playwright.chromium.launch();
   const problems: string[] = [];

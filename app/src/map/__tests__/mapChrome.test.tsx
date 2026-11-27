@@ -86,14 +86,14 @@ describe('marker tap areas', () => {
     expect(sizes.hunterMarker).toBeLessThan(sizes.minTapTarget);
   });
 
-  it('pads the 38 px stand square to a 48 px tap area, with "Open" on its plate', async () => {
+  it('pads the 38 px stand square to a 48 px tap area, with "Available" on its plate (the shared stand wording)', async () => {
     await draw(<OpenStandMarker stand={openStandFixture} />, 'dark', 'Ridge Stand');
     const hit = styleOf('stand-hit-area');
     expect([hit.minWidth, hit.minHeight]).toEqual([sizes.minTapTarget, sizes.minTapTarget]);
     const square = styleOf('stand-square');
     expect([square.width, square.height]).toEqual([38, 38]);
-    expect(flat(screen.getByText('Open').props.style).color).toBe(darkTheme.colors.fresh);
-    expect(screen.getByLabelText('Ridge Stand, ladder stand, open')).toBeTruthy();
+    expect(flat(screen.getByText('Available').props.style).color).toBe(darkTheme.colors.fresh);
+    expect(screen.getByLabelText('Ridge Stand, ladder stand, available')).toBeTruthy();
   });
 
   it('puts the centre of the 48 px box, not the plate, on the point', () => {

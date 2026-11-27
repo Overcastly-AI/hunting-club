@@ -1,0 +1,107 @@
+name: App screenshots
+
+# Screenshots of the phone app on an Android emulator (docs/redesign/m3-screenshots.md): Map,
+# Layers, Chat and Check In at 390 dp, in the dark and daylight themes, uploaded as an artifact.
+# Manual only (Actions > App screenshots > Run workflow), so it spends free minutes only when
+# someone runs it: about 23 minutes on a cold cache, 12 once the Gradle and AVD caches are warm.
+# The app runs in its dev-only screenshot mode (app/src/screenshot): sample club, stand-in radio,
+# fixed clock, no account. Production builds have no screenshot mode.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  API_LEVEL: 34
+  METRO_LOG: ${{ github.workspace }}/metro.log
+
+jobs:
+  app-screenshots:
+    name: Android screenshots (390 dp, dark and daylight)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - uses: ./.github/actions/android-debug-build
+
+      # The debug build loads its JavaScript from Metro; the flag turns the screenshot mode on.
+      - name: Start Metro in screenshot mode
+        working-directory: app
+        env:
+          CI: '1'
+          EXPO_PUBLIC_SCREENSHOT_MODE: '1'
+        run: |
+          nohup npx expo start --dev-client --port 8081 > "$METRO_LOG" 2>&1 &
+          for _ in $(seq 1 90); do
+            curl -sf http://localhost:8081/status && break
+            sleep 2
+          done
+          # Bundle once now so the app's first load is quicker (best effort).
+          curl -sf -o /dev/null "http://localhost:8081/.expo/.virtual-metro-entry.bundle?platform=android&dev=true&lazy=true&transform.engine=hermes&transform.routerRoot=src%2Fapp&unstable_transformProfile=hermes-stable" || true
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Restore the emulator snapshot
+        id: avd-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ env.API_LEVEL }}-google_apis-x86_64
+
+      - name: Make the emulator snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "Emulator snapshot made"
+
+      # Each script line runs on its own; the driver does the rest (app/scripts/android-screenshots.ts).
+      - name: Take the screenshots
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          working-directory: app
+          script: |
+            adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+            node ../scripts/run-ts.mjs scripts/android-screenshots.ts ../screenshots
+
+      - name: Metro log
+        if: failure()
+        run: cat "$METRO_LOG"
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: app-screenshots-390
+          path: screenshots/*.png
+          if-no-files-found: error

@@ -1,7 +1,7 @@
 import { DAY_MS, polygonBounds, READOUT_LABELS, type MapPack, type Member } from '@huntclub/shared';
 import { screen, waitFor, within } from '@testing-library/react';
 import { OVERDUE_ALERT_LABEL } from '../components/ConditionsStrip';
-import { SAMPLE_PROPERTY } from '../map/sampleProperty';
+import { SAMPLE_PROPERTY } from '@huntclub/shared/sample';
 import { MAP_EMPTY, NEEDS_YOU_EMPTY, OUT_NOW_EMPTY } from '../pages/MyClub';
 import { renderSignedIn } from '../testing/app';
 import { sampleData } from '../testing/fakeClubApi';

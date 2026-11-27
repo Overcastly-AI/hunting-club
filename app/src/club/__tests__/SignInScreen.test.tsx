@@ -49,19 +49,40 @@ describe.each([
     const { session, onDone, field } = await signInWith(challenge);
     expect(screen.getByText(signInCopy.codeHelp(challenge.kind))).toBeTruthy();
 
-    // A paste with spaces and one digit too many: kept whole, then refused on submit.
+    // A paste with spaces and one digit too many: kept whole, never sent, refused on submit.
     const tooLong = '1'.repeat(length + 1);
     await fireEvent.changeText(field, ` ${tooLong.slice(0, 3)} ${tooLong.slice(3)} `);
     expect(field.props.value).toBe(tooLong);
+    expect(session.confirmCode).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByRole('button', { name: signInCopy.confirm }));
     expect(screen.getByText(signInCopy.codeIncomplete(challenge.kind))).toBeTruthy();
     expect(session.confirmCode).not.toHaveBeenCalled();
 
+    // The right number of digits goes by itself, once.
     const exact = '2'.repeat(length);
     await fireEvent.changeText(field, exact);
-    await fireEvent.press(screen.getByRole('button', { name: signInCopy.confirm }));
     await waitFor(() => expect(session.confirmCode).toHaveBeenCalledWith(challenge, exact));
     await waitFor(() => expect(onDone).toHaveBeenCalled());
+    expect(session.confirmCode).toHaveBeenCalledTimes(1);
+  });
+
+  it(`takes at most ${length} typed digits, as the shared maxLength`, async () => {
+    const { session, field } = await signInWith(challenge);
+    let pending!: () => void;
+    jest.mocked(session.confirmCode).mockReturnValue(new Promise<void>((r) => (pending = r)));
+
+    const full = '3'.repeat(length);
+    await fireEvent.changeText(field, full.slice(0, -1));
+    expect(session.confirmCode).not.toHaveBeenCalled();
+    await fireEvent.changeText(field, full);
+    expect(session.confirmCode).toHaveBeenCalledTimes(1);
+
+    // One more keystroke is ignored, and pressing Sign in while it is sending sends nothing more.
+    await fireEvent.changeText(field, `${full}4`);
+    expect(field.props.value).toBe(full);
+    await fireEvent.press(screen.getByRole('button', { name: signInCopy.signingIn }));
+    expect(session.confirmCode).toHaveBeenCalledTimes(1);
+    await act(async () => pending());
   });
 });
 

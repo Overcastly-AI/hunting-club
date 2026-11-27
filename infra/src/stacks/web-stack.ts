@@ -9,7 +9,7 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import type { Construct } from 'constructs';
 import { JOIN_PATH } from '@huntclub/shared/app';
-import { MAP_PACKS_PREFIX } from '@huntclub/shared/maps';
+import { MAP_PACK_OBJECT, MAP_PACKS_PREFIX } from '@huntclub/shared/maps';
 import { OG_IMAGE } from '@huntclub/site/routes';
 import type { EnvConfig } from '../../config';
 import { LOG_RETENTION } from '../constructs/node-lambda';
@@ -35,6 +35,11 @@ export interface WebStackProps extends StackProps {
   readonly webDistPath: string;
   /** Built public site (`npm run build -w @huntclub/site` → site/dist), served at the root. */
   readonly siteDistPath: string;
+  /**
+   * The sample map pack, committed in the repo (web/sample-pack: the folder holds the archive at
+   * its bucket key, packs/sample/<id>.pmtiles). The sign-in page draws it from the same origin.
+   */
+  readonly samplePackPath: string;
 }
 
 /** Vite puts fingerprinted files here; they never change, so they cache for a year. */
@@ -221,6 +226,18 @@ export class WebStack extends Stack {
       prune: true,
       distribution: this.distribution,
       distributionPaths: [`/${ADMIN_PREFIX}*`],
+      logGroup: deployLogs,
+    });
+
+    // The sign-in backdrop's sample aerial, from the repo: no manual upload. Under packs/, so
+    // site deploys never prune it; never pruned itself (club packs share the prefix). A new
+    // archive gets a new id, so it caches for a year like every pack and needs no invalidation.
+    new s3deploy.BucketDeployment(this, 'SamplePack', {
+      destinationBucket: this.bucket,
+      sources: [s3deploy.Source.asset(props.samplePackPath)],
+      contentType: MAP_PACK_OBJECT.contentType,
+      cacheControl: [s3deploy.CacheControl.fromString(MAP_PACK_OBJECT.cacheControl)],
+      prune: false,
       logGroup: deployLogs,
     });
 

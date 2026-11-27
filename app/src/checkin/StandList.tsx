@@ -5,16 +5,17 @@ import { Pressable, Text, View } from 'react-native';
 import { RadioMark } from '../components/RadioMark';
 import { StandSquare } from '../components/StandSquare';
 import { distanceMeters, formatDistance } from '../map/geo';
+import { OPEN_STAND } from '../map/labels';
 import { makeStyles, sizes, spacing, textStyles } from '../theme';
 import { sortStands, type ClubStand } from './placement';
 
 /** The heading over the list. */
 export const STANDS_NEAREST_FIRST = 'Stands, nearest first';
 
-/** A stand's second line: "Ladder stand, open", or who is in it. */
+/** A stand's second line: "Ladder stand, available", or who is in it. */
 export function standDetail(stand: ClubStand): string {
   if (stand.occupiedBy) return `${stand.occupiedBy} is here`;
-  return stand.type ? `${STAND_TYPE_LABELS[stand.type]}, open` : 'Open';
+  return stand.type ? `${STAND_TYPE_LABELS[stand.type]}, ${OPEN_STAND.toLowerCase()}` : OPEN_STAND;
 }
 
 type Props = {

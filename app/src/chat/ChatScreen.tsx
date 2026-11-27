@@ -25,7 +25,7 @@ import {
   type ConversationKey,
 } from './model';
 
-const NO_RADIO =
+export const NO_RADIO =
   'Connect your radio to chat. Messages travel over the radio, no cell service needed.';
 
 /** The composer's placeholder: who the message goes to. */

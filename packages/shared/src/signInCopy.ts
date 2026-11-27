@@ -72,6 +72,17 @@ export const signInCopy = {
 export const codeDigits = (input: string) => input.replace(/\D/g, '');
 
 /**
+ * The code field's next value when its text changes (app and web admin): digits only. One
+ * keystroke past `maxLength` is ignored, as a field's maxlength would; a longer change (a paste
+ * or an autofill) is kept whole so it is refused on submit, never cut down to fit.
+ */
+export function nextCode(previous: string, input: string, maxLength: number): string {
+  const digits = codeDigits(input);
+  const typedPastEnd = digits.length > maxLength && digits.length === previous.length + 1;
+  return typedPastEnd ? previous : digits;
+}
+
+/**
  * The dawn scene's pause button (the home page hero and the web sign-in page): the label says
  * what a press does. @huntclub/design's bindDawnPause swaps them.
  */

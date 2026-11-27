@@ -1,5 +1,4 @@
 import {
-  codeDigits,
   CognitoAuthError,
   emailCodeRules,
   RESEND_CODE_COOLDOWN_SECONDS,
@@ -14,6 +13,7 @@ import { Banner } from '../components/Banner';
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
 import { Field } from '../components/Field';
+import { useCodeEntry } from '@huntclub/shared/useCodeEntry';
 import { useCooldown } from '@huntclub/shared/useCooldown';
 import { makeStyles, textStyles } from '../theme';
 import { useClub } from './ClubProvider';
@@ -32,7 +32,6 @@ export function SignInScreen({ onDone }: { onDone: () => void }) {
   const styles = useStyles();
   const { session, reload, sync } = useClub();
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
   const [challenge, setChallenge] = useState<CodeChallenge | null>(null);
   const [busy, setBusy] = useState<Busy>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,24 +71,28 @@ export function SignInScreen({ onDone }: { onDone: () => void }) {
   const resend = () =>
     attempt('resend', async () => {
       setChallenge(await session.requestCode(challenge!.email));
-      setCode('');
+      entry.clear();
       setNotice(copy.resent);
       cooldown.start();
     });
-  const confirm = () => {
-    // Checked on submit: a short or over-long paste says how many digits, never truncates.
-    if (code.length !== emailCodeRules(challenge!.kind).length) {
+  // The web admin's code step: maxLength from the shared code-length rule, sent as soon as the
+  // last digit lands, one confirm at a time. A paste that is too long is kept whole and refused
+  // (codeIncomplete), never cut down. The rule is applied in JS, not by TextInput's own
+  // maxLength, because iOS and Android both cut a long paste to fit before onChangeText sees it.
+  const entry = useCodeEntry({
+    maxLength: challenge ? emailCodeRules(challenge.kind).length : undefined,
+    confirm: (code) =>
+      attempt('confirm', async () => {
+        await session.confirmCode(challenge!, code);
+        await reload();
+        onDone();
+        await sync().catch(() => undefined);
+      }),
+    incomplete: () => {
       setNotice(null);
       setError(copy.codeIncomplete(challenge!.kind));
-      return;
-    }
-    return attempt('confirm', async () => {
-      await session.confirmCode(challenge!, code);
-      await reload();
-      onDone();
-      await sync().catch(() => undefined);
-    });
-  };
+    },
+  });
 
   return (
     <Screen title={copy.title} description={copy.intro}>
@@ -121,8 +124,8 @@ export function SignInScreen({ onDone }: { onDone: () => void }) {
           <Field
             label={copy.code(challenge.kind)}
             hint={copy.codeHelp(challenge.kind)}
-            value={code}
-            onChangeText={(text) => setCode(codeDigits(text))}
+            value={entry.code}
+            onChangeText={entry.change}
             keyboardType="number-pad"
             autoComplete="one-time-code"
             textContentType="oneTimeCode"
@@ -134,8 +137,8 @@ export function SignInScreen({ onDone }: { onDone: () => void }) {
             icon={LogIn}
             label={busy === 'confirm' ? copy.signingIn : copy.confirm}
             loading={busy === 'confirm'}
-            disabled={busy === 'resend' || (busy === null && code.length === 0)}
-            onPress={() => void confirm()}
+            disabled={busy === 'resend' || (busy === null && entry.code.length === 0)}
+            onPress={entry.submit}
           />
           <Button
             variant="tertiary"
@@ -155,7 +158,10 @@ export function SignInScreen({ onDone }: { onDone: () => void }) {
             variant="tertiary"
             label={copy.useOtherEmail}
             disabled={busy !== null}
-            onPress={() => setChallenge(null)}
+            onPress={() => {
+              setChallenge(null);
+              entry.clear();
+            }}
           />
         </>
       )}
