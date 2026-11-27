@@ -11,6 +11,7 @@ import {
   INITIALS_PROBLEM,
   needsYou,
   pluralize,
+  polygonBounds,
   SUBSCRIPTION_STATUS_LABELS,
   SUN,
   sunReadout,
@@ -26,8 +27,8 @@ import {
   type Stand,
   type Subscription,
 } from '@huntclub/shared';
-import { CircleCheck, PenLine, RadioTower } from 'lucide-react';
-import { useReducer, useRef, useState, type FormEvent, type ReactNode, type Ref } from 'react';
+import { CircleCheck, PenLine, Plus, RadioTower } from 'lucide-react';
+import { useMemo, useRef, useState, type FormEvent, type ReactNode, type Ref } from 'react';
 import type { ClubApi } from '../api/types';
 import { ConditionsStrip } from '../components/ConditionsStrip';
 import { Loadable } from '../components/Loadable';
@@ -36,10 +37,18 @@ import { isOffline, useAsync } from '../components/useAsync';
 import { useElementSize } from '../components/useElementSize';
 import { Banner, Button, ButtonLink, EmptyState, Field, Input } from '../components/ui';
 import { basemapPack, useBasemap } from '../map/basemap';
-import { ClubMap, FIT_PADDING } from '../map/ClubMap';
+import { AreaFields, checkAreaName } from '../map/AreaFields';
+import { ClubMap, FIT_PADDING, type MapFrame } from '../map/ClubMap';
 import { drawReducer, startDrawing, type DrawAction, type DrawState } from '../map/draw';
 import { boundsCentre, DRAW_BAR_HEIGHT, planBounds } from '../map/plan';
-import { DrawControls, DrawLayer } from '../map/PropertyLineEditor';
+import { DRAW_SUBJECTS, DrawControls, DrawLayer, saveError } from '../map/PropertyLineEditor';
+import {
+  newStand,
+  StandFields,
+  StandMarkerLayer,
+  standDraft,
+  type StandDraft,
+} from '../map/StandEditor';
 import { StandDrawer } from '../map/StandDrawer';
 import { cx } from '../components/ui/cx';
 import { pageHref, PAGES, type PagePath } from '../shell/routes';
@@ -156,13 +165,13 @@ export const NO_LINE = 'No property line yet. Find the property on the map, then
 /** The live basemap My club opens on: aerial, the picture the design is drawn for. */
 const START_BASEMAP: BasemapId = 'aerial';
 
-/** Drawing starts from a state, and stops at null. */
-type DrawStep = DrawAction | { type: 'start'; boundary?: Club['boundary'] } | { type: 'stop' };
-const drawStep = (state: DrawState | null, step: DrawStep): DrawState | null => {
-  if (step.type === 'start') return startDrawing(step.boundary);
-  if (step.type === 'stop' || !state) return null;
-  return drawReducer(state, step);
-};
+const lonLatOf = (p: { lon: number; lat: number }): [number, number] => [p.lon, p.lat];
+
+/** What an admin is changing on the map: the property line, an area (new or saved) or a stand. */
+type Edit =
+  | { kind: 'line'; draw: DrawState }
+  | { kind: 'area'; area: Area | null; name: string; draw: DrawState; error: string | null }
+  | { kind: 'stand'; stand: Stand | null; draft: StandDraft };
 
 /** Needs you with nothing in it. */
 export const NEEDS_YOU_EMPTY = {
@@ -195,7 +204,7 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
   const facts = clubFacts(club, loaded);
   const [live, setLive] = useState<BasemapId>(START_BASEMAP);
   const basemap = useBasemap(basemapPack(loaded.mapPacks, live));
-  // The stand whose details are open (tapped on the map); read-only, stands are edited in the app.
+  // The stand whose details are open (tapped on the map).
   const [standId, setStandId] = useState<string | null>(null);
   const stand = stands.find((s) => s.id === standId) ?? null;
   // A name that is only the email's stand-in: ask for the one they go by.
@@ -204,12 +213,40 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
   const [nameDone, setNameDone] = useState(false);
   const reloadShell = useReloadShell();
   const askName = !nameDone && needsYourName(me, user?.email);
-  // Only club admins draw the property line (the club API refuses anyone else too).
+  // Only club admins change the property line, areas and stands (the club API refuses anyone else too).
   const canDraw = me?.role === 'admin';
-  const [draw, dispatch] = useReducer(drawStep, null);
-  const startDraw = () => {
+  const [edit, setEdit] = useState<Edit | null>(null);
+  // The editor's plate, so what is being edited is brought out from under it.
+  // It mounts only while editing, so it is measured from when it appears (a ref per element).
+  const [editPlateEl, editPlate] = useState<HTMLDivElement | null>(null);
+  const editPlateSize = useElementSize(
+    useMemo(() => ({ current: editPlateEl }), [editPlateEl]),
+    { width: 0, height: 0 },
+  );
+  const section = useRef<HTMLElement>(null);
+  const begin = (next: Edit) => {
     setStandId(null);
-    dispatch({ type: 'start', boundary: club.boundary });
+    setEdit(next);
+    // Opened from the list under the map (on a phone): the editor is on the map, so show it.
+    section.current?.scrollIntoView?.({ block: 'start' });
+  };
+  const startDraw = () => begin({ kind: 'line', draw: startDrawing(club.boundary) });
+  const startArea = (area: Area | null) =>
+    begin({
+      kind: 'area',
+      area,
+      name: area?.name ?? '',
+      draw: startDrawing(area?.boundary),
+      error: null,
+    });
+  const startStand = (s: Stand | null) =>
+    begin({ kind: 'stand', stand: s, draft: s ? standDraft(s) : newStand() });
+  const dispatch = (action: DrawAction) =>
+    setEdit((e) => (e && e.kind !== 'stand' ? { ...e, draw: drawReducer(e.draw, action) } : e));
+  /** Saved or deleted: the editor closes and the club's places load again. */
+  const done = () => {
+    setEdit(null);
+    details.reload();
   };
   const title = (
     <div className="clubview__title">
@@ -219,59 +256,169 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
       {facts ? <p className="clubview__facts">{facts}</p> : null}
     </div>
   );
+  // What is being edited is drawn by its editor, not as part of the plan.
+  const shownAreas = edit?.kind === 'area' ? areas.filter((a) => a.id !== edit.area?.id) : areas;
+  // A saved stand or area is brought into the open map when its editor opens.
+  const focusAt: [number, number] | null =
+    edit?.kind === 'stand' && edit.stand
+      ? [edit.stand.lon, edit.stand.lat]
+      : edit?.kind === 'area' && edit.area
+        ? lonLatOf(boundsCentre(polygonBounds(edit.area.boundary)))
+        : null;
+  const focusKey =
+    edit?.kind === 'stand' ? edit.stand?.id : edit?.kind === 'area' ? edit.area?.id : undefined;
+  const shownStands =
+    edit?.kind === 'stand' ? stands.filter((s) => s.id !== edit.stand?.id) : stands;
+
+  const editor = (frame: MapFrame): ReactNode => {
+    if (!edit) return null;
+    // On a phone the drawing tools are a bar along the map's bottom: the map keeps the screen.
+    const bar = frame.width < breakpoints.tablet;
+    if (edit.kind === 'stand') {
+      const move = (to: [number, number]) =>
+        setEdit({ ...edit, draft: { ...edit.draft, lon: to[0], lat: to[1] } });
+      return (
+        <>
+          <StandMarkerLayer frame={frame} draft={edit.draft} onMove={move} />
+          <ClubPlate plateRef={editPlate}>
+            {title}
+            <StandFields
+              draft={edit.draft}
+              onChange={(draft) => setEdit({ ...edit, draft })}
+              onPlaceAtCross={() =>
+                move(frame.projection.unproject(frame.width / 2, frame.height / 2))
+              }
+              onSave={async (fields) => {
+                if (edit.stand) await props.api.updateStand(edit.stand.id, fields);
+                else await props.api.createStand(fields);
+                done();
+              }}
+              onDelete={
+                edit.stand
+                  ? async () => {
+                      await props.api.deleteStand(edit.stand!.id);
+                      done();
+                    }
+                  : undefined
+              }
+              onCancel={() => setEdit(null)}
+            />
+          </ClubPlate>
+        </>
+      );
+    }
+    const area = edit.kind === 'area' ? edit : null;
+    const controls = (layout: 'plate' | 'bar') => (
+      <DrawControls
+        frame={frame}
+        state={edit.draw}
+        dispatch={dispatch}
+        layout={layout}
+        subject={area ? DRAW_SUBJECTS.area : DRAW_SUBJECTS.line}
+        {...(area
+          ? {
+              validate: () => checkAreaName(area.name),
+              fields: (
+                <AreaFields
+                  name={area.name}
+                  onName={(name) => setEdit({ ...area, name })}
+                  onDelete={
+                    area.area
+                      ? async () => {
+                          await props.api.deleteArea(area.area!.id);
+                          done();
+                        }
+                      : undefined
+                  }
+                  onDeleteError={(e) => setEdit({ ...area, error: saveError(e, 'area') })}
+                  error={area.error}
+                />
+              ),
+            }
+          : {})}
+        onSave={async (boundary) => {
+          if (!area) {
+            setSaved(await props.api.savePropertyLine(boundary));
+            setEdit(null);
+            return;
+          }
+          const fields = { name: area.name, boundary };
+          if (area.area) await props.api.updateArea(area.area.id, fields);
+          else await props.api.createArea(fields);
+          done();
+        }}
+        onCancel={() => setEdit(null)}
+      />
+    );
+    return (
+      <>
+        <DrawLayer
+          frame={frame}
+          state={edit.draw}
+          dispatch={dispatch}
+          label={area ? 'Area corners' : 'Property line corners'}
+        />
+        <ClubPlate plateRef={editPlate}>
+          {title}
+          {bar ? null : controls('plate')}
+        </ClubPlate>
+        {bar ? controls('bar') : null}
+      </>
+    );
+  };
 
   return (
-    <section className={cx('clubview', draw && 'clubview--drawing')} aria-labelledby="club-title">
+    <section
+      ref={section}
+      className={cx('clubview', edit && 'clubview--drawing')}
+      aria-labelledby="club-title"
+    >
       <ClubMap
         className="clubview__map"
-        boundary={draw ? undefined : club.boundary}
-        areas={areas}
-        stands={stands}
+        boundary={edit?.kind === 'line' ? undefined : club.boundary}
+        areas={shownAreas}
+        stands={shownStands}
         label={`Map of ${club.name}: ${club.boundary ? 'the property line' : 'no property line yet'}, ${pluralize(areas.length, 'area')} and ${pluralize(stands.length, 'stand')}.`}
         basemap={basemap}
         live={live}
         onLiveChange={setLive}
         interactive
         insets={{ top: PLATE_TOP + plateSize.height + FIT_PADDING }}
+        focus={
+          focusAt && focusKey
+            ? {
+                key: focusKey,
+                at: focusAt,
+                top: editPlateSize.height ? PLATE_TOP + editPlateSize.height : 0,
+              }
+            : null
+        }
         empty={details.status === 'ready' && !canDraw ? MAP_EMPTY : null}
-        footer={draw ? (size) => (size.width < breakpoints.tablet ? DRAW_BAR_HEIGHT : 0) : 0}
-        {...(draw
+        footer={
+          edit && edit.kind !== 'stand'
+            ? (size) => (size.width < breakpoints.tablet ? DRAW_BAR_HEIGHT : 0)
+            : 0
+        }
+        {...(edit
           ? {
-              onMapClick: (at: [number, number]) => dispatch({ type: 'add', at }),
-              overlay: (frame) => {
-                const controls = (layout: 'plate' | 'bar') => (
-                  <DrawControls
-                    frame={frame}
-                    state={draw}
-                    dispatch={dispatch}
-                    layout={layout}
-                    onSave={async (boundary) => {
-                      setSaved(await props.api.savePropertyLine(boundary));
-                      dispatch({ type: 'stop' });
-                    }}
-                    onCancel={() => dispatch({ type: 'stop' })}
-                  />
-                );
-                // On a phone the tools are a bar along the map's bottom: the map keeps the screen.
-                const bar = frame.width < breakpoints.tablet;
-                return (
-                  <>
-                    <DrawLayer frame={frame} state={draw} dispatch={dispatch} />
-                    <ClubPlate>
-                      {title}
-                      {bar ? null : controls('plate')}
-                    </ClubPlate>
-                    {bar ? controls('bar') : null}
-                  </>
-                );
-              },
+              onMapClick: (at: [number, number]) =>
+                edit.kind === 'stand'
+                  ? setEdit({ ...edit, draft: { ...edit.draft, lon: at[0], lat: at[1] } })
+                  : dispatch({ type: 'add', at }),
+              overlay: editor,
             }
           : {
               onStandSelect: (s: { id: string }) => setStandId(s.id),
               selectedStandId: stand?.id ?? null,
+              ...(canDraw
+                ? {
+                    onAreaSelect: (a: { id: string }) =>
+                      startArea(areas.find((x) => x.id === a.id) ?? null),
+                  }
+                : {}),
             })}
       >
-        {draw ? null : (
+        {edit ? null : (
           <ClubPlate plateRef={plate}>
             {title}
             {canDraw ? (
@@ -292,6 +439,7 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
         areas={loaded.areas}
         harvests={loaded.harvests}
         members={loaded.members}
+        onEdit={canDraw ? startStand : undefined}
       />
       <div className="clubview__side">
         {props.created ? (
@@ -311,6 +459,15 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
             }}
           />
         ) : null}
+        {canDraw ? (
+          <PlacesTools
+            areas={areas}
+            onEditArea={startArea}
+            onAddStand={() => startStand(null)}
+            onAddArea={() => startArea(null)}
+            editing={edit !== null}
+          />
+        ) : null}
         <OutNow />
         <Loadable state={details} skeleton="table">
           {(value) => (
@@ -318,7 +475,7 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
               <NeedsYou
                 items={needsYou({ club, ...value, now })}
                 onDraw={canDraw ? startDraw : undefined}
-                drawing={Boolean(draw)}
+                drawing={edit?.kind === 'line'}
               />
               {overdue === undefined ? null : (
                 <p className="clubview__overdue">
@@ -331,6 +488,57 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
           )}
         </Loadable>
       </div>
+    </section>
+  );
+}
+
+/** What an admin can change on the map besides the property line: stands and areas. */
+export const PLACES_HINT = 'To change a stand, tap it on the map. Areas are listed here.';
+
+/** Admins: add a stand or an area; change an area from the list (stands open from the map). */
+function PlacesTools(props: {
+  areas: readonly Area[];
+  onAddStand: () => void;
+  onAddArea: () => void;
+  onEditArea: (area: Area) => void;
+  editing: boolean;
+}) {
+  return (
+    <section className="side-section" aria-labelledby="places-tools">
+      <h2 id="places-tools" className="side-section__title">
+        Stands and areas
+      </h2>
+      <div className="side-section__tools">
+        <p className="side-section__hint">{PLACES_HINT}</p>
+        <div className="form-plate__actions">
+          <Button size="sm" icon={Plus} onClick={props.onAddStand} disabled={props.editing}>
+            Add stand
+          </Button>
+          <Button size="sm" icon={Plus} onClick={props.onAddArea} disabled={props.editing}>
+            Add area
+          </Button>
+        </div>
+      </div>
+      {props.areas.length ? (
+        <ul className="rows" aria-label="Areas">
+          {props.areas.map((area) => (
+            <li key={area.id} className="row-item">
+              <div className="row-item__text">
+                <p className="row-item__title">{area.name}</p>
+              </div>
+              <Button
+                size="sm"
+                icon={PenLine}
+                aria-label={`Edit ${area.name}`}
+                onClick={() => props.onEditArea(area)}
+                disabled={props.editing}
+              >
+                Edit
+              </Button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </section>
   );
 }

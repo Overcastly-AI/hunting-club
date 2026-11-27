@@ -126,8 +126,11 @@ describe('stand details on the club map', () => {
     expect(within(empty).getByText(STAND_HARVESTS_EMPTY)).toBeTruthy();
   });
 
-  it('says when harvests could not be loaded, and offers no way to edit the stand', async () => {
+  it('says when harvests could not be loaded, and offers a member no way to edit the stand', async () => {
     const data = sampleData();
+    // The signed-in person is a member; the club's admin is someone else.
+    data.members[0] = { ...data.members[0]!, role: 'member' };
+    data.members[1] = { ...data.members[1]!, role: 'admin' };
     const stand = sampleStand(data, 'Creek Stand');
     // The harvests list fails (offline); the stands still open.
     Object.defineProperty(data, 'harvests', {
@@ -139,7 +142,7 @@ describe('stand details on the club map', () => {
     fireEvent.click(marker);
     const drawer = await screen.findByRole('dialog', { name: stand.name });
     expect(within(drawer).getByText(STAND_HARVESTS_UNKNOWN)).toBeTruthy();
-    // Read-only: the only control is Close, the only link is to the harvests page.
+    // Read-only for a member: the only control is Close, the only link is to the harvests page.
     expect(
       within(drawer)
         .getAllByRole('button')

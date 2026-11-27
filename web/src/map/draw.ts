@@ -1,4 +1,4 @@
-// Drawing the property line on the web: the corners, whether the shape is closed, the selected
+// Drawing a shape on the web (the property line, an area): the corners, whether the shape is closed, the selected
 // corner and the undo history. Pure, so it is tested without a browser; the editor
 // (PropertyLineEditor.tsx) turns taps, drags and keys into these actions. Whether a line may be
 // saved is the shared rule (propertyLineProblem in @huntclub/shared), never a copy of it.
@@ -106,9 +106,15 @@ export const canClose = (state: DrawState) =>
 /** The line as it is saved: a closed GeoJSON Polygon. */
 export const drawnPolygon = (state: DrawState): Polygon => propertyLinePolygon(state.corners);
 
-/** Why the drawn line cannot be saved yet, or null when it can (the shared rule). */
-export function drawProblem(state: DrawState): PropertyLineProblem | 'open' | null {
+/**
+ * Why the drawn shape cannot be saved yet, or null when it can: open, else the shared `rule`
+ * (the property line's by default; an area's is areaProblem).
+ */
+export function drawProblem<P extends string = PropertyLineProblem>(
+  state: DrawState,
+  rule: (polygon: Polygon) => P | null = propertyLineProblem as (polygon: Polygon) => P | null,
+): P | 'tooFewPoints' | 'open' | null {
   if (!state.closed)
     return state.corners.length < PROPERTY_LINE_LIMITS.minPoints ? 'tooFewPoints' : 'open';
-  return propertyLineProblem(drawnPolygon(state));
+  return rule(drawnPolygon(state));
 }

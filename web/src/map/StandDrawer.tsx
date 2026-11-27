@@ -1,6 +1,6 @@
 // A stand's details, opened from its marker on the club map: a panel down the right edge from the
 // tablet width up and a bottom sheet on phones (Dialog placement="side"), so the map stays the
-// page. Read-only: stands are placed and edited in the app, at the spot.
+// page. Members read it; an admin gets Edit stand, which closes it and opens the stand editor.
 import { ICON_SIZE } from '@huntclub/design';
 import {
   HARVEST_SEX_LABELS,
@@ -12,10 +12,11 @@ import {
   type Member,
   type Stand,
 } from '@huntclub/shared';
+import { PenLine } from 'lucide-react';
 import { useId } from 'react';
 import { StandStatus } from '../components/StandStatus';
 import { standIcon } from '../components/standIcons';
-import { ButtonLink, Dialog } from '../components/ui';
+import { Button, ButtonLink, Dialog } from '../components/ui';
 import { formatLocalDay } from '../format';
 import { pageHref } from '../shell/routes';
 
@@ -35,6 +36,8 @@ export function StandDrawer(props: {
   areas?: readonly Area[] | undefined;
   harvests?: readonly Harvest[] | undefined;
   members?: readonly Member[] | undefined;
+  /** Admins: Edit stand, which opens the stand editor on the map. */
+  onEdit?: ((stand: Stand) => void) | undefined;
 }) {
   const { stand } = props;
   return (
@@ -83,6 +86,13 @@ function StandDetails(props: Parameters<typeof StandDrawer>[0] & { stand: Stand 
           </div>
         ) : null}
       </dl>
+      {props.onEdit ? (
+        <div className="stand-edit">
+          <Button size="sm" icon={PenLine} onClick={() => props.onEdit!(stand)}>
+            Edit stand
+          </Button>
+        </div>
+      ) : null}
       <RecentHarvests stand={stand} harvests={props.harvests} members={props.members} />
     </>
   );

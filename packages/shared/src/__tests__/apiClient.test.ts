@@ -2,7 +2,7 @@ import { createClubApiClient, ClubApiRequestError } from '../apiClient';
 import { apiPath, API_PATHS } from '../apiPaths';
 import { entitlementFor, ENTITLEMENT_GRACE_DAYS, hasClubFeatures } from '../api';
 import { DOWNLOAD_LIMITS } from '../maps';
-import { PROPERTY_LINE_PROBLEMS, propertyLinePolygon } from '../propertyLine';
+import { AREA_PROBLEMS, PROPERTY_LINE_PROBLEMS, propertyLinePolygon } from '../propertyLine';
 import { SAMPLE_PROPERTY } from '../sample';
 import { DAY_MS } from '../time';
 import { scriptedFetch } from './fakeFetch';
@@ -14,7 +14,7 @@ const stand = {
   clubId: CLUB,
   meshId: 1,
   name: 'Oak',
-  type: 'ladder',
+  type: 'ladder' as const,
   lat: 40,
   lon: -90,
   active: true,
@@ -214,6 +214,55 @@ describe('club API client', () => {
       PROPERTY_LINE_PROBLEMS.crosses,
     );
     expect(calls).toHaveLength(1);
+  });
+
+  it('places, moves and removes stands and areas at the shared paths, checked first', async () => {
+    const area = {
+      id: '00000000-0000-4000-8000-000000000003',
+      clubId: CLUB,
+      meshId: 1,
+      name: 'North',
+      boundary: SAMPLE_PROPERTY.areas.north.boundary,
+      active: true,
+      createdAt: ISO,
+      updatedAt: ISO,
+    };
+    const { api, calls } = client([
+      { status: 201, body: stand },
+      { status: 200, body: { ...stand, name: 'Big Oak' } },
+      { status: 204 },
+      { status: 201, body: area },
+      { status: 200, body: area },
+      { status: 204 },
+    ]);
+    const { lat, lon, type } = stand;
+    expect(await api.createStand(CLUB, { name: 'Oak', type: 'ladder', lat, lon })).toEqual(stand);
+    expect((await api.updateStand(CLUB, stand.id, { name: 'Big Oak' })).name).toBe('Big Oak');
+    expect(await api.deleteStand(CLUB, stand.id)).toBeUndefined();
+    expect(await api.createArea(CLUB, { name: 'North', boundary: area.boundary })).toEqual(area);
+    await api.updateArea(CLUB, area.id, { name: 'North' });
+    await api.deleteArea(CLUB, area.id);
+    expect(calls.map((c) => `${c.method} ${c.url.replace('https://api.test', '')}`)).toEqual([
+      `POST /clubs/${CLUB}/stands`,
+      `PATCH /clubs/${CLUB}/stands/${stand.id}`,
+      `DELETE /clubs/${CLUB}/stands/${stand.id}`,
+      `POST /clubs/${CLUB}/areas`,
+      `PATCH /clubs/${CLUB}/areas/${area.id}`,
+      `DELETE /clubs/${CLUB}/areas/${area.id}`,
+    ]);
+    expect(calls[0]!.body).toEqual({ name: 'Oak', type, lat, lon, active: true });
+    // Refused before sending: a blank stand name, an area that crosses itself.
+    await expect(api.createStand(CLUB, { name: ' ', type, lat, lon })).rejects.toThrow();
+    const bowTie = propertyLinePolygon([
+      [-90, 40],
+      [-89.99, 40.01],
+      [-89.99, 40],
+      [-90, 40.01],
+    ]);
+    await expect(api.createArea(CLUB, { name: 'X', boundary: bowTie })).rejects.toThrow(
+      AREA_PROBLEMS.crosses,
+    );
+    expect(calls).toHaveLength(6);
   });
 
   it('validates the redeem request before sending it', async () => {

@@ -8,6 +8,10 @@ import {
   CheckoutRequestSchema,
   ClubCreateRequestSchema,
   ClubUpdateSchema,
+  AreaCreateSchema,
+  AreaUpdateSchema,
+  StandCreateSchema,
+  StandUpdateSchema,
   type CodeChallenge,
   type CognitoAuth,
   CognitoAuthError,
@@ -187,6 +191,10 @@ export function sampleData(): FakeClubData {
   };
 }
 
+/** The next radio id in a list of stands or areas (never reused, as the club service assigns them). */
+const nextMeshId = (places: readonly { meshId: number }[]) =>
+  Math.max(0, ...places.map((p) => p.meshId)) + 1;
+
 const hex = (bytes: Uint8Array) =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 const base64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
@@ -273,6 +281,55 @@ export function fakeClubClient(data: FakeClubData = sampleData()): ClubApiClient
     },
     listStands: async () => data.stands,
     listAreas: async () => data.areas,
+    // Places: inputs through the shared schemas, ids and radio ids from the "server".
+    async createStand(clubId, stand) {
+      const now = new Date().toISOString();
+      const created: Stand = {
+        id: crypto.randomUUID(),
+        clubId,
+        meshId: nextMeshId(data.stands),
+        ...StandCreateSchema.parse(stand),
+        createdAt: now,
+        updatedAt: now,
+      };
+      data.stands = [...data.stands, created];
+      return created;
+    },
+    async updateStand(_clubId, id, patch) {
+      const fields = StandUpdateSchema.parse(patch);
+      const stand = data.stands.find((s) => s.id === id);
+      if (!stand) throw new ClubApiRequestError('not_found', 404);
+      const updated = { ...stand, ...fields, updatedAt: new Date().toISOString() };
+      data.stands = data.stands.map((s) => (s.id === id ? updated : s));
+      return updated;
+    },
+    async deleteStand(_clubId, id) {
+      data.stands = data.stands.filter((s) => s.id !== id);
+    },
+    async createArea(clubId, area) {
+      const now = new Date().toISOString();
+      const created: Area = {
+        id: crypto.randomUUID(),
+        clubId,
+        meshId: nextMeshId(data.areas),
+        ...AreaCreateSchema.parse(area),
+        createdAt: now,
+        updatedAt: now,
+      };
+      data.areas = [...data.areas, created];
+      return created;
+    },
+    async updateArea(_clubId, id, patch) {
+      const fields = AreaUpdateSchema.parse(patch);
+      const area = data.areas.find((a) => a.id === id);
+      if (!area) throw new ClubApiRequestError('not_found', 404);
+      const updated = { ...area, ...fields, updatedAt: new Date().toISOString() };
+      data.areas = data.areas.map((a) => (a.id === id ? updated : a));
+      return updated;
+    },
+    async deleteArea(_clubId, id) {
+      data.areas = data.areas.filter((a) => a.id !== id);
+    },
     listHarvests: async () => data.harvests,
     getEntitlement: async (clubId) => ({ clubId, status: 'active' }),
     getSubscription: async () => ({ subscription: data.subscription ?? null }),

@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { ClubMap, FIT_PADDING } from '../map/ClubMap';
 import { plateSide, PLATE_EDGE_ROOM } from '../map/plan';
 import { SAMPLE_PLAN } from '../map/sampleProperty';
+import { translateOf } from '../testing/mapPointer';
 
 /** Lays every element out at `width` by `height` (jsdom has no layout). */
 function laidOutAt(width: number, height: number) {
@@ -14,12 +15,7 @@ function laidOutAt(width: number, height: number) {
 afterEach(() => vi.restoreAllMocks());
 
 /** A stand's marker centre, from its group's translate(). */
-const markerAt = (stand: Element) =>
-  stand
-    .getAttribute('transform')!
-    .match(/translate\(([-\d.]+) ([-\d.]+)\)/)!
-    .slice(1)
-    .map(Number) as [number, number];
+const markerAt = translateOf;
 
 /** Stands only (no line or areas), so the stands are the bounds the map fits. */
 const WEST = {
