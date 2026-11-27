@@ -11,3 +11,5 @@ CLAUDE.md
 packages/design/src/dawnSprites.generated.ts
 # Vendored verbatim from anthropics/skills (Apache 2.0)
 .claude/skills/
+# Claude Code worktrees (local checkouts, not this tree)
+.claude/worktrees/

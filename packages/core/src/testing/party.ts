@@ -9,13 +9,16 @@ import {
   HUNTCLUB_PORT,
   generatePartyChannelSet,
   decodeAppMessage,
+  encodeJoinUrl,
   type AppMessage,
   type AppMessageType,
+  type ChannelSet,
   type MeshClient,
   type MeshClientOptions,
 } from '@huntclub/mesh';
 import type { FakeAir } from '@huntclub/mesh/testing';
 import { CheckInBoard, CheckInController } from '../checkIn';
+import type { StoredParty } from '../partyStore';
 import { DeliveryTracker, ReceiptService, type ReceiptPolicy } from '../receipts';
 
 /** A fixed test location (central Minnesota). */
@@ -112,4 +115,21 @@ export function onAir<T extends AppMessageType>(
     .filter((p) => Number(p.data.portnum) === HUNTCLUB_PORT)
     .map((p) => decodeAppMessage(p.data.payload))
     .filter((m): m is Extract<AppMessage, { type: T }> => m.type === type);
+}
+
+/** A saved party on `channelSet` (its join link holds the key), as PartyStore keeps it. */
+export function savedParty(
+  channelSet: ChannelSet,
+  overrides: Partial<StoredParty> = {},
+): StoredParty {
+  const id = overrides.id ?? 'partyAAA';
+  return {
+    id,
+    joinLink: encodeJoinUrl({ channelSet, target: { kind: 'party', partyId: id } }),
+    role: 'creator',
+    joinedAt: T0,
+    channelIndex: 0,
+    members: [],
+    ...overrides,
+  };
 }

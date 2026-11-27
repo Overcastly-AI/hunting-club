@@ -12,7 +12,7 @@ import { PartyError, PartyService, SOLO_CHANNEL_NAME } from '../partyService';
 import { MemoryPartyStore } from '../partyStore';
 import { applyChannelSet } from '../radioChannels';
 import { MINUTE_MS } from '../config';
-import { T0, party, type Phone } from '../testing/party';
+import { T0, party, savedParty, type Phone } from '../testing/party';
 
 beforeEach(() => jest.useFakeTimers({ now: T0 }));
 afterEach(() => jest.useRealTimers());
@@ -201,6 +201,27 @@ describe('party lifecycle', () => {
     await settle(b!.party.reprovision());
     expect(b!.radio.channels[0]!.settings!.psk).not.toEqual(clubKey.settings[0]!.psk);
     expect(b!.radio.channels[0]!.settings!.name).toBe(SOLO_CHANNEL_NAME);
+  });
+
+  it("restore(): a party saved on another slot moves to this service's slot at once", async () => {
+    const { phones } = await party({ size: 2 });
+    const ctx = phones[0]!.ctx;
+    const partySet = generatePartyChannelSet({ random: seededRandom(5) });
+    const clubSet = generatePartyChannelSet({ random: seededRandom(6), name: 'Club' });
+    // Made inside a club this account no longer has: the party's channel was slot 1.
+    const store = new MemoryPartyStore(savedParty(partySet, { channelIndex: 1 }));
+    const free = new PartyService(ctx, { store });
+    await free.restore();
+    expect((await store.load())!.channelIndex).toBe(0);
+    expect(store.saves).toBe(1);
+    free.dispose();
+    // Inside a club the party is the secondary slot; an up-to-date index is not re-saved.
+    const inClub = new PartyService(ctx, { store, clubChannelSet: clubSet });
+    await inClub.restore();
+    expect((await store.load())!.channelIndex).toBe(1);
+    await inClub.restore();
+    expect(store.saves).toBe(2);
+    inClub.dispose();
   });
 
   it('refuses club links, bad links, a second party, and actions without a radio', async () => {

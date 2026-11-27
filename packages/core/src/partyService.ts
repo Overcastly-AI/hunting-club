@@ -135,9 +135,19 @@ export class PartyService extends Emitter<PartyServiceEvents> {
     return this.party && this.view(this.party);
   }
 
-  /** Loads the saved party (app start). */
+  /**
+   * Loads the saved party (app start, and every account switch, which rebuilds this
+   * service). A party saved on another channel slot (made inside a club this account no
+   * longer has, or before joining one) is moved to this service's slot and saved at once,
+   * so it never listens on, or sends to, the old club's slot.
+   */
   async restore(): Promise<PartyView | null> {
-    this.party = await this.store.load();
+    const party = await this.store.load();
+    if (party && party.channelIndex !== this.partyChannel) {
+      party.channelIndex = this.partyChannel;
+      await this.store.save(party);
+    }
+    this.party = party;
     this.refused = [];
     this.emit('change', this.current);
     return this.current;
@@ -225,11 +235,8 @@ export class PartyService extends Emitter<PartyServiceEvents> {
     return this.exclusive(async () => {
       const party = this.party;
       if (party) {
+        // Its channel index already matches this slot (restore()).
         await this.provision(decodeJoinUrl(party.joinLink).channelSet);
-        if (party.channelIndex !== this.partyChannel) {
-          party.channelIndex = this.partyChannel;
-          await this.store.save(party);
-        }
         return;
       }
       await this.provision(
