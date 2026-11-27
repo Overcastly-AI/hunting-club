@@ -32,7 +32,7 @@ import { CORE_CONFIG, type CoreConfig } from './config';
 import { resolveContext, type CoreContext, type ResolvedContext } from './context';
 import { FREE_PARTY_MAX_MEMBERS, PartyFullError, canJoinParty } from './party';
 import type { PartyMember, PartyStore, StoredParty } from './partyStore';
-import { ChannelApplyError, applyChannelSet } from './radioChannels';
+import { ChannelApplyError, applyChannelSet, radioHasChannelSet } from './radioChannels';
 
 /** Random bytes in a party id (base64url, 8 characters). */
 export const PARTY_ID_BYTES = 6;
@@ -245,6 +245,18 @@ export class PartyService extends Emitter<PartyServiceEvents> {
         { alone: true },
       );
     });
+  }
+
+  /** True when the radio already holds the saved party's channel at its slot (or there is none). */
+  radioHasParty(): boolean {
+    return (
+      !this.party ||
+      radioHasChannelSet(
+        this.ctx.client,
+        decodeJoinUrl(this.party.joinLink).channelSet,
+        this.partyChannel,
+      )
+    );
   }
 
   dispose(): void {

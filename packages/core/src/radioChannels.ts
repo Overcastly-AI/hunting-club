@@ -48,9 +48,12 @@ export async function applyChannelSet(
   await client.waitUntilReady();
 }
 
-/** True when our radio's primary channel already has this set's key (nothing to write). */
-export function radioHasChannelSet(client: MeshClient, channelSet: ChannelSet): boolean {
+/**
+ * True when our radio's channel `index` (default: the primary) already has this set's
+ * key (nothing to write).
+ */
+export function radioHasChannelSet(client: MeshClient, channelSet: ChannelSet, index = 0): boolean {
   const want = channelSet.settings[0]?.psk;
-  const have = client.channels.get(0)?.settings?.psk;
+  const have = client.channels.get(index)?.settings?.psk;
   return !!want && !!have && want.length === have.length && want.every((b, i) => b === have[i]);
 }

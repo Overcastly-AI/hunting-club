@@ -14,7 +14,6 @@ import {
   type CoreContext,
   type PartyStore,
   type SunApi,
-  applyChannelSet,
   radioHasChannelSet,
 } from '@huntclub/core';
 import type { ChannelSet, MeshClient } from '@huntclub/mesh';
@@ -190,7 +189,7 @@ export class RadioServices {
     };
     // The account's own club replaces whatever the radio had; with none, a hidden club's
     // channel is taken off so only the party's is used.
-    if (clubInfo?.channelSet) this.clubChannel = this.ensureChannel(clubInfo.channelSet);
+    if (clubInfo?.channelSet) this.clubChannel = this.ensureChannel(clubInfo.channelSet, restored);
     else if (hiddenClubChannels?.length) {
       this.clubChannel = this.dropHiddenChannels(hiddenClubChannels, restored);
     }
@@ -203,12 +202,21 @@ export class RadioServices {
   readonly clubChannel: Promise<'already' | 'applied' | 'removed' | 'failed'> =
     Promise.resolve('already');
 
-  /** Puts the club channels on the radio unless its primary channel already has the key. */
-  private async ensureChannel(channelSet: ChannelSet): Promise<'already' | 'applied' | 'failed'> {
+  /**
+   * Puts the club channels on the radio, with a saved party's channel at its slot in the
+   * same write (PartyService.reprovision), unless the radio already holds both.
+   */
+  private async ensureChannel(
+    channelSet: ChannelSet,
+    restored: Promise<unknown>,
+  ): Promise<'already' | 'applied' | 'failed'> {
     try {
+      await restored;
       await this.client.waitUntilReady();
-      if (radioHasChannelSet(this.client, channelSet)) return 'already';
-      await applyChannelSet(this.client, channelSet);
+      if (radioHasChannelSet(this.client, channelSet) && this.party.radioHasParty()) {
+        return 'already';
+      }
+      await this.party.reprovision();
       return 'applied';
     } catch {
       return 'failed';

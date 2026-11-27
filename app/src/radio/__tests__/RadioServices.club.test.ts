@@ -166,7 +166,7 @@ describe('after a user switch (the club channel follows the signed-in account)',
       },
     );
 
-    it("A to B with B's own club: the party stays on slot 1, A's key unused", async () => {
+    it("A to B with B's own club: the radio holds B's club and the party, never A's key", async () => {
       const partyStore = madeInA();
       const { s, radio, written } = await radioOnA(
         { club: clubB, hiddenClubChannels: [clubA.channelSet!], partyStore },
@@ -174,8 +174,23 @@ describe('after a user switch (the club channel follows the signed-in account)',
       );
       expect(await clubChannelOf(s)).toBe('applied');
       expect((await partyStore.load())!.channelIndex).toBe(CLUB_PARTY_CHANNEL);
+      // One write: B's club on slot 0 and the party's channel on slot 1.
       expect(radio.channels[0]!.settings!.psk).toEqual(pskOf(clubB.channelSet));
+      expect(radio.channels[CLUB_PARTY_CHANNEL]!.settings!.psk).toEqual(pskOf(partySet));
+      expect(written()).toHaveLength(1);
       expect(written()).not.toContainEqual(pskOf(clubA.channelSet));
+      expect([...radio.channels].map((c) => c?.settings?.psk).filter(Boolean)).not.toContainEqual(
+        pskOf(clubA.channelSet),
+      );
+    });
+
+    it("B's club and the party already on the radio: nothing is written", async () => {
+      const { s, written } = await radioOnA(
+        { club: clubB, hiddenClubChannels: [clubA.channelSet!], partyStore: madeInA() },
+        [clubB.channelSet!.settings[0]!, ...partySet.settings],
+      );
+      expect(await clubChannelOf(s)).toBe('already');
+      expect(written()).toEqual([]);
     });
   });
 
