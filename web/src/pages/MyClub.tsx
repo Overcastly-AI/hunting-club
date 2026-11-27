@@ -264,7 +264,7 @@ function ClubSummary({ details }: { details: ClubDetails }) {
         {rows.map((row) => (
           <li key={row.label}>
             <a className="row-link" href={row.href}>
-              <span className="row-link__label">{row.label}</span>
+              <span className="row-link__label">{row.label}</span>{' '}
               <span className="row-link__value text-readout-inline">{row.value}</span>
             </a>
           </li>

@@ -28,7 +28,7 @@ export const SHELL = {
   /** My club's panel beside the map on desktop (Needs you). */
   sidePanelWidth: 400,
   /** Map heights where the map is not the whole page (phones, beside a table). */
-  phoneMapHeight: 460,
+  phoneMapHeight: 580,
   insetMapHeight: 360,
   insetMapHeightPhone: 280,
 } as const;

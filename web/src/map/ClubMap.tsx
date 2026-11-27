@@ -120,9 +120,14 @@ export function ClubMap(props: {
 }
 
 function Drawing(
-  props: Parameters<typeof ClubMap>[0] & { projection: Projection; width: number; height: number },
+  props: Parameters<typeof ClubMap>[0] & {
+    projection: Projection;
+    width: number;
+    height: number;
+    compact: boolean;
+  },
 ) {
-  const { projection, width, height } = props;
+  const { projection, width, height, compact } = props;
   const scale = scaleBar(projection.metresPerPx, SCALE_MAX_PX);
   const boundary = props.boundary ? polygonRings(props.boundary) : [];
   return (
@@ -141,28 +146,31 @@ function Drawing(
           <path className="plan__line-inner" d={ringsPath(boundary, projection)} />
         </>
       ) : null}
-      {props.areas.map((area) => {
-        const at = ringsLabelPoint(polygonRings(area.boundary));
-        if (!at) return null;
-        const [x, y] = projection.project(...at);
-        return (
-          <text
-            key={area.id}
-            className="plan__label"
-            x={x}
-            y={y + AREA_LABEL_DROP}
-            textAnchor="middle"
-          >
-            {area.name}
-          </text>
-        );
-      })}
+      {/* Small maps leave names to the lists beside them: labels would sit on the stands. */}
+      {compact
+        ? null
+        : props.areas.map((area) => {
+            const at = ringsLabelPoint(polygonRings(area.boundary));
+            if (!at) return null;
+            const [x, y] = projection.project(...at);
+            return (
+              <text
+                key={area.id}
+                className="plan__label"
+                x={x}
+                y={y + AREA_LABEL_DROP}
+                textAnchor="middle"
+              >
+                {area.name}
+              </text>
+            );
+          })}
       {props.stands.map((stand) => (
         <Stand
           key={stand.id}
           stand={stand}
           at={projection.project(stand.lon, stand.lat)}
-          compact={props.compact}
+          compact={compact}
         />
       ))}
       <g transform={`translate(${EDGE / 2} ${height - EDGE / 2})`} className="plan__scale">

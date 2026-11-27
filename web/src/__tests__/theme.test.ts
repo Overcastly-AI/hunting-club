@@ -9,12 +9,14 @@ import {
   fontSize,
   lightColors,
   logoMarkSvg,
+  mapPlanColors,
   sizes,
   textScale,
   THEME_ATTRIBUTE,
   THEME_STORAGE_KEY,
   themeBootstrapJs,
   themeCss,
+  themes,
 } from '@huntclub/design';
 import type { Plugin } from 'vite';
 import { themeBootstrap, themeBootstrapFileName } from '../../theme-bootstrap';
@@ -28,17 +30,21 @@ describe('web theme from @huntclub/design', () => {
     expect(vars['--color-accent']).toBe(colors.accent);
     expect(vars['--color-bg-light']).toBe(lightColors.bgLight);
     expect(Object.keys(vars).filter((k) => k.startsWith('--color-'))).toHaveLength(
-      Object.keys(colors).length + Object.keys(lightColors).length,
+      Object.keys(colors).length +
+        Object.keys(lightColors).length +
+        Object.keys(mapPlanColors).length,
     );
+    expect(vars['--color-map-ground']).toBe(mapPlanColors.mapGround);
   });
 
   it('keeps tap targets at 48 px and primary buttons at the spec height', () => {
     expect(tokenVariables()['--tap-min']).toBe(`${sizes.minTapTarget}px`);
     expect(sizes.minTapTarget).toBe(48);
     const css = globalCss();
-    expect(css).toMatch(/\.button \{[^}]*min-height: var\(--tap-min\)/);
-    expect(css).toMatch(/\.nav a \{[^}]*min-height: var\(--tap-min\)/);
-    expect(css).toMatch(/\.field input \{[^}]*min-height: var\(--tap-min\)/);
+    expect(css).toMatch(/\.ui-button--md \{ min-height: 52px/);
+    expect(css).toMatch(/\.shell-nav__item \{[^}]*min-height: var\(--tap-min\)/);
+    expect(css).toMatch(/\.ui-input, \.ui-select, \.ui-textarea \{[^}]*min-height: 52px/);
+    expect(css).toMatch(/\.row-link \{[^}]*min-height: var\(--tap-min\)/);
   });
 
   it('sets body text at 16 px or more in Archivo with the shared axes', () => {
@@ -51,16 +57,22 @@ describe('web theme from @huntclub/design', () => {
     expect(fontSize.body).toBeGreaterThanOrEqual(16);
   });
 
-  it('outlines inputs at 3:1 or better against both surfaces, and focuses them in accent', () => {
-    for (const bg of ['surface', 'surfaceRaised'] as const) {
-      for (const edge of ['controlBorder', 'accent'] as const) {
-        expect(contrastRatio(colors[edge], colors[bg])).toBeGreaterThanOrEqual(MIN_UI_CONTRAST);
+  it('outlines inputs at 3:1 or better in both themes, and focuses them in the focus colour', () => {
+    for (const theme of Object.values(themes)) {
+      for (const bg of ['canvas', 'plate'] as const) {
+        for (const edge of ['borderControl', 'focusRing'] as const) {
+          expect(contrastRatio(theme.colors[edge], theme.colors[bg])).toBeGreaterThanOrEqual(
+            MIN_UI_CONTRAST,
+          );
+        }
       }
     }
     const css = globalCss();
-    expect(css).toContain('border: 1px solid var(--color-control-border)');
     expect(css).toMatch(
-      /\.field input:focus \{[^}]*border-color: var\(--color-accent\);[^}]*inset 0 0 0 1px var\(--color-accent\)/,
+      /\.ui-input, \.ui-select, \.ui-textarea \{[^}]*border: var\(--control-border\) solid var\(--theme-border-control\)/,
+    );
+    expect(css).toMatch(
+      /\.ui-input:focus, [^{]*\{[^}]*border-color: var\(--theme-focus-ring\);[^}]*var\(--theme-focus-ring\)/,
     );
   });
 
@@ -74,7 +86,8 @@ describe('web theme from @huntclub/design', () => {
   });
 
   it('only pairs text and backgrounds at 4.5:1 or better', () => {
-    const pairs: [keyof typeof colors, keyof typeof colors][] = [
+    const palette = { ...colors, ...mapPlanColors };
+    const pairs: [keyof typeof palette, keyof typeof palette][] = [
       ['text', 'surface'],
       ['textSecondary', 'surface'],
       ['text', 'surfaceRaised'],
@@ -84,10 +97,11 @@ describe('web theme from @huntclub/design', () => {
       ['alert', 'surface'], // error messages
       ['alert', 'surfaceRaised'], // errors inside the sign-in card and panels
       ['surface', 'text'], // QR modules on their light background
-      ['textSecondary', 'mapHalo'], // sign-in footer links over the dawn scene's silhouettes
+      ['text', 'mapHalo'], // map labels over their halo
+      ['text', 'mapGround'], // map labels on the club plan's ground
     ];
     for (const [fg, bg] of pairs) {
-      expect(contrastRatio(colors[fg], colors[bg])).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
+      expect(contrastRatio(palette[fg], palette[bg])).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
     }
   });
 });

@@ -75,6 +75,7 @@ export function Shell(props: {
                     {alert ? <AlertDot alert={alert} /> : null}
                   </span>
                   <span className="shell-nav__label">{MORE_LABEL}</span>
+                  {alert ? <AlertReason alert={alert} /> : null}
                   {/* The current page stays named on the tab bar when it lives in More. */}
                   {currentInMore ? (
                     <span className="visually-hidden">, current page: {currentInMore.label}</span>
@@ -151,15 +152,17 @@ function NavLink(props: {
           page.label
         )}
       </span>
+      {alert ? <AlertReason alert={alert} /> : null}
     </a>
   );
 }
 
-/** The warning dot on Billing (and More), with its reason for screen readers. */
+/** The warning dot on Billing (and More), on the icon. */
 function AlertDot(props: { alert: BillingAlert }) {
-  return (
-    <span className={cx('shell-dot', `shell-dot--${props.alert}`)}>
-      <span className="visually-hidden">, {BILLING_ALERT_LABELS[props.alert]}</span>
-    </span>
-  );
+  return <span className={cx('shell-dot', `shell-dot--${props.alert}`)} aria-hidden="true" />;
+}
+
+/** The dot's reason for screen readers, read after the page's name. */
+function AlertReason(props: { alert: BillingAlert }) {
+  return <span className="visually-hidden">, {BILLING_ALERT_LABELS[props.alert]}</span>;
 }

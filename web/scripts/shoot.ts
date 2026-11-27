@@ -56,7 +56,10 @@ const openAccount = async (page: Page) => {
 
 /** Extra states: desktop dark only, or that plus the phone in daylight. */
 const ONCE = [[1280, 'dark']] as const;
-const ONCE_EACH = [[1280, 'dark'], [390, 'light']] as const;
+const ONCE_EACH = [
+  [1280, 'dark'],
+  [390, 'light'],
+] as const;
 
 const SHOTS: readonly Shot[] = [
   { name: 'signin', scenario: 'signedOut', hash: '' },
@@ -115,16 +118,21 @@ function serve(): Promise<{ server: Server; origin: string }> {
 }
 
 async function main() {
-  if (!existsSync(join(DIST, 'index.html'))) throw new Error('Build the kit first: npm run build:kit');
+  if (!existsSync(join(DIST, 'index.html')))
+    throw new Error('Build the kit first: npm run build:kit');
   mkdirSync(OUT, { recursive: true });
   const load = createRequire(join(WEB, 'package.json'));
   // Loaded by name at run time, from NODE_PATH (the preinstalled copy), never bundled.
   const playwright = load(['play', 'wright'].join('')) as {
-    chromium: { launch(): Promise<{ newContext(o: object): Promise<Context>; close(): Promise<void> }> };
+    chromium: {
+      launch(): Promise<{ newContext(o: object): Promise<Context>; close(): Promise<void> }>;
+    };
   };
   interface Context {
     addInitScript(script: string): Promise<void>;
-    newPage(): Promise<Page & { on(event: string, fn: (m: { text(): string; type(): string }) => void): void }>;
+    newPage(): Promise<
+      Page & { on(event: string, fn: (m: { text(): string; type(): string }) => void): void }
+    >;
     close(): Promise<void>;
   }
   const axeSource = readFileSync(load.resolve('axe-core/axe.min.js'), 'utf8');
@@ -179,8 +187,17 @@ async function main() {
               "!!document.activeElement && !!document.activeElement.closest('.ui-dialog[open]')",
             );
             if (!inside) problems.push(`${label}: focus left the open dialog`);
+            await page.keyboard.press('Escape');
+            const back = await page.evaluate<string>(
+              "document.querySelector('.ui-dialog[open]') ? 'open' : (document.activeElement && document.activeElement.textContent) || ''",
+            );
+            if (back !== 'Invite members') problems.push(`${label}: Esc left focus on "${back}"`);
+            await shot.act(page);
           }
-          await page.screenshot({ path: join(OUT, `${shot.name}-${width}-${THEMES[theme]}.png`), fullPage: true });
+          await page.screenshot({
+            path: join(OUT, `${shot.name}-${width}-${THEMES[theme]}.png`),
+            fullPage: true,
+          });
           count += 1;
           await context.close();
         }

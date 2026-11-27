@@ -56,7 +56,7 @@ const signin = `
 .signin__door .ui-page-header__title { ${text('display')}; }
 .signin__door .ui-page-header__description { ${text('body')}; }
 .signin__form { display: grid; gap: ${gap(4)}; }
-.signin__code { ${text('codeField')}; letter-spacing: 0.08em; }
+.signin__code { ${text('codeField')}; }
 .signin__secondary { display: flex; flex-wrap: wrap; gap: ${gap(2)}; }
 .signin__note { ${text('body')}; color: ${color('textSecondary')}; margin: 0; }
 .signin__error { ${text('label')}; color: ${color('danger')}; margin: 0; }
@@ -70,7 +70,7 @@ const signin = `
   ${text('label')}; ${floating} }
 ${PHONE} {
   .signin { display: flex; flex-direction: column; padding: 0; }
-  .signin__map { position: relative; inset: auto; z-index: 0; order: -1; height: 260px; flex: none; }
+  .signin__map { position: relative; inset: auto; z-index: 0; order: -1; height: 300px; flex: none; }
   .signin__door { width: auto; min-height: 0; flex: 1; margin: -${gap(4)} 0 0; padding: ${gap(6)} ${gap(4)} ${gap(4)};
     border-radius: var(--radius-xl) var(--radius-xl) 0 0; z-index: 1; }
   .signin__door .ui-page-header { margin-top: ${gap(2)}; }

@@ -217,7 +217,9 @@ export function SignIn(props: {
         className="signin__map"
         {...SAMPLE_PLAN}
         label={`${SAMPLE_CAPTION}: a property line with two areas and three stands.`}
-        insets={({ width }) => (width >= breakpoints.tablet ? { left: DOOR_ROOM } : { bottom: 56 })}
+        insets={({ width }) =>
+          width >= breakpoints.tablet ? { left: DOOR_ROOM } : { top: 56, bottom: 56 }
+        }
       >
         <p className="signin__sample" aria-hidden="true">
           {SAMPLE_CAPTION}

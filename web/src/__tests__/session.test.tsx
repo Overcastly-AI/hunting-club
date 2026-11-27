@@ -1,10 +1,11 @@
 import { ClubSession, CognitoAuthError, SECURE_KEYS } from '@huntclub/shared';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { adminApi } from '../api/admin';
 import { App, SESSION_EXPIRED } from '../App';
 import { browserTokenStore } from '../tokenStore';
 import { fakeIdToken } from '@huntclub/shared/testing';
 import { fakeClubClient, fakeCognitoAuth, SIGNED_IN, sampleData } from '../testing/fakeClubApi';
+import { accountButton, signOutFromMenu } from '../testing/shell';
 
 const KEY = SECURE_KEYS.webClubRefreshToken;
 
@@ -83,7 +84,7 @@ describe('the web session across reloads', () => {
     load(storage, auth);
     expect(await screen.findByRole('heading', { level: 1, name: 'Stands and areas' })).toBeTruthy();
     expect(auth.refresh).toHaveBeenCalledWith('kept-refresh-token');
-    expect(screen.getByText('Signed in as dale@example.com')).toBeTruthy();
+    expect((await accountButton()).textContent).toContain(SIGNED_IN.email);
   });
 
   it('asks to sign in again when the kept session cannot be refreshed', async () => {
@@ -104,8 +105,10 @@ describe('the web session across reloads', () => {
     auth.revoke = vi.fn(async () => undefined);
     window.location.hash = '';
     load(storage, auth);
-    fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
+    await signOutFromMenu();
     await screen.findByRole('heading', { level: 1, name: 'Sign in' });
+    // Asked for, so never "session expired".
+    expect(screen.queryByText(SESSION_EXPIRED)).toBeNull();
     expect(auth.revoke).toHaveBeenCalledWith('r');
     expect(storage.getItem(KEY)).toBeNull();
   });
@@ -132,6 +135,6 @@ describe('pages before there is a club', () => {
     expect(await screen.findByText(/Create your club first/)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Go to My club' }).getAttribute('href')).toBe('#/club');
     expect(screen.queryByText(/Could not load this/)).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Make an invite' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Invite members' })).toBeNull();
   });
 });
