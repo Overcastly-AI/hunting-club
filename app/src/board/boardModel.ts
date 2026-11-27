@@ -2,7 +2,7 @@ import { SUN, overdueAt, type MemberCheckIn, type SunApi } from '@huntclub/core'
 import type { ClientState, LatLon } from '@huntclub/mesh';
 
 import type { ClubStand } from '../checkin/placement';
-import { formatClockTime } from '../conditions/clock';
+import { formatClockTime } from '@huntclub/shared';
 import { placeLabel } from '../map/labels';
 import {
   memberIdentity,

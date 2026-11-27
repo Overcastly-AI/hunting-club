@@ -6,11 +6,10 @@
  * Fixed product rules (the 3-person free-party cap) are not tunables and
  * live with their logic (party.ts).
  */
-/** Time units in ms: the only definitions in the repo. */
-export const SECOND_MS = 1000;
-export const MINUTE_MS = 60 * SECOND_MS;
-export const HOUR_MS = 60 * MINUTE_MS;
-export const DAY_MS = 24 * HOUR_MS;
+import { DAY_MS, HOUR_MS, MINUTE_MS, SECOND_MS } from '@huntclub/shared';
+
+/** Time units in ms, defined once in @huntclub/shared (time.ts). */
+export { DAY_MS, HOUR_MS, MINUTE_MS, SECOND_MS };
 
 export interface CoreConfig {
   receipts: {

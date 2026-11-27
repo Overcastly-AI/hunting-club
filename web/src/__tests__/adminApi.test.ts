@@ -68,6 +68,15 @@ describe('admin API over the shared client', () => {
     expect(InviteSchema.parse(invite).clubId).toBe(data.club!.id);
   });
 
+  it('lists the invites of its own club, valid against the shared schema', async () => {
+    const data = sampleData();
+    const api = adminApi(fakeClubClient(data));
+    expect(await api.listInvites()).toEqual([]);
+    const made = await api.createInvite({ role: 'guest', expiresAt: '2027-01-01T00:00:00.000Z' });
+    const invites = await api.listInvites();
+    expect(invites.map((invite) => InviteSchema.parse(invite).id)).toEqual([made.id]);
+  });
+
   it('builds the club radio channel from the club secret key', async () => {
     const data = sampleData();
     const client = fakeClubClient(data);

@@ -17,6 +17,7 @@ import {
   zoomRangeOrdered,
 } from './club';
 import { SubscriptionStatusSchema, isEntitledStatus } from './enums';
+import { DAY_MS } from './time';
 import {
   CHANNEL_KEY_BYTES,
   idSchema,
@@ -131,7 +132,7 @@ export function entitlementFor(
   const { status, paidThrough } = subscription;
   const base = { clubId, status, ...(paidThrough ? { paidThrough } : {}) };
   if (!paidThrough || !isEntitledStatus(status)) return base;
-  const until = Date.parse(paidThrough) + ENTITLEMENT_GRACE_DAYS * 24 * 60 * 60 * 1000;
+  const until = Date.parse(paidThrough) + ENTITLEMENT_GRACE_DAYS * DAY_MS;
   return { ...base, featuresUntil: new Date(until).toISOString() };
 }
 

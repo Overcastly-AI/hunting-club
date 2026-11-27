@@ -19,6 +19,7 @@ import {
   type Area,
   type Club,
   type Harvest,
+  type Invite,
   type MapPack,
   type Member,
   type Plan,
@@ -30,6 +31,8 @@ import {
 export interface FakeClubData {
   club: Club | null;
   members: Member[];
+  /** Invites made (createInvite adds one). */
+  invites: Invite[];
   stands: Stand[];
   areas: Area[];
   subscription: Subscription | null;
@@ -153,6 +156,7 @@ export function sampleData(): FakeClubData {
         ...timestamps,
       },
     ],
+    invites: [],
     stands: [
       stand(1, 'Creek Stand', 'tree_stand', AREA_CREEK),
       stand(2, 'Big Oak Ladder', 'ladder', AREA_NORTH),
@@ -255,9 +259,10 @@ export function fakeClubClient(data: FakeClubData = sampleData()): ClubApiClient
     },
     getClub: async () => clubOrThrow(),
     listMembers: async () => data.members,
+    listInvites: async () => data.invites,
     async createInvite(clubId, request) {
       const now = new Date().toISOString();
-      return {
+      const invite: Invite = {
         id: crypto.randomUUID(),
         clubId,
         token: hex(defaultRandom(INVITE_TOKEN_BYTES)),
@@ -266,6 +271,8 @@ export function fakeClubClient(data: FakeClubData = sampleData()): ClubApiClient
         createdAt: now,
         updatedAt: now,
       };
+      data.invites.push(invite);
+      return invite;
     },
     listStands: async () => data.stands,
     listAreas: async () => data.areas,

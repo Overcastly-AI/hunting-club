@@ -5,7 +5,7 @@ import { Text, View } from 'react-native';
 import { Button } from '../components/Button';
 import { OptionButtons } from '../components/OptionButtons';
 import { Field } from '../components/Field';
-import { formatClockTime } from '../conditions/clock';
+import { formatClockTime } from '@huntclub/shared';
 import { QUICK_REPLIES } from '../domain/quickReplies';
 import { placeLabel } from '../map/labels';
 import { makeStyles, radii, spacing, textStyles } from '../theme';

@@ -9,7 +9,7 @@ import { SegmentedControl } from '../../components/SegmentedControl';
 import { makeStyles, textStyles, type StatusTone } from '../../theme';
 import { BASEMAP_IDS, BASEMAPS, basemapBySource, type BasemapId } from '../basemaps';
 import type { LocalClubMapPack } from '../../club/mapPacks';
-import { formatShortDate } from '../../conditions/clock';
+import { formatShortDate } from '@huntclub/shared';
 import type { MapPack, MapPackStatus } from '../mapPacks';
 import { formatBytes } from '../tiles';
 import { Sheet } from '../../components/Sheet';

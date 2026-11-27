@@ -1,6 +1,6 @@
 /**
  * The 16 compass points NWS uses for wind direction, clockwise from north.
- * The only table of them in the app.
+ * The only table of them in the repo.
  */
 export const COMPASS_POINTS = [
   'N',
@@ -35,4 +35,9 @@ export function compassPointToDegrees(point: string): number | null {
 export function degreesToCompassPoint(deg: number): CompassPoint {
   const normalized = ((deg % 360) + 360) % 360;
   return COMPASS_POINTS[Math.round(normalized / STEP_DEG) % COMPASS_POINTS.length]!;
+}
+
+/** Wind is reported by where it blows from; scent travels the other way. */
+export function downwindBearing(windFromDeg: number): number {
+  return (((windFromDeg + 180) % 360) + 360) % 360;
 }
