@@ -1,5 +1,6 @@
 // The map style: USGS tiles, with the club's downloaded map pack drawn on top.
-import { CLUB_PACK_SOURCE, BASEMAPS, basemapStyle } from '../basemaps';
+import { opacity } from '../../theme';
+import { CLUB_PACK_SOURCE, BASEMAPS, baseOf, basemapStyle } from '../basemaps';
 
 const pack = {
   localUri: 'file:///docs/club-map-packs/p1.pmtiles',
@@ -34,4 +35,17 @@ it('with a club pack: reads the PMTiles file from the phone, above the USGS laye
   expect(style.sources[BASEMAPS.topo.source]).toEqual(
     basemapStyle('topo').sources[BASEMAPS.topo.source],
   );
+});
+
+it('Hybrid: the topo map over the aerial, the club pack between them', () => {
+  const style = basemapStyle('hybrid', pack);
+  expect(style.layers.map((l) => l.id)).toEqual([
+    'background',
+    BASEMAPS.aerial.source,
+    CLUB_PACK_SOURCE,
+    BASEMAPS.topo.source,
+  ]);
+  const topo = style.layers.find((l) => l.id === BASEMAPS.topo.source);
+  expect(topo).toMatchObject({ paint: { 'raster-opacity': opacity.hybridTopo } });
+  expect(baseOf('hybrid')).toBe('aerial');
 });

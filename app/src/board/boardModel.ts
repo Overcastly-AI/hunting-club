@@ -113,7 +113,7 @@ export function boardLinkStatus(
     return { text: 'Reconnecting to the board radio…', tone: 'quiet' };
   if (state === 'disconnected')
     return { text: 'Board radio not connected. Retrying…', tone: 'none' };
-  return describeMeshStatus(
+  const { text, tone } = describeMeshStatus(
     meshStatusOf(
       {
         myNodeNum: input.myNodeNum,
@@ -125,4 +125,5 @@ export function boardLinkStatus(
     ),
     now,
   );
+  return { text, tone };
 }

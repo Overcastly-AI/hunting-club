@@ -1,5 +1,5 @@
 import { SUN_UP_ALL_DAY, UNKNOWN_VALUE, sunReadout } from '@huntclub/shared';
-import { sunPhrases, sunSentence } from '../components/ConditionsPanel';
+import { sunPhrases, sunSentence } from '../sunLine';
 
 const times = (sunrise: string, sunset: string) => ({
   sunrise: { short: sunrise, spoken: sunrise },

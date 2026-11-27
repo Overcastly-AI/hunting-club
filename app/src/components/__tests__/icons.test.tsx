@@ -59,8 +59,10 @@ describe('icons (Lucide)', () => {
       'lucide lucide-arrow-up-from-line',
     ]);
     for (const icon of icons) {
+      // The north needle is red (alert): the map's only other red, with the unread badge.
+      const north = icon.props.className === 'lucide lucide-navigation-2';
       expect(icon.props).toMatchObject({
-        stroke: darkTheme.colors.text,
+        stroke: north ? darkTheme.colors.alert : darkTheme.colors.text,
         width: sizes.icon,
         accessibilityElementsHidden: true,
         importantForAccessibility: 'no-hide-descendants',
@@ -71,7 +73,7 @@ describe('icons (Lucide)', () => {
   it('turns the wind arrow toward where the wind blows, in the wind colour', async () => {
     await render(<WindArrowIcon towardDeg={90} />);
     const [arrow] = drawnIcons();
-    expect(arrow!.props.stroke).toBe(darkTheme.colors.info);
+    expect(arrow!.props.stroke).toBe(darkTheme.colors.wind);
     expect(arrow!.props.transform).toEqual([{ rotate: '90deg' }]);
   });
 });

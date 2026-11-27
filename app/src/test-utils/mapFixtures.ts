@@ -1,4 +1,4 @@
-import { MINUTE_MS } from '@huntclub/core';
+import { HOUR_MS, MINUTE_MS, untilSunset } from '@huntclub/shared';
 import type { HunterOnMap, OpenStandOnMap } from '../map/types';
 
 export const NOW = Date.UTC(2026, 10, 26, 12, 0, 0);
@@ -25,3 +25,6 @@ export const openStandFixture: OpenStandOnMap = {
   type: 'ladder',
   position: { lat: 40.8, lon: -77.85 },
 };
+
+/** "2 h 14 min until sunset", counted from NOW. */
+export const UNTIL_SUNSET_FIXTURE = untilSunset(new Date(NOW + 2 * HOUR_MS + 14 * MINUTE_MS), NOW);

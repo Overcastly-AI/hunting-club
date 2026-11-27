@@ -1,60 +1,87 @@
 import { MAX_TEXT_CHARS } from '@huntclub/mesh';
-import { Send } from 'lucide-react-native';
+import { formatClockTime } from '@huntclub/shared';
+import { Hand, MapPin, Send } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 import { Button } from '../components/Button';
-import { OptionButtons } from '../components/OptionButtons';
 import { Field } from '../components/Field';
-import { formatClockTime } from '@huntclub/shared';
+import { OptionButtons } from '../components/OptionButtons';
 import { QUICK_REPLIES } from '../domain/quickReplies';
 import { placeLabel } from '../map/labels';
-import { makeStyles, radii, spacing, textStyles } from '../theme';
+import {
+  ICON_SIZE,
+  makeStyles,
+  radii,
+  sizes,
+  spacing,
+  tabularNums,
+  textStyles,
+  useTheme,
+} from '../theme';
 import type { ChatItem } from './model';
 import { bubbleLabel, charactersLeft, deliveryText } from './wording';
 
 type Text_ = Extract<ChatItem, { kind: 'text' }>;
 type System = Extract<ChatItem, { kind: 'system' }>;
 
-/** A message: sender, their stand/spot/area or On the move, time, and delivery for ours. */
+/**
+ * A message plate: who (bold), where they are and the time, then the text. Yours sits on the
+ * right in the raised tone with an orange edge (orange's first job is you); how far it got
+ * is under it.
+ */
 export function MessageBubble({ item }: { item: Text_ }) {
   const styles = useStyles();
   const time = formatClockTime(new Date(item.at));
   const delivery = deliveryText(item);
   return (
-    <View
-      accessible
-      accessibilityLabel={bubbleLabel(item, time)}
-      style={[styles.bubble, item.mine ? styles.mine : styles.theirs]}
-    >
-      <Text style={styles.meta}>
-        {item.mine ? 'You' : item.fromName}
-        {item.place ? ` · ${placeLabel(item.place)}` : ''} · {time}
-      </Text>
-      <Text style={styles.body}>{item.text}</Text>
+    <View accessible accessibilityLabel={bubbleLabel(item, time)} style={styles.message}>
+      <View style={[styles.plate, item.mine ? styles.mine : styles.theirs]}>
+        <View style={styles.meta}>
+          <Text style={styles.who}>{item.mine ? 'You' : item.fromName}</Text>
+          {item.place ? <Text style={styles.metaText}>{placeLabel(item.place)}</Text> : null}
+          <Text style={styles.metaText}>{time}</Text>
+        </View>
+        <Text style={styles.body}>{item.text}</Text>
+      </View>
       {delivery ? (
-        <Text style={[styles.meta, item.sendState === 'failed' && styles.problem]}>{delivery}</Text>
+        <Text style={[styles.delivery, item.sendState === 'failed' && styles.problem]}>
+          {delivery}
+        </Text>
       ) : null}
     </View>
   );
 }
 
-/** Check-ins, help requests and shared harvests in the stream. */
+/**
+ * Check-ins, check-outs and shared harvests: one quiet line with a pin. Ask for a Hand stands
+ * out in gold on its wash, never red, never worded like an emergency.
+ */
 export function SystemCard({ item }: { item: System }) {
   const styles = useStyles();
+  const theme = useTheme();
   const time = formatClockTime(new Date(item.at));
+  const help = item.event === 'help';
+  const Icon = help ? Hand : MapPin;
   return (
     <View
       accessible
       accessibilityLabel={`${item.text}, ${time}`}
-      style={[styles.card, item.event === 'help' && styles.helpCard]}
+      style={[styles.system, help && styles.help]}
     >
-      <Text style={[styles.cardText, item.event === 'help' && styles.helpText]}>{item.text}</Text>
-      <Text style={[styles.meta, item.event === 'help' && styles.helpText]}>{time}</Text>
+      <Icon
+        size={ICON_SIZE.sm}
+        color={help ? theme.colors.warning : theme.colors.textSecondary}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      />
+      <Text style={[styles.systemText, help && styles.helpText]}>
+        {item.text}, {time}
+      </Text>
     </View>
   );
 }
 
-/** The spec's quick replies, one tap to send. */
+/** The spec's quick replies, one tap to send, two to a row. */
 export function QuickReplies({
   onSend,
   disabled,
@@ -64,6 +91,7 @@ export function QuickReplies({
 }) {
   return (
     <OptionButtons
+      grid
       options={Object.values(QUICK_REPLIES)}
       onPress={onSend}
       accessibilityLabelFor={(reply) => `Send: ${reply}`}
@@ -77,80 +105,91 @@ type ComposerProps = {
   onChange: (v: string) => void;
   onSend: () => void;
   disabled: boolean;
+  /** "Message the club", "Message your party", "Message Dale". */
+  placeholder: string;
 };
 
-/** Text field with the live 200-character counter. */
-export function Composer({ value, onChange, onSend, disabled }: ComposerProps) {
+/** The text field with its live "11 of 200" counter inside, and Send beside it. */
+export function Composer({ value, onChange, onSend, disabled, placeholder }: ComposerProps) {
   const styles = useStyles();
   const counter = charactersLeft(value);
   const nearLimit = counter.left <= 20;
   return (
     <View style={styles.composer}>
-      <Field
-        label="Message"
-        hideLabel
-        placeholder="Message"
-        value={value}
-        onChangeText={onChange}
-        multiline
-        maxLength={MAX_TEXT_CHARS + 20}
-      />
-      <View style={styles.composerRow}>
-        <Text
-          accessibilityLiveRegion={nearLimit ? 'polite' : 'none'}
-          style={[styles.meta, counter.over && styles.problem]}
-        >
-          {counter.text}
-        </Text>
-        <Button
-          variant="primary"
-          icon={Send}
-          label="Send"
-          onPress={onSend}
-          disabled={disabled || counter.over || !value.trim()}
+      <View style={styles.field}>
+        <Field
+          label="Message"
+          hideLabel
+          placeholder={placeholder}
+          value={value}
+          onChangeText={onChange}
+          multiline
+          maxLength={MAX_TEXT_CHARS + 20}
+          trailing={
+            <Text
+              accessibilityLiveRegion={nearLimit ? 'polite' : 'none'}
+              style={[styles.counter, counter.over && styles.problem]}
+            >
+              {counter.text}
+            </Text>
+          }
         />
       </View>
+      <Button
+        variant="primary"
+        icon={Send}
+        label="Send"
+        onPress={onSend}
+        disabled={disabled || counter.over || !value.trim()}
+      />
     </View>
   );
 }
 
 const useStyles = makeStyles((theme) => ({
-  bubble: {
+  message: { gap: spacing.xs },
+  plate: {
     maxWidth: '86%',
-    borderRadius: radii.lg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + spacing.xs,
-    gap: spacing.xs,
+    paddingHorizontal: spacing.sm + spacing.xs,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm + 1,
+    gap: spacing.xs / 2,
   },
-  mine: { alignSelf: 'flex-end', backgroundColor: theme.colors.raised },
+  // Theirs: a plate with its corner toward the left; yours: raised, corner toward the right.
   theirs: {
     alignSelf: 'flex-start',
     backgroundColor: theme.colors.plate,
     borderWidth: 1,
     borderColor: theme.colors.borderSubtle,
+    borderRadius: radii.lg,
+    borderTopLeftRadius: radii.sm - 2,
   },
-  meta: { ...textStyles.body, color: theme.colors.textSecondary },
+  mine: {
+    alignSelf: 'flex-end',
+    backgroundColor: theme.colors.raised,
+    borderRightWidth: sizes.mineEdge,
+    borderColor: theme.colors.accent,
+    borderRadius: radii.lg,
+    borderTopRightRadius: radii.sm - 2,
+  },
+  meta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', columnGap: spacing.sm },
+  who: { ...textStyles.markerName, color: theme.colors.text },
+  metaText: { ...textStyles.caption, color: theme.colors.textSecondary },
   body: { ...textStyles.bodyLarge, color: theme.colors.text },
+  delivery: { ...textStyles.caption, color: theme.colors.textSecondary, alignSelf: 'flex-end' },
   problem: { color: theme.colors.warning },
-  card: {
-    alignSelf: 'center',
-    borderRadius: radii.md,
+  system: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xs },
+  help: {
+    borderRadius: radii.lg,
     borderWidth: 1,
-    borderColor: theme.colors.borderSubtle,
-    backgroundColor: theme.colors.plate,
-    paddingHorizontal: spacing.md,
+    borderColor: theme.colors.warning,
+    backgroundColor: theme.colors.warningTint,
+    paddingHorizontal: spacing.sm + spacing.xs,
     paddingVertical: spacing.sm,
-    alignItems: 'center',
   },
-  // Ask for a Hand in the stream: gold on the warning tint, never red, never an emergency.
-  helpCard: { borderColor: theme.colors.warning, backgroundColor: theme.colors.warningTint },
-  cardText: { ...textStyles.label, color: theme.colors.text, textAlign: 'center' },
-  helpText: { color: theme.colors.warning },
-  composer: { gap: spacing.sm },
-  composerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-  },
+  systemText: { ...textStyles.caption, color: theme.colors.textSecondary, flexShrink: 1 },
+  helpText: { ...textStyles.badge, color: theme.colors.warning },
+  composer: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm },
+  field: { flex: 1 },
+  counter: { ...textStyles.caption, ...tabularNums, color: theme.colors.textSecondary },
 }));

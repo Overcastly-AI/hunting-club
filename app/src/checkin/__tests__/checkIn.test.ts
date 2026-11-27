@@ -15,16 +15,16 @@ export type ControllerFits = Fits<CheckInRadio['checkIns'], CheckInController>;
 const HERE = { lat: 40.79, lon: -77.86 };
 
 describe('check-in choices', () => {
-  it('offers Right here and On the move to free parties, in spec order', () => {
+  it('offers Right here and On the move to free parties: no stand needed', () => {
     expect(checkInChoices(false).map((c) => c.label)).toEqual(['Right here', 'On the move']);
   });
 
-  it('adds At a stand and In an area for clubs', () => {
+  it('adds At a stand and In an area for clubs, first, in the design’s order', () => {
     expect(checkInChoices(true).map((c) => c.label)).toEqual([
-      'Right here',
-      'On the move',
       'At a stand',
       'In an area',
+      'Right here',
+      'On the move',
     ]);
   });
 });
@@ -96,21 +96,24 @@ describe('sortStands', () => {
 describe('overdueNote', () => {
   const nov30 = new Date(2026, 10, 30, 7, 0).getTime();
 
-  it('says the overdue time from sunset plus grace', () => {
+  it('says the overdue time from sunset plus grace, and gives the time to draw in ink', () => {
     const note = overdueNote(nov30, HERE, 30, 'party');
-    expect(note).toMatch(
-      /^If you haven’t checked out by \d{1,2}:\d{2} PM \(30 min after sunset\), your party gets an overdue alert\.$/,
+    expect(note.text).toMatch(
+      /^If you haven’t checked out by \d{1,2}:\d{2} PM, your party gets an overdue alert\. That is sunset plus 30 minutes\.$/,
     );
+    expect(note.time).toMatch(/^\d{1,2}:\d{2} PM$/);
+    expect(note.text).toContain(note.time);
   });
 
   it('falls back to words when your location is unknown, and names the club', () => {
-    expect(overdueNote(nov30, undefined, CORE_CONFIG.overdue.graceMinutes, 'club')).toBe(
-      'If you haven’t checked out 30 minutes after sunset, club members get an overdue alert.',
-    );
+    expect(overdueNote(nov30, undefined, CORE_CONFIG.overdue.graceMinutes, 'club')).toEqual({
+      text: 'If you haven’t checked out by sunset plus 30 minutes, club members get an overdue alert.',
+      time: null,
+    });
   });
 
-  it('never mentions legal shooting hours', () => {
-    expect(overdueNote(nov30, HERE, 30, 'party')).not.toMatch(/shooting|legal/i);
+  it('never mentions legal shooting hours, first light or last light', () => {
+    expect(overdueNote(nov30, HERE, 30, 'party').text).not.toMatch(/shooting|legal|light/i);
   });
 });
 

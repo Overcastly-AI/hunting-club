@@ -15,12 +15,12 @@ import {
 } from '../theme';
 
 /**
- * The same variants as the club admin's Button (docs/UI_REDESIGN.md section 6):
- * - primary: accent fill, the one main action of a screen.
- * - secondary: raised, with a subtle edge.
+ * The same variants as the club admin's Button (docs/DESIGN.md, map-first):
+ * - primary: accent fill with near-black text, the one main action of a screen.
+ * - secondary: raised, with a 1.5 px control edge.
  * - tertiary: text only.
  * - danger: outline, for removing something.
- * - help: gold outline, for Ask for a Hand only (app only). It is never red and never
+ * - help: gold on its gold wash, for Ask for a Hand only (app only). It is never red and never
  *   reads like an emergency call: it pings the hunter's party or club.
  */
 export const BUTTON_VARIANTS = ['primary', 'secondary', 'tertiary', 'danger', 'help'] as const;
@@ -112,7 +112,11 @@ export function Button({
       ) : null}
       <View style={styles.texts}>
         <Text style={[styles.label, textStyle]}>{label}</Text>
-        {detail ? <Text style={[styles.detail, textStyle]}>{detail}</Text> : null}
+        {detail ? (
+          <Text style={[styles.detail, textStyle, variant === 'help' && !disabled && styles.helpDetail]}>
+            {detail}
+          </Text>
+        ) : null}
       </View>
     </Pressable>
   );
@@ -121,7 +125,7 @@ export function Button({
 const useStyles = makeStyles((theme) => ({
   base: {
     borderRadius: radii.md,
-    borderWidth: 1,
+    borderWidth: sizes.controlBorder,
     borderColor: 'transparent',
     flexDirection: 'row',
     alignItems: 'center',
@@ -130,14 +134,15 @@ const useStyles = makeStyles((theme) => ({
     paddingVertical: spacing.sm,
   },
   texts: { alignItems: 'center', flexShrink: 1 },
-  label: { ...textStyles.label, textAlign: 'center' },
-  detail: { ...textStyles.body, textAlign: 'center' },
+  label: { ...textStyles.button, textAlign: 'center' },
+  // A second line in a button is a sheet's second line: 14 px.
+  detail: { ...textStyles.caption, textAlign: 'center' },
 
   primary: { backgroundColor: theme.colors.accent, borderColor: theme.colors.accentBorder },
   primaryPressed: { backgroundColor: theme.colors.accentHover },
   primaryText: { color: theme.colors.onAccent },
 
-  secondary: { backgroundColor: theme.colors.raised, borderColor: theme.colors.borderSubtle },
+  secondary: { backgroundColor: theme.colors.raised, borderColor: theme.colors.borderControl },
   secondaryPressed: { backgroundColor: theme.colors.pressed },
   secondaryText: { color: theme.colors.text },
 
@@ -149,13 +154,15 @@ const useStyles = makeStyles((theme) => ({
   dangerPressed: { backgroundColor: theme.colors.dangerTint },
   dangerText: { color: theme.colors.danger },
 
+  // Ask for a Hand: gold on its dark gold wash, with who it pings in ink underneath.
   help: {
-    backgroundColor: 'transparent',
+    backgroundColor: theme.colors.warningTint,
     borderColor: theme.colors.warning,
-    borderWidth: sizes.hairline,
+    borderWidth: sizes.selectedBorder,
   },
-  helpPressed: { backgroundColor: theme.colors.warningTint },
+  helpPressed: { backgroundColor: theme.colors.pressed },
   helpText: { color: theme.colors.warning },
+  helpDetail: { color: theme.colors.text },
 
   // Disabled is its own look, not a faded one, so its text keeps 4.5:1 in both themes.
   disabled: { backgroundColor: theme.colors.raised, borderColor: theme.colors.borderSubtle },

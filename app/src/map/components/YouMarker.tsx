@@ -7,6 +7,7 @@ import { scentConeRing, scentLabelPosition } from '../geo';
 import { YOUR_SCENT, yourAccessibilityLabel } from '../labels';
 import type { LatLon } from '@huntclub/mesh';
 import { HaloText } from './HaloText';
+import { MarkerPlate, markerAnchor } from './MarkerPlate';
 
 type Props = {
   position: LatLon;
@@ -16,16 +17,32 @@ type Props = {
 
 const PULSE_MS = 1800;
 
-/** Your orange dot with a pulse, and your scent cone pointing downwind. */
+/** The plate beside your dot. */
+export const YOU = 'You';
+
+/** Anchored so the centre of your dot (not the row with its plate) is on your position. */
+const YOU_ANCHOR = markerAnchor(sizes.youPulse);
+
+/**
+ * Your orange dot (the one orange dot on any map) with a pulse and a "You" plate, and your
+ * scent cone drifting downwind. The dot and cone are map symbols: the same in both themes.
+ */
 export function YouMarker({ position, windFromDeg }: Props) {
   const showScent = windFromDeg !== undefined && windFromDeg !== null;
   return (
     <>
       {showScent ? <ScentCone position={position} windFromDeg={windFromDeg} /> : null}
-      <Marker id="you" lngLat={[position.lon, position.lat]} anchor="center">
-        <View accessible accessibilityLabel={yourAccessibilityLabel(showScent)} style={styles.box}>
-          <Pulse />
-          <View style={styles.dot} />
+      <Marker id="you" lngLat={[position.lon, position.lat]} {...YOU_ANCHOR}>
+        <View
+          accessible
+          accessibilityLabel={yourAccessibilityLabel(showScent)}
+          style={styles.row}
+        >
+          <View style={styles.box}>
+            <Pulse />
+            <View style={styles.dot} />
+          </View>
+          <MarkerPlate title={YOU} />
         </View>
       </Marker>
     </>
@@ -48,15 +65,17 @@ function ScentCone({ position, windFromDeg }: { position: LatLon; windFromDeg: n
         <Layer
           id="your-scent-fill"
           type="fill"
-          paint={{ 'fill-color': colors.accent, 'fill-opacity': opacity.scentFill }}
+          paint={{ 'fill-color': colors.text, 'fill-opacity': opacity.scentFill }}
         />
         <Layer
           id="your-scent-line"
           type="line"
           paint={{
-            'line-color': colors.accent,
+            'line-color': colors.text,
             'line-opacity': opacity.scentLine,
             'line-width': sizes.hairline,
+            // Dashed: a drift, not a boundary.
+            'line-dasharray': [2, 2],
           }}
         />
       </GeoJSONSource>
@@ -100,6 +119,7 @@ function Pulse() {
 }
 
 const styles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center' },
   box: {
     width: sizes.youPulse,
     height: sizes.youPulse,

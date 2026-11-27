@@ -5,7 +5,15 @@
  * invite still to redeem), and the club's stands and areas with their mesh ids.
  */
 import { decodeJoinUrl } from '@huntclub/mesh';
-import type { Area, Club, Entitlement, Member, MemberRole, Stand } from '@huntclub/shared';
+import type {
+  Area,
+  Club,
+  Entitlement,
+  Member,
+  MemberRole,
+  Stand,
+  StandType,
+} from '@huntclub/shared';
 
 import type { ClubArea, ClubStand } from '../checkin/placement';
 import type { SqlDatabase } from '../db/types';
@@ -188,14 +196,21 @@ export async function loadClubs(db: SqlDatabase): Promise<LocalClub[]> {
 
 /** Active stands with mesh ids, in the shape check-in and the board use. */
 export async function loadClubStands(db: SqlDatabase, clubId: string): Promise<ClubStand[]> {
-  const rows = await db.getAllAsync<{ mesh_id: number; name: string; lat: number; lon: number }>(
-    `SELECT mesh_id, name, lat, lon FROM stands
+  const rows = await db.getAllAsync<{
+    mesh_id: number;
+    name: string;
+    type: StandType;
+    lat: number;
+    lon: number;
+  }>(
+    `SELECT mesh_id, name, type, lat, lon FROM stands
      WHERE club_id = ? AND active = 1 AND mesh_id IS NOT NULL ORDER BY name`,
     clubId,
   );
   return rows.map((r) => ({
     meshId: r.mesh_id,
     name: r.name,
+    type: r.type,
     position: { lat: r.lat, lon: r.lon },
   }));
 }
