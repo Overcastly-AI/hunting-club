@@ -439,7 +439,7 @@ describe('map packs', () => {
     // stored directly, as a club saved before the rule would hold it; the map-pack request's own
     // size check is the second line of defence.
     const huge = {
-      type: 'Polygon',
+      type: 'Polygon' as const,
       coordinates: [
         [
           [-95, 35],
