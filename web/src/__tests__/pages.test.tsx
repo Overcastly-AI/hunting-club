@@ -36,7 +36,7 @@ import {
   SIGNED_IN,
   testCode,
 } from '../testing/fakeClubApi';
-import { go } from '../testing/app';
+import { go, renderSignedIn } from '../testing/app';
 import { accountButton, requestCode, signIn } from '../testing/shell';
 import { tableRows } from '../testing/tables';
 import { SAMPLE_CAPTION } from '../pages/SignIn';
@@ -102,7 +102,10 @@ describe('sign in', () => {
     await signIn();
     // The title is set in an effect after the signed-in render commits.
     await vi.waitFor(() => expect(document.title).toBe(`My club · Club admin · ${APP_NAME}`));
-    expect((await accountButton()).textContent).toContain(SIGNED_IN.email);
+    // The account button names the signed-in admin by their club name.
+    const me = sampleData().members.find((m) => m.userId === SIGNED_IN.userId)!;
+    const button = await accountButton();
+    await vi.waitFor(() => expect(button.textContent).toContain(me.displayName));
   });
 
   it('floats the form over a sample property, captioned as a sample', async () => {
@@ -365,6 +368,17 @@ describe('club pages', () => {
       // The invite page names the club ("Join <club name>").
       clubName: sampleData().club!.name,
     });
+  });
+
+  it("draws each roster avatar with the member's saved initials, else ones from the name", async () => {
+    const data = sampleData();
+    const ruth = data.members.find((m) => m.displayName === 'Ruth Keller')!;
+    ruth.initials = 'RUK';
+    await renderSignedIn(data, '#/roster');
+    const avatar = (name: string) =>
+      screen.getByText(name).closest('tr')?.querySelector('.ui-avatar')?.textContent;
+    expect(await screen.findByText('Ruth Keller')).toBeTruthy();
+    expect(avatar('Ruth Keller')).toBe('RUK');
   });
 
   it('makes no invite until the admin asks: opening the roster or going to its invite writes nothing', async () => {

@@ -9,6 +9,7 @@ import {
   INITIALS_MAX,
   initialsSchema,
   isEmailStandInName,
+  NAMELESS_STAND_IN,
   normalizeDisplayName,
   RADIO_NAME_BYTES,
   storedDisplayNameSchema,
@@ -87,10 +88,24 @@ describe('display name rules', () => {
 });
 
 describe('email stand-in names', () => {
-  it('is the local part as typed, or empty when that is no name', () => {
+  it('is the local part as typed when that is a name', () => {
     expect(emailStandInName('jane.doe@example.com')).toBe('jane.doe');
-    expect(emailStandInName('jane_doe@example.com')).toBe('');
-    expect(emailStandInName('@example.com')).toBe('');
+    expect(emailStandInName("o'neil@example.com")).toBe("o'neil");
+  });
+
+  it('is always a valid display name, never one made up', () => {
+    // Characters a name can't hold become periods; the edges are trimmed.
+    expect(emailStandInName('jane_doe+uat@example.com')).toBe('jane.doe.uat');
+    expect(emailStandInName('_jane_@example.com')).toBe('jane');
+    // Cut to fit the radio.
+    const long = emailStandInName(`${'a'.repeat(50)}@example.com`);
+    expect(long).toBe('a'.repeat(DISPLAY_NAME_MAX));
+    // Nothing to stand in with.
+    expect(emailStandInName('@example.com')).toBe(NAMELESS_STAND_IN);
+    expect(emailStandInName('___@example.com')).toBe(NAMELESS_STAND_IN);
+    for (const email of ['jane_doe@x.com', '@x.com', `${'é'.repeat(30)}@x.com`]) {
+      expect(displayNameProblem(emailStandInName(email))).toBeNull();
+    }
   });
 
   it('tells a stand-in from a chosen name', () => {
@@ -98,6 +113,14 @@ describe('email stand-in names', () => {
     expect(isEmailStandInName('Jane.Doe', 'jane.doe@example.com')).toBe(true);
     expect(isEmailStandInName('Jane Doe', 'jane.doe@example.com')).toBe(false);
     expect(isEmailStandInName('jane.doe', undefined)).toBe(false);
+  });
+
+  it('knows every stand-in, so the person is always asked for their name', () => {
+    expect(isEmailStandInName('jane.doe.uat', 'jane_doe+uat@example.com')).toBe(true);
+    expect(isEmailStandInName(NAMELESS_STAND_IN, '___@example.com')).toBe(true);
+    // A raw local part stored before the name rules.
+    expect(isEmailStandInName('jane_doe+uat', 'jane_doe+uat@example.com')).toBe(true);
+    expect(isEmailStandInName(NAMELESS_STAND_IN, 'jane@example.com')).toBe(false);
   });
 });
 

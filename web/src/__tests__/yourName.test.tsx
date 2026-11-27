@@ -5,6 +5,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { YOUR_NAME } from '../pages/YourName';
 import { renderSignedIn } from '../testing/app';
 import { sampleData, SIGNED_IN } from '../testing/fakeClubApi';
+import { accountButton } from '../testing/shell';
 
 /** Sample data whose signed-in admin (dale@example.com) is still named "dale". */
 function standInData() {
@@ -37,6 +38,9 @@ describe('Your name', () => {
     );
     const me = data.members.find((m) => m.userId === SIGNED_IN.userId)!;
     expect(me).toMatchObject({ displayName: 'Dale Morgan', initials: 'DM' });
+    // The account menu follows the saved name.
+    const account = await accountButton();
+    await waitFor(() => expect(within(account).getByText('Dale Morgan')).toBeTruthy());
   });
 
   it('holds the name to the shared rules before calling the API', async () => {

@@ -1,3 +1,4 @@
+import { isEmailStandInName, NAMELESS_STAND_IN } from '@huntclub/shared';
 import { parseSeedArgs } from '../seed/cli';
 import { profileFromEmail } from '../seed/devClub';
 
@@ -40,10 +41,13 @@ it('takes the display name from an email exactly as typed, and initials from its
     initials: 'JU',
   });
   expect(profileFromEmail('uat@example.com')).toEqual({ displayName: 'uat', initials: 'U' });
-  expect(profileFromEmail('@example.com')).toEqual({ displayName: 'UAT Admin', initials: 'UA' });
-  // A local part the name rules refuse (underscore) is not used as a name.
-  expect(profileFromEmail('jane_doe+uat@example.com')).toEqual({
-    displayName: 'UAT Admin',
-    initials: 'UA',
-  });
+  // A local part the name rules refuse still stands in, as near as typed, never a made-up name;
+  // the stand-in check knows each one, so the web asks the admin for their name.
+  for (const [email, displayName, initials] of [
+    ['jane_doe+uat@example.com', 'jane.doe.uat', 'JDU'],
+    ['@example.com', NAMELESS_STAND_IN, 'M'],
+  ] as const) {
+    expect(profileFromEmail(email)).toEqual({ displayName, initials });
+    expect(isEmailStandInName(displayName, email)).toBe(true);
+  }
 });

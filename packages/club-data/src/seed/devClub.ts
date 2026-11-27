@@ -53,18 +53,15 @@ export interface DevSeedResult {
   featuresUntil: string | undefined;
 }
 
-/** Who the seed admin is when nothing else names them. */
-const FALLBACK_PROFILE = { displayName: 'UAT Admin', initials: 'UA' } as const;
-
 /**
- * Display name and initials from an email's local part, the name exactly as typed
- * ("jonesjaycob.uitest@x" → "jonesjaycob.uitest", "JU"), by the shared stand-in rule
- * (emailStandInName). The admin is asked for a real name on the web (My club).
+ * Display name and initials from an email, by the shared stand-in rule (emailStandInName):
+ * the local part as typed ("jonesjaycob.uitest@x" → "jonesjaycob.uitest", "JU"), never a
+ * made-up name. Every stand-in is one isEmailStandInName knows, so the admin is asked for
+ * their real name on the web (My club).
  */
 export function profileFromEmail(email: string) {
   const displayName = emailStandInName(email);
-  if (!displayName) return { ...FALLBACK_PROFILE };
-  return { displayName, initials: initialsFor(displayName) || FALLBACK_PROFILE.initials };
+  return { displayName, initials: initialsFor(displayName) };
 }
 
 export async function seedDevClub(data: ClubData, input: DevSeedInput): Promise<DevSeedResult> {
