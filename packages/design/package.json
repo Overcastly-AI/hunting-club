@@ -11,6 +11,7 @@
     "./colors": "./src/colors.ts",
     "./fonts/*": "./fonts/*",
     "./png": "./scripts/png.ts",
+    "./aerial": "./src/aerial.ts",
     "./dawnScene": "./src/dawnScene.ts",
     "./dawnControl": "./src/dawnControl.ts"
   },

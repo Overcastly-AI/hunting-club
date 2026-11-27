@@ -53,80 +53,82 @@ const FEATURES = [
 export function Clubs() {
   return (
     <>
-      <section className="hero">
-        <div className="wrap">
-          <h1>Retire the paper sign-in sheet.</h1>
-          <p className="lead">
-            See who is in which stand, who is overdue and where the club hunts, even with no cell
-            service.
-          </p>
-          <div className="actions">
-            <a className="button primary" href={START_A_CLUB.href}>
-              {START_A_CLUB.label}
-            </a>
-            <a className="button" href={PAGE_PATHS.pricing}>
-              See club pricing
-            </a>
+      <div className="wrap page-head">
+        <h1>Retire the paper sign-in sheet.</h1>
+        <p className="lede">
+          See who is in which stand, who is overdue and where the club hunts, even with no cell
+          service.
+        </p>
+        <div className="actions">
+          <a className="btn go" href={START_A_CLUB.href}>
+            {START_A_CLUB.label}
+          </a>
+          <a className="btn" href={PAGE_PATHS.pricing}>
+            See club pricing
+          </a>
+        </div>
+      </div>
+
+      <section className="band">
+        <div className="wrap two">
+          <h2>The questions every club asks at dawn</h2>
+          <div>
+            <ul className="rows">
+              {QUESTIONS.map((q) => (
+                <li key={q}>
+                  <h3>{q}</h3>
+                </li>
+              ))}
+            </ul>
+            <p className="lede">The app answers them on one shared map, over the radio.</p>
           </div>
         </div>
       </section>
 
-      <section className="band-light">
-        <div className="wrap">
-          <h2>The questions every club asks at dawn</h2>
-          <ul className="checklist">
-            {QUESTIONS.map((q) => (
-              <li key={q}>{q}</li>
-            ))}
-          </ul>
-          <p className="lead">The app answers them on one shared map, over the radio.</p>
-        </div>
-      </section>
-
-      <section>
-        <div className="wrap">
+      <section className="band lifted">
+        <div className="wrap two">
           <h2>Set up in three steps</h2>
           <ol className="steps">
             {STEPS.map((s) => (
               <li key={s.title}>
                 <h3>{s.title}</h3>
-                <p className="muted">{s.text}</p>
+                <p>{s.text}</p>
               </li>
             ))}
           </ol>
         </div>
       </section>
 
-      <section className="band-light">
+      <section className="band">
         <div className="wrap">
           <h2>What a club gets</h2>
-          <div className="grid">
+          <ul className="rows cols">
             {FEATURES.map((f) => (
-              <div key={f.title}>
+              <li key={f.title}>
                 <h3>{f.title}</h3>
-                <p className="muted">{f.text}</p>
-              </div>
+                <p>{f.text}</p>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </section>
 
-      <section>
-        <div className="wrap">
+      <section className="band">
+        <div className="wrap narrow">
           <h2>One price for the whole club</h2>
-          <p className="lead">
+          <p className="lede">
             One price per club: {CLUB_PRICE_LINE}, with a {CLUB_PRICING.trialDays}-day free trial.
             Members join free.
           </p>
           <div className="actions">
-            <a className="button primary" href={START_A_CLUB.href}>
+            <a className="btn go" href={START_A_CLUB.href}>
               {START_A_CLUB.label}
             </a>
-            <a className="button" href={PAGE_PATHS.pricing}>
+            <a className="btn" href={PAGE_PATHS.pricing}>
               See club pricing
             </a>
           </div>
-          <p className="muted fine-print">{CLUB_PRICING.terms}</p>
+          <p className="fine">{CLUB_PRICING.terms}</p>
         </div>
       </section>
     </>

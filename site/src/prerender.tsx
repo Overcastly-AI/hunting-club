@@ -8,9 +8,10 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FAVICON_SVG, logoMarkSvg } from '@huntclub/design';
-import { dawnSceneCss } from '@huntclub/design/dawnScene';
+import { aerialSvg } from '@huntclub/design/aerial';
 import { ogImageSvg, OG_FONT_FILE, renderPng } from './og';
-import { DAWN_SCRIPT_ENTRY, JOIN_SCRIPT_ENTRY } from '../vite.config';
+import { JOIN_SCRIPT_ENTRY } from '../vite.config';
+import { SAMPLE_CLUB } from './map/sampleClub';
 import { renderJoin, renderNotFound, renderPage } from './render';
 import {
   HASH_FORWARD_SCRIPT,
@@ -37,7 +38,7 @@ function hashedAsset(name: string, ext: string, content: string): string {
   return `/${file}`;
 }
 
-// The browser scripts, from the client build's manifest (`vite build --mode client`).
+// The browser script, from the client build's manifest (`vite build --mode client`).
 const MANIFEST = join(DIST, '.vite', 'manifest.json');
 const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8')) as Record<string, { file: string }>;
 const clientScript = (entry: string) => {
@@ -52,11 +53,8 @@ const assets = {
   cssUrl: hashedAsset('site', 'css', siteCss(fontUrl)),
   // The home page's old-bookmark forward.
   forwardScriptUrl: hashedAsset('forward', 'js', HASH_FORWARD_SCRIPT),
-  // The home hero's dawn scene: its CSS in its own file (only the home page links it).
-  dawn: {
-    cssUrl: hashedAsset('dawn', 'css', dawnSceneCss()),
-    scriptUrl: clientScript(DAWN_SCRIPT_ENTRY),
-  },
+  // The home hero's aerial picture with the example club's line and areas.
+  aerialUrl: hashedAsset('aerial', 'svg', aerialSvg(SAMPLE_CLUB)),
 };
 for (const route of ROUTES) {
   const file = join(DIST, outputFile(route.path));

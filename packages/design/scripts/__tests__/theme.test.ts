@@ -1,5 +1,5 @@
 import { runInNewContext } from 'node:vm';
-import { colors, lightColors } from '../../src/colors';
+import { colors } from '../../src/colors';
 import { contrastRatio, MIN_TEXT_CONTRAST, MIN_UI_CONTRAST } from '../../src/contrast';
 import {
   rootVariablesCss,
@@ -107,15 +107,13 @@ describe('theme contrast (fails the build if any pair drops under its threshold)
     expect(c.accentBorder).toBe(c.text);
   });
 
-  it('keeps the map and marketing tokens equal to their theme sources', () => {
+  it('keeps the map tokens equal to their theme sources', () => {
     const dark = themes.dark.colors;
     expect(colors.surface).toBe(dark.plate);
     expect(colors.surfaceRaised).toBe(dark.raised);
     expect(colors.help).toBe(dark.warning);
     expect(colors.fresh).toBe(dark.fresh);
     expect(colors.alert).toBe(dark.alert);
-    expect(lightColors.bgLight).toBe(themes.light.colors.canvas);
-    expect(lightColors.mutedOnLight).toBe(themes.light.colors.textSecondary);
   });
 });
 
