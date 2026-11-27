@@ -23,7 +23,8 @@ import { SHELL } from '../components/ui/sizes';
 import { ClubMap } from '../map/ClubMap';
 import { useBasemap } from '../map/basemap';
 import { SAMPLE_PACK } from '../map/samplePack';
-import { SAMPLE_PLAN, SAMPLE_PROPERTY } from '../map/sampleProperty';
+import { SAMPLE_PROPERTY } from '@huntclub/shared/sample';
+import { SAMPLE_PLAN } from '../map/sampleProperty';
 
 type Busy = null | 'send' | 'resend' | 'confirm';
 

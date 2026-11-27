@@ -2,7 +2,7 @@
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import Stripe from 'stripe';
-import type { MapPackBuild } from '@huntclub/shared';
+import { MAP_PACK_OBJECT, type MapPackBuild } from '@huntclub/shared';
 import { stripeApi, type StripeApi } from './billing';
 import type { ThinEvent } from './stripeWebhook';
 
@@ -43,8 +43,8 @@ export function mapPackUploader(bucket: string): (key: string, body: Buffer) => 
         Bucket: bucket,
         Key: key,
         Body: body,
-        ContentType: 'application/vnd.pmtiles',
-        CacheControl: 'public, max-age=31536000, immutable',
+        ContentType: MAP_PACK_OBJECT.contentType,
+        CacheControl: MAP_PACK_OBJECT.cacheControl,
       }),
     );
   };

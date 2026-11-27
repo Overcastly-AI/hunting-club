@@ -167,6 +167,16 @@ export const DOWNLOAD_LIMITS = {
 /** S3 key prefix (and CloudFront path) of club map packs. Never pruned by web deploys. */
 export const MAP_PACKS_PREFIX = 'packs/';
 
+/**
+ * How a map pack archive is stored: its media type, and cached for a year (every pack has its
+ * own id, so an archive never changes under its key). The builder Lambda and the sample pack's
+ * deploy both write packs this way.
+ */
+export const MAP_PACK_OBJECT = {
+  contentType: 'application/vnd.pmtiles',
+  cacheControl: 'public, max-age=31536000, immutable',
+} as const;
+
 /** Where a club's map pack archive lives: `packs/<clubId>/<packId>.pmtiles`. */
 export function mapPackKey(clubId: string, packId: string): string {
   return `${MAP_PACKS_PREFIX}${clubId}/${packId}.pmtiles`;

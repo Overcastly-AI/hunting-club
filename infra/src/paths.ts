@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { SAMPLE_PACK_FOLDER } from '@huntclub/shared/sample';
 
 /**
  * The infra/ folder (the one holding cdk.json). Found by walking up from this file so
@@ -21,3 +22,6 @@ export const webDistPath = () => join(infraRoot(), '..', 'web', 'dist');
 
 /** The built public site. `cdk synth` needs it: `npm run build -w @huntclub/site`. */
 export const siteDistPath = () => join(infraRoot(), '..', 'site', 'dist');
+
+/** The committed sample map pack (web/sample-pack/packs/sample/<id>.pmtiles), deployed as it is. */
+export const samplePackPath = () => join(infraRoot(), '..', 'web', SAMPLE_PACK_FOLDER);

@@ -16,6 +16,7 @@
     "./pricing": "./src/pricing.ts",
     "./testing": "./src/testing.ts",
     "./schema-runtime": "./src/schemaRuntime.ts",
+    "./sample": "./src/sample.ts",
     "./signInCopy": "./src/signInCopy.ts",
     "./useCooldown": "./src/useCooldown.ts",
     "./useCodeEntry": "./src/useCodeEntry.ts"

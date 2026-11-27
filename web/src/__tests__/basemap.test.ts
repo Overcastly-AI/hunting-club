@@ -1,7 +1,10 @@
 import { polygonBounds, rangeTileCount, tileRangeAt, type MapPack } from '@huntclub/shared';
 import { parseHeader } from '@huntclub/pmtiles/reader';
 import { basemapPack, basemapZoom, BASEMAP_MAX_TILES, loadBasemap } from '../map/basemap';
-import { SAMPLE_PROPERTY } from '../map/sampleProperty';
+import { SAMPLE_PROPERTY } from '@huntclub/shared/sample';
+import { readFileSync } from 'node:fs';
+import { samplePackFile } from '../../scripts/samplePackFile';
+import { SAMPLE_PACK } from '../map/samplePack';
 import { sampleData } from '../testing/fakeClubApi';
 import { memoryRead, nodeGunzip, packArchive, packFetch } from '../testing/packArchive';
 
@@ -71,5 +74,21 @@ describe('reading a pack', () => {
       expect(url).toBe(`/${pack.s3Key}`);
       expect(new Headers(init?.headers).get('range')).toMatch(/^bytes=\d+-\d+$/);
     }
+  });
+});
+
+describe('the sample pack behind the sign-in form', () => {
+  it('is committed at its bucket key, small, and draws the whole sample property in aerial', async () => {
+    const archive = readFileSync(samplePackFile());
+    expect(samplePackFile().endsWith(`sample-pack/${SAMPLE_PACK.s3Key}`)).toBe(true);
+    expect(archive.length).toBeLessThan(2 * 1024 * 1024);
+    const header = parseHeader(archive);
+    const picture = await loadBasemap(SAMPLE_PACK, {
+      read: memoryRead(archive),
+      gunzip: nodeGunzip,
+    });
+    expect(picture.basemap.id).toBe('aerial');
+    expect(picture.tiles).toHaveLength(rangeTileCount(tileRangeAt(BOUNDS, header.maxZoom)));
+    for (const tile of picture.tiles) expect(tile.href).toMatch(/^data:image\/jpeg;base64,/);
   });
 });

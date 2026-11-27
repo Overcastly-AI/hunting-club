@@ -6,7 +6,11 @@ import { App } from 'aws-cdk-lib';
 import { Match } from 'aws-cdk-lib/assertions';
 import { GSIS, PARTITION_PREFIXES, TABLE_KEYS, TTL_ATTRIBUTE } from '@huntclub/club-data';
 import { APP_ID } from '@huntclub/shared';
-import { MAP_PACK_BUILD, MAP_PACKS_PREFIX } from '@huntclub/shared/maps';
+import { MAP_PACK_BUILD, MAP_PACK_OBJECT, MAP_PACKS_PREFIX } from '@huntclub/shared/maps';
+import { SAMPLE_PACK_ID, SAMPLE_PACK_OWNER } from '@huntclub/shared/sample';
+import { existsSync, readdirSync } from 'node:fs';
+import { mapPackKey } from '@huntclub/shared';
+import { samplePackPath } from '../src/paths';
 import {
   API_ENV,
   CLUB_API_SECRETS,
@@ -170,7 +174,7 @@ describe('web stack', () => {
       Object.entries(t.findResources('Custom::CDKBucketDeployment')).find(([key]) =>
         key.startsWith(id),
       )![1].Properties;
-    expect(deployments()).toHaveLength(6);
+    expect(deployments()).toHaveLength(7);
     const year = { 'cache-control': 'public, max-age=31536000, immutable' };
     expect(byId('SiteAssets')).toMatchObject({
       Prune: false,
@@ -213,6 +217,30 @@ describe('web stack', () => {
       SystemMetadata: { 'cache-control': 'no-cache' },
       DistributionPaths: [`/${ADMIN_PREFIX}*`],
     });
+  });
+
+  it('deploys the committed sample map pack to packs/sample/<id>.pmtiles, as the builder writes packs', () => {
+    // The folder holds only the archive, at its bucket key (no manual upload).
+    expect(readdirSync(samplePackPath(), { recursive: true }).map(String).sort()).toEqual([
+      'packs',
+      'packs/sample',
+      mapPackKey(SAMPLE_PACK_OWNER, SAMPLE_PACK_ID),
+    ]);
+    expect(existsSync(join(samplePackPath(), mapPackKey(SAMPLE_PACK_OWNER, SAMPLE_PACK_ID)))).toBe(
+      true,
+    );
+    const [pack] = Object.entries(t.findResources('Custom::CDKBucketDeployment')).filter(([key]) =>
+      key.startsWith('SamplePack'),
+    );
+    expect(pack![1].Properties).toMatchObject({
+      Prune: false,
+      SystemMetadata: {
+        'content-type': MAP_PACK_OBJECT.contentType,
+        'cache-control': MAP_PACK_OBJECT.cacheControl,
+      },
+    });
+    // Club packs and the sample share packs/: neither deploy may prune it.
+    expect(pack![1].Properties.DestinationBucketKeyPrefix).toBeUndefined();
   });
 
   it('answers a missing path with the 404 page and a real 404 status', () => {
@@ -320,7 +348,7 @@ describe('web stack', () => {
     const withLinks = synthTemplates({
       appLinks: { appleTeamId: 'ABCDE12345', androidSha256CertFingerprints: ['AA:BB'] },
     }).web;
-    expect(deployments(withLinks)).toHaveLength(7);
+    expect(deployments(withLinks)).toHaveLength(8);
     withLinks.hasResourceProperties('Custom::CDKBucketDeployment', {
       SystemMetadata: Match.objectLike({ 'content-type': 'application/json' }),
       Prune: false,

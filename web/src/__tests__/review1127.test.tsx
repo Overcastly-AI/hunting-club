@@ -15,7 +15,7 @@ import { App } from '../App';
 import { Loading, type LoadingLayout } from '../components/Loading';
 import { SKELETON_DELAY_MS } from '../components/ui';
 import { SAMPLE_PACK } from '../map/samplePack';
-import { SAMPLE_PROPERTY } from '../map/sampleProperty';
+import { SAMPLE_PROPERTY } from '@huntclub/shared/sample';
 import { globalCss } from '../theme/css';
 import { renderSignedIn } from '../testing/app';
 import {

@@ -1,6 +1,6 @@
 import { defaultRandom } from '@huntclub/mesh';
 import { fakeIdToken } from '@huntclub/shared/testing';
-import { SAMPLE_PROPERTY } from '../map/sampleProperty';
+import { SAMPLE_PROPERTY } from '@huntclub/shared/sample';
 import {
   type AuthTokens,
   ClubApiRequestError,
