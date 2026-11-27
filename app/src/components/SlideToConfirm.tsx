@@ -119,7 +119,7 @@ const useStyles = makeStyles((theme) => ({
   track: {
     minHeight: sizes.primaryButtonMaxHeight,
     borderRadius: radii.primaryButton,
-    backgroundColor: theme.colors.surface2,
+    backgroundColor: theme.colors.raised,
     borderWidth: 1,
     borderColor: theme.colors.borderSubtle,
     justifyContent: 'center',
@@ -153,11 +153,11 @@ const useStyles = makeStyles((theme) => ({
     transform: [{ rotate: '45deg' }],
   },
   // Gold thumb: dark ink in the dark theme, white on the light theme's deep gold.
-  helpChevron: { borderColor: theme.colors.surface0 },
+  helpChevron: { borderColor: theme.colors.plate },
   // Disabled is its own look, not a fade: tertiary text and a grey thumb, 4.5:1 in both themes.
-  disabledTrack: { backgroundColor: theme.colors.surface1 },
+  disabledTrack: { backgroundColor: theme.colors.plate },
   disabledText: { color: theme.colors.textTertiary },
-  disabledThumb: { backgroundColor: theme.colors.surface3 },
+  disabledThumb: { backgroundColor: theme.colors.pressed },
   disabledChevron: { borderColor: theme.colors.textTertiary },
   reason: { ...textStyles.body, color: theme.colors.textSecondary },
 }));

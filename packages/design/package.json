@@ -2,7 +2,7 @@
   "name": "@huntclub/design",
   "version": "0.0.0",
   "private": true,
-  "description": "Design D tokens (colors, type scale, sizes, radii, spacing), the web CSS generated from them and the Archivo web font, shared by the app, the club admin and the public site. No React Native or DOM code.",
+  "description": "Map-first design tokens (colors, type scale, sizes, radii, spacing; docs/DESIGN.md), the web CSS generated from them and the Archivo web font, shared by the app, the club admin and the public site. No React Native or DOM code.",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",

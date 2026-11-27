@@ -1,5 +1,7 @@
 # UI redesign brief
 
+> **Superseded on visuals (owner decision, 2026-11-27).** The visual spec here (colours, the light "sunlight" theme on cream, card styling, radii, shadows, type widths) is replaced by the map-first direction in [docs/DESIGN.md](DESIGN.md). The structural, layout and accessibility requirements below (shell, page structure, component list and behaviour, 48 px targets, contrast, keyboard and axe checks) still apply.
+
 The UI Director's redesign brief of 2026-11-26 (email "Hunt Club Mesh UI feedback — 2026-11-26 — redesign"), copied here as the design spec for phases P1 to P5. The coordinator decisions below override the brief where they differ.
 
 ## Coordinator decisions (override the brief)

@@ -49,7 +49,7 @@ function AppStack() {
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: theme.colors.surface0 },
+          contentStyle: { backgroundColor: theme.colors.plate },
           // The app is portrait; only the clubhouse board turns landscape.
           orientation: 'portrait',
         }}

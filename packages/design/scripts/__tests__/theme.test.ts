@@ -16,10 +16,12 @@ import {
   THEME_PREFERENCE_LABELS,
   THEME_PREFERENCES,
   THEME_STORAGE_KEY,
+  SURFACES,
   themes,
+  type ThemeColorToken,
   type ThemeName,
 } from '../../src/theme';
-import { fontAxisLimits, fontSize, textScale } from '../../src/type';
+import { fontAxisLimits, fontSize, fontWidth, textScale } from '../../src/type';
 
 const THEME_NAMES = Object.keys(themes) as ThemeName[];
 const MIN = { text: MIN_TEXT_CONTRAST, ui: MIN_UI_CONTRAST } as const;
@@ -49,11 +51,46 @@ describe('theme contrast (fails the build if any pair drops under its threshold)
     );
   });
 
-  it('keeps body text at 7:1 or better on every light surface (sunlight)', () => {
+  it('keeps body text at 7:1 or better on every daylight surface (glare)', () => {
     const c = themes.light.colors;
-    for (const bg of ['canvas', 'surface0', 'surface1', 'surface2', 'surface3'] as const) {
-      expect(contrastRatio(c.text, c[bg])).toBeGreaterThanOrEqual(7);
-    }
+    for (const bg of SURFACES) expect(contrastRatio(c.text, c[bg])).toBeGreaterThanOrEqual(7);
+  });
+
+  it('covers every pair the map-first direction checks, in both themes', () => {
+    // docs/DESIGN.md: [foreground, background] by the direction's token names, mapped to ours.
+    const direction: [ThemeColorToken, ThemeColorToken][] = [
+      ...SURFACES.slice(0, 3).flatMap((bg) => [
+        ['text', bg] as [ThemeColorToken, ThemeColorToken],
+        ['textSecondary', bg] as [ThemeColorToken, ThemeColorToken],
+      ]),
+      ['plate', 'text'],
+      ['accentText', 'canvas'],
+      ['accentText', 'plate'],
+      ['onAccent', 'accent'],
+      ['warning', 'warningTint'],
+      ['text', 'warningTint'],
+      ['warning', 'plate'],
+      ['onAlert', 'alert'],
+      ['fresh', 'plate'],
+      ['stale', 'plate'],
+      ['wind', 'plate'],
+      ['alert', 'plate'],
+      ['borderControl', 'plate'],
+      ['borderControl', 'raised'],
+      ['borderControl', 'canvas'],
+      ['accentBorder', 'plate'],
+      ['accentBorder', 'canvas'],
+    ];
+    const checked = new Set(PAIRS.map(([, fg, bg]) => `${fg} on ${bg}`));
+    for (const [fg, bg] of direction) expect(checked).toContain(`${fg} on ${bg}`);
+  });
+
+  it('is not cream: daylight is a cool grey-green white', () => {
+    const [r, g, b] = [1, 3, 5].map((i) =>
+      parseInt(themes.light.colors.canvas.slice(i, i + 2), 16),
+    );
+    expect(r).toBeLessThan(g!);
+    expect(b).toBeGreaterThanOrEqual(r!);
   });
 
   it('never puts white on the accent fill', () => {
@@ -64,20 +101,21 @@ describe('theme contrast (fails the build if any pair drops under its threshold)
     }
   });
 
-  it('gives the light accent fill an edge that reads on cream', () => {
+  it('gives the daylight accent fill an ink edge, because orange alone does not read on white', () => {
     const c = themes.light.colors;
-    expect(contrastRatio(c.accent, c.canvas)).toBeLessThan(MIN_UI_CONTRAST);
-    expect(contrastRatio(c.accentBorder, c.canvas)).toBeGreaterThanOrEqual(MIN_UI_CONTRAST);
+    expect(contrastRatio(c.accent, c.plate)).toBeLessThan(MIN_UI_CONTRAST);
+    expect(c.accentBorder).toBe(c.text);
   });
 
   it('keeps the map and marketing tokens equal to their theme sources', () => {
     const dark = themes.dark.colors;
-    expect(colors.surface).toBe(dark.surface0);
-    expect(colors.surfaceRaised).toBe(dark.surface2);
-    expect(colors.mapHalo).toBe(dark.canvas);
+    expect(colors.surface).toBe(dark.plate);
+    expect(colors.surfaceRaised).toBe(dark.raised);
     expect(colors.help).toBe(dark.warning);
-    expect(colors.fresh).toBe(dark.success);
+    expect(colors.fresh).toBe(dark.fresh);
+    expect(colors.alert).toBe(dark.alert);
     expect(lightColors.bgLight).toBe(themes.light.colors.canvas);
+    expect(lightColors.mutedOnLight).toBe(themes.light.colors.textSecondary);
   });
 });
 
@@ -86,7 +124,7 @@ describe('theme CSS', () => {
 
   it('declares every token of a theme as a --theme- variable', () => {
     const vars = themeVariables(themes.dark);
-    expect(vars['--theme-surface-0']).toBe(themes.dark.colors.surface0);
+    expect(vars['--theme-plate']).toBe(themes.dark.colors.plate);
     expect(vars['--theme-text-secondary']).toBe(themes.dark.colors.textSecondary);
     expect(vars['--theme-shadow-dialog']).toBe(themes.dark.effects.shadowDialog);
     expect(vars['--theme-color-scheme']).toBe('dark');
@@ -159,40 +197,55 @@ describe('theme bootstrap script', () => {
 describe('type, spacing, radii and motion', () => {
   it('keeps every text style at 14 px or more, except map text at 13 px', () => {
     for (const [name, entry] of Object.entries(textScale)) {
-      const min = name === 'mapLabel' ? fontSize.mapLabelMin : 14;
+      const min = ['mapLabel', 'markerDetail'].includes(name) ? fontSize.mapLabelMin : 14;
       expect(entry.size).toBeGreaterThanOrEqual(min);
       if ('compact' in entry) expect(entry.compact.size).toBeGreaterThanOrEqual(min);
     }
   });
 
-  it('uses weights 500–800 only', () => {
+  it('uses weights 450–800 only', () => {
     for (const entry of Object.values(textScale)) {
       expect(entry.weight).toBeGreaterThanOrEqual(fontAxisLimits.weight.min);
       expect(entry.weight).toBeLessThanOrEqual(fontAxisLimits.weight.max);
     }
   });
 
-  it('shrinks the page title and stat values on phones', () => {
+  it('shrinks the headline and page title on phones', () => {
     const classes = textClasses();
     expect(classes).toContain(
-      '@media (max-width: 639px) { .text-title-1 { font-size: 1.5rem; line-height: 2rem; } }',
+      '@media (max-width: 639px) { .text-title-1 { font-size: 1.75rem; line-height: 2.125rem; } }',
     );
-    expect(classes).toContain('.text-stat {');
-    expect(classes).toMatch(/\.text-stat \{[^}]*font-variant-numeric: tabular-nums/);
-    expect(classes).not.toMatch(/text-transform:\s*uppercase|letter-spacing/);
+    expect(classes).toContain(
+      '@media (max-width: 639px) { .text-display { font-size: 2.25rem; line-height: 2.625rem; } }',
+    );
+    expect(classes).not.toMatch(/text-transform:\s*uppercase|letter-spacing|monospace/);
+  });
+
+  it('sets words at normal width and anything measured condensed with tabular figures', () => {
+    for (const name of ['body', 'bodyLarge', 'label', 'caption'] as const) {
+      expect(textScale[name]).not.toHaveProperty('width');
+    }
+    for (const name of ['readout', 'readoutInline', 'codeField'] as const) {
+      expect(textScale[name]).toMatchObject({ width: fontWidth.readout, tabularNums: true });
+    }
+    expect(textClasses()).toMatch(
+      /\.text-readout \{[^}]*font-stretch: 76%[^}]*font-variant-numeric: tabular-nums/,
+    );
   });
 
   it('keeps the old spacing names as aliases of the new scale', () => {
     expect(spacing).toMatchObject({ xs: 4, sm: 8, md: 16, lg: 24, xl: 32 });
     expect(Object.values(space)).toEqual([4, 8, 12, 16, 20, 24, 32, 40, 48, 64]);
-    expect(radii).toMatchObject({ sm: 8, md: 12, lg: 16, xl: 20, full: 999, sheetTop: 20 });
+    // Three radii with jobs: 6 a marker plate, 10 to 12 controls and plates, 16 a sheet's top.
+    expect(radii).toMatchObject({ sm: 6, md: 10, lg: 12, xl: 16, full: 999, sheetTop: 16 });
   });
 
   it('declares spacing and motion variables, instant under reduced motion', () => {
     const root = rootVariablesCss();
     expect(root).toContain('--space-1: 4px;');
     expect(root).toContain('--space-xs: 4px;');
-    expect(root).toContain('--radius-lg: 16px;');
+    expect(root).toContain('--radius-lg: 12px;');
+    expect(root).toContain('--control-border: 1.5px;');
     expect(root).toContain('--motion-fast: 120ms;');
     expect(root).toContain(
       '@media (prefers-reduced-motion: reduce) { :root { --motion-fast: 0ms; --motion-base: 0ms; } }',
@@ -213,7 +266,7 @@ describe('component sizes and status tones', () => {
     for (const height of Object.values(BUTTON_HEIGHT)) {
       expect(height).toBeGreaterThanOrEqual(48);
     }
-    expect(BUTTON_HEIGHT).toEqual({ sm: 48, md: 48, lg: 56 });
+    expect(BUTTON_HEIGHT).toEqual({ sm: 48, md: 52, lg: 64 });
   });
 
   it.each(THEME_NAMES)('draws every status tone readably in the %s theme', (name) => {

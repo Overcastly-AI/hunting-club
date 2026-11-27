@@ -88,7 +88,7 @@ section { padding: var(--space-xl) 0; }
 .shot { margin: 0; }
 .shot-frame { display: grid; place-items: center; border: 2px dashed var(--color-control-border);
   border-radius: var(--radius-sheet-top); color: var(--color-text-secondary); }
-.band-light .shot-frame { color: var(--color-muted-on-light); }
+.band-light .shot-frame { color: var(--color-muted-on-light); border-color: var(--color-edge-on-light); }
 .shot-4x5 .shot-frame { aspect-ratio: 4 / 5; max-width: 22rem; }
 .shot-16x10 .shot-frame { aspect-ratio: 16 / 10; }
 .shot figcaption { margin-top: var(--space-sm); }
@@ -101,6 +101,7 @@ section { padding: var(--space-xl) 0; }
   border-radius: 50%; display: grid; place-items: center; background: var(--color-surface-raised); font-weight: 700; }
 .faq h3 { margin-top: var(--space-lg); }
 .faq details { border-bottom: 1px solid var(--color-control-border); }
+.band-light .faq details { border-color: var(--color-edge-on-light); }
 .faq summary { ${textStyleCss(textScale.bodyLarge)}; font-weight: 700; display: flex; align-items: center;
   min-height: 56px; cursor: pointer; }
 .card { background: var(--color-surface-raised); border: 1px solid var(--color-border);
@@ -116,6 +117,7 @@ section { padding: var(--space-xl) 0; }
 .compare { width: 100%; border-collapse: collapse; }
 .compare th, .compare td { text-align: left; padding: var(--space-sm) var(--space-md) var(--space-sm) 0;
   border-bottom: 1px solid var(--color-control-border); vertical-align: top; }
+.band-light .compare th, .band-light .compare td, .band-light .compare tr { border-color: var(--color-edge-on-light); }
 @media (max-width: 600px) {
   .compare thead { display: none; }
   .compare tr { display: block; padding: var(--space-sm) 0; border-bottom: 1px solid var(--color-control-border); }

@@ -34,7 +34,7 @@ export function AlertScreen({ visible, title, detail, children }: Props) {
 const useStyles = makeStyles((theme) => ({
   screen: {
     flex: 1,
-    backgroundColor: theme.colors.surface0,
+    backgroundColor: theme.colors.plate,
     justifyContent: 'center',
     padding: spacing.md,
   },

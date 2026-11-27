@@ -33,7 +33,7 @@ const useStyles = makeStyles((theme) => ({
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: theme.colors.borderSubtle,
-    backgroundColor: theme.colors.surface1,
+    backgroundColor: theme.colors.plate,
   },
   /** Link down or mesh quiet: gold outline, never red. */
   warning: { borderWidth: sizes.hairline, borderColor: theme.colors.warning },

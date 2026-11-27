@@ -87,7 +87,7 @@ const useStyles = makeStyles((theme) => ({
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: theme.colors.borderControl,
-    backgroundColor: theme.colors.surface2,
+    backgroundColor: theme.colors.raised,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
@@ -99,7 +99,7 @@ const useStyles = makeStyles((theme) => ({
   },
   invalid: { borderColor: theme.colors.danger },
   disabled: {
-    backgroundColor: theme.colors.surface1,
+    backgroundColor: theme.colors.plate,
     borderColor: theme.colors.borderSubtle,
     color: theme.colors.textTertiary,
   },

@@ -119,7 +119,7 @@ export function BoardScreen() {
 const EMPTY = { myNodeNum: 0, nodes: new Map() };
 
 const useStyles = makeStyles((theme) => ({
-  root: { flex: 1, flexDirection: 'row', backgroundColor: theme.colors.surface0 },
+  root: { flex: 1, flexDirection: 'row', backgroundColor: theme.colors.plate },
   mapPane: { flex: 1 },
   listPane: { flex: 1, padding: spacing.lg, gap: spacing.md },
   header: {

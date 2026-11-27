@@ -20,7 +20,7 @@ export type ButtonVariant = (typeof BUTTON_VARIANTS)[number];
 
 interface ButtonLook {
   variant?: ButtonVariant;
-  /** md 48 (default), lg 56 (sign-in and page-level actions), sm 48 with less padding. */
+  /** md 52 (default), lg 64 (the one big action: sign in), sm 48 (sheet and table headers). */
   size?: ButtonSize;
   /** Leading icon (Lucide), drawn at 20 px in currentColor. */
   icon?: LucideIcon;
