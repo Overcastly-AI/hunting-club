@@ -19,7 +19,8 @@ it('creates the UAT club with the admin, a property line, one area and three sta
   const [mine] = await w.data.listMyClubs(userActor(ADMIN));
   expect(mine).toMatchObject({
     club: { id: result.clubId, name: UAT_CLUB.name, boundary: UAT_CLUB.boundary },
-    membership: { role: 'admin', displayName: 'Jane Doe', initials: 'JD' },
+    // The name from the email exactly as typed, never title-cased; initials from its words.
+    membership: { role: 'admin', displayName: 'jane.doe', initials: 'JD' },
   });
   const areas = await w.data.listAreas(SERVICE, result.clubId);
   const stands = await w.data.listStands(SERVICE, result.clubId);
