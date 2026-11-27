@@ -138,7 +138,9 @@ describe('needsYou', () => {
 
     it('drops the closing date once the grace period is over, or with no paid-through date', () => {
       const long = subscription({ status: 'unpaid', paidThrough: iso(NOW - 60 * DAY_MS) });
-      expect(needsYou(settled({ subscription: long }))[0]).not.toHaveProperty('detail');
+      const [unpaid] = needsYou(settled({ subscription: long }));
+      expect(unpaid).toMatchObject({ kind: 'paymentProblem', title: 'Unpaid' });
+      expect(unpaid).not.toHaveProperty('detail');
       const { paidThrough: _, ...noDate } = subscription({ status: 'incomplete' });
       expect(needsYou(settled({ subscription: noDate }))[0]).toMatchObject({
         title: 'Payment not finished',

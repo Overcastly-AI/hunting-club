@@ -1,4 +1,4 @@
-import { HARVEST_SEXES } from '@huntclub/shared';
+import { HARVEST_SEXES, HARVEST_SEX_LABELS } from '@huntclub/shared';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useContext, useState } from 'react';
 import { Text } from 'react-native';
@@ -13,7 +13,6 @@ import { makeStyles, textStyles } from '../theme';
 import {
   COMMON_SPECIES,
   EMPTY_DRAFT,
-  SEX_LABELS,
   SHARE_LABELS,
   draftProblem,
   harvestFromDraft,
@@ -68,7 +67,7 @@ export function HarvestSheet({ visible, onClose }: Props) {
       />
       <SegmentedControl
         segments={HARVEST_SEXES}
-        labels={SEX_LABELS}
+        labels={HARVEST_SEX_LABELS}
         selected={draft.sex}
         onSelect={(sex) => setDraft((d) => ({ ...d, sex }))}
       />

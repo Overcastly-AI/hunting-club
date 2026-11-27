@@ -125,6 +125,28 @@ describe('club API client', () => {
     expect(calls[0]!.body).toMatchObject(request);
   });
 
+  it("lists a club's invites with GET and checks them against the shared schema", async () => {
+    const invite = {
+      id: '00000000-0000-4000-8000-0000000000f1',
+      clubId: CLUB,
+      token: 'cd'.repeat(32),
+      role: 'guest',
+      uses: 0,
+      expiresAt: ISO,
+      createdAt: ISO,
+      updatedAt: ISO,
+    };
+    const { api, calls } = client([
+      { status: 200, body: [invite] },
+      { status: 200, body: [{ ...invite, uses: -1 }] },
+    ]);
+    expect(await api.listInvites(CLUB)).toEqual([invite]);
+    expect(calls.map((c) => [c.method, c.url])).toEqual([
+      ['GET', `https://api.test/clubs/${CLUB}/invites`],
+    ]);
+    await expect(api.listInvites(CLUB)).rejects.toMatchObject({ code: 'bad_response' });
+  });
+
   it('starts Checkout and returns only an https Stripe URL', async () => {
     const url = 'https://checkout.stripe.com/c/pay/cs_test_1';
     const { api, calls } = client([

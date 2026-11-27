@@ -8,9 +8,9 @@ import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
-import { formatClockTime, formatShortDate } from '@huntclub/shared';
+import { HARVEST_SEX_LABELS, formatClockTime, formatShortDate } from '@huntclub/shared';
 import { makeStyles, spacing, textStyles } from '../theme';
-import { SEX_LABELS, SHARE_LABELS } from './form';
+import { SHARE_LABELS } from './form';
 import { HarvestRadioContext, shareHarvest } from './HarvestRadio';
 import { HarvestSheet } from './HarvestSheet';
 import type { LocalHarvest } from './harvests';
@@ -21,7 +21,7 @@ export function harvestSummary(h: LocalHarvest): string {
   const when = new Date(h.harvestedAt);
   return [
     h.species,
-    SEX_LABELS[h.sex],
+    HARVEST_SEX_LABELS[h.sex],
     h.placeLabel,
     `${formatShortDate(when)}, ${formatClockTime(when)}`,
   ]

@@ -1,10 +1,9 @@
-import type { Area, Stand } from '@huntclub/shared';
+import { STAND_TYPE_LABELS, type Area, type Stand } from '@huntclub/shared';
 import type { ClubApi } from '../api/types';
 import { DataTable } from '../components/DataTable';
 import { Loadable } from '../components/Loadable';
 import { PageHeading } from '../components/PageHeading';
 import { isOffline, useAsync } from '../components/useAsync';
-import { STAND_TYPE_LABELS } from '../format';
 
 /** The club's stands and named areas. Editing (and drawing on the map) comes later. */
 export function StandsAndAreas(props: { api: ClubApi }) {

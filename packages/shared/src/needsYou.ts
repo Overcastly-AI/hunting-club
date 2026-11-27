@@ -6,6 +6,7 @@
  * is still loading never shows a false to-do.
  */
 import { entitlementFor } from './api';
+import { SUBSCRIPTION_STATUS_LABELS } from './enums';
 import type { Club, Invite, MapPack, Member, Subscription } from './club';
 import { pluralize } from './freshness';
 import { DAY_MS } from './time';
@@ -43,7 +44,7 @@ export type NeedsYouInput = {
   /** null: the club has never started Checkout. undefined: not loaded. */
   subscription?: Subscription | null | undefined;
   members?: readonly Member[] | undefined;
-  /** GET /clubs/:clubId/invites (the API returns it; the shared client doesn't call it yet). */
+  /** The club's invites (ClubApiClient.listInvites). */
   invites?: readonly Invite[] | undefined;
   mapPacks?: readonly MapPack[] | undefined;
   now: number;
@@ -83,7 +84,7 @@ function billingItems(subscription: Subscription | null | undefined, now: number
         {
           id: 'paymentProblem',
           kind: 'paymentProblem',
-          title: subscription.status === 'incomplete' ? 'Payment not finished' : 'Payment overdue',
+          title: SUBSCRIPTION_STATUS_LABELS[subscription.status],
           ...(closes ? { detail: closes } : {}),
           action: 'billing',
         },

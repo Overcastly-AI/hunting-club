@@ -1,5 +1,4 @@
-import { STAND_TYPE_LABELS } from '../domain/stands';
-import { describeFreshness } from '@huntclub/shared';
+import { STAND_TYPE_LABELS, describeFreshness } from '@huntclub/shared';
 
 import type { HunterOnMap, HunterPlace, OpenStandOnMap } from './types';
 
