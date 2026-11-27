@@ -320,6 +320,8 @@ describe('club pages', () => {
     expect(decodeJoinUrl(link).target).toMatchObject({
       kind: 'club',
       clubId: sampleData().club!.id,
+      // The invite page names the club ("Join <club name>").
+      clubName: sampleData().club!.name,
     });
   });
 

@@ -10,7 +10,7 @@ import {
   tokenVariables,
 } from '@huntclub/design';
 import { DAWN_CLASS, DAWN_PAUSE_BUTTON_CLASS } from '@huntclub/design/dawnControl';
-import { dawnSceneSvg } from '@huntclub/design/dawnScene';
+import { dawnSceneCss, dawnSceneSvg } from '@huntclub/design/dawnScene';
 import {
   CLUB_PRICING,
   dawnPauseCopy,
@@ -47,7 +47,13 @@ import {
   START_A_CLUB,
 } from '../routes';
 import { MESHTASTIC_ATTRIBUTION } from '../Shell';
-import { NARROWEST_PHONE, PHONE_HEADER_MAX_WIDTH, siteCss } from '../styles';
+import {
+  HERO_ART_BOTTOM_PADDING,
+  HERO_WITH_ART_CLASS,
+  NARROWEST_PHONE,
+  PHONE_HEADER_MAX_WIDTH,
+  siteCss,
+} from '../styles';
 
 const pages = ROUTES.map((r) => ({ route: r, html: renderPage(r.path, assets) }));
 const notFound = renderNotFound(assets);
@@ -463,7 +469,11 @@ describe('features and FAQ', () => {
 
   it('puts the dawn scene behind the home hero only, with its stylesheet and pause button', () => {
     const home = page('/');
-    const hero = home.slice(home.indexOf('<section class="hero">'), home.indexOf('</section>'));
+    const hero = home.slice(
+      home.indexOf(`<section class="hero ${HERO_WITH_ART_CLASS}">`),
+      home.indexOf('</section>'),
+    );
+    expect(hero).not.toBe('');
     expect(hero).toContain(
       `<div class="${HERO_ART_SLOT}" aria-hidden="true">${dawnSceneSvg()}</div>`,
     );
@@ -478,5 +488,66 @@ describe('features and FAQ', () => {
       expect(html).not.toContain(DAWN.cssUrl);
       expect(html).not.toContain(DAWN_PAUSE_BUTTON_CLASS);
     }
+  });
+});
+
+/** A CSS length in px: `16px`, `var(--space-md)` or a calc() sum of those (tokens resolved). */
+function px(value: string): number {
+  const vars = tokenVariables();
+  const terms = value.replace(/^calc\((.*)\)$/, '$1').split('+');
+  return terms.reduce((sum, term) => {
+    const t = term.trim();
+    const resolved = /^var\((--[\w-]+)\)$/.exec(t)?.[1];
+    const literal = resolved ? vars[resolved] : t;
+    const n = /^(\d+(?:\.\d+)?)px$/.exec(literal ?? '');
+    if (!n) throw new Error(`not a px length: ${t}`);
+    return sum + Number(n[1]);
+  }, 0);
+}
+
+describe('home hero at phone width', () => {
+  const css = siteCss(FONT);
+  const dawn = dawnSceneCss();
+
+  it('keeps a row for the pause button, so it can never touch "For hunting clubs"', () => {
+    // The pause button sits absolute in the hero's bottom corner; the hero's content (its
+    // buttons included) ends at the top of the bottom padding. Neither depends on the width,
+    // so if the padding holds the button's offset, its height and a gap, they cannot overlap.
+    const button = new RegExp(`\\.${DAWN_PAUSE_BUTTON_CLASS}\\{[^}]*bottom:([^;}]+)`).exec(dawn);
+    expect(button).not.toBeNull();
+    const offset = px(button![1]!);
+    const height = px('var(--tap-min)');
+    const gap = px('var(--space-md)');
+    expect(css).toContain(`.${HERO_WITH_ART_CLASS} {`);
+    expect(css).toMatch(
+      new RegExp(
+        `\\.${HERO_WITH_ART_CLASS} \\{[^}]*padding-bottom: ${HERO_ART_BOTTOM_PADDING.replace(/[()+]/g, '\\$&')}`,
+      ),
+    );
+    expect(px(HERO_ART_BOTTOM_PADDING)).toBeGreaterThanOrEqual(offset + height + gap);
+    expect(height).toBe(sizes.minTapTarget);
+  });
+
+  it('is not changed by a phone-width rule', () => {
+    for (const media of css.split('@media').slice(1)) {
+      expect(media.slice(0, media.indexOf('}\n}') + 1)).not.toContain(HERO_WITH_ART_CLASS);
+    }
+    expect(dawn).not.toMatch(/@media[^{]*max-width[^{]*\{[^}]*dawn-pause[^}]*bottom/);
+  });
+});
+
+describe('pricing on a desktop', () => {
+  const css = siteCss(FONT);
+
+  it('puts the plan cards right after the intro: only the home hero is tall', () => {
+    const heroRules = [...css.matchAll(/(^|\n)(\.hero[^{]*)\{([^}]*)\}/g)];
+    const tall = heroRules.filter((m) => /min-height/.test(m[3]!)).map((m) => m[2]!.trim());
+    expect(tall).toEqual([`.${HERO_WITH_ART_CLASS}`]);
+    const pricing = pages.find((p) => p.route.path === PAGE_PATHS.pricing)!.html;
+    expect(pricing).toContain('<section class="hero">');
+    expect(pricing).not.toContain(HERO_WITH_ART_CLASS);
+    expect(pricing.indexOf('<section class="plans">')).toBeGreaterThan(
+      pricing.indexOf('<section class="hero">'),
+    );
   });
 });

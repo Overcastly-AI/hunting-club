@@ -49,13 +49,22 @@ export function Roster(props: { api: ClubApi }) {
     setCopy('idle');
     try {
       // Channel first, invite last: a failed key read must not leave an unused invite behind.
-      const channelSet = await props.api.getClubChannelSet();
+      // The club's name goes in the link so the invite page can say "Join <club name>".
+      const [channelSet, club] = await Promise.all([
+        props.api.getClubChannelSet(),
+        props.api.getClub(),
+      ]);
       const created = await props.api.createInvite({
         role: 'member',
         expiresAt: new Date(Date.now() + INVITE_DAYS * DAY_MS).toISOString(),
       });
       // The one join-link builder (@huntclub/mesh); the https form works in any camera app.
-      const target = { kind: 'club', clubId: created.clubId, inviteToken: created.token } as const;
+      const target = {
+        kind: 'club',
+        clubId: created.clubId,
+        inviteToken: created.token,
+        ...(club ? { clubName: club.name } : {}),
+      } as const;
       setInvite({
         kind: 'ready',
         joinUrl: encodeJoinUrl({ channelSet, target }, { form: 'web' }),
