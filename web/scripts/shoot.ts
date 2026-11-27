@@ -7,13 +7,16 @@
 // property's committed aerial map pack (sample-pack/, built by scripts/sample-pack.ts) is
 // served with range requests, as CloudFront serves packs: at the demo club's key (My club)
 // and at the public sample key (sign-in).
+// My club's live USGS tiles load from the one USGS host the CSP allows (through HTTPS_PROXY when
+// set); the shots wait for the network to settle so the tiles are in the picture.
 // Uses the preinstalled Playwright (never `playwright install`).
 //
 //   npm run build:kit -w @huntclub/web
 //   cd web && NODE_USE_ENV_PROXY=1 NODE_PATH=/opt/node-tools/node_modules \
 //     node ../scripts/run-ts.mjs scripts/shoot.ts [folder] [shot,shot,...]
 import { THEME_STORAGE_KEY } from '@huntclub/design';
-import { mapPackPath } from '@huntclub/shared';
+import { mapPackPath, polygonBounds } from '@huntclub/shared';
+import { SAMPLE_PROPERTY } from '@huntclub/shared/sample';
 import { ADMIN_PATH } from '@huntclub/shared/app';
 import { createReadStream, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
@@ -43,11 +46,15 @@ interface Shot {
   act?: (page: Page) => Promise<void>;
   /** Only these widths and themes (default: every one). States beyond the main one are shot once. */
   only?: readonly (readonly [number, keyof typeof THEMES])[];
+  /** Where the browser says it is (granted), for "My location". */
+  geolocation?: { latitude: number; longitude: number };
 }
 
 /** The Playwright surface used here (the package is loaded from NODE_PATH at run time). */
 interface Page {
   goto(url: string): Promise<unknown>;
+  waitForLoadState(state: 'networkidle'): Promise<void>;
+  mouse: { click(x: number, y: number): Promise<void> };
   waitForSelector(selector: string): Promise<unknown>;
   waitForTimeout(ms: number): Promise<void>;
   evaluate<T>(fn: string | (() => T)): Promise<T>;
@@ -79,6 +86,37 @@ const openStand = async (page: Page) => {
 const openClubSwitcher = async (page: Page) => {
   await page.getByRole('button', { name: /Club:/ }).click();
   await page.waitForTimeout(250);
+};
+/** The middle of the sample property: where "My location" puts the browser for the draw shot. */
+const [west, south, east, north] = polygonBounds(SAMPLE_PROPERTY.boundary);
+const AT_THE_PROPERTY = { latitude: (south + north) / 2, longitude: (west + east) / 2 };
+/**
+ * My club with no property line yet: Draw property line, Find me (the browser is at the
+ * property), one level closer, then four corners tapped in the open map between the plate on
+ * top and the controls at the bottom.
+ */
+const drawLine = async (page: Page) => {
+  await page.getByRole('button', { name: 'Draw property line' }).click();
+  await page.getByRole('button', { name: 'Find me' }).click();
+  await page.waitForTimeout(250);
+  await page.getByRole('button', { name: 'Zoom in' }).click();
+  const open = await page.evaluate<{ left: number; right: number; top: number; bottom: number }>(
+    `(() => {
+      const map = document.querySelector('.clubview__map').getBoundingClientRect();
+      const plate = document.querySelector('.clubview__plate').getBoundingClientRect();
+      const controls = document.querySelector('.plan__controls').getBoundingClientRect();
+      return { left: map.left, right: map.right, top: plate.bottom, bottom: controls.top };
+    })()`,
+  );
+  const x = (share: number) => open.left + (open.right - open.left) * share;
+  const y = (share: number) => open.top + (open.bottom - open.top) * share;
+  for (const [sx, sy] of [
+    [0.2, 0.2],
+    [0.75, 0.15],
+    [0.8, 0.8],
+    [0.35, 0.85],
+  ] as const)
+    await page.mouse.click(x(sx), y(sy));
 };
 const openAccount = async (page: Page) => {
   await page.getByRole('button', { name: /Account/ }).click();
@@ -131,6 +169,15 @@ const SHOTS: readonly Shot[] = [
   { name: 'billing-no-plans', scenario: 'noPlans', hash: '#/billing', only: ONCE },
   { name: 'billing-no-club', scenario: 'noClub', hash: '#/billing', only: ONCE },
   { name: 'my-club-no-club', scenario: 'noClub', hash: '#/club', only: ONCE_EACH },
+  { name: 'my-club-no-line', scenario: 'noLine', hash: '#/club' },
+  {
+    name: 'my-club-draw',
+    scenario: 'noLine',
+    hash: '#/club',
+    act: drawLine,
+    geolocation: AT_THE_PROPERTY,
+  },
+  { name: 'map-packs-no-line', scenario: 'noLine', hash: '#/maps', only: ONCE_EACH },
 ];
 
 const TYPES: Record<string, string> = {
@@ -187,7 +234,9 @@ async function main() {
   // Loaded by name at run time, from NODE_PATH (the preinstalled copy), never bundled.
   const playwright = load(['play', 'wright'].join('')) as {
     chromium: {
-      launch(): Promise<{ newContext(o: object): Promise<Context>; close(): Promise<void> }>;
+      launch(
+        o: object,
+      ): Promise<{ newContext(o: object): Promise<Context>; close(): Promise<void> }>;
     };
   };
   interface Context {
@@ -200,7 +249,11 @@ async function main() {
   const axeSource = readFileSync(load.resolve('axe-core/axe.min.js'), 'utf8');
   const { server, origin } = await serve(readFileSync(samplePackFile(WEB)));
   const only = ONLY_SHOTS?.split(',');
-  const browser = await playwright.chromium.launch();
+  // Live USGS tiles go out through the session's proxy when there is one; the demo stays local.
+  const proxy = process.env.HTTPS_PROXY ?? process.env.https_proxy;
+  const browser = await playwright.chromium.launch(
+    proxy ? { proxy: { server: proxy, bypass: '127.0.0.1,localhost' } } : {},
+  );
   const problems: string[] = [];
   let count = 0;
   try {
@@ -215,6 +268,9 @@ async function main() {
             reducedMotion: 'reduce',
             // The sample club is in Illinois: its sunrise and sunset read in its own time.
             timezoneId: 'America/Chicago',
+            ...(shot.geolocation
+              ? { geolocation: shot.geolocation, permissions: ['geolocation'] }
+              : {}),
           });
           await context.addInitScript(
             `try { localStorage.setItem(${JSON.stringify(THEME_STORAGE_KEY)}, ${JSON.stringify(theme)}); } catch {}
@@ -232,11 +288,12 @@ async function main() {
           await page.waitForTimeout(400);
           // My club and sign-in draw the sample pack once the archive is read.
           if (
-            (shot.hash === '#/club' && !['noClub', 'loading'].includes(shot.scenario)) ||
+            (shot.hash === '#/club' && !['noClub', 'loading', 'noLine'].includes(shot.scenario)) ||
             shot.scenario === 'signedOut'
           )
             await page.waitForSelector('.plan__basemap image');
           if (shot.act) await shot.act(page);
+          await page.waitForLoadState('networkidle');
           const csp = await page.evaluate<string[]>('window.__csp');
           for (const v of csp) problems.push(`${label}: CSP violation ${v}`);
           for (const e of errors) problems.push(`${label}: console error ${e}`);

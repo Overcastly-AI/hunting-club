@@ -15,6 +15,7 @@ import {
   SUN,
   sunReadout,
   type Area,
+  type BasemapId,
   type Club,
   type Harvest,
   type Invite,
@@ -25,8 +26,8 @@ import {
   type Stand,
   type Subscription,
 } from '@huntclub/shared';
-import { CircleCheck, RadioTower } from 'lucide-react';
-import { useRef, useState, type FormEvent } from 'react';
+import { CircleCheck, PenLine, RadioTower } from 'lucide-react';
+import { useReducer, useRef, useState, type FormEvent, type ReactNode, type Ref } from 'react';
 import type { ClubApi } from '../api/types';
 import { ConditionsStrip } from '../components/ConditionsStrip';
 import { Loadable } from '../components/Loadable';
@@ -36,8 +37,11 @@ import { useElementSize } from '../components/useElementSize';
 import { Banner, Button, ButtonLink, EmptyState, Field, Input } from '../components/ui';
 import { basemapPack, useBasemap } from '../map/basemap';
 import { ClubMap, FIT_PADDING } from '../map/ClubMap';
+import { drawReducer, startDrawing, type DrawAction, type DrawState } from '../map/draw';
 import { boundsCentre, planBounds } from '../map/plan';
+import { DrawControls, DrawLayer } from '../map/PropertyLineEditor';
 import { StandDrawer } from '../map/StandDrawer';
+import { cx } from '../components/ui/cx';
 import { pageHref, PAGES, type PagePath } from '../shell/routes';
 import { useReloadShell } from '../shell/shellClub';
 import { useSignedInUser } from '../signedInUser';
@@ -112,7 +116,7 @@ function useClubDetails(api: ClubApi) {
   );
 }
 
-/** Where each kind of to-do is dealt with: a page of the admin, or the app (null). */
+/** Where each kind of to-do is dealt with: a page of the admin, or on this map (null). */
 const ACTION_PAGES: Record<NeedsYouAction, PagePath | null> = {
   billing: 'billing',
   roster: 'roster',
@@ -140,11 +144,25 @@ export const OUT_NOW_EMPTY = {
   line: 'Live positions travel only over the club radio mesh, so they show in the app, never on this website.',
 } as const;
 
-/** The map with nothing on it yet: the plan is drawn in the app, on the ground. */
+/** The map with nothing on it yet, for a member (an admin is offered the draw tool instead). */
 export const MAP_EMPTY = {
   title: 'Nothing on the map yet',
-  line: 'Draw the property line, areas and stands in the app. They show here when it syncs.',
+  line: 'The property line, areas and stands show here once a club admin draws them.',
 } as const;
+
+/** The club plate's line for an admin whose club has no property line yet. */
+export const NO_LINE = 'No property line yet. Find the property on the map, then draw it.';
+
+/** The live basemap My club opens on: aerial, the picture the design is drawn for. */
+const START_BASEMAP: BasemapId = 'aerial';
+
+/** Drawing starts from a state, and stops at null. */
+type DrawStep = DrawAction | { type: 'start'; boundary?: Club['boundary'] } | { type: 'stop' };
+const drawStep = (state: DrawState | null, step: DrawStep): DrawState | null => {
+  if (step.type === 'start') return startDrawing(step.boundary);
+  if (step.type === 'stop' || !state) return null;
+  return drawReducer(state, step);
+};
 
 /** Needs you with nothing in it. */
 export const NEEDS_YOU_EMPTY = {
@@ -159,7 +177,9 @@ export const NEEDS_YOU_EMPTY = {
  * over the mesh, so "Out now" says where to see them.
  */
 function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
-  const { club } = props;
+  // The club as last saved here (a new property line), else as loaded.
+  const [saved, setSaved] = useState<Club | null>(null);
+  const club = saved ?? props.club;
   const details = useClubDetails(props.api);
   const [now] = useState(() => Date.now());
   const heading = usePageHeadingFocus();
@@ -173,7 +193,8 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
   const sun = sunReadout(place, now);
   const overdue = place ? overdueAt(now, place, club.overdueGraceMinutes, SUN) : undefined;
   const facts = clubFacts(club, loaded);
-  const basemap = useBasemap(basemapPack(loaded.mapPacks));
+  const [live, setLive] = useState<BasemapId>(START_BASEMAP);
+  const basemap = useBasemap(basemapPack(loaded.mapPacks, live));
   // The stand whose details are open (tapped on the map); read-only, stands are edited in the app.
   const [standId, setStandId] = useState<string | null>(null);
   const stand = stands.find((s) => s.id === standId) ?? null;
@@ -183,30 +204,77 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
   const [nameDone, setNameDone] = useState(false);
   const reloadShell = useReloadShell();
   const askName = !nameDone && needsYourName(me, user?.email);
+  // Only club admins draw the property line (the club API refuses anyone else too).
+  const canDraw = me?.role === 'admin';
+  const [draw, dispatch] = useReducer(drawStep, null);
+  const startDraw = () => {
+    setStandId(null);
+    dispatch({ type: 'start', boundary: club.boundary });
+  };
+  const title = (
+    <div className="clubview__title">
+      <h1 id="club-title" className="text-title-2" tabIndex={-1} ref={heading}>
+        {club.name}
+      </h1>
+      {facts ? <p className="clubview__facts">{facts}</p> : null}
+    </div>
+  );
 
   return (
-    <section className="clubview" aria-labelledby="club-title">
+    <section className={cx('clubview', draw && 'clubview--drawing')} aria-labelledby="club-title">
       <ClubMap
         className="clubview__map"
-        boundary={club.boundary}
+        boundary={draw ? undefined : club.boundary}
         areas={areas}
         stands={stands}
         label={`Map of ${club.name}: ${club.boundary ? 'the property line' : 'no property line yet'}, ${pluralize(areas.length, 'area')} and ${pluralize(stands.length, 'stand')}.`}
         basemap={basemap}
+        live={live}
+        onLiveChange={setLive}
+        interactive
         insets={{ top: PLATE_TOP + plateSize.height + FIT_PADDING }}
-        empty={details.status === 'ready' ? MAP_EMPTY : null}
-        onStandSelect={(s) => setStandId(s.id)}
-        selectedStandId={stand?.id ?? null}
+        empty={details.status === 'ready' && !canDraw ? MAP_EMPTY : null}
+        {...(draw
+          ? {
+              onMapClick: (at: [number, number]) => dispatch({ type: 'add', at }),
+              overlay: (frame) => (
+                <>
+                  <DrawLayer frame={frame} state={draw} dispatch={dispatch} />
+                  <ClubPlate>
+                    {title}
+                    <DrawControls
+                      frame={frame}
+                      state={draw}
+                      dispatch={dispatch}
+                      onSave={async (boundary) => {
+                        setSaved(await props.api.savePropertyLine(boundary));
+                        dispatch({ type: 'stop' });
+                      }}
+                      onCancel={() => dispatch({ type: 'stop' })}
+                    />
+                  </ClubPlate>
+                </>
+              ),
+            }
+          : {
+              onStandSelect: (s: { id: string }) => setStandId(s.id),
+              selectedStandId: stand?.id ?? null,
+            })}
       >
-        <div className="clubview__plate" ref={plate}>
-          <div className="clubview__title">
-            <h1 id="club-title" className="text-title-2" tabIndex={-1} ref={heading}>
-              {club.name}
-            </h1>
-            {facts ? <p className="clubview__facts">{facts}</p> : null}
-          </div>
-          <ConditionsStrip sun={sun} overdueAt={overdue} />
-        </div>
+        {draw ? null : (
+          <ClubPlate plateRef={plate}>
+            {title}
+            {canDraw ? (
+              <div className="clubview__line">
+                {club.boundary ? null : <p className="clubview__line-note">{NO_LINE}</p>}
+                <Button size="sm" icon={PenLine} onClick={startDraw}>
+                  {club.boundary ? 'Edit property line' : 'Draw property line'}
+                </Button>
+              </div>
+            ) : null}
+            <ConditionsStrip sun={sun} overdueAt={overdue} />
+          </ClubPlate>
+        )}
       </ClubMap>
       <StandDrawer
         stand={stand}
@@ -237,7 +305,11 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
         <Loadable state={details} skeleton="table">
           {(value) => (
             <>
-              <NeedsYou items={needsYou({ club, ...value, now })} />
+              <NeedsYou
+                items={needsYou({ club, ...value, now })}
+                onDraw={canDraw ? startDraw : undefined}
+                drawing={Boolean(draw)}
+              />
               {overdue === undefined ? null : (
                 <p className="clubview__overdue">
                   The overdue alert goes to the club if anyone is still checked in at sunset plus{' '}
@@ -272,8 +344,21 @@ function OutNow() {
   );
 }
 
+/** The club's plate on the map: its name, then the conditions strip or the draw tool. */
+function ClubPlate(props: { children: ReactNode; plateRef?: Ref<HTMLDivElement> }) {
+  return (
+    <div className="clubview__plate" ref={props.plateRef}>
+      {props.children}
+    </div>
+  );
+}
+
 /** The admin's to-dos (the shared needsYou rules), each with the way to deal with it. */
-function NeedsYou(props: { items: readonly NeedsYouItem[] }) {
+function NeedsYou(props: {
+  items: readonly NeedsYouItem[];
+  onDraw?: (() => void) | undefined;
+  drawing?: boolean;
+}) {
   return (
     <section className="side-section" aria-labelledby="needs-you">
       <h2 id="needs-you" className="side-section__title">
@@ -304,6 +389,15 @@ function NeedsYou(props: { items: readonly NeedsYouItem[] }) {
                   <ButtonLink size="sm" href={pageHref(page)} aria-describedby={titleId}>
                     {label}
                   </ButtonLink>
+                ) : item.action === 'drawPropertyLine' && props.onDraw ? (
+                  <Button
+                    size="sm"
+                    onClick={props.onDraw}
+                    disabled={props.drawing}
+                    aria-describedby={titleId}
+                  >
+                    {props.drawing ? 'Drawing' : 'Draw'}
+                  </Button>
                 ) : (
                   <span className="row-item__where">In the app</span>
                 )}

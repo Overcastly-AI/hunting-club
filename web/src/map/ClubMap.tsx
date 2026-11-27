@@ -1,9 +1,11 @@
 // The club plan: the club's own property line, areas and stands, for the admin pages where the
-// map is the page (docs/DESIGN.md "The map is the page"). Under it, the club's own map pack when
-// one is ready (basemap.ts: read from the admin's own origin, never an outside tile host);
-// otherwise a plain ground, since the admin works offline from what it last loaded. It draws
-// only real geometry: nothing here is decoration or a sample unless the caller says so.
-// Everything is SVG with classes, so the CSP needs no inline styles.
+// map is the page (docs/DESIGN.md "The map is the page"). Under it, live USGS tiles of the chosen
+// basemap (basemap.ts: plain images from the one USGS host the CSP allows), over the club's own
+// map pack when one is ready, which still shows offline; with neither, a plain ground. An
+// `interactive` map pans and zooms (drag, wheel, arrow keys, and its own buttons) and goes
+// anywhere, so an admin with nothing drawn yet can find the property. It draws only real
+// geometry: nothing here is decoration or a sample unless the caller says so. Everything is
+// SVG with classes, so the CSP needs no inline styles.
 import {
   breakpoints,
   fontSize,
@@ -14,28 +16,45 @@ import {
   type FontWidth,
 } from '@huntclub/design';
 import {
+  BASEMAP_IDS,
+  BASEMAPS,
   polygonRings,
   STAND_STATUS_LABELS,
   STAND_TYPE_LABELS,
+  type BasemapId,
   type StandType,
 } from '@huntclub/shared';
-import { MapPinOff, type LucideIcon } from 'lucide-react';
-import { useRef, type KeyboardEvent, type ReactNode } from 'react';
-import { EmptyState } from '../components/ui';
+import { LocateFixed, MapPinOff, Maximize, Minus, Plus, type LucideIcon } from 'lucide-react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react';
+import { Button, EmptyState, Segmented } from '../components/ui';
 import { standIcon } from '../components/standIcons';
 import { useElementSize, type Size } from '../components/useElementSize';
 import { cx } from '../components/ui/cx';
-import type { BasemapPicture } from './basemap';
+import { liveBasemap, type BasemapPicture } from './basemap';
 import {
+  DEFAULT_VIEW,
   fitPlan,
+  LOCATION_ZOOM,
+  panView,
   plateSide,
   planBounds,
   ringsLabelPoint,
   ringsPath,
   scaleBar,
+  viewProjection,
+  zoomView,
   type Insets,
   type PlanGeometry,
   type Projection,
+  type View,
 } from './plan';
 
 export interface PlanStand {
@@ -62,6 +81,15 @@ export interface MapEmpty {
   action?: ReactNode;
 }
 
+/** The map as it is drawn now, for layers drawn over it (the property line editor). */
+export interface MapFrame {
+  projection: Projection;
+  width: number;
+  height: number;
+  /** The map's own box on the page, for turning a pointer's page position into map px. */
+  box: () => DOMRect | undefined;
+}
+
 /** Until the box is measured (and in tests): a desktop map's size. */
 const FALLBACK_SIZE = { width: 960, height: 640 };
 /** Ground kept around everything the plan draws, in px: it fits to its bounds with this padding. */
@@ -80,6 +108,12 @@ const PLATE_PAD = 8;
 const PLATE_GAP = 6;
 const PLATE_LINE = { name: fontSize.markerName, detail: fontSize.mapLabelMin };
 const PLATE_HEIGHT = PLATE_LINE.name + PLATE_LINE.detail + 2 * PLATE_PAD + 4;
+/** A press that moves less than this many px is a tap, not a drag. */
+export const TAP_SLOP = 4;
+/** Arrow keys move the map this many px (ten times that with Shift). */
+export const KEY_PAN_PX = 64;
+/** One wheel notch (100 px of scroll) zooms this many levels. */
+const WHEEL_ZOOM_PER_PX = 1 / 200;
 
 /**
  * Archivo's average advance width at bold weights, as a share of the font size; with the
@@ -88,6 +122,10 @@ const PLATE_HEIGHT = PLATE_LINE.name + PLATE_LINE.detail + 2 * PLATE_PAD + 4;
 const AVERAGE_ADVANCE = 0.56;
 const textWidth = (text: string, size: number, width: FontWidth) =>
   text.length * size * AVERAGE_ADVANCE * (width / 100);
+
+/** A pointer's position in the map's own px. */
+export const mapPoint = (box: DOMRect | undefined, e: { clientX: number; clientY: number }) =>
+  [e.clientX - (box?.left ?? 0), e.clientY - (box?.top ?? 0)] as [number, number];
 
 export function ClubMap(props: {
   boundary?: PlanGeometry['boundary'];
@@ -99,8 +137,18 @@ export function ClubMap(props: {
   insets?: Partial<Insets> | ((size: Size) => Partial<Insets>);
   /** Hide the stands' name plates and the areas' names (the small maps beside a list). */
   compact?: boolean;
-  /** The club's own map pack under the plan (null: the plain ground). */
+  /** The club's own map pack under the plan (null: none). */
   basemap?: BasemapPicture | null;
+  /** Live USGS tiles of this basemap under the plan (over the pack, which shows if they cannot load). */
+  live?: BasemapId | null;
+  /** With `live`: the basemap switcher among the map's controls calls this. */
+  onLiveChange?: (basemap: BasemapId) => void;
+  /** Pans and zooms, with the map's own controls; with nothing to fit, starts over the lower 48. */
+  interactive?: boolean;
+  /** A tap on the map's ground (not a drag): where it was, in [lon, lat]. Pins the view. */
+  onMapClick?: (at: [number, number]) => void;
+  /** Layers drawn over the map, with its projection (the property line editor). */
+  overlay?: (frame: MapFrame) => ReactNode;
   className?: string;
   /** Plates floating over the map. */
   children?: ReactNode;
@@ -118,32 +166,135 @@ export function ClubMap(props: {
   const size = useElementSize(box, FALLBACK_SIZE);
   const { width, height } = size;
   const compact = props.compact ?? false;
+  const interactive = props.interactive ?? false;
   // Under the tablet width stand names stay, but area names would sit on the stands.
   const areaNames = !compact && width >= breakpoints.tablet;
   const bounds = planBounds(props);
+  // The map's controls float at the bottom: from the tablet width up, the plan fits above them
+  // (on a phone that would leave the plan a sliver; it can be moved out from under them).
+  const controls = useRef<HTMLDivElement>(null);
+  const controlsSize = useElementSize(controls, { width: 0, height: 0 });
+  const given = typeof props.insets === 'function' ? props.insets(size) : props.insets;
+  const clearControls = interactive && width >= breakpoints.tablet ? controlsSize.height + EDGE : 0;
   const insets: Insets = {
     top: EDGE,
     right: EDGE,
-    bottom: EDGE,
     left: EDGE,
-    ...(typeof props.insets === 'function' ? props.insets(size) : props.insets),
+    ...given,
+    bottom: Math.max(given?.bottom ?? EDGE, clearControls),
   };
-  const projection = bounds ? fitPlan(bounds, width, height, insets) : null;
+  // The view the admin moved to; until then, the plan's own fit (or the lower 48).
+  const [view, setView] = useState<View | null>(null);
+  // While something is drawn by tapping, the map holds still where it was (what it draws may
+  // change, and a plate may resize, but it never refits).
+  const pin = Boolean(props.onMapClick);
+  const shown = useRef<View | null>(null);
+  const held = pin && !view ? shown.current : null;
+  const projection = view
+    ? viewProjection(view, width, height)
+    : held
+      ? viewProjection(held, width, height)
+      : bounds
+        ? fitPlan(bounds, width, height, insets)
+        : interactive
+          ? viewProjection(DEFAULT_VIEW, width, height)
+          : null;
+  shown.current = projection?.view ?? null;
+  useEffect(() => {
+    if (pin && !view && shown.current) setView(shown.current);
+  }, [pin]);
+  const frame = (): DOMRect | undefined => box.current?.getBoundingClientRect();
+  const live = props.live && projection ? liveBasemap(props.live, projection, width, height) : null;
+  // The pack shows under live tiles of its own basemap only, so the credit is always one.
+  const pack =
+    props.basemap && (!props.live || props.basemap.basemap.id === props.live)
+      ? props.basemap
+      : null;
+
+  const move = (next: View) => setView(next);
+  const drag = useRef<{ x: number; y: number; from: View; moved: boolean } | null>(null);
+  const onPointerDown = (e: PointerEvent<SVGSVGElement>) => {
+    if (!projection || (!interactive && !props.onMapClick)) return;
+    if (e.button !== 0) return;
+    drag.current = { x: e.clientX, y: e.clientY, from: projection.view, moved: false };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+  const onPointerMove = (e: PointerEvent<SVGSVGElement>) => {
+    const d = drag.current;
+    if (!d || !interactive) return;
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    if (!d.moved && Math.hypot(dx, dy) < TAP_SLOP) return;
+    d.moved = true;
+    move(panView(d.from, dx, dy));
+  };
+  const onPointerUp = (e: PointerEvent<SVGSVGElement>) => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d || d.moved || !projection || !props.onMapClick) return;
+    props.onMapClick(projection.unproject(...mapPoint(frame(), e)));
+  };
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (!projection) return;
+    const step = e.shiftKey ? KEY_PAN_PX * 10 : KEY_PAN_PX;
+    const pans: Record<string, [number, number]> = {
+      ArrowLeft: [step, 0],
+      ArrowRight: [-step, 0],
+      ArrowUp: [0, step],
+      ArrowDown: [0, -step],
+    };
+    const pan = pans[e.key];
+    if (pan) move(panView(projection.view, ...pan));
+    else if (e.key === '+' || e.key === '=') move(zoomView(projection.view, 1, width, height));
+    else if (e.key === '-' || e.key === '_') move(zoomView(projection.view, -1, width, height));
+    else return;
+    e.preventDefault(); // arrows would scroll the page
+  };
+  // The wheel zooms around the pointer; React's wheel listener is passive, so this one is not.
+  const svg = useRef<SVGSVGElement>(null);
+  const latest = useRef({ projection, width, height });
+  latest.current = { projection, width, height };
+  useEffect(() => {
+    const element = svg.current;
+    if (!interactive || !element) return;
+    const onWheel = (e: WheelEvent) => {
+      const { projection: p, width: w, height: h } = latest.current;
+      if (!p) return;
+      e.preventDefault();
+      const delta = Math.max(-1, Math.min(1, -e.deltaY * WHEEL_ZOOM_PER_PX));
+      setView(zoomView(p.view, delta, w, h, mapPoint(frame(), e)));
+    };
+    element.addEventListener('wheel', onWheel, { passive: false });
+    return () => element.removeEventListener('wheel', onWheel);
+  }, [interactive]);
 
   return (
-    <div ref={box} className={cx('plan', props.className)}>
+    <div ref={box} className={cx('plan', interactive && 'plan--interactive', props.className)}>
       <svg
-        className="plan__svg"
+        ref={svg}
+        className={cx('plan__svg', (interactive || props.onMapClick) && 'plan__svg--ground')}
         width={width}
         height={height}
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label={props.label}
+        aria-label={
+          interactive
+            ? `${props.label} Arrow keys move the map; plus and minus zoom in and out.`
+            : props.label
+        }
+        {...(interactive
+          ? { tabIndex: 0, onKeyDown, onPointerDown, onPointerMove, onPointerUp }
+          : props.onMapClick
+            ? { onPointerDown, onPointerUp }
+            : {})}
+        onPointerCancel={() => (drag.current = null)}
       >
         <rect className="plan__ground" width={width} height={height} />
         {projection ? (
           <Drawing
             {...props}
+            basemap={pack}
+            live={live}
             compact={compact}
             areaNames={areaNames}
             projection={projection}
@@ -163,9 +314,85 @@ export function ClubMap(props: {
           selectedId={props.selectedStandId ?? null}
         />
       ) : null}
+      {projection && props.overlay
+        ? props.overlay({ projection, width, height, box: frame })
+        : null}
       {props.children}
+      {interactive && projection ? (
+        <MapControls
+          plateRef={controls}
+          live={props.live ?? null}
+          onLiveChange={props.onLiveChange}
+          onZoom={(delta) => move(zoomView(projection.view, delta, width, height))}
+          onFit={bounds ? () => setView(null) : undefined}
+          onLocate={(lon, lat) => move({ lon, lat, zoom: LOCATION_ZOOM })}
+        />
+      ) : null}
       {/* After the plates, so its heading follows the page's own in the outline. */}
-      {projection || !props.empty ? null : <MapEmptyPlate {...props.empty} />}
+      {bounds || !props.empty ? null : <MapEmptyPlate {...props.empty} />}
+    </div>
+  );
+}
+
+/** Whether this browser can find where it is (none in tests or with location turned off). */
+const canLocate = () => typeof navigator !== 'undefined' && 'geolocation' in navigator;
+
+/**
+ * The map's own controls, on one plate at the right edge (docs/DESIGN.md): the basemap, the
+ * admin's own location (used here only, never sent), zoom, and back to the property.
+ */
+function MapControls(props: {
+  plateRef: RefObject<HTMLDivElement | null>;
+  live: BasemapId | null;
+  onLiveChange?: ((basemap: BasemapId) => void) | undefined;
+  onZoom: (delta: number) => void;
+  onFit?: (() => void) | undefined;
+  onLocate: (lon: number, lat: number) => void;
+}) {
+  const [locating, setLocating] = useState<'idle' | 'busy' | 'failed'>('idle');
+  const locate = () => {
+    setLocating('busy');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocating('idle');
+        props.onLocate(position.coords.longitude, position.coords.latitude);
+      },
+      () => setLocating('failed'),
+      { maximumAge: 60_000, timeout: 15_000 },
+    );
+  };
+  return (
+    <div className="plan__controls" ref={props.plateRef} role="group" aria-label="Map controls">
+      {props.live && props.onLiveChange ? (
+        <Segmented
+          legend="Basemap"
+          hideLegend
+          options={BASEMAP_IDS.map((id) => ({ value: id, label: BASEMAPS[id].label }))}
+          value={props.live}
+          onChange={props.onLiveChange}
+        />
+      ) : null}
+      {canLocate() ? (
+        <Button size="sm" icon={LocateFixed} loading={locating === 'busy'} onClick={locate}>
+          Find me
+        </Button>
+      ) : null}
+      <Button size="sm" icon={Plus} onClick={() => props.onZoom(1)}>
+        Zoom in
+      </Button>
+      <Button size="sm" icon={Minus} onClick={() => props.onZoom(-1)}>
+        Zoom out
+      </Button>
+      {props.onFit ? (
+        <Button size="sm" icon={Maximize} onClick={props.onFit}>
+          Fit property
+        </Button>
+      ) : null}
+      {locating === 'failed' ? (
+        <p className="plan__controls-note" role="status">
+          Location is off for this site. Turn it on in the browser, or move the map by hand.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -186,7 +413,8 @@ function MapEmptyPlate(props: MapEmpty) {
 }
 
 function Drawing(
-  props: Parameters<typeof ClubMap>[0] & {
+  props: Omit<Parameters<typeof ClubMap>[0], 'live'> & {
+    live: BasemapPicture | null;
     projection: Projection;
     width: number;
     height: number;
@@ -198,13 +426,16 @@ function Drawing(
   const scale = scaleBar(projection.metresPerPx, SCALE_MAX_PX);
   const boundary = props.boundary ? polygonRings(props.boundary) : [];
   const basemap = props.basemap;
+  const credit = props.live?.basemap.credit ?? basemap?.basemap.credit;
   return (
     <g aria-hidden="true">
+      {/* The pack, else the grid (which shows wherever live tiles cannot load, e.g. offline). */}
       {basemap ? (
         <Basemap picture={basemap} projection={projection} />
       ) : (
         <Grid step={scale.px} origin={projection.project(0, 0)} width={width} height={height} />
       )}
+      {props.live ? <Basemap picture={props.live} projection={projection} live /> : null}
       {props.areas.map((area) => (
         <path
           key={area.id}
@@ -255,19 +486,19 @@ function Drawing(
           {scale.label}
         </text>
       </g>
-      {basemap ? (
+      {credit ? (
         <text className="plan__credit" x={width - EDGE / 2} y={height - EDGE / 2} textAnchor="end">
-          {basemap.basemap.credit}
+          {credit}
         </text>
       ) : null}
     </g>
   );
 }
 
-/** The club's map pack: each tile laid where it lies on the ground. */
-function Basemap(props: { picture: BasemapPicture; projection: Projection }) {
+/** A basemap picture (the club's map pack, or live USGS tiles): each tile where it lies on the ground. */
+function Basemap(props: { picture: BasemapPicture; projection: Projection; live?: boolean }) {
   return (
-    <g className="plan__basemap">
+    <g className={cx('plan__basemap', props.live && 'plan__basemap--live')}>
       {props.picture.tiles.map((tile) => {
         const [west, south, east, north] = tile.bounds;
         const [x0, y0] = props.projection.project(west, north);

@@ -7,6 +7,7 @@ import {
   type ClubApiClient,
   CheckoutRequestSchema,
   ClubCreateRequestSchema,
+  ClubUpdateSchema,
   type CodeChallenge,
   type CognitoAuth,
   CognitoAuthError,
@@ -241,6 +242,13 @@ export function fakeClubClient(data: FakeClubData = sampleData()): ClubApiClient
       return data.club;
     },
     getClub: async () => clubOrThrow(),
+    async updateClub(_clubId, patch) {
+      // The shared request rule (a property line must pass it), as the club service applies it.
+      const fields = ClubUpdateSchema.parse(patch);
+      const club = clubOrThrow();
+      data.club = { ...club, ...fields, updatedAt: new Date().toISOString() };
+      return data.club;
+    },
     listMembers: async () => data.members,
     async updateMemberProfile(_clubId, userId, patch) {
       const member = data.members.find((m) => m.userId === userId);

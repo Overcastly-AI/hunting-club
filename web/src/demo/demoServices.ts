@@ -26,6 +26,7 @@ export const DEMO_SCENARIOS = [
   'signedOut',
   'loading',
   'alone',
+  'noLine',
 ] as const;
 export type DemoScenario = (typeof DEMO_SCENARIOS)[number];
 
@@ -125,6 +126,15 @@ function demoData(scenario: DemoScenario, now: number): FakeClubData {
       // Only the signed-in admin: the roster's empty state.
       data.members = data.members.slice(0, 1);
       break;
+    case 'noLine': {
+      // A new club as the owner first sees it: no property line, areas, stands or packs yet.
+      const { boundary: _line, ...club } = data.club!;
+      data.club = club;
+      data.areas = [];
+      data.stands = [];
+      data.mapPacks = [];
+      break;
+    }
   }
   return data;
 }

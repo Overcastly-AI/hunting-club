@@ -102,6 +102,9 @@ export function fakeClubApi(
       throw new ClubApiRequestError('forbidden', 403);
     }),
     getClub: offline(() => club),
+    updateClub: offline(() => {
+      throw new ClubApiRequestError('forbidden', 403);
+    }),
     listMembers: offline(() => [member]),
     listStands: offline(() => [stand(1, 'Creek Stand'), stand(2, 'Ridge Ladder')]),
     listAreas: offline(() => []),

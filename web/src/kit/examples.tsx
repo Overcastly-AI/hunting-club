@@ -523,8 +523,8 @@ function Avatars() {
 function Banners() {
   return (
     <div className="kit-stack">
-      <Banner tone="info" title="Draw your property line in the app first">
-        Map packs cover the property line, so the app needs it before a pack can be built.
+      <Banner tone="info" title="Draw your property line first">
+        Map packs cover the property line, so draw it on the My club map before building one.
       </Banner>
       <Banner tone="warning">Features stay on until Feb 24 while you renew.</Banner>
       <Banner tone="danger" title="Payment failed" action={<Button>Manage subscription</Button>}>

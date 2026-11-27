@@ -1,8 +1,15 @@
-import { DAY_MS, polygonBounds, READOUT_LABELS, type MapPack, type Member } from '@huntclub/shared';
-import { screen, waitFor, within } from '@testing-library/react';
+import {
+  BASEMAPS,
+  DAY_MS,
+  polygonBounds,
+  READOUT_LABELS,
+  type MapPack,
+  type Member,
+} from '@huntclub/shared';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { OVERDUE_ALERT_LABEL } from '../components/ConditionsStrip';
 import { SAMPLE_PROPERTY } from '@huntclub/shared/sample';
-import { MAP_EMPTY, NEEDS_YOU_EMPTY, OUT_NOW_EMPTY } from '../pages/MyClub';
+import { MAP_EMPTY, NEEDS_YOU_EMPTY, NO_LINE, OUT_NOW_EMPTY } from '../pages/MyClub';
 import { renderSignedIn } from '../testing/app';
 import { sampleData } from '../testing/fakeClubApi';
 import { packArchive, packFetch } from '../testing/packArchive';
@@ -63,19 +70,39 @@ describe('My club', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Needs you 4' })).toBeTruthy();
   });
 
-  it('says the property line is drawn in the app, and that nothing else needs the admin', async () => {
+  it('offers an admin the draw tool when there is no property line, and that nothing else needs them', async () => {
     const data = sampleData();
     const { boundary: _none, ...club } = data.club!;
     await renderSignedIn({ ...data, club, areas: [], stands: [] });
     expect(await needsYou()).toEqual([
-      { text: expect.stringMatching(/^Draw your property line/), to: 'In the app' },
+      { text: expect.stringMatching(/^Draw your property line/), to: undefined },
     ]);
+    const row = screen.getByText(/^Draw your property line/).closest('li')!;
+    expect(within(row).getByRole('button', { name: 'Draw' })).toBeTruthy();
+    // The map goes anywhere, under the club's plate, with no empty plate in the way.
+    expect(screen.getByText(NO_LINE)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Draw property line' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 3, name: MAP_EMPTY.title })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Zoom in' })).toBeTruthy();
+  });
+
+  it('tells a member the map is empty, with no way to draw', async () => {
+    const data = sampleData();
+    const { boundary: _none, ...club } = data.club!;
+    // The signed-in person is a member; the club's admin is someone else.
+    data.members[0] = { ...data.members[0]!, role: 'member' };
+    data.members[1] = { ...data.members[1]!, role: 'admin' };
+    await renderSignedIn({ ...data, club, areas: [], stands: [] });
+    const map = (await screen.findByRole('heading', { level: 3, name: MAP_EMPTY.title })).closest(
+      '.plan__empty',
+    )!;
     // The empty map uses the EmptyState pattern: an icon, a title and one line, on a plate.
-    const map = screen
-      .getByRole('heading', { level: 3, name: MAP_EMPTY.title })
-      .closest('.plan__empty')!;
     expect(map.querySelector('.ui-empty__icon svg')).toBeTruthy();
     expect(within(map as HTMLElement).getByText(MAP_EMPTY.line)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /property line|^Draw$/ })).toBeNull();
+    expect(await needsYou()).toEqual([
+      { text: expect.stringMatching(/^Draw your property line/), to: 'In the app' },
+    ]);
   });
 
   it('shows nothing to do when nothing needs the admin', async () => {
@@ -137,14 +164,19 @@ describe('My club', () => {
     try {
       await renderSignedIn(data);
       const map = await screen.findByRole('img', { name: /^Map of Oak Ridge Hunt Club/ });
-      await waitFor(() =>
-        expect(map.querySelectorAll('.plan__basemap image').length).toBeGreaterThan(0),
-      );
-      expect(map.querySelector('.plan__credit')!.textContent).toBe('USGS The National Map');
+      // The pack is topo: it shows under live tiles of its own basemap.
+      fireEvent.click(screen.getByRole('radio', { name: 'Topo' }));
+      const packImages = () =>
+        map.querySelectorAll('.plan__basemap:not(.plan__basemap--live) image');
+      await waitFor(() => expect(packImages().length).toBeGreaterThan(0));
+      expect(map.querySelector('.plan__credit')!.textContent).toBe(BASEMAPS.topo.credit);
       for (const [url] of fetch.mock.calls) expect(url).toBe(`/${pack.s3Key}`);
-      for (const image of map.querySelectorAll('image')) {
+      for (const image of packImages()) {
         expect(image.getAttribute('href')).toMatch(/^data:image\/jpeg;base64,/);
       }
+      // Live tiles go over it (it shows where they cannot load).
+      const live = map.querySelector('.plan__basemap--live')!;
+      expect(live.compareDocumentPosition(packImages()[0]!)).toBe(Node.DOCUMENT_POSITION_PRECEDING);
     } finally {
       vi.unstubAllGlobals();
     }
@@ -159,8 +191,11 @@ describe('My club', () => {
       await renderSignedIn();
       const map = await screen.findByRole('img', { name: /^Map of Oak Ridge Hunt Club/ });
       await waitFor(() => expect(stands().querySelectorAll('.plan__stand')).toHaveLength(3));
+      // The grid under the live tiles, which a browser with no connection cannot load.
       expect(map.querySelector('.plan__grid')).toBeTruthy();
-      expect(map.querySelectorAll('image')).toHaveLength(0);
+      for (const image of map.querySelectorAll('image')) {
+        expect(image.getAttribute('href')).toMatch(/^https:\/\/basemap\.nationalmap\.gov\//);
+      }
     } finally {
       vi.unstubAllGlobals();
     }
@@ -170,7 +205,7 @@ describe('My club', () => {
     await renderSignedIn();
     const map = await screen.findByRole('img', { name: /^Map of Oak Ridge Hunt Club/ });
     expect(map.getAttribute('aria-label')).toBe(
-      'Map of Oak Ridge Hunt Club: the property line, 2 areas and 3 stands.',
+      'Map of Oak Ridge Hunt Club: the property line, 2 areas and 3 stands. Arrow keys move the map; plus and minus zoom in and out.',
     );
     // Stands open their details, so they are buttons on the layer over the picture.
     await waitFor(() => expect(stands().querySelectorAll('.plan__stand')).toHaveLength(3));

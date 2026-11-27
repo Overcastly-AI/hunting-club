@@ -2,6 +2,8 @@ import { createClubApiClient, ClubApiRequestError } from '../apiClient';
 import { apiPath, API_PATHS } from '../apiPaths';
 import { entitlementFor, ENTITLEMENT_GRACE_DAYS, hasClubFeatures } from '../api';
 import { DOWNLOAD_LIMITS } from '../maps';
+import { PROPERTY_LINE_PROBLEMS, propertyLinePolygon } from '../propertyLine';
+import { SAMPLE_PROPERTY } from '../sample';
 import { DAY_MS } from '../time';
 import { scriptedFetch } from './fakeFetch';
 
@@ -187,6 +189,30 @@ describe('club API client', () => {
     await expect(
       api.updateMemberProfile(CLUB, USER, { displayName: 'jane_doe' }),
     ).rejects.toThrow();
+    expect(calls).toHaveLength(1);
+  });
+
+  it("saves the club's property line with PATCH, and refuses a line that crosses itself", async () => {
+    const boundary = SAMPLE_PROPERTY.boundary;
+    const club = { id: CLUB, name: 'Oak', boundary, region: 'US', overdueGraceMinutes: 30 };
+    const { api, calls } = client([
+      { status: 200, body: { ...club, createdAt: ISO, updatedAt: ISO } },
+    ]);
+    expect((await api.updateClub(CLUB, { boundary })).boundary).toEqual(boundary);
+    expect(calls[0]).toMatchObject({
+      method: 'PATCH',
+      url: `https://api.test/clubs/${CLUB}`,
+      body: { boundary },
+    });
+    const bowTie = propertyLinePolygon([
+      [-90, 40],
+      [-89.99, 40.01],
+      [-89.99, 40],
+      [-90, 40.01],
+    ]);
+    await expect(api.updateClub(CLUB, { boundary: bowTie })).rejects.toThrow(
+      PROPERTY_LINE_PROBLEMS.crosses,
+    );
     expect(calls).toHaveLength(1);
   });
 

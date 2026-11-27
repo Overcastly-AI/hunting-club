@@ -1,7 +1,7 @@
 // Club API handler end to end: Function URL event → JWT check → routes → club-data on
 // DynamoDB Local. Permission rules themselves are covered in club-data's tests; these
 // check the HTTP contract (status codes, error shape, auth, body validation).
-import { POLYGON, World, keyOf } from '@huntclub/club-data/testing';
+import { POLYGON, World, expectCode, keyOf } from '@huntclub/club-data/testing';
 import { SERVICE } from '@huntclub/club-data';
 import { CLUB_PRICING, type MapPack, type MapPackRequestResponse } from '@huntclub/shared';
 import { cognitoVerifier } from '../auth';
@@ -435,20 +435,27 @@ describe('map packs', () => {
     expect((await call('POST', path(), { as: 'ada', body: { basemap: 'satellite' } })).status).toBe(
       400,
     );
-    await w.data.updateClub(SERVICE, oak(), {
-      boundary: {
-        type: 'Polygon',
-        coordinates: [
-          [
-            [-95, 35],
-            [-95, 45],
-            [-85, 45],
-            [-95, 35],
-          ],
+    // Far over the caps. The shared property-line rule now refuses such a line on save, so it is
+    // stored directly, as a club saved before the rule would hold it; the map-pack request's own
+    // size check is the second line of defence.
+    const huge = {
+      type: 'Polygon' as const,
+      coordinates: [
+        [
+          [-95, 35],
+          [-95, 45],
+          [-85, 45],
+          [-95, 35],
         ],
-      },
+      ],
+    };
+    await expectCode(w.data.updateClub(SERVICE, oak(), { boundary: huge }), 'invalid');
+    await w.storeClubFields(oak(), { boundary: huge });
+    expect((await w.data.getClub(SERVICE, oak())).boundary).toEqual(huge);
+    expect(await call('POST', path(), { as: 'ada', body: { basemap: 'topo' } })).toMatchObject({
+      status: 400,
+      body: { error: { code: 'invalid' } },
     });
-    expect((await call('POST', path(), { as: 'ada', body: { basemap: 'topo' } })).status).toBe(400);
   });
 
   it('needs an active subscription', async () => {

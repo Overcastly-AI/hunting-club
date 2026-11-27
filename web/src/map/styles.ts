@@ -2,7 +2,7 @@
 // the map's own colours (the same in both themes, like the picture); stands and their plates
 // are chrome, so they follow the theme.
 import { boundary, opacity, sizes, themeVar } from '@huntclub/design';
-import { color, gap, HAIR, TAP, text } from '../components/ui/styles/shared';
+import { color, gap, HAIR, PHONE, TAP, text } from '../components/ui/styles/shared';
 
 /** A map colour from @huntclub/design (`--color-*`, not themed). */
 const mapColor = (name: 'text' | 'mapHalo' | 'mapGround' | 'mapGrid') =>
@@ -46,6 +46,38 @@ export const mapCss = () => `
 .plan__stand--selected .plan__stand-box { stroke: ${color('accentBorder')}; stroke-width: ${sizes.selectedBorder}px;
   fill: ${color('accent')}; }
 .plan__stand--selected .plan__stand-icon { color: ${color('onAccent')}; }
+/* A map that pans and zooms: the ground takes drags (no page scroll or browser zoom over it). */
+.plan__svg--ground { touch-action: none; cursor: crosshair; }
+.plan--interactive .plan__svg--ground { cursor: grab; }
+.plan--interactive .plan__svg--ground:active { cursor: grabbing; }
+.plan__svg--ground:focus { outline: none; }
+.plan__svg--ground:focus-visible { outline: 3px solid ${color('focusRing')}; outline-offset: -3px; }
+/* The map's controls: one plate at the right edge, above the credit (docs/DESIGN.md). */
+.plan__controls { position: absolute; right: ${gap(3)}; bottom: ${gap(8)}; display: flex; flex-wrap: wrap;
+  justify-content: flex-end; align-items: center; gap: ${gap(2)}; width: max-content;
+  max-width: min(440px, calc(100% - 2 * ${gap(3)})); padding: ${gap(2)}; border-radius: var(--radius-lg);
+  background: ${color('plate')}; box-shadow: ${color('shadowPlate')}; }
+.plan__controls .ui-choice-group { margin: 0; }
+.plan__controls-note { ${text('caption')}; color: ${color('textSecondary')}; margin: 0; flex: 1 1 100%; }
+/* Drawing the property line (PropertyLineEditor): the corners take taps; the rest goes to the map. */
+.plan__draw { pointer-events: none; }
+.draw__line { fill: none; stroke: ${boundary.stroke}; stroke-width: 3; stroke-dasharray: 8 6; stroke-linejoin: round; }
+.draw__cross { stroke: ${mapColor('text')}; stroke-width: 2; ${halo} }
+.draw__corner { pointer-events: auto; cursor: move; touch-action: none; }
+.draw__corner:focus { outline: none; }
+.draw__hit { fill: transparent; }
+.draw__corner:focus-visible .draw__hit { stroke: ${color('focusRing')}; stroke-width: 3; }
+.draw__dot { fill: ${color('plate')}; stroke: ${color('text')}; stroke-width: ${sizes.selectedBorder}px; }
+.draw__corner--closes .draw__dot { stroke-width: 4px; }
+.draw__corner--selected .draw__dot { fill: ${color('accent')}; stroke: ${color('accentBorder')}; }
+.draw { display: grid; gap: ${gap(2)}; padding: ${gap(3)} ${gap(4)} ${gap(4)}; border-top: ${HAIR}; }
+.draw__how, .draw__count, .draw__problem, .draw__error { margin: 0; }
+.draw__how { ${text('body')}; }
+.draw__count { color: ${color('textSecondary')}; }
+.draw__problem { ${text('label')}; color: ${color('text')}; }
+.draw__error { ${text('label')}; color: ${color('danger')}; }
+.draw__actions { display: flex; flex-wrap: wrap; gap: ${gap(2)}; }
+${PHONE} { .plan__controls { right: ${gap(2)}; bottom: ${gap(6)}; max-width: calc(100% - 2 * ${gap(2)}); } }
 .plan__empty { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: min(36ch, calc(100% - 2 * ${gap(4)}));
   padding: ${gap(3)} ${gap(4)}; border-radius: var(--radius-lg); background: ${color('plate')};
   box-shadow: ${color('shadowPlate')}; color: ${color('text')}; margin: 0; }

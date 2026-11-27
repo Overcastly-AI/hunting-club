@@ -21,6 +21,7 @@ import {
   Badge,
   Banner,
   Button,
+  ButtonLink,
   DataTable,
   EmptyState,
   Segmented,
@@ -29,6 +30,10 @@ import {
 } from '../components/ui';
 import { formatDate } from '../format';
 import { ClubMap } from '../map/ClubMap';
+import { pageHref } from '../shell/routes';
+
+/** Where the property line is drawn: the draw tool on My club's map (admins). */
+export const DRAW_LINE_FIRST = 'Draw it on the My club map. A map pack covers exactly that area.';
 
 /** How long a build may take, in words ("15 minutes"). */
 const BUILD_MINUTES = `${Math.ceil(MAP_PACK_BUILD.timeoutSeconds / 60)} minutes`;
@@ -69,6 +74,8 @@ export function MapPacks(props: { api: ClubApi }) {
     [props.api],
     { keepLastOn: isOffline },
   );
+  // The basemap a new pack is built from; the map beside the form shows it live.
+  const [basemap, setBasemap] = useState<BasemapId>(BASEMAP_IDS[0]!);
 
   return (
     <Page
@@ -83,6 +90,8 @@ export function MapPacks(props: { api: ClubApi }) {
                 <BuildPack
                   api={props.api}
                   club={club}
+                  basemap={basemap}
+                  onBasemap={setBasemap}
                   building={packs.some((p) => p.status === 'building')}
                   onStarted={state.reload}
                 />
@@ -93,16 +102,14 @@ export function MapPacks(props: { api: ClubApi }) {
                 areas={[]}
                 stands={[]}
                 compact
+                live={club.boundary ? basemap : null}
                 label={
                   club.boundary
                     ? 'The area a map pack covers: the club property line.'
                     : 'No property line yet.'
                 }
                 insets={{ top: 24, right: 24, bottom: 40, left: 24 }}
-                empty={{
-                  title: 'No property line yet',
-                  line: 'Draw it in the app. A map pack covers exactly that area.',
-                }}
+                empty={{ title: 'No property line yet', line: DRAW_LINE_FIRST }}
               />
             </div>
             <div className="section-head">
@@ -121,15 +128,31 @@ export function MapPacks(props: { api: ClubApi }) {
   );
 }
 
-function BuildPack(props: { api: ClubApi; club: Club; building: boolean; onStarted: () => void }) {
-  const [basemap, setBasemap] = useState<BasemapId>(BASEMAP_IDS[0]!);
+function BuildPack(props: {
+  api: ClubApi;
+  club: Club;
+  basemap: BasemapId;
+  onBasemap: (basemap: BasemapId) => void;
+  building: boolean;
+  onStarted: () => void;
+}) {
+  const { basemap } = props;
   const [request, setRequest] = useState<RequestState>({ kind: 'idle' });
 
   if (!props.club.boundary) {
-    // No estimate without a boundary; the line is drawn in the app (not on the web).
+    // No estimate without a boundary; the line is drawn on My club's map.
     return (
-      <EmptyState icon={MapIcon} title="Draw the property line first" titleAs="h2">
-        Draw it in the app. A map pack covers exactly that area.
+      <EmptyState
+        icon={MapIcon}
+        title="Draw the property line first"
+        titleAs="h2"
+        action={
+          <ButtonLink size="sm" href={pageHref('club')}>
+            Go to My club
+          </ButtonLink>
+        }
+      >
+        {DRAW_LINE_FIRST}
       </EmptyState>
     );
   }
@@ -157,7 +180,7 @@ function BuildPack(props: { api: ClubApi; club: Club; building: boolean; onStart
         options={BASEMAP_IDS.map((id) => ({ value: id, label: BASEMAPS[id].label }))}
         value={basemap}
         onChange={(id) => {
-          setBasemap(id);
+          props.onBasemap(id);
           setRequest({ kind: 'idle' });
         }}
       />
@@ -234,7 +257,7 @@ function packStatus(p: MapPack): { status: ReactNode; size: string; date: string
 /** What the empty list says: it points at the build control only when the page shows one. */
 const EMPTY_PACKS_BODY = {
   canBuild: 'Build one above. It takes a few minutes.',
-  needsLine: 'Draw the property line in the app first, then build one here.',
+  needsLine: 'Draw the property line on the My club map first, then build one here.',
 } as const;
 
 function PackTable({ packs, canBuild }: { packs: readonly MapPack[]; canBuild: boolean }) {

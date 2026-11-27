@@ -25,6 +25,8 @@ import {
   AreaSchema,
   HarvestSchema,
   ClubSchema,
+  type ClubUpdate,
+  ClubUpdateSchema,
   type InviteCreate,
   InviteCreateSchema,
   InviteSchema,
@@ -117,6 +119,9 @@ export function createClubApiClient(options: ClubApiClientOptions) {
     createClub: async (request: ClubCreateRequest) =>
       call('POST', API_PATHS.clubs, {}, ClubSchema, ClubCreateRequestSchema.parse(request)),
     getClub: (clubId: string) => call('GET', API_PATHS.club, club(clubId), ClubSchema),
+    /** Admin: changes the club, e.g. saves its property line (checked by the shared rule first). */
+    updateClub: async (clubId: string, patch: ClubUpdate) =>
+      call('PATCH', API_PATHS.club, club(clubId), ClubSchema, ClubUpdateSchema.parse(patch)),
     listMembers: (clubId: string) =>
       call('GET', API_PATHS.members, club(clubId), z.array(MemberSchema)),
     /** Name and initials: a member's own (any member), or anyone's (admins). */
