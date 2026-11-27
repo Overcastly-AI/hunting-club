@@ -49,6 +49,12 @@ export type RadioServicesOptions = Omit<CoreContext, 'client'> & {
   graceMinutes: number;
   /** Set when the phone belongs to a club: club check-in, whole-club chat, the board. */
   club?: RadioClub;
+  /**
+   * Channels of clubs hidden from the signed-in account (another account's, saved on this
+   * phone). Never put on the radio; with no club of its own, a radio still on one is moved
+   * to the party's channel (or a fresh private one). Never logged.
+   */
+  hiddenClubChannels?: readonly ChannelSet[];
   names?: MapNames;
   /** Test hooks: receipt policy and help retry schedule overrides. */
   receipts?: Partial<CoreConfig['receipts']>;
@@ -99,6 +105,7 @@ export class RadioServices {
       sun,
       partyStore,
       club: clubInfo,
+      hiddenClubChannels,
       ...rest
     } = options;
     const { audience: partyAudience, graceMinutes: partyGrace, ...context } = rest;
@@ -118,7 +125,7 @@ export class RadioServices {
       // Inside a club, a party is a secondary channel next to the club's (no cap).
       ...(clubInfo?.channelSet ? { clubChannelSet: clubInfo.channelSet } : {}),
     });
-    void this.party.restore();
+    const restored = this.party.restore();
     this.help = new HelpRequester(ctx, {
       getLocation: () => {
         const mine = client.nodes.get(client.myNodeNum);
@@ -181,11 +188,20 @@ export class RadioServices {
       stands: clubInfo?.stands ?? [],
       ...withNames,
     };
+    // The account's own club replaces whatever the radio had; with none, a hidden club's
+    // channel is taken off so only the party's is used.
     if (clubInfo?.channelSet) this.clubChannel = this.ensureChannel(clubInfo.channelSet);
+    else if (hiddenClubChannels?.length) {
+      this.clubChannel = this.dropHiddenChannels(hiddenClubChannels, restored);
+    }
   }
 
-  /** Settles once the club channel is on the radio (or failed: the radio keeps its old channels). */
-  readonly clubChannel: Promise<'already' | 'applied' | 'failed'> = Promise.resolve('already');
+  /**
+   * Settles once the radio's club channel is right (or failed: the radio keeps its old
+   * channels): the account's club put on ('applied'), or a hidden club's taken off ('removed').
+   */
+  readonly clubChannel: Promise<'already' | 'applied' | 'removed' | 'failed'> =
+    Promise.resolve('already');
 
   /** Puts the club channels on the radio unless its primary channel already has the key. */
   private async ensureChannel(channelSet: ChannelSet): Promise<'already' | 'applied' | 'failed'> {
@@ -194,6 +210,22 @@ export class RadioServices {
       if (radioHasChannelSet(this.client, channelSet)) return 'already';
       await applyChannelSet(this.client, channelSet);
       return 'applied';
+    } catch {
+      return 'failed';
+    }
+  }
+
+  /** Moves a radio still on a hidden club's channel to the party's own channels. */
+  private async dropHiddenChannels(
+    hidden: readonly ChannelSet[],
+    restored: Promise<unknown>,
+  ): Promise<'already' | 'removed' | 'failed'> {
+    try {
+      await restored;
+      await this.client.waitUntilReady();
+      if (!hidden.some((set) => radioHasChannelSet(this.client, set))) return 'already';
+      await this.party.reprovision();
+      return 'removed';
     } catch {
       return 'failed';
     }

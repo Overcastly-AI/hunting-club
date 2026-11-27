@@ -14,7 +14,11 @@ import {
   partyJoinUrl,
   USER_ID,
 } from '../../test-utils/fakeClubApi';
+import { Text } from 'react-native';
+
 import { ClubSection } from '../ClubSection';
+import { useClub } from '../ClubProvider';
+import { useClubEntitlement } from '../entitlement';
 import type { ClubServices } from '../ClubProvider';
 import { JoinClubScreen } from '../JoinClubScreen';
 import { clubCopy } from '../copy';
@@ -101,6 +105,45 @@ it("hides another account's club after a user switch, keeps it saved, and shows 
   // A fresh provider (keyed), as after signing in: it reads the clubs again.
   await view.rerender(<Fragment key="again">{wrap(<ClubSection now={() => NOW} />)}</Fragment>);
   expect(await screen.findByText('Oak Ridge')).toBeTruthy();
+});
+
+/** What the radio and the paid features get from the club layer, as text. */
+function RadioProbe() {
+  const { radioClub, hiddenClubChannels } = useClub();
+  const paid = useClubEntitlement();
+  return (
+    <Text>
+      {`radio:${radioClub?.clubId ?? 'none'} key:${radioClub?.channelSet ? 'yes' : 'no'} hidden:${hiddenClubChannels.length} paid:${paid ? 'yes' : 'no'}`}
+    </Text>
+  );
+}
+
+it("the radio's club channel and paid features follow the signed-in account", async () => {
+  const secrets = memorySecureStorage();
+  const session = fakeSession(true, '00000000-0000-4000-8000-0000000000bb');
+  const { db, wrap } = await setup({ session, api: fakeClubApi(), secrets });
+  // Account A (USER_ID) joined Oak Ridge (its key in the keystore) and synced paid features.
+  await joinClubFromLink(db, secrets, clubJoinUrl(), { displayName: 'Max', initials: 'MX' }, NOW);
+  await syncClub(db, fakeClubApi({ featuresUntil: '2027-09-01T00:00:00.000Z' }), CLUB_ID, NOW);
+
+  // B is signed in and has no club: no club on the radio, A's key only as hidden, no paid features.
+  const view = await render(wrap(<RadioProbe />));
+  expect(await screen.findByText('radio:none key:no hidden:1 paid:no')).toBeTruthy();
+
+  // A comes back: its club, key and features again.
+  session.user = async () => ({ userId: USER_ID });
+  await view.rerender(<Fragment key="a">{wrap(<RadioProbe />)}</Fragment>);
+  expect(await screen.findByText(`radio:${CLUB_ID} key:yes hidden:0 paid:yes`)).toBeTruthy();
+});
+
+it('with no club on the phone, the radio has no club and nothing hidden', async () => {
+  const { wrap } = await setup({
+    session: fakeSession(true),
+    api: fakeClubApi(),
+    secrets: memorySecureStorage(),
+  });
+  await render(wrap(<RadioProbe />));
+  expect(await screen.findByText('radio:none key:no hidden:0 paid:no')).toBeTruthy();
 });
 
 it('joins from a Club QR code with a name and initials', async () => {

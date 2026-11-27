@@ -4,7 +4,7 @@
  * the club row in `groups` (with this phone's membership, cached entitlement and any
  * invite still to redeem), and the club's stands and areas with their mesh ids.
  */
-import { decodeJoinUrl } from '@huntclub/mesh';
+import { type ChannelSet, decodeJoinUrl } from '@huntclub/mesh';
 import type {
   Area,
   Club,
@@ -227,27 +227,46 @@ export async function loadClubAreas(db: SqlDatabase, clubId: string): Promise<Cl
   );
 }
 
+/** What the radio uses of the clubs: the account's club, and channels it must never use. */
+export type ClubRadio = {
+  club: RadioClub | null;
+  /** The saved Club QR link's channels when its club is hidden from the account. */
+  hiddenClubChannels: ChannelSet[];
+};
+
 /**
- * What the radio services need for a club: stands and areas with mesh ids, the
- * admin's grace time, and the club channels from the saved Club QR link.
+ * What the radio services need, from the clubs listed for the signed-in account
+ * (clubsForAccount): the first one's stands and areas with mesh ids, the admin's grace
+ * time, and the club channels from the saved Club QR link when it is that club's. A saved
+ * link for a club hidden from the account is returned only as channels never to use.
  */
-export async function loadRadioClub(
+export async function loadClubRadio(
   db: SqlDatabase,
   secrets: Pick<SecureStorage, 'get'>,
-  club: LocalClub,
-): Promise<RadioClub> {
-  const [stands, areas, link] = await Promise.all([
+  visible: readonly LocalClub[],
+): Promise<ClubRadio> {
+  const link = await secrets.get(SECURE_KEYS.clubJoinLink);
+  const parsed = link ? decodeJoinUrl(link) : undefined;
+  const saved =
+    parsed?.target.kind === 'club'
+      ? { clubId: parsed.target.clubId, channelSet: parsed.channelSet }
+      : undefined;
+  const hiddenClubChannels =
+    saved && !visible.some((c) => c.id === saved.clubId) ? [saved.channelSet] : [];
+  const club = visible[0];
+  if (!club) return { club: null, hiddenClubChannels };
+  const [stands, areas] = await Promise.all([
     loadClubStands(db, club.id),
     loadClubAreas(db, club.id),
-    secrets.get(SECURE_KEYS.clubJoinLink),
   ]);
-  const parsed = link ? decodeJoinUrl(link) : undefined;
-  const ours = parsed?.target.kind === 'club' && parsed.target.clubId === club.id;
   return {
-    clubId: club.id,
-    graceMinutes: club.graceMinutes,
-    stands,
-    areas,
-    ...(ours ? { channelSet: parsed.channelSet } : {}),
+    club: {
+      clubId: club.id,
+      graceMinutes: club.graceMinutes,
+      stands,
+      areas,
+      ...(saved?.clubId === club.id ? { channelSet: saved.channelSet } : {}),
+    },
+    hiddenClubChannels,
   };
 }
