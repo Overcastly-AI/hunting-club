@@ -4,9 +4,8 @@ import { Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { HELP_AUDIENCE_TEXT, type Audience } from '../../domain/audience';
 import { makeStyles, radii, spacing, textStyles } from '../../theme';
-import { positionAge } from '@huntclub/core';
 
-import { describeAge } from '../age';
+import { describeAge, positionAge } from '@huntclub/shared';
 import { placeLabel } from '../labels';
 import type { HunterPlace } from '../types';
 

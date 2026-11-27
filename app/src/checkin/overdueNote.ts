@@ -1,7 +1,7 @@
 import { SUN, overdueAt } from '@huntclub/core';
 import type { LatLon } from '@huntclub/mesh';
 
-import { formatClockTime } from '../conditions/clock';
+import { formatClockTime } from '@huntclub/shared';
 import { OVERDUE_ALERT_TEXT, type Audience } from '../domain/audience';
 
 /**

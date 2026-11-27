@@ -36,6 +36,12 @@ describe('hunterAccessibilityLabel', () => {
       'Creek Stand, Dale, updated 14 minutes ago, last known position',
     );
   });
+
+  it('never reads a position timed far in the future (a wrong radio clock) as just now', () => {
+    expect(hunterAccessibilityLabel(hunterFixture(-30), NOW)).toBe(
+      'Creek Stand, Dale, updated time unknown',
+    );
+  });
 });
 
 describe('other marker labels', () => {

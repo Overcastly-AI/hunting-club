@@ -6,15 +6,19 @@
 import { randomUUID } from 'node:crypto';
 import { CreateTableCommand, DeleteTableCommand, DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
-import type { ClubApiError, InviteCreate, MemberRole, SubscriptionStatus } from '@huntclub/shared';
+import {
+  DAY_MS,
+  type ClubApiError,
+  type InviteCreate,
+  type MemberRole,
+  type SubscriptionStatus,
+} from '@huntclub/shared';
 import { type Actor, SERVICE, userActor } from '../actor';
 import { createClubData, type ClubData } from '../index';
 import { DOCUMENT_CLIENT_OPTIONS } from '../db';
 import { createTableInput } from '../localTable';
 
 export const DYNAMODB_ENDPOINT = process.env.DYNAMODB_ENDPOINT ?? 'http://localhost:8000';
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** A test clock: starts at the real time and only moves when told to. */
 export class TestClock {

@@ -1,4 +1,9 @@
-import { FRESHNESS_THRESHOLDS_MS, SECOND_MS, positionAge } from '@huntclub/core';
+import {
+  FRESHNESS_THRESHOLDS_MS,
+  describeFreshness,
+  formatDuration,
+  pluralize,
+} from '@huntclub/shared';
 
 import type { ThemeColorToken } from '../theme';
 import type { MeshStatus } from './types';
@@ -22,14 +27,6 @@ export const MESH_QUIET_DETAIL =
  */
 export const MESH_QUIET_AFTER_MS = FRESHNESS_THRESHOLDS_MS.stale;
 
-function shortDuration(ms: number): string {
-  const seconds = Math.floor(ms / SECOND_MS);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min`;
-  return `${Math.floor(minutes / 60)} hr`;
-}
-
 /** The mesh status line, for example "Mesh: 3 radios · heard 12s ago". */
 export function describeMeshStatus(
   status: MeshStatus,
@@ -37,9 +34,10 @@ export function describeMeshStatus(
 ): { text: string; tone: MeshTone } {
   if (!status.radioConnected) return { text: 'No radio connected', tone: 'none' };
   if (status.lastHeardAt === null) return { text: 'Mesh: no radios heard yet', tone: 'quiet' };
-  const age = positionAge(status.lastHeardAt, now);
-  if (age >= MESH_QUIET_AFTER_MS)
-    return { text: `No radios heard for ${shortDuration(age)}`, tone: 'quiet' };
-  const radios = `${status.radioCount} radio${status.radioCount === 1 ? '' : 's'}`;
-  return { text: `Mesh: ${radios} · heard ${shortDuration(age)} ago`, tone: 'ok' };
+  const heard = describeFreshness(status.lastHeardAt, now, 'heard');
+  // A last-heard time ahead of the phone's clock can't be trusted as live.
+  if (heard.ageMs === null) return { text: 'Mesh: last heard time unknown', tone: 'quiet' };
+  if (heard.ageMs >= MESH_QUIET_AFTER_MS)
+    return { text: `No radios heard for ${formatDuration(heard.ageMs).short}`, tone: 'quiet' };
+  return { text: `Mesh: ${pluralize(status.radioCount, 'radio')} · ${heard.short}`, tone: 'ok' };
 }

@@ -30,4 +30,4 @@ Wind and temperature for the map's conditions panel and your scent cone.
 
 ## Using it
 
-Call `useConditions(place, now)`. It returns a `WeatherDisplay` (see `display.ts`) for `ConditionsPanel`, and its `windFromDeg` goes to `YouMarker`. The downwind direction always comes from `downwindBearing()` in `map/geo.ts`.
+Call `useConditions(place, now)`. It returns a `WeatherDisplay` (see `display.ts`) for `ConditionsPanel`, and its `windFromDeg` goes to `YouMarker`. The downwind direction always comes from `downwindBearing()` in `@huntclub/shared` (`compass.ts`), and the wind and temperature wording from its `windReadout()` and `temperatureReadout()` (`readout.ts`).

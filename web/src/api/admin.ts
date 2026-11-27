@@ -43,6 +43,7 @@ export function adminApi(client: ClubApiClient): ClubApi {
       );
       return channelSetWithKey(base64UrlDecode(secret.channelKey), { name: CLUB_CHANNEL_NAME });
     },
+    listInvites: async () => client.listInvites(await requireClub()),
     listStands: async () => client.listStands(await requireClub()),
     listAreas: async () => client.listAreas(await requireClub()),
     listHarvests: async () => client.listHarvests(await requireClub()),

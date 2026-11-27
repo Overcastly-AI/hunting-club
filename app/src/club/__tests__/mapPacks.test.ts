@@ -1,5 +1,5 @@
 // Club map packs: downloading the newest ready pack per source, offline-safe.
-import { BASEMAPS, type MapPack, mapPackUrl } from '@huntclub/shared';
+import { BASEMAPS, DAY_MS, type MapPack, mapPackUrl } from '@huntclub/shared';
 
 import { migrate } from '../../db/migrate';
 import { migrations } from '../../db/migrations';
@@ -8,7 +8,7 @@ import { createTestDatabase } from '../../test-utils/nodeSqlite';
 import { type MapPackFiles, loadClubMapPacks, syncClubMapPacks } from '../mapPacks';
 
 const NOW = Date.parse('2026-11-26T12:00:00Z');
-const LATER = NOW + 86_400_000;
+const LATER = NOW + DAY_MS;
 
 /** Files on a pretend phone: a download "saves" to file:///packs/<id>.pmtiles. */
 function fakeFiles() {

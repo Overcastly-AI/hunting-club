@@ -1,5 +1,5 @@
 import { encodeJoinUrl } from '@huntclub/mesh';
-import type { Member } from '@huntclub/shared';
+import { DAY_MS, MEMBER_ROLE_LABELS, type Member } from '@huntclub/shared';
 import { useEffect, useRef, useState } from 'react';
 import type { ClubApi } from '../api/types';
 import { DataTable, type Column } from '../components/DataTable';
@@ -7,16 +7,15 @@ import { Loadable } from '../components/Loadable';
 import { PageHeading } from '../components/PageHeading';
 import { QrCode } from '../components/QrCode';
 import { isOffline, useAsync } from '../components/useAsync';
-import { ROLE_LABELS, formatDate } from '../format';
+import { formatDate } from '../format';
 import { useSignedInUser } from '../signedInUser';
 
 /** How long a new member invite stays valid. */
 const INVITE_DAYS = 14;
-const DAY_MS = 86_400_000;
 
 const MEMBER_COLUMNS: readonly Column<Member>[] = [
   { label: 'Name', cell: (m) => m.displayName },
-  { label: 'Role', cell: (m) => ROLE_LABELS[m.role] },
+  { label: 'Role', cell: (m) => MEMBER_ROLE_LABELS[m.role] },
   { label: 'Guest pass until', cell: (m) => (m.expiresAt ? formatDate(m.expiresAt) : '—') },
 ];
 

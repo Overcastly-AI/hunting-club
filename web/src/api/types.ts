@@ -36,6 +36,8 @@ export interface ClubApi {
   getClub(): Promise<Club | null>;
   createClub(request: ClubCreateRequest): Promise<Club>;
   listMembers(): Promise<readonly Member[]>;
+  /** The club's invites, used or not (for Needs you on My club). */
+  listInvites(): Promise<readonly Invite[]>;
   createInvite(request: InviteCreate): Promise<Invite>;
   /** The club radio channel an invite QR carries (from the club secret). */
   getClubChannelSet(): Promise<ChannelSet>;
