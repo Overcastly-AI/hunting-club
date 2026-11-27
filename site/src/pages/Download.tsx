@@ -11,51 +11,68 @@ export const BETA_POINTS = [
 export function Download() {
   return (
     <>
-      <section className="hero">
-        <div className="wrap">
-          <h1>Get {APP_NAME}</h1>
-          <p className="lead">
-            {APP_NAME} is in beta. It is not in the App Store or Google Play yet.
-          </p>
+      <div className="wrap page-head">
+        <h1>Get {APP_NAME}</h1>
+        <p className="lede">
+          {APP_NAME} is in beta. It is not in the App Store or Google Play yet.
+        </p>
+      </div>
+      <section className="band">
+        <div className="wrap two">
           <h2>What beta means</h2>
-          <ul className="checklist">
-            {BETA_POINTS.map((point) => (
-              <li key={point}>{point}</li>
-            ))}
-          </ul>
-          <h2>What to do now</h2>
-          <p>
-            Want to help test it? Ask on the contact page. When the app is in the stores, this page
-            will link to it.
-          </p>
-          <div className="actions">
-            <a className="button primary" href={PAGE_PATHS.contact}>
-              Ask about testing
-            </a>
+          <div>
+            <ul className="rows">
+              {BETA_POINTS.map((point) => (
+                <li key={point}>
+                  <p>{point}</p>
+                </li>
+              ))}
+            </ul>
+            <h3>What to do now</h3>
+            <p className="quiet">
+              Want to help test it? Ask on the contact page. When the app is in the stores, this
+              page will link to it.
+            </p>
+            <div className="actions">
+              <a className="btn go" href={PAGE_PATHS.contact}>
+                Ask about testing
+              </a>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="band-light">
-        <div className="wrap">
+      <section className="band">
+        <div className="wrap two">
           <h2>What you need</h2>
-          <ul className="checklist">
-            <li>A phone: iPhone or Android, with the same features on both.</li>
+          <ul className="rows">
             <li>
-              A Meshtastic radio with GPS for each hunter, running stock Meshtastic firmware. Sold
-              separately.
+              <h3>A phone</h3>
+              <p>iPhone or Android, with the same features on both.</p>
+            </li>
+            <li>
+              <h3>A radio for each hunter</h3>
+              <p>
+                A Meshtastic radio with GPS, running stock Meshtastic firmware. Sold separately.
+              </p>
             </li>
           </ul>
         </div>
       </section>
 
-      <section>
-        <div className="wrap">
+      <section className="band">
+        <div className="wrap two">
           <h2>Joining someone?</h2>
-          <h3>Hunting with a party</h3>
-          <p className="muted">Ask the host for the party QR code and scan it in the app.</p>
-          <h3>Joining a club</h3>
-          <p className="muted">Your club admin sends you an invite link or QR code.</p>
+          <ul className="rows">
+            <li>
+              <h3>Hunting with a party</h3>
+              <p>Ask the host for the party QR code and scan it in the app.</p>
+            </li>
+            <li>
+              <h3>Joining a club</h3>
+              <p>Your club admin sends you an invite link or QR code.</p>
+            </li>
+          </ul>
         </div>
       </section>
     </>

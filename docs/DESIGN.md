@@ -219,7 +219,8 @@ The tools and `shared.css` come from the `design-directions` branch and were ext
 - The aerial is a drawn stand-in. Real USGS imagery is busier, so marker plates may need the full 94% backing they have here.
 - "2 h 14 min until sunset", the "Needs you" list and the roster's locator map are proposals, not things the product shows today.
 - The spec's top bar puts the club button beside the conditions panel. Here they are one plate with two rows, and the mesh line sits in the first row.
-- The spec's cream light marketing band (#F4F1EA) is gone. Until the site is rebuilt on the daylight theme, `lightColors` (the site's light bands) take the daylight theme's own values.
+- The spec's cream light marketing band (#F4F1EA) is gone. Since M4 the site is drawn in the theme tokens, dark or daylight by the device setting, and `lightColors` is removed.
+- The site hero's aerial is `@huntclub/design/aerial` (the same stand-in as the mockups, served as one SVG file); real imagery replaces it later.
 
 ## Tokens in code
 

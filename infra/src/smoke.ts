@@ -3,7 +3,7 @@
 // files, the club API's auth and CORS, and the Stripe webhook's signature check.
 // Every URL comes from the single sources (CLOUD_ENVIRONMENTS, the env config); nothing
 // here writes, signs anyone up or sends email.
-import { colors, FAVICON_ICO } from '@huntclub/design';
+import { FAVICON_ICO } from '@huntclub/design';
 import { ADMIN_PATH, API_PATHS, BUILD_VERSION_URL, WEB_PAGE_PATHS } from '@huntclub/shared';
 import { cspViolations } from '@huntclub/site/csp';
 import {
@@ -14,6 +14,7 @@ import {
   REDIRECTS,
   ROUTES,
   SITEMAP_FILE,
+  THEME_COLOR,
 } from '@huntclub/site/routes';
 import type { EnvConfig } from '../config';
 import { cloudFor } from './cloud';
@@ -115,7 +116,7 @@ export async function runSmoke(config: EnvConfig, fetch: SmokeFetch): Promise<Sm
     expect(/<title>[^<]+<\/title>/.test(home), 'no title');
     expect(Boolean(metaContent(home, 'description')), 'no meta description');
     const theme = metaContent(home, 'theme-color');
-    expect(theme === colors.surface, `theme-color is ${theme ?? 'missing'}`);
+    expect(theme === THEME_COLOR.dark, `theme-color is ${theme ?? 'missing'}`);
     icon = /<link rel="icon" type="image\/svg\+xml" href="([^"]+)"/.exec(home)?.[1] ?? '';
     expect(icon.startsWith('/'), 'no icon link');
     return `theme-color ${theme}, icon ${icon}`;

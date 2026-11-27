@@ -1,4 +1,3 @@
-import { colors } from '@huntclub/design';
 import { ADMIN_PATH, API_PATHS, BUILD_VERSION_URL, WEB_PAGE_PATHS } from '@huntclub/shared';
 import {
   JOIN_PAGE,
@@ -7,6 +6,7 @@ import {
   ROUTES,
   sitemapXml,
   SITEMAP_FILE,
+  THEME_COLOR,
 } from '@huntclub/site/routes';
 import { dev } from '../config/dev';
 import {
@@ -29,7 +29,7 @@ const SITE = `https://${dev.domainName}`;
 const HOME = [
   '<!doctype html><head><title>Hunt Club Mesh</title>',
   '<meta name="description" content="Off-grid hunting.">',
-  `<meta name="theme-color" content="${colors.surface}">`,
+  `<meta name="theme-color" content="${THEME_COLOR.dark}" media="(prefers-color-scheme: dark)">`,
   '<link rel="icon" href="/favicon.ico" sizes="48x48">',
   '<link rel="icon" type="image/svg+xml" href="/favicon.svg">',
   `<meta property="og:image" content="${SITE}/og/home.png"/>`,

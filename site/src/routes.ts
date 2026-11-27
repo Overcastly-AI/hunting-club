@@ -2,6 +2,7 @@
 // URLs, Open Graph meta, the prerender list, sitemap.xml, robots.txt rules and the
 // CloudFront allowlist and redirects (infra/src/web-pages.ts) all come from here. Add a
 // page here and it is built, linked, served and tested.
+import { themes } from '@huntclub/design';
 import { APP_NAME, CLUB_PRICING, FREE_PARTY_MAX_MEMBERS, LEGAL_DOCS } from '@huntclub/shared';
 import {
   ADMIN_PATH,
@@ -97,6 +98,15 @@ export const ROUTES = [
 ] as const satisfies readonly SiteRoute[];
 
 export type SitePath = (typeof ROUTES)[number]['path'];
+
+/**
+ * The browser's toolbar colour (<meta name="theme-color">): the header bar's own colour, per
+ * theme. The site follows the device's light or dark setting.
+ */
+export const THEME_COLOR = {
+  dark: themes.dark.colors.canvas,
+  light: themes.light.colors.canvas,
+} as const;
 
 /** Sections of the home page that other pages link to (ids on the page). */
 export const HOME_SECTIONS = {

@@ -1,14 +1,14 @@
-// The browser scripts as `vite build --mode client` bundles them (in memory): the /join page
-// never carries the dawn scene, and the home hero's pause script stays small.
+// The browser script as `vite build --mode client` bundles it (in memory): /join's is the
+// only one, and it stays small (no protobuf codec, no page art).
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import { build, type Rollup } from 'vite';
-import { CLIENT_MODE, DAWN_SCRIPT_ENTRY, JOIN_SCRIPT_ENTRY } from '../../vite.config';
+import { CLIENT_MODE, JOIN_SCRIPT_ENTRY } from '../../vite.config';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-/** The pause script's gzipped budget: the button only, never the scene. */
-const MAX_DAWN_SCRIPT_GZIP = 2_000;
+/** The /join script's gzipped budget (docs/SITE_BRIEF.md: keep the JS tiny). */
+const MAX_JOIN_SCRIPT_GZIP = 12_000;
 
 async function clientChunks(): Promise<Rollup.OutputChunk[]> {
   const result = await build({
@@ -30,25 +30,15 @@ describe('client scripts', () => {
   beforeAll(async () => {
     chunks = await clientChunks();
   }, 60_000);
-  const entry = (file: string) => {
-    const chunk = chunks.find((c) => c.facadeModuleId?.endsWith(file));
-    if (!chunk) throw new Error(`No chunk for ${file}`);
-    return chunk;
-  };
 
-  it('are two self-contained files, with nothing shared between them', () => {
-    expect(chunks.map((c) => c.name).sort()).toEqual(['dawn', 'join']);
+  it('are one file: the /join page script', () => {
+    expect(chunks.map((c) => c.name)).toEqual(['join']);
+    expect(chunks[0]!.facadeModuleId?.endsWith(JOIN_SCRIPT_ENTRY)).toBe(true);
   });
 
-  it('keep the dawn scene out of the /join bundle', () => {
-    const join = entry(JOIN_SCRIPT_ENTRY);
-    expect(join.moduleIds.filter((id) => /dawn/i.test(id))).toEqual([]);
-    expect(join.code).not.toMatch(/dawnSprites|dawn-pause|dawn--paused/);
-  });
-
-  it('give the home hero only the pause button, not the scene', () => {
-    const dawn = entry(DAWN_SCRIPT_ENTRY);
-    expect(dawn.moduleIds.filter((id) => /dawnScene|dawnSprites/.test(id))).toEqual([]);
-    expect(gzipSync(dawn.code).length).toBeLessThanOrEqual(MAX_DAWN_SCRIPT_GZIP);
+  it('keep the /join script small, with no page art or icons in it', () => {
+    const join = chunks[0]!;
+    expect(join.moduleIds.filter((id) => /dawn|aerial|lucide/i.test(id))).toEqual([]);
+    expect(gzipSync(join.code).length).toBeLessThanOrEqual(MAX_JOIN_SCRIPT_GZIP);
   });
 });

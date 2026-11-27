@@ -1,6 +1,6 @@
 // CSS for the web surfaces (club admin and public site), generated from the tokens so no
 // page retypes a value. Plain strings: no DOM code here.
-import { colors, lightColors } from './colors';
+import { colors } from './colors';
 import { breakpoints, motion, radii, sizes, spacing } from './sizes';
 import {
   THEME_ATTRIBUTE,
@@ -32,7 +32,7 @@ export const COMPACT_MEDIA = `(max-width: ${breakpoints.tablet - 1}px)`;
 /** CSS custom properties for every design token, e.g. `--color-surface-raised`. */
 export function tokenVariables(): Record<string, string> {
   const vars: Record<string, string> = {};
-  for (const [name, value] of Object.entries({ ...colors, ...lightColors })) {
+  for (const [name, value] of Object.entries(colors)) {
     vars[`--color-${kebab(name)}`] = value;
   }
   for (const [name, value] of Object.entries(spacing)) vars[`--space-${name}`] = `${value}px`;

@@ -248,9 +248,10 @@ The look is the map-first direction, approved by the owner on 2026-11-27: docs/D
 | wind | wind | #8EC5FF | Wind arrow |
 | water-label | water-text | #C9DCDD | Creek and pond names |
 | map-halo | halo | #0B0D0E | 3 px outline behind all map text |
+| map-ground | | #2C3323 | The aerial stand-in's ground tone (imagery), behind the picture while it loads |
 | boundary | | #FFFFFF at 85% + 1 px accent inner line | Club property line |
 
-**Light sections (public marketing site only):** until the site is rebuilt on the daylight theme, its light bands use `lightColors` in `@huntclub/design`, which take the daylight theme's own values (no cream), each at 4.5:1 or better (edges 3:1) on `bg-light`.
+**Public site:** drawn in the same two themes as the app and the admin (dark by default, daylight when the device prefers light); there are no separate light bands.
 
 **Type:** Archivo variable font only (width 75–100, weight 450–800). Words are set at normal width; anything measured (times, distances, counts, "2 min", prices) is condensed (76%) with tabular figures. Titles 800 at 88%; buttons 750 at 92%, 17 px; body 16–17 px at 450; tab labels 14 px; marker plate 15 px / 800 at 86% over a 13 px second line; map labels at least 13 px. Mixed case, left aligned; no capitals-only labels, no monospace.
 

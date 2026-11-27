@@ -1,32 +1,42 @@
 // @vitest-environment jsdom
 // (jsdom only for DOMParser: the pages are still rendered as static HTML strings.)
 import {
-  colors,
   contrastRatio,
-  lightColors,
   MIN_TEXT_CONTRAST,
   MIN_UI_CONTRAST,
   sizes,
+  themes,
+  themeVariables,
   tokenVariables,
 } from '@huntclub/design';
-import { DAWN_CLASS, DAWN_PAUSE_BUTTON_CLASS } from '@huntclub/design/dawnControl';
-import { dawnSceneCss, dawnSceneSvg } from '@huntclub/design/dawnScene';
 import {
   CLUB_PRICING,
-  dawnPauseCopy,
+  describeFreshness,
+  FRESHNESS_THRESHOLDS_MS,
   LEGAL_DOCS,
   LEGAL_DRAFT_NOTICE,
+  MINUTE_MS,
   SAFETY_NOTE,
+  SECOND_MS,
 } from '@huntclub/shared';
 import { ADMIN_PATH, SUPPORT_EMAIL } from '@huntclub/shared/app';
 import { renderJoin, renderNotFound, renderPage } from '../render';
 import { cspViolations } from '../csp';
 import { FAQ, FAQ_PREVIEW } from '../faq';
-import { CONDITIONS, FEATURE_GROUPS } from '../features';
+import { CONDITIONS, FEATURE_GROUPS, planWord } from '../features';
+import { MAP_FRAME, MAP_PHONE_MAX_WIDTH } from '../map/mapCss';
+import { AT, MAP_DESCRIPTION, READOUT_LABELS, RING_CLASS } from '../map/MapView';
+import {
+  hunterFreshness,
+  openStands,
+  SAMPLE_CLUB,
+  SAMPLE_CONDITIONS,
+  SAMPLE_MESH,
+} from '../map/sampleClub';
 import { BETA_POINTS } from '../pages/Download';
-import { HERO_ART_SLOT } from '../pages/Home';
-import { CLUB_CARD_ORDER } from '../pages/Pricing';
-import { assets, CSS, DAWN, FONT, FORWARD_SCRIPT } from './fixtures';
+import { HOME_PROMISE, LEGEND } from '../pages/Home';
+import { CLUB_ALTERNATIVE, CLUB_AMOUNT, CLUB_UNIT, COMPARISON } from '../pages/Pricing';
+import { AERIAL, assets, CSS, FONT, FORWARD_SCRIPT } from './fixtures';
 import {
   canonicalUrl,
   CLUB_PRICE_LINE,
@@ -45,14 +55,16 @@ import {
   SITE_ORIGIN,
   sitemapXml,
   START_A_CLUB,
+  THEME_COLOR,
 } from '../routes';
 import { MESHTASTIC_ATTRIBUTION } from '../Shell';
 import {
-  HERO_ART_BOTTOM_PADDING,
-  HERO_WITH_ART_CLASS,
+  GUTTER,
+  NARROW_MAX_WIDTH,
   NARROWEST_PHONE,
   PHONE_HEADER_MAX_WIDTH,
   siteCss,
+  SIZED_CONTROLS,
 } from '../styles';
 
 const pages = ROUTES.map((r) => ({ route: r, html: renderPage(r.path, assets) }));
@@ -63,6 +75,7 @@ const allPages = [
   { name: '404.html', html: notFound },
   { name: 'join/index.html', html: renderJoin(assets, '/assets/join-test.js') },
 ];
+const page = (path: string) => pages.find((p) => p.route.path === path)!.html;
 const count = (html: string, pattern: RegExp) => (html.match(pattern) ?? []).length;
 /** Visible text only (no tags or inline CSS). */
 const textOf = (html: string) =>
@@ -72,6 +85,14 @@ const textOf = (html: string) =>
     .replace(/&#x27;/g, "'")
     .replace(/&quot;/g, '"')
     .replace(/&amp;/g, '&');
+const css = siteCss(FONT);
+/** Innermost rules (inside media queries too), as selector and declarations. */
+const rules = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(
+  (m) => ({
+    selector: m[1]!.trim(),
+    body: m[2]!,
+  }),
+);
 
 describe('route registry', () => {
   it('has unique, well-formed paths', () => {
@@ -108,14 +129,21 @@ describe.each(pages)('page $route.path', ({ route, html }) => {
     }
   });
 
-  it('ships no JavaScript except the home page forward and pause script files (no analytics)', () => {
+  it('ships no JavaScript except the home page bookmark forward (no analytics)', () => {
     const home = route.path === '/';
     const data = count(html, /<script type="application\/ld\+json">/g);
     const classic = html.match(/<script src="[^"]*"><\/script>/g) ?? [];
-    const modules = html.match(/<script type="module" src="[^"]*">/g) ?? [];
     expect(classic).toEqual(home ? [`<script src="${FORWARD_SCRIPT}"></script>`] : []);
-    expect(modules).toEqual(home ? [`<script type="module" src="${DAWN.scriptUrl}">`] : []);
-    expect(count(html, /<script/gi)).toBe(classic.length + modules.length + data);
+    expect(count(html, /<script/gi)).toBe(classic.length + data);
+  });
+
+  it('colours the browser bar like the header, in each theme', () => {
+    expect(html).toContain(
+      `<meta name="theme-color" content="${THEME_COLOR.dark}" media="(prefers-color-scheme: dark)"/>`,
+    );
+    expect(html).toContain(
+      `<meta name="theme-color" content="${THEME_COLOR.light}" media="(prefers-color-scheme: light)"/>`,
+    );
   });
 
   it('shares a large card at its own absolute URL', () => {
@@ -134,7 +162,7 @@ describe.each(allPages)('$name', ({ html }) => {
 
   it('keeps every link and button at the 48 px tap target, except links inside a sentence', () => {
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    const sized = '.button, .tap, .brand, .skip-link, .nav-list a, .menu summary, .faq summary';
+    const sized = SIZED_CONTROLS.join(', ');
     const small = [...doc.querySelectorAll('a, button, summary')].filter(
       (el) => !el.matches(sized) && !el.closest('p'),
     );
@@ -180,6 +208,7 @@ describe('404 page', () => {
     for (const link of [...NAV_LINKS, SIGN_IN]) {
       expect(header).toContain(`<a href="${link.href}">${link.label}</a>`);
     }
+    expect(header).not.toContain('aria-current');
     expect(notFound).toContain('<a class="brand" href="/">');
     const footer = notFound.slice(notFound.indexOf('<footer'));
     for (const link of FOOTER_LINKS) expect(footer).toContain(`href="${link.href}"`);
@@ -189,8 +218,8 @@ describe('404 page', () => {
     expect(notFound).toContain('<meta name="robots" content="noindex"/>');
     expect(notFound).not.toContain('rel="canonical"');
     expect(notFound).toContain(`<title>${NOT_FOUND_PAGE.title}</title>`);
-    expect(notFound).toContain('<a class="button primary" href="/">Go to the home page</a>');
-    expect(notFound).toContain(`<a class="button" href="${ADMIN_PATH}">`);
+    expect(notFound).toContain('<a class="btn go" href="/">Go to the home page</a>');
+    expect(notFound).toContain(`<a class="btn" href="${ADMIN_PATH}">`);
     expect(count(notFound, /<script/gi)).toBe(0);
   });
 });
@@ -236,128 +265,28 @@ describe('links', () => {
 
   it('show the nav in the header, and again in a "Menu" disclosure for phones', () => {
     const header = home.slice(home.indexOf('<header'), home.indexOf('</header>'));
-    for (const link of [...NAV_LINKS, SIGN_IN]) {
-      expect(count(header, new RegExp(`<a href="${link.href}">${link.label}</a>`, 'g'))).toBe(2);
+    const menu = header.slice(header.indexOf('<details'));
+    for (const link of [...NAV_LINKS, SIGN_IN, GET_THE_APP]) {
+      expect(header.slice(0, header.indexOf('<details'))).toContain(`href="${link.href}"`);
+      expect(menu).toContain(`<a href="${link.href}">${link.label}</a>`);
     }
     expect(home).toContain('<details class="menu"><summary>Menu</summary>');
-    // On phones the main action moves into the menu.
-    const menu = header.slice(header.indexOf('<details'));
-    expect(menu).toContain(`<a href="${GET_THE_APP.href}">${GET_THE_APP.label}</a>`);
-  });
-});
-
-describe('phone first', () => {
-  const css = siteCss(FONT);
-  const phoneRules = css.slice(css.indexOf(`@media (max-width: ${PHONE_HEADER_MAX_WIDTH}px)`));
-
-  it('collapses the header to the logo and one Menu button', () => {
-    expect(phoneRules).toMatch(
-      /^[^}]*\.site-header \.desktop, \.site-header \.header-action \{ display: none; \}/,
+    expect(header).toContain(
+      `<a class="btn go" href="${GET_THE_APP.href}">${GET_THE_APP.label}</a>`,
     );
-    expect(phoneRules).toMatch(/^[^}]*\}\s*\.menu \{ display: block; \}/);
   });
 
-  it('gives every sized link and control the 48 px tap target', () => {
-    expect(sizes.minTapTarget).toBe(48);
-    for (const selector of [
-      '.button',
-      '.tap',
-      '.brand',
-      '.skip-link',
-      '.nav-list a',
-      '.menu summary',
-    ]) {
-      const escaped = selector.replace(/\./g, '\\.');
-      expect(css).toMatch(new RegExp(`(^|\\n)${escaped} \\{[^}]*min-height: var\\(--tap-min\\)`));
-    }
-    expect(css).toMatch(/\.faq summary \{[^}]*min-height: 56px/);
-  });
-
-  it('fits a 360 px phone: no grid column is wider than the screen less its gutters', () => {
-    const gutters = 2 * 16; // .wrap padding: --space-md each side
-    const columns = [...css.matchAll(/minmax\(([\d.]+)rem/g)].map((m) => Number(m[1]) * 16);
-    expect(columns.length).toBeGreaterThan(0);
-    for (const px of columns) expect(px).toBeLessThanOrEqual(NARROWEST_PHONE - gutters);
-    expect(tokenVariables()['--space-md']).toBe('16px');
-  });
-});
-
-describe('light sections', () => {
-  const css = siteCss(FONT);
-  const vars = tokenVariables();
-  const bg = lightColors.bgLight;
-  /** Innermost rules (inside media queries too), as selector and declarations. */
-  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
-    selector: m[1]!.trim(),
-    body: m[2]!,
-  }));
-  const colorOf = (body: string, property: string) =>
-    new RegExp(`(?:^|[;{]|\\s)${property}:[^;]*var\\((--color-[a-z-]+)\\)`).exec(body)?.[1];
-
-  it('hold every color a light band sets to 4.5:1 (text) or 3:1 (borders, focus ring)', () => {
-    const light = rules.filter((r) => r.selector.includes('.band-light'));
-    expect(light.length).toBeGreaterThan(5);
-    for (const { selector, body } of light) {
-      // Text sits on the rule's own background when it sets one (the primary button).
-      const ground = colorOf(body, 'background');
-      const text = colorOf(body, 'color');
-      if (text) {
-        expect([selector, contrastRatio(vars[text]!, ground ? vars[ground]! : bg)]).toEqual([
-          selector,
-          expect.toSatisfy((r: number) => r >= MIN_TEXT_CONTRAST),
-        ]);
-      }
-      for (const edge of ['border-color', 'outline-color']) {
-        const color = colorOf(body, edge);
-        if (color) {
-          expect([selector, edge, contrastRatio(vars[color]!, bg)]).toEqual([
-            selector,
-            edge,
-            expect.toSatisfy((r: number) => r >= MIN_UI_CONTRAST),
-          ]);
-        }
-      }
-    }
-  });
-
-  it('draw the borders of parts used in light bands at 3:1 or better', () => {
-    // FAQ rows, the comparison table and screenshot frames sit on light bands.
-    // Each part's own border, or the light band's override of it when there is one.
-    for (const selector of ['.faq details', '.compare th, .compare td', '.shot-frame']) {
-      const own = rules.find((r) => r.selector === selector);
-      const light = rules.find((r) =>
-        r.selector.startsWith(`.band-light ${selector.split(',')[0]}`),
+  it("marks the current page in the header's nav", () => {
+    for (const link of NAV_LINKS) {
+      expect(page(link.href)).toContain(
+        `<a href="${link.href}" aria-current="page">${link.label}</a>`,
       );
-      const border =
-        (light && colorOf(light.body, 'border-color')) ??
-        (own && colorOf(own.body, 'border(?:-bottom)?'));
-      expect(border).toBeDefined();
-      expect(contrastRatio(vars[border!]!, bg)).toBeGreaterThanOrEqual(MIN_UI_CONTRAST);
     }
-  });
-
-  it('pair text and links with the light background at 4.5:1 or better', () => {
-    for (const fg of [lightColors.textOnLight, lightColors.mutedOnLight, lightColors.linkOnLight]) {
-      expect(contrastRatio(fg, lightColors.bgLight)).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
-    }
-  });
-
-  it('keep the primary button readable and its outline visible on a light band', () => {
-    expect(contrastRatio(colors.surface, colors.accent)).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
-    expect(contrastRatio(lightColors.textOnLight, lightColors.bgLight)).toBeGreaterThanOrEqual(
-      MIN_UI_CONTRAST,
-    );
-  });
-
-  it('use only tokens: no hex colors outside the generated variables', () => {
-    const css = siteCss(FONT);
-    const rules = css.slice(css.indexOf('* {'));
-    expect(rules).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+    expect(count(home, /aria-current/g)).toBe(0);
   });
 });
 
 describe('page content', () => {
-  const page = (path: string) => pages.find((p) => p.route.path === path)!.html;
   /** Every href on a page, in its body (not the head's canonical and icons). */
   const hrefs = (html: string) =>
     [...html.slice(html.indexOf('<body')).matchAll(/href="([^"]*)"/g)].map((m) => m[1]!);
@@ -380,30 +309,53 @@ describe('page content', () => {
   it('shows the club price, trial and terms from CLUB_PRICING on Pricing and Clubs', () => {
     const { intervals } = CLUB_PRICING;
     expect(CLUB_PRICE_LINE).toBe('$10/month or $100/year (save $20)');
+    expect([CLUB_AMOUNT, CLUB_UNIT]).toEqual(['$100', '/year per club']);
+    expect(CLUB_ALTERNATIVE).toBe(`${intervals.year.badge}, or ${intervals.month.price}.`);
     const html = page(PAGE_PATHS.pricing);
-    const pricing = textOf(html);
-    expect(pricing).toContain(`${CLUB_PRICE_LINE} per club`);
-    expect(pricing).toContain('$0');
-    // Two equal cards, monthly then yearly, each with its trial line and "per club" first.
-    const cards = [...html.matchAll(/<div class="card"><h2>Club, [\s\S]*?<\/div>/g)].map((m) =>
-      textOf(m[0]),
-    );
-    expect(cards).toHaveLength(2);
-    CLUB_CARD_ORDER.forEach((interval, i) => {
-      const card = cards[i]!;
-      expect(card).toContain(intervals[interval].price);
-      expect(card).toContain(intervals[interval].trial);
-      expect(card.slice(card.indexOf(intervals[interval].price))).toMatch(/^[^.]*\.?[^.]*Per club/);
-      expect(card).toContain(CLUB_PRICING.cta);
-    });
-    expect(cards[1]).toContain(`(${intervals.year.savings})`);
+    const club = textOf(html.slice(html.indexOf('<h2>Club</h2>'), html.indexOf('<table')));
+    expect(club).toContain(`${CLUB_AMOUNT} ${CLUB_UNIT}`);
+    expect(club).toContain(CLUB_ALTERNATIVE);
+    expect(club).toContain(CLUB_PRICING.cta);
+    expect(club).toContain(CLUB_PRICING.terms);
+    expect(textOf(html)).toContain('$0');
     const clubs = textOf(page(PAGE_PATHS.clubs));
     expect(clubs).toContain(`One price per club: ${CLUB_PRICE_LINE}`);
     expect(clubs).toContain(CLUB_PRICING.terms);
+    expect(textOf(page('/'))).toContain(`${CLUB_PRICE_LINE} per club`);
     for (const path of [PAGE_PATHS.pricing, PAGE_PATHS.clubs]) {
       expect(page(path)).toContain(
-        `<a class="button primary" href="${ADMIN_PATH}">${CLUB_PRICING.cta}</a>`,
+        `<a class="btn go" href="${ADMIN_PATH}">${CLUB_PRICING.cta}</a>`,
       );
+    }
+  });
+
+  it('compares the plans in one table, with a tick and a word for every yes', () => {
+    const doc = new DOMParser().parseFromString(page(PAGE_PATHS.pricing), 'text/html');
+    const table = doc.querySelector('table.compare')!;
+    expect([...table.querySelectorAll('thead th')].map((th) => th.textContent)).toEqual([
+      'Feature',
+      'Free',
+      'Club',
+    ]);
+    const rows = COMPARISON.flatMap((g) => g.rows);
+    const body = [...table.querySelectorAll('tbody tr:not(.group)')];
+    expect(body).toHaveLength(rows.length);
+    rows.forEach((row, i) => {
+      const cells = [...body[i]!.querySelectorAll('td')];
+      expect(body[i]!.querySelector('th')!.textContent).toBe(row.feature);
+      [row.free, row.club].forEach((value, j) => {
+        const cell = cells[j]!;
+        const words: Record<string, string> = { yes: 'Yes', no: 'No' };
+        expect(cell.textContent).toBe(words[value] ?? value);
+        expect(cell.querySelector('.lucide-check') !== null).toBe(value === 'yes');
+      });
+    });
+    expect([...table.querySelectorAll('.group th')].map((th) => th.textContent)).toEqual(
+      COMPARISON.map((g) => g.group),
+    );
+    // Short words only: on a phone each plan column is 76 px.
+    for (const row of rows) {
+      for (const v of [row.free, row.club]) expect(v.length).toBeLessThanOrEqual(11);
     }
   });
 
@@ -414,7 +366,7 @@ describe('page content', () => {
     expect(download).toContain('What beta means');
     for (const point of BETA_POINTS) expect(download).toContain(point);
     expect(download).toContain('What to do now');
-    expect(html).toContain(`<a class="button primary" href="${PAGE_PATHS.contact}">`);
+    expect(html).toContain(`<a class="btn go" href="${PAGE_PATHS.contact}">`);
     expect(download).toMatch(/Meshtastic radio with GPS/);
   });
 
@@ -446,8 +398,6 @@ describe('page content', () => {
 });
 
 describe('features and FAQ', () => {
-  const page = (path: string) => pages.find((p) => p.route.path === path)!.html;
-
   it('gives every feature group an anchor, words for Free and Club, and a sized placeholder', () => {
     const features = page(PAGE_PATHS.features);
     const ids = FEATURE_GROUPS.map((g) => g.id);
@@ -462,6 +412,17 @@ describe('features and FAQ', () => {
     expect(features).not.toMatch(/<img/);
   });
 
+  it('lists every feature on the home page in one sentence, with its plan in words', () => {
+    const html = page('/');
+    const home = textOf(html);
+    for (const group of FEATURE_GROUPS) {
+      expect(group.summary).toMatch(/^[^.;!?]+\.$/);
+      expect(home).toContain(group.summary);
+      expect(html).toContain(`href="${PAGE_PATHS.features}#${group.id}">${group.title}</a>`);
+      expect(html).toContain(`<span class="plan-word">${planWord(group)}</span>`);
+    }
+  });
+
   it('answers every question on /faq, the emergency one with the safety note word for word', () => {
     const faq = textOf(page(PAGE_PATHS.faq));
     for (const item of FAQ) {
@@ -472,88 +433,223 @@ describe('features and FAQ', () => {
     const home = textOf(page('/'));
     for (const item of FAQ_PREVIEW) expect(home).toContain(item.q);
   });
+});
 
-  it('puts the dawn scene behind the home hero only, with its stylesheet and pause button', () => {
-    const home = page('/');
-    const hero = home.slice(
-      home.indexOf(`<section class="hero ${HERO_WITH_ART_CLASS}">`),
-      home.indexOf('</section>'),
+describe('home page map', () => {
+  const home = page('/');
+  const doc = new DOMParser().parseFromString(home, 'text/html');
+  const hero = doc.querySelector('section.hero.mapview')!;
+
+  it('is the hero: the aerial picture file with the example club, one image to a screen reader', () => {
+    expect(hero).not.toBeNull();
+    expect(hero.querySelector('h1')).not.toBeNull();
+    const world = hero.querySelector('.world')!;
+    expect(world.getAttribute('role')).toBe('img');
+    expect(world.getAttribute('aria-label')).toBe(MAP_DESCRIPTION);
+    expect(world.querySelector('img')!.outerHTML).toBe(
+      `<img class="world-map" src="${AERIAL}" width="2000" height="1400" alt="">`,
     );
-    expect(hero).not.toBe('');
-    expect(hero).toContain(
-      `<div class="${HERO_ART_SLOT}" aria-hidden="true">${dawnSceneSvg()}</div>`,
-    );
-    expect(hero).toContain(
-      `<button class="button ${DAWN_PAUSE_BUTTON_CLASS}" type="button" aria-pressed="false" hidden="">${dawnPauseCopy.pause}</button>`,
-    );
-    expect(home).toContain(`<link rel="stylesheet" href="${DAWN.cssUrl}"/>`);
-    // The headline stays the largest content (LCP): the scene is decorative SVG, not an image.
-    expect(hero).not.toMatch(/<img|<image|<video|fetchpriority/);
+    expect(textOf(hero.outerHTML)).toContain('Example club');
+    // The map is only on the home page, and no page carries an illustration.
     for (const { route, html } of pages.filter((p) => p.route.path !== '/')) {
-      expect([route.path, html.includes(`class="${DAWN_CLASS}"`)]).toEqual([route.path, false]);
-      expect(html).not.toContain(DAWN.cssUrl);
-      expect(html).not.toContain(DAWN_PAUSE_BUTTON_CLASS);
+      expect([route.path, html.includes(AERIAL)]).toEqual([route.path, false]);
+    }
+    for (const { name, html } of allPages) {
+      expect([name, /class="dawn|dawn-pause|hero-art/.test(html)]).toEqual([name, false]);
     }
   });
-});
 
-/** A CSS length in px: `16px`, `var(--space-md)` or a calc() sum of those (tokens resolved). */
-function px(value: string): number {
-  const vars = tokenVariables();
-  const terms = value.replace(/^calc\((.*)\)$/, '$1').split('+');
-  return terms.reduce((sum, term) => {
-    const t = term.trim();
-    const resolved = /^var\((--[\w-]+)\)$/.exec(t)?.[1];
-    const literal = resolved ? vars[resolved] : t;
-    const n = /^(\d+(?:\.\d+)?)px$/.exec(literal ?? '');
-    if (!n) throw new Error(`not a px length: ${t}`);
-    return sum + Number(n[1]);
-  }, 0);
-}
-
-describe('home hero at phone width', () => {
-  const css = siteCss(FONT);
-  const dawn = dawnSceneCss();
-
-  it('keeps a row for the pause button, so it can never touch "For hunting clubs"', () => {
-    // The pause button sits absolute in the hero's bottom corner; the hero's content (its
-    // buttons included) ends at the top of the bottom padding. Neither depends on the width,
-    // so if the padding holds the button's offset, its height and a gap, they cannot overlap.
-    const button = new RegExp(`\\.${DAWN_PAUSE_BUTTON_CLASS}\\{[^}]*bottom:([^;}]+)`).exec(dawn);
-    expect(button).not.toBeNull();
-    const offset = px(button![1]!);
-    const height = px('var(--tap-min)');
-    const gap = px('var(--space-md)');
-    expect(css).toContain(`.${HERO_WITH_ART_CLASS} {`);
+  it('rings each hunter by how fresh their position is, and says how long ago on the plate', () => {
+    const markers = [...hero.querySelectorAll('.mk.hunter')];
+    expect(markers).toHaveLength(SAMPLE_CLUB.hunters.length);
+    SAMPLE_CLUB.hunters.forEach((h, i) => {
+      const heard = hunterFreshness(h);
+      const marker = markers[i]!;
+      expect(marker.classList.contains(RING_CLASS[heard.freshness])).toBe(true);
+      expect(marker.classList.contains(AT.hunter(i))).toBe(true);
+      expect(marker.querySelector('.tag')!.textContent).toBe(`${h.where}${h.name}, ${heard.short}`);
+    });
+    // The sample shows both kinds of ring; a stale position is never drawn solid.
+    const kinds = SAMPLE_CLUB.hunters.map((h) => hunterFreshness(h).freshness);
+    expect(kinds).toContain('fresh');
+    expect(kinds).toContain('stale');
     expect(css).toMatch(
-      new RegExp(
-        `\\.${HERO_WITH_ART_CLASS} \\{[^}]*padding-bottom: ${HERO_ART_BOTTOM_PADDING.replace(/[()+]/g, '\\$&')}`,
-      ),
+      /\.mk\.ring-stale \.dot, \.mk\.ring-faded \.dot \{[^}]*border-style: dashed/,
     );
-    expect(px(HERO_ART_BOTTOM_PADDING)).toBeGreaterThanOrEqual(offset + height + gap);
-    expect(height).toBe(sizes.minTapTarget);
+    expect(hero.querySelectorAll('.mk.stand')).toHaveLength(openStands().length);
+    expect(hero.querySelectorAll('.mk.you')).toHaveLength(1);
   });
 
-  it('is not changed by a phone-width rule', () => {
-    for (const media of css.split('@media').slice(1)) {
-      expect(media.slice(0, media.indexOf('}\n}') + 1)).not.toContain(HERO_WITH_ART_CLASS);
+  it('places every marker and label with a class from the stylesheet, never a style attribute', () => {
+    for (const el of hero.querySelectorAll('.world .mk, .world .lbl')) {
+      const at = [...el.classList].find((c) => c.startsWith('at-'));
+      expect(at).toBeDefined();
+      expect(css).toMatch(new RegExp(`\\.${at} \\{ left: \\d+px; top: \\d+px;`));
     }
-    expect(dawn).not.toMatch(/@media[^{]*max-width[^{]*\{[^}]*dawn-pause[^}]*bottom/);
+  });
+
+  it('reads out sunrise, sunset, the last known wind and the temperature, and the mesh', () => {
+    const cells = [...hero.querySelectorAll('.fields .field')].map((f) => [
+      f.querySelector('dt')!.textContent,
+      f.querySelector('dd')!.textContent,
+    ]);
+    const joined = (s: string) => s.replace(/ (AM|PM|mph)$/, '$1');
+    expect(cells).toEqual([
+      [READOUT_LABELS.sunrise, joined(SAMPLE_CONDITIONS.sunrise)],
+      [READOUT_LABELS.sunset, joined(SAMPLE_CONDITIONS.sunset)],
+      [READOUT_LABELS.wind, joined(SAMPLE_CONDITIONS.wind.short)],
+      [READOUT_LABELS.temperature, SAMPLE_CONDITIONS.temperature.short],
+    ]);
+    expect(READOUT_LABELS.wind).toBe('Last known wind');
+    expect(textOf(hero.outerHTML)).toContain(`${SAMPLE_MESH.heard.short}. No internet in use.`);
+    expect(SAMPLE_MESH.heard.short).toBe(
+      describeFreshness(MINUTE_MS, MINUTE_MS + 12 * SECOND_MS, 'heard').short,
+    );
+    // Sunrise and sunset only: no derived shooting times.
+    expect(textOf(hero.outerHTML)).not.toMatch(/first light|last light|legal/i);
+  });
+
+  it('frames the club differently on a phone, inside a window that clips the aerial', () => {
+    expect(css).toMatch(/\.mapview \{[^}]*overflow: hidden/);
+    const [wx, wy] = MAP_FRAME.wide;
+    const [px, py] = MAP_FRAME.phone;
+    expect(css).toContain(`.world { position: absolute; left: -${wx}px; top: -${wy}px;`);
+    const phone = css.slice(css.indexOf(`@media (max-width: ${MAP_PHONE_MAX_WIDTH}px)`));
+    expect(phone).toContain(`.world { left: -${px}px; top: -${py}px; }`);
+  });
+
+  it('explains the map with the freshness-ring legend, drawn with the same markers', () => {
+    const legend = doc.querySelector('dl.legend')!;
+    const rows = [...legend.querySelectorAll(':scope > div')];
+    expect(rows.map((r) => r.querySelector('dt')!.textContent)).toEqual(LEGEND.map((l) => l.title));
+    for (const freshness of ['fresh', 'stale', 'faded'] as const) {
+      expect(legend.querySelector(`.mk.hunter.${RING_CLASS[freshness]}`)).not.toBeNull();
+    }
+    const text = textOf(legend.outerHTML);
+    expect(text).toContain(`${FRESHNESS_THRESHOLDS_MS.fresh / MINUTE_MS} minutes`);
+    expect(text).toContain(`${FRESHNESS_THRESHOLDS_MS.stale / MINUTE_MS} minutes`);
+    expect(textOf(home)).toContain(HOME_PROMISE);
+    expect(HOME_PROMISE).toMatch(/live, with no cell service/);
   });
 });
 
-describe('pricing on a desktop', () => {
-  const css = siteCss(FONT);
+describe('phone first', () => {
+  const phoneRules = css.slice(css.indexOf(`@media (max-width: ${PHONE_HEADER_MAX_WIDTH}px)`));
 
-  it('puts the plan cards right after the intro: only the home hero is tall', () => {
-    const heroRules = [...css.matchAll(/(^|\n)(\.hero[^{]*)\{([^}]*)\}/g)];
-    const tall = heroRules.filter((m) => /min-height/.test(m[3]!)).map((m) => m[2]!.trim());
-    expect(tall).toEqual([`.${HERO_WITH_ART_CLASS}`]);
-    const pricing = pages.find((p) => p.route.path === PAGE_PATHS.pricing)!.html;
-    expect(pricing).toContain('<section class="hero">');
-    expect(pricing).not.toContain(HERO_WITH_ART_CLASS);
-    expect(pricing.indexOf('<section class="plans">')).toBeGreaterThan(
-      pricing.indexOf('<section class="hero">'),
-    );
+  it('collapses the header to the logo and one Menu button', () => {
+    expect(phoneRules).toMatch(/\.site-nav, \.header-actions \{ display: none; \}/);
+    expect(phoneRules).toMatch(/\.menu \{ display: block; \}/);
+  });
+
+  it('gives every sized link and control the 48 px tap target', () => {
+    expect(sizes.minTapTarget).toBe(48);
+    const px = (value: string) =>
+      value === 'var(--tap-min)' ? sizes.minTapTarget : Number(/^(\d+)px$/.exec(value)?.[1] ?? 0);
+    for (const selector of SIZED_CONTROLS) {
+      const rule = rules.find((r) => r.selector === selector);
+      const height = px(/min-height: ([^;]+);/.exec(rule?.body ?? '')?.[1] ?? '');
+      expect([selector, height]).toEqual([selector, expect.toSatisfy((h: number) => h >= 48)]);
+    }
+    // Any rule that changes a control's height keeps it at 48 or more.
+    const controls = SIZED_CONTROLS.map((c) => c.split(' ').pop()!);
+    for (const { selector, body } of rules) {
+      const value = /min-height: ([^;]+);/.exec(body)?.[1];
+      if (value && controls.some((c) => selector.includes(c))) {
+        expect([selector, px(value)]).toEqual([selector, expect.toSatisfy((h: number) => h >= 48)]);
+      }
+    }
+  });
+
+  it('fits a 360 px phone: nothing fixed is wider than the screen less its gutters', () => {
+    const room = NARROWEST_PHONE - 2 * GUTTER.phone;
+    // The aerial is 2000 px by design, inside the clipped map window; the hero's plates have a
+    // fixed width on wide screens only (checked below).
+    const clipped = /^\.world|^\.hero \.(pitch|live)$/;
+    for (const { selector, body } of rules) {
+      if (clipped.test(selector)) continue;
+      for (const m of body.matchAll(/(?:^|[;\s])(?:min-)?width: (\d+)px/g)) {
+        expect([selector, Number(m[1])]).toEqual([
+          selector,
+          expect.toSatisfy((w: number) => w <= room),
+        ]);
+      }
+    }
+    const mapPhone = css.slice(css.indexOf(`@media (max-width: ${MAP_PHONE_MAX_WIDTH}px)`));
+    expect(mapPhone).toMatch(/\.hero \.live \{[^}]*width: auto/);
+    expect(mapPhone).toMatch(/\.hero \.pitch \{[^}]*width: auto/);
+    // Every multi-column grid becomes one column on a phone.
+    const narrow = css.slice(css.indexOf(`@media (max-width: ${NARROW_MAX_WIDTH}px)`));
+    expect(narrow).toMatch(/\.two, \.split, \.rows\.cols \{ grid-template-columns: 1fr;/);
+    expect(narrow).toMatch(/\.plan-heads \{ grid-template-columns: 1fr; \}/);
+    expect(GUTTER.phone).toBe(16);
+  });
+});
+
+describe('theme colours', () => {
+  /** The theme colour a declaration names: `var(--theme-text)` → `text`. */
+  const tokenOf = (body: string, property: string) =>
+    new RegExp(`(?:^|[;{\\s])${property}: [^;]*?var\\(--theme-([a-z-]+)\\)`).exec(body)?.[1];
+  /** Where text with no background of its own can land: the page, a plate or a raised row. */
+  const GROUNDS = ['canvas', 'plate', 'raised'] as const;
+  /** Colours drawn on one ground only (docs/DESIGN.md): fresh text on a plate, text on orange. */
+  const ONLY_ON: Record<string, string> = { fresh: 'plate', 'on-accent': 'accent' };
+  const EDGES = ['border', 'border-color', 'outline', 'border-left', 'border-top', 'border-bottom'];
+
+  it.each(Object.keys(themes) as (keyof typeof themes)[])(
+    'holds every pair the %s theme draws to 4.5:1 for text and 3:1 for edges',
+    (name) => {
+      const vars = themeVariables(themes[name]);
+      const hex = (token: string) => vars[`--theme-${token}`]!;
+      let checked = 0;
+      for (const { selector, body } of rules) {
+        const ground = tokenOf(body, 'background');
+        const text = tokenOf(body, 'color');
+        if (text) {
+          for (const g of ground ? [ground] : ONLY_ON[text] ? [ONLY_ON[text]] : GROUNDS) {
+            checked++;
+            expect([selector, text, g, contrastRatio(hex(text), hex(g))]).toEqual([
+              selector,
+              text,
+              g,
+              expect.toSatisfy((r: number) => r >= MIN_TEXT_CONTRAST),
+            ]);
+          }
+        }
+        for (const edge of EDGES) {
+          const color = tokenOf(body, edge);
+          // Hairlines divide rows; nothing depends on seeing them (docs/DESIGN.md).
+          if (!color || color === 'border-subtle') continue;
+          // An edge shows against what is around the control, not its own fill.
+          for (const g of GROUNDS) {
+            checked++;
+            expect([selector, color, g, contrastRatio(hex(color), hex(g))]).toEqual([
+              selector,
+              color,
+              g,
+              expect.toSatisfy((r: number) => r >= MIN_UI_CONTRAST),
+            ]);
+          }
+        }
+      }
+      expect(checked).toBeGreaterThan(40);
+    },
+  );
+
+  it('follows the device: dark by default, daylight when it prefers light', () => {
+    expect(css).toContain(':root, [data-theme="dark"] {');
+    expect(css).toContain('@media (prefers-color-scheme: light)');
+    expect(css).toMatch(/html, body \{[^}]*background: var\(--theme-canvas\)/);
+  });
+
+  it('uses only tokens: no hex colours outside the generated variables, no old light bands', () => {
+    const own = css.slice(css.indexOf('* {'));
+    expect(own).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+    expect(own).not.toMatch(/rgba?\(/);
+    expect(own).not.toMatch(/band-light|--color-(surface|bg-light|text-on-light|muted|link)/);
+    // The map's own colours are the only --color-* the site uses, and each exists.
+    const vars = tokenVariables();
+    for (const [, name] of own.matchAll(/var\((--color-[a-z-]+)\)/g)) {
+      expect([name, vars[name!]]).toEqual([name, expect.any(String)]);
+    }
   });
 });

@@ -1,7 +1,6 @@
-import { darkTheme, lightTheme } from './theme.ts';
+import { darkTheme } from './theme.ts';
 
 const dark = darkTheme.colors;
-const light = lightTheme.colors;
 
 /**
  * The map's own colours and the app's current screens (docs/DESIGN.md "Palette", dark).
@@ -42,6 +41,8 @@ export const colors = {
   waterLabel: '#C9DCDD',
   /** 3 px outline behind all map text (the direction's halo; the picture is the same in both themes). */
   mapHalo: '#0B0D0E',
+  /** The aerial's ground tone (aerial.ts), behind the picture while it loads. */
+  mapGround: '#2C3323',
 } as const;
 
 /** Club property line: white at 85% plus a 1 px accent inner line. */
@@ -61,7 +62,7 @@ export type ColorToken = keyof typeof colors;
  */
 export const basemapSwatch = {
   /** Aerial: timber, a field, a creek. */
-  woods: '#2C3323',
+  woods: colors.mapGround,
   field: '#A39160',
   water: '#17323B',
   /** Topo: paper, green woods, brown contours, blue water. */
@@ -71,21 +72,4 @@ export const basemapSwatch = {
   topoWater: '#1B5EA6',
   /** Hybrid: aerial with pale contours over it. */
   hybridContour: '#F1E6C0',
-} as const;
-
-/**
- * Light sections of the public marketing site: the daylight theme's own colours (no cream),
- * until the site moves to the daylight theme itself (docs/DESIGN.md "Open points").
- */
-export const lightColors = {
-  /** Background of a light section. */
-  bgLight: light.canvas,
-  /** Text on a light section. */
-  textOnLight: light.text,
-  /** Secondary text on a light section. */
-  mutedOnLight: light.textSecondary,
-  /** Links on a light section (orange as text). */
-  linkOnLight: light.accentText,
-  /** Control edges and rules on a light section (the dark edge is too light for it). */
-  edgeOnLight: light.borderControl,
 } as const;
