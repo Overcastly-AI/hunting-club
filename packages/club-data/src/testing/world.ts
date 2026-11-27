@@ -5,7 +5,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import { CreateTableCommand, DeleteTableCommand, DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import {
   DAY_MS,
   type ClubApiError,
@@ -15,7 +15,8 @@ import {
 } from '@huntclub/shared';
 import { type Actor, SERVICE, userActor } from '../actor';
 import { createClubData, type ClubData } from '../index';
-import { DOCUMENT_CLIENT_OPTIONS } from '../db';
+import { DOCUMENT_CLIENT_OPTIONS, setFields } from '../db';
+import { keys } from '../items';
 import { createTableInput } from '../localTable';
 
 export const DYNAMODB_ENDPOINT = process.env.DYNAMODB_ENDPOINT ?? 'http://localhost:8000';
@@ -75,6 +76,23 @@ export class World {
     await world.raw.send(new CreateTableCommand(createTableInput(world.tableName)));
     await world.data.seedPlans(SERVICE);
     return world;
+  }
+
+  /**
+   * Writes club fields straight to the stored item, below the request schemas: a club stored
+   * before a rule existed (e.g. a property line the shared rule would now refuse).
+   */
+  async storeClubFields(clubId: string, fields: Record<string, unknown>) {
+    const set = setFields(fields, this.clock.now().toISOString());
+    await this.raw.send(
+      new UpdateCommand({
+        TableName: this.tableName,
+        Key: keys.club(clubId),
+        UpdateExpression: set.expression,
+        ExpressionAttributeNames: set.names,
+        ExpressionAttributeValues: set.values,
+      }),
+    );
   }
 
   async destroy() {
