@@ -5,7 +5,11 @@ import { ICON_SIZE } from '@huntclub/design';
 
 type Heading = 'h2' | 'h3';
 
-/** A card: surface-1, a 1 px border, radius-lg; an optional header (title + action) and footer. */
+/**
+ * A plate on the page (docs/DESIGN.md, "Plates, not cards"): the plate tone, a hairline edge
+ * and the plate radius, no shadow; an optional header (title + action) and footer, each
+ * divided off by a hairline.
+ */
 export function Card(props: {
   title?: ReactNode;
   /** The title's heading level in the page outline (default h2). */
@@ -31,7 +35,7 @@ export function Card(props: {
   );
 }
 
-/** Stat tiles in a row: four across from 1024 px, two across below. */
+/** The readout strip: labelled cells on one plate, four across from 1024 px, two below. */
 export function StatGrid(props: { children: ReactNode; 'aria-label'?: string }) {
   return (
     <ul className="ui-stat-grid" aria-label={props['aria-label']}>
@@ -41,8 +45,8 @@ export function StatGrid(props: { children: ReactNode; 'aria-label'?: string }) 
 }
 
 /**
- * A number to read at a glance: label (caption), value (stat, tabular), optional hint and
- * icon. With `href` the whole tile is the link to its page. Goes inside a StatGrid.
+ * One readout cell: label (caption), value (condensed, tabular), optional hint and icon.
+ * With `href` the whole cell is the link to its page. Goes inside a StatGrid.
  */
 export function StatTile(props: {
   label: string;
@@ -58,7 +62,7 @@ export function StatTile(props: {
         {Icon ? <Icon size={ICON_SIZE.sm} aria-hidden /> : null}
         {props.label}
       </span>
-      <span className="ui-stat-tile__value text-stat">{props.value}</span>
+      <span className="ui-stat-tile__value text-readout">{props.value}</span>
       {props.hint ? <span className="ui-stat-tile__hint">{props.hint}</span> : null}
     </>
   );

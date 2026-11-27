@@ -41,13 +41,13 @@ const useStyles = makeStyles((theme) => ({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: theme.colors.surface0,
+    backgroundColor: theme.colors.plate,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: theme.colors.borderControl,
     paddingHorizontal: spacing.md,
   },
-  pressed: { backgroundColor: theme.colors.surface2 },
+  pressed: { backgroundColor: theme.colors.raised },
   /**
    * Mesh down: a full-width warning banner (gold text on the warning tint, gold edge) so
    * nobody mistakes old positions for live ones.

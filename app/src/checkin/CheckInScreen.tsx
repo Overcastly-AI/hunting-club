@@ -158,7 +158,7 @@ export function CheckInScreen() {
 }
 
 const useStyles = makeStyles((theme) => ({
-  safe: { flex: 1, backgroundColor: theme.colors.surface0 },
+  safe: { flex: 1, backgroundColor: theme.colors.plate },
   content: { padding: spacing.md, gap: spacing.md },
   overline: { ...textStyles.body, color: theme.colors.textSecondary },
   title: { ...textStyles.title1, color: theme.colors.text },

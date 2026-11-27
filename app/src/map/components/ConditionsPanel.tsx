@@ -75,7 +75,7 @@ const useStyles = makeStyles((theme) => ({
   panel: {
     flex: 1,
     minHeight: sizes.control,
-    backgroundColor: theme.colors.surface0,
+    backgroundColor: theme.colors.plate,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: theme.colors.borderControl,

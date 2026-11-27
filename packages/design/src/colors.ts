@@ -1,23 +1,23 @@
 import { darkTheme, lightTheme } from './theme.ts';
 
 const dark = darkTheme.colors;
+const light = lightTheme.colors;
 
 /**
- * Color tokens from docs/SPEC.md, "Design system (from Design D)": the map and the
- * app's current screens. New UI uses the semantic theme tokens (./theme.ts); a name
- * here that is the same colour takes it from the dark theme, so each value has one source.
- * Components must use these tokens; never hard-code colors.
+ * The map's own colours and the app's current screens (docs/DESIGN.md "Palette", dark).
+ * New UI uses the semantic theme tokens (./theme.ts); every name here that is a theme colour
+ * takes it from the dark theme, so each value has one source. Components must use these
+ * tokens; never hard-code colors.
  *
- * Orange (`accent`) is reserved for three things: you, the main action and
- * the selected tab. On the web it is also the dawn scene's sun and its light
- * (dawnScene.ts, the home hero and sign-in background): the owner kept it.
+ * Orange (`accent`) is reserved for three things: you, the main action and the selected
+ * item. On the web it is also the dawn scene's sun and its light (dawnScene.ts).
  */
 export const colors = {
-  /** Floating panels, bottom sheet, tab bar. */
-  surface: dark.surface0,
+  /** Floating panels, bottom sheet (the dark plate). */
+  surface: dark.plate,
   /** Secondary buttons. */
-  surfaceRaised: dark.surface2,
-  /** Dividers and outlines. */
+  surfaceRaised: dark.raised,
+  /** Dividers (hairlines). */
   border: dark.borderSubtle,
   /**
    * Outline of text inputs and other controls: at least MIN_UI_CONTRAST (3:1) against
@@ -33,15 +33,15 @@ export const colors = {
   /** Ask for a Hand outline and icon; stale position ring. */
   help: dark.warning,
   /** Fresh position ring, mesh connected. */
-  fresh: dark.success,
+  fresh: dark.fresh,
   /** Unread badges, compass north. */
-  alert: '#FF5A4E',
+  alert: dark.alert,
   /** Wind arrow. */
-  wind: dark.info,
+  wind: dark.wind,
   /** Creek and pond names. */
   waterLabel: '#C9DCDD',
-  /** 3 px outline behind all map text. */
-  mapHalo: dark.canvas,
+  /** 3 px outline behind all map text (the direction's halo; the picture is the same in both themes). */
+  mapHalo: '#0B0D0E',
 } as const;
 
 /** Club property line: white at 85% plus a 1 px accent inner line. */
@@ -54,16 +54,18 @@ export const boundary = {
 export type ColorToken = keyof typeof colors;
 
 /**
- * Light sections of the public marketing site (docs/SPEC.md "Light sections"). The app
- * and the club admin use the full light theme (./theme.ts) instead.
+ * Light sections of the public marketing site: the daylight theme's own colours (no cream),
+ * until the site moves to the daylight theme itself (docs/DESIGN.md "Open points").
  */
 export const lightColors = {
   /** Background of a light section. */
-  bgLight: lightTheme.colors.canvas,
+  bgLight: light.canvas,
   /** Text on a light section. */
-  textOnLight: lightTheme.colors.text,
+  textOnLight: light.text,
   /** Secondary text on a light section. */
-  mutedOnLight: '#4A5158',
-  /** Links on a light section (accent darkened to read as text). */
-  linkOnLight: lightTheme.colors.accentText,
+  mutedOnLight: light.textSecondary,
+  /** Links on a light section (orange as text). */
+  linkOnLight: light.accentText,
+  /** Control edges and rules on a light section (the dark edge is too light for it). */
+  edgeOnLight: light.borderControl,
 } as const;

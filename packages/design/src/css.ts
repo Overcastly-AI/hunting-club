@@ -7,13 +7,13 @@ import {
   THEME_STORAGE_KEY,
   themes,
   type Theme,
+  type ThemeEffects,
   type ThemeColorToken,
 } from './theme';
 import {
   fontAxisLimits,
   fontFamily,
   fontWidth,
-  monoFontFamily,
   textScale,
   type TextScaleEntry,
   type TextStyleName,
@@ -39,6 +39,8 @@ export function tokenVariables(): Record<string, string> {
   for (const [name, value] of Object.entries(radii)) vars[`--radius-${kebab(name)}`] = `${value}px`;
   vars['--tap-min'] = `${sizes.minTapTarget}px`;
   vars['--button-min-height'] = `${sizes.primaryButtonMinHeight}px`;
+  vars['--control-border'] = `${sizes.controlBorder}px`;
+  vars['--selected-border'] = `${sizes.selectedBorder}px`;
   vars['--motion-fast'] = `${motion.fast}ms`;
   vars['--motion-base'] = `${motion.base}ms`;
   vars['--motion-easing'] = motion.easing;
@@ -59,12 +61,16 @@ export function rootVariablesCss(): string {
 }
 
 /**
- * CSS custom properties for one theme: `--theme-surface-1`, `--theme-text`,
- * `--theme-shadow-card`, `--theme-scrim`, … and `--theme-color-scheme` (`dark` or `light`),
+ * CSS custom properties for one theme: `--theme-plate`, `--theme-text`,
+ * `--theme-shadow-plate`, `--theme-scrim`, … and `--theme-color-scheme` (`dark` or `light`),
  * which a page applies with `color-scheme: var(--theme-color-scheme)` when it adopts the theme.
  */
-/** The CSS variable of one theme colour: `themeVar('successTint')` → `var(--theme-success-tint)`. */
-export const themeVar = (token: ThemeColorToken) => `var(--theme-${kebab(token)})`;
+/**
+ * The CSS variable of one theme colour or effect: `themeVar('successTint')` →
+ * `var(--theme-success-tint)`. Typed, so a renamed token fails the build where it is used.
+ */
+export const themeVar = (token: ThemeColorToken | keyof ThemeEffects) =>
+  `var(--theme-${kebab(token)})`;
 
 export function themeVariables(theme: Theme): Record<string, string> {
   const vars: Record<string, string> = {};
@@ -110,11 +116,9 @@ export function themeBootstrapJs(): string {
 export function textStyleCss(entry: TextScaleEntry): string {
   const width = entry.width ?? fontWidth.normal;
   return [
-    entry.family === 'mono'
-      ? `font-family: ${monoFontFamily}`
-      : `font-family: '${fontFamily}', sans-serif`,
+    `font-family: '${fontFamily}', sans-serif`,
     `font-weight: ${entry.weight}`,
-    entry.family === 'mono' ? '' : `font-stretch: ${width}%`,
+    `font-stretch: ${width}%`,
     `font-size: ${rem(entry.size)}`,
     entry.lineHeight === undefined ? '' : `line-height: ${rem(entry.lineHeight)}`,
     entry.tabularNums ? 'font-variant-numeric: tabular-nums' : '',

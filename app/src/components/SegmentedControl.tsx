@@ -10,7 +10,7 @@ type Props<T extends string> = {
 };
 
 /**
- * Segmented control, as on the club admin: segments in a bordered surface-2 tray; the
+ * Segmented control, as on the club admin: segments in a bordered raised tray; the
  * selected one is filled with the accent (orange is for the selected item).
  */
 export function SegmentedControl<T extends string>({
@@ -55,7 +55,7 @@ const useStyles = makeStyles((theme) => ({
     borderWidth: 1,
     borderColor: theme.colors.borderControl,
     borderRadius: radii.md,
-    backgroundColor: theme.colors.surface2,
+    backgroundColor: theme.colors.raised,
   },
   segment: {
     flex: 1,
@@ -65,7 +65,7 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: 'center',
     paddingHorizontal: spacing.sm,
   },
-  pressed: { backgroundColor: theme.colors.surface3 },
+  pressed: { backgroundColor: theme.colors.pressed },
   selected: { backgroundColor: theme.colors.accent },
   label: { ...textStyles.label, color: theme.colors.textSecondary, textAlign: 'center' },
   selectedLabel: { color: theme.colors.onAccent },

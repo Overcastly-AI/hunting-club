@@ -40,7 +40,7 @@ const useStyles = makeStyles((theme) => ({
   group: {
     minWidth: sizes.control + spacing.lg,
     minHeight: sizes.control,
-    backgroundColor: theme.colors.surface0,
+    backgroundColor: theme.colors.plate,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: theme.colors.borderControl,
@@ -48,6 +48,6 @@ const useStyles = makeStyles((theme) => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pressed: { backgroundColor: theme.colors.surface2 },
+  pressed: { backgroundColor: theme.colors.raised },
   groupText: { ...textStyles.label, color: theme.colors.text },
 }));

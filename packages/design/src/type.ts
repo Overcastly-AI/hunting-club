@@ -1,56 +1,81 @@
 /**
- * Type scale from docs/SPEC.md "Design system (from Design D)", platform-neutral.
- * The app turns it into React Native text styles (app/src/theme/typography.ts) and
- * the web admin page into CSS (web/src/theme/css.ts).
+ * Type scale from docs/DESIGN.md "Archivo", platform-neutral. The app turns it into React
+ * Native text styles (app/src/theme/typography.ts) and the web into CSS (./css.ts).
+ *
+ * One family, with a rule that carries meaning: words are set at normal width, and anything
+ * measured (a time, a distance, a count, a bearing, a price) is set condensed with tabular
+ * figures, like a readout. Titles, buttons and marker plates are tightened a little.
  */
 
 /**
  * Archivo variable font (axes `wght` and `wdth`). The single font file lives in
- * app/assets/fonts/Archivo-Variable.ttf; the web build bundles that same file.
+ * app/assets/fonts/Archivo-Variable.ttf; the web build bundles its Latin subset.
  */
 export const fontFamily = 'Archivo';
 
-/** Weights the design system uses. The spec allows 500–800. */
+/** Weights the design system uses (450–800). */
 export const fontWeight = {
+  /** Body text. */
+  regular: 450,
   medium: 500,
   semiBold: 600,
+  /** Tab labels, nav items, map labels. */
+  demiBold: 650,
   bold: 700,
+  /** Buttons. */
+  heavy: 750,
   extraBold: 800,
 } as const;
 
-/** Design D's narrow width: the sheet title and any text that must fit a tight panel. */
-const NARROW_WIDTH = 82;
+/** Readouts: times, distances, counts, "2 min". */
+const READOUT_WIDTH = 76;
+/** Page, sheet and dialog titles. */
+const TITLE_WIDTH = 88;
 
-/** Widths as a percentage of normal (`wdth` axis). The spec allows 75–100. */
+/** Widths as a percentage of normal (`wdth` axis), each with a job. */
 export const fontWidth = {
+  /** Words: body, labels, captions. */
   normal: 100,
-  narrow: NARROW_WIDTH,
-  /** Bottom sheet title. */
-  sheetTitle: NARROW_WIDTH,
+  /** Labels that must fit a tight cell (the conditions strip's labels). */
+  narrow: 84,
+  /** Page, sheet and dialog titles. */
+  title: TITLE_WIDTH,
+  /** Bottom sheet title (a title). */
+  sheetTitle: TITLE_WIDTH,
+  /** Buttons. */
+  button: 92,
+  /** Tab labels. */
+  tab: 90,
+  /** A marker plate's first line (the stand or hunter). */
+  marker: 86,
+  /** A marker plate's second line (who, how long ago). */
+  markerDetail: 78,
+  /** Anything measured, always with tabular figures. */
+  readout: READOUT_WIDTH,
 } as const;
 
 /** Axis ranges allowed by the design system. */
 export const fontAxisLimits = {
-  weight: { min: 500, max: 800 },
+  weight: { min: 450, max: 800 },
   width: { min: 75, max: 100 },
 } as const;
 
 export type FontWeight = (typeof fontWeight)[keyof typeof fontWeight];
 export type FontWidth = (typeof fontWidth)[keyof typeof fontWidth];
 
-const DISPLAY_SIZE = 40;
+const DISPLAY_SIZE = 50;
 
 /** Type sizes in px from the design system. */
 export const fontSize = {
-  /** Minimum for any text drawn on the map. */
+  /** Minimum for any text drawn on the map, and a marker plate's second line. */
   mapLabelMin: 13,
-  /** Tab bar labels. */
+  /** Tab bar labels; second lines in sheets. */
   tabLabel: 14,
-  /** Hunter and stand marker names. */
+  /** A marker plate's first line. */
   markerName: 15,
-  /** Body text, minimum. */
+  /** Body text, minimum (the phone). */
   body: 16,
-  /** Body text, large. */
+  /** Body text on the web; buttons. */
   bodyLarge: 17,
   /** Bottom sheet title. */
   sheetTitle: 25,
@@ -58,30 +83,29 @@ export const fontSize = {
   boardDetail: 24,
   /** Clubhouse board: names and section headings read from across a room. */
   boardName: 32,
-  /** Clubhouse board: the club name and clock (the display size). */
-  boardTitle: DISPLAY_SIZE,
-  /** Display: the sign-in brand panel, board, marketing only. */
+  /** Clubhouse board: the club name and clock. */
+  boardTitle: 40,
+  /** Display: the site headline (`displayCompact` on a phone). */
   display: DISPLAY_SIZE,
+  displayCompact: 36,
   /** Page title (title-1); `title1Compact` below the tablet breakpoint. */
-  title1: 28,
-  title1Compact: 24,
+  title1: 32,
+  title1Compact: 28,
   /** Dialog and section titles (title-2). */
-  title2: 22,
-  /** Card and table group titles (title-3). */
-  title3: 18,
-  /** Stat tile value; `statCompact` below the tablet breakpoint. */
-  stat: 36,
-  statCompact: 30,
+  title2: 23,
+  /** Plate and table group titles (title-3). */
+  title3: 19,
+  /** A readout in a cell: the conditions strip, a stat. */
+  readout: 23,
+  /** A readout in a line of text or a list row ("2 min"). */
+  readoutInline: 17,
   /** Hints, table headers, meta text, badges. The smallest text outside the map. */
   caption: 14,
   /** Invite codes. */
-  code: 15,
+  code: 16,
   /** The sign-in code field. */
   codeField: 24,
 } as const;
-
-/** Monospace stack for codes (web). The app draws codes in Archivo. */
-export const monoFontFamily = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
 
 /** One named text style: font axes, size and (optionally) line height, in px. */
 export interface TextScaleEntry {
@@ -92,70 +116,107 @@ export interface TextScaleEntry {
   readonly lineHeight?: number;
   /** Size and line height below the tablet breakpoint (web), when they differ. */
   readonly compact?: { readonly size: number; readonly lineHeight: number };
-  /** `mono` for codes; defaults to Archivo. */
-  readonly family?: 'mono';
   /** Tabular (fixed-width) digits, for numbers that line up or change in place. */
   readonly tabularNums?: boolean;
 }
 
-const display = {
+const label = { weight: fontWeight.bold, size: fontSize.body, lineHeight: 20 } as const;
+
+/** Anything measured: condensed, bold, tabular. */
+const readout = {
+  weight: fontWeight.bold,
+  width: fontWidth.readout,
+  tabularNums: true,
+} as const;
+
+/** The clubhouse board's club name and clock. */
+const boardTitle = {
   weight: fontWeight.extraBold,
-  width: fontWidth.narrow,
-  size: fontSize.display,
+  width: fontWidth.title,
+  size: fontSize.boardTitle,
   lineHeight: 48,
 } as const satisfies TextScaleEntry;
 
-const label = { weight: fontWeight.semiBold, size: fontSize.body, lineHeight: 20 } as const;
-
 /**
- * Named text styles (docs/UI_REDESIGN.md 4.2). Mixed case only; no letter-spaced all-caps.
- * Sizes in px, set in rem on the web so they follow the reader's text size.
+ * Named text styles. Mixed case only; no letter-spaced all-caps, no monospace. Sizes in px,
+ * set in rem on the web so they follow the reader's text size.
  */
 export const textScale = {
-  /** Sign-in brand panel, board, marketing only. */
-  display,
+  /** The site headline and the sign-in page title. */
+  display: {
+    weight: fontWeight.extraBold,
+    width: fontWidth.title,
+    size: fontSize.display,
+    lineHeight: 56,
+    compact: { size: fontSize.displayCompact, lineHeight: 42 },
+  },
   /** Page title. */
   title1: {
     weight: fontWeight.extraBold,
-    width: fontWidth.narrow,
+    width: fontWidth.title,
     size: fontSize.title1,
-    lineHeight: 36,
-    compact: { size: fontSize.title1Compact, lineHeight: 32 },
+    lineHeight: 38,
+    compact: { size: fontSize.title1Compact, lineHeight: 34 },
   },
-  title2: { weight: fontWeight.bold, size: fontSize.title2, lineHeight: 28 },
-  title3: { weight: fontWeight.bold, size: fontSize.title3, lineHeight: 24 },
-  /** StatTile value. */
-  stat: {
+  /** Dialog and section titles. */
+  title2: {
     weight: fontWeight.extraBold,
-    width: fontWidth.narrow,
-    size: fontSize.stat,
-    lineHeight: 40,
-    compact: { size: fontSize.statCompact, lineHeight: 36 },
-    tabularNums: true,
+    width: fontWidth.title,
+    size: fontSize.title2,
+    lineHeight: 28,
   },
-  body: { weight: fontWeight.medium, size: fontSize.body, lineHeight: 24 },
-  /** Page descriptions and lead text (body-lg). */
-  bodyLarge: { weight: fontWeight.medium, size: fontSize.bodyLarge, lineHeight: 26 },
-  /** Buttons, nav items, field labels. */
+  /** Plate and table group titles. */
+  title3: {
+    weight: fontWeight.extraBold,
+    width: fontWidth.title,
+    size: fontSize.title3,
+    lineHeight: 24,
+  },
+  /** A readout in a cell: the conditions strip, a stat. */
+  readout: { ...readout, size: fontSize.readout, lineHeight: 28 },
+  /** A readout in a line or a list row. */
+  readoutInline: { ...readout, size: fontSize.readoutInline, lineHeight: 22 },
+  body: { weight: fontWeight.regular, size: fontSize.body, lineHeight: 24 },
+  /** Body text on the web, page descriptions and lead text (body-lg). */
+  bodyLarge: { weight: fontWeight.regular, size: fontSize.bodyLarge, lineHeight: 26 },
+  /** Field labels, list-row names. */
   label,
-  /** `label` at the narrow width, for panels that must not truncate (map conditions). */
-  labelNarrow: { ...label, width: fontWidth.narrow },
+  /** `label` at the narrow width, for cells that must not truncate (the conditions strip). */
+  labelNarrow: { ...label, weight: fontWeight.semiBold, width: fontWidth.narrow },
+  /** Buttons. */
+  button: {
+    weight: fontWeight.heavy,
+    width: fontWidth.button,
+    size: fontSize.bodyLarge,
+    lineHeight: 22,
+  },
   /** Hints, table headers (at semiBold), meta text. */
   caption: { weight: fontWeight.medium, size: fontSize.caption, lineHeight: 20 },
-  /** StatusPill. */
-  badge: { weight: fontWeight.semiBold, size: fontSize.caption, lineHeight: 20 },
-  /** Invite codes. */
-  code: { weight: fontWeight.semiBold, size: fontSize.code, lineHeight: 24, family: 'mono' },
+  /** Status badges. */
+  badge: { weight: fontWeight.bold, size: fontSize.caption, lineHeight: 20 },
+  /** Invite codes: Archivo with tabular figures (no monospace). */
+  code: { weight: fontWeight.bold, size: fontSize.code, lineHeight: 24, tabularNums: true },
   /** The sign-in code field. */
   codeField: {
-    weight: fontWeight.semiBold,
+    ...readout,
     size: fontSize.codeField,
     lineHeight: 32,
-    tabularNums: true,
   },
-  tabLabel: { weight: fontWeight.semiBold, size: fontSize.tabLabel, lineHeight: 20 },
-  mapLabel: { weight: fontWeight.bold, size: fontSize.mapLabelMin },
-  markerName: { weight: fontWeight.extraBold, size: fontSize.markerName },
+  tabLabel: {
+    weight: fontWeight.demiBold,
+    width: fontWidth.tab,
+    size: fontSize.tabLabel,
+    lineHeight: 20,
+  },
+  mapLabel: { weight: fontWeight.demiBold, size: fontSize.mapLabelMin },
+  /** A marker plate's first line. */
+  markerName: { weight: fontWeight.extraBold, width: fontWidth.marker, size: fontSize.markerName },
+  /** A marker plate's second line ("Dale B., 2 min ago"). */
+  markerDetail: {
+    weight: fontWeight.semiBold,
+    width: fontWidth.markerDetail,
+    size: fontSize.mapLabelMin,
+  },
   sheetTitle: {
     weight: fontWeight.extraBold,
     width: fontWidth.sheetTitle,
@@ -164,8 +225,7 @@ export const textScale = {
   },
   boardDetail: { weight: fontWeight.semiBold, size: fontSize.boardDetail, lineHeight: 32 },
   boardName: { weight: fontWeight.extraBold, size: fontSize.boardName, lineHeight: 40 },
-  /** The clubhouse board's club name and clock: the display style. */
-  boardTitle: display,
+  boardTitle,
 } as const satisfies Record<string, TextScaleEntry>;
 
 export type TextStyleName = keyof typeof textScale;

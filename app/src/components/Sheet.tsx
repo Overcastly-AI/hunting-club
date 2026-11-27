@@ -41,7 +41,7 @@ const useStyles = makeStyles((theme) => ({
   dismiss: { flex: 1 },
   sheet: {
     maxHeight: '85%',
-    backgroundColor: theme.colors.surface0,
+    backgroundColor: theme.colors.plate,
     borderTopLeftRadius: radii.sheetTop,
     borderTopRightRadius: radii.sheetTop,
     borderTopWidth: 1,

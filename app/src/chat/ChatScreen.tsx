@@ -165,7 +165,7 @@ export function ChatScreen() {
 }
 
 const useStyles = makeStyles((theme) => ({
-  safe: { flex: 1, backgroundColor: theme.colors.surface0 },
+  safe: { flex: 1, backgroundColor: theme.colors.plate },
   flex: { flex: 1 },
   header: { paddingHorizontal: spacing.md, paddingTop: spacing.sm, gap: spacing.sm },
   title: { ...textStyles.title1, color: theme.colors.text },

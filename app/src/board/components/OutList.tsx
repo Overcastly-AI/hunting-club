@@ -49,14 +49,14 @@ const useStyles = makeStyles((theme) => ({
   section: { gap: spacing.md },
   heading: { ...textStyles.boardName, color: theme.colors.text },
   empty: { ...textStyles.boardDetail, color: theme.colors.textSecondary },
-  /** A card per hunter (surface-1, subtle edge, large radius), as on the phone. */
+  /** A card per hunter (plate, subtle edge, large radius), as on the phone. */
   row: {
     padding: spacing[5],
     gap: spacing.xs,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: theme.colors.borderSubtle,
-    backgroundColor: theme.colors.surface1,
+    backgroundColor: theme.colors.plate,
   },
   /** Overdue: thick gold outline and a warning sign, like the full-screen alert. Never red. */
   overdue: { borderColor: theme.colors.warning, borderWidth: sizes.hairline * 2 },

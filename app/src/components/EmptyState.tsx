@@ -50,7 +50,7 @@ const useStyles = makeStyles((theme) => ({
   icon: {
     padding: spacing.md,
     borderRadius: radii.full,
-    backgroundColor: theme.colors.surface2,
+    backgroundColor: theme.colors.raised,
   },
   title: { ...textStyles.title3, color: theme.colors.text, textAlign: 'center' },
   body: { ...textStyles.body, color: theme.colors.textSecondary, textAlign: 'center' },

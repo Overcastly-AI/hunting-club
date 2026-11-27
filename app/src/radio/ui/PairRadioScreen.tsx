@@ -231,10 +231,10 @@ const useStyles = makeStyles((theme) => ({
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: theme.colors.borderSubtle,
-    backgroundColor: theme.colors.surface2,
+    backgroundColor: theme.colors.raised,
   },
   // Pressed is a tone step, never a fade (faded text drops under 4.5:1 in the light theme).
-  pressed: { backgroundColor: theme.colors.surface3 },
+  pressed: { backgroundColor: theme.colors.pressed },
   radioText: { flex: 1, gap: spacing.xs },
   radioName: { ...textStyles.label, color: theme.colors.text },
   action: { ...textStyles.label, color: theme.colors.text },

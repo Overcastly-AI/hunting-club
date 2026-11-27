@@ -14,8 +14,8 @@ type Props = {
 };
 
 /**
- * Card, as on the club admin (docs/UI_REDESIGN.md 4.4 and 6): surface-1 with a 1 px subtle
- * edge (never a card without one), 16 px radius and 20 px padding.
+ * Card, as on the club admin (docs/UI_REDESIGN.md 4.4 and 6): plate with a 1 px subtle
+ * edge (never a card without one), the plate radius and 20 px padding.
  */
 export function Card({ title, status, children, footer }: Props) {
   const styles = useStyles();
@@ -37,7 +37,7 @@ export function Card({ title, status, children, footer }: Props) {
 
 const useStyles = makeStyles((theme) => ({
   card: {
-    backgroundColor: theme.colors.surface1,
+    backgroundColor: theme.colors.plate,
     borderWidth: 1,
     borderColor: theme.colors.borderSubtle,
     borderRadius: radii.lg,

@@ -322,9 +322,15 @@ describe('light sections', () => {
 
   it('draw the borders of parts used in light bands at 3:1 or better', () => {
     // FAQ rows, the comparison table and screenshot frames sit on light bands.
+    // Each part's own border, or the light band's override of it when there is one.
     for (const selector of ['.faq details', '.compare th, .compare td', '.shot-frame']) {
-      const rule = rules.find((r) => r.selector === selector);
-      const border = rule && colorOf(rule.body, 'border(?:-bottom)?');
+      const own = rules.find((r) => r.selector === selector);
+      const light = rules.find((r) =>
+        r.selector.startsWith(`.band-light ${selector.split(',')[0]}`),
+      );
+      const border =
+        (light && colorOf(light.body, 'border-color')) ??
+        (own && colorOf(own.body, 'border(?:-bottom)?'));
       expect(border).toBeDefined();
       expect(contrastRatio(vars[border!]!, bg)).toBeGreaterThanOrEqual(MIN_UI_CONTRAST);
     }

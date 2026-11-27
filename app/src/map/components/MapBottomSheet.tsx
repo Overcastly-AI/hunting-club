@@ -97,7 +97,7 @@ function CheckedIn(props: Extract<MapBottomSheetProps, { state: 'checkedIn' }>) 
 
 const useStyles = makeStyles((theme) => ({
   sheet: {
-    backgroundColor: theme.colors.surface0,
+    backgroundColor: theme.colors.plate,
     borderTopLeftRadius: radii.sheetTop,
     borderTopRightRadius: radii.sheetTop,
     borderTopWidth: 1,

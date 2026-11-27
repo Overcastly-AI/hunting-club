@@ -43,11 +43,11 @@ describe('web theme from @huntclub/design', () => {
 
   it('sets body text at 16 px or more in Archivo with the shared axes', () => {
     expect(textStyleCss(textScale.body)).toBe(
-      `font-family: 'Archivo', sans-serif; font-weight: 500; font-stretch: 100%; font-size: ${fontSize.body / 16}rem; line-height: ${24 / 16}rem`,
+      `font-family: 'Archivo', sans-serif; font-weight: 450; font-stretch: 100%; font-size: ${fontSize.body / 16}rem; line-height: ${24 / 16}rem`,
     );
     // rem, so text follows the reader's browser text size; 1rem is 16 px by default.
     expect(fontSize.body / 16).toBeGreaterThanOrEqual(1);
-    expect(textStyleCss(textScale.sheetTitle)).toContain('font-stretch: 82%');
+    expect(textStyleCss(textScale.sheetTitle)).toContain('font-stretch: 88%');
     expect(fontSize.body).toBeGreaterThanOrEqual(16);
   });
 

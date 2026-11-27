@@ -137,12 +137,12 @@ const useStyles = makeStyles((theme) => ({
   primaryPressed: { backgroundColor: theme.colors.accentHover },
   primaryText: { color: theme.colors.onAccent },
 
-  secondary: { backgroundColor: theme.colors.surface2, borderColor: theme.colors.borderSubtle },
-  secondaryPressed: { backgroundColor: theme.colors.surface3 },
+  secondary: { backgroundColor: theme.colors.raised, borderColor: theme.colors.borderSubtle },
+  secondaryPressed: { backgroundColor: theme.colors.pressed },
   secondaryText: { color: theme.colors.text },
 
   tertiary: { backgroundColor: 'transparent' },
-  tertiaryPressed: { backgroundColor: theme.colors.surface2 },
+  tertiaryPressed: { backgroundColor: theme.colors.raised },
   tertiaryText: { color: theme.colors.text },
 
   danger: { backgroundColor: 'transparent', borderColor: theme.colors.danger },
@@ -158,7 +158,7 @@ const useStyles = makeStyles((theme) => ({
   helpText: { color: theme.colors.warning },
 
   // Disabled is its own look, not a faded one, so its text keeps 4.5:1 in both themes.
-  disabled: { backgroundColor: theme.colors.surface2, borderColor: theme.colors.borderSubtle },
+  disabled: { backgroundColor: theme.colors.raised, borderColor: theme.colors.borderSubtle },
   disabledQuiet: { backgroundColor: 'transparent', borderColor: 'transparent' },
   disabledText: { color: theme.colors.textTertiary },
 }));

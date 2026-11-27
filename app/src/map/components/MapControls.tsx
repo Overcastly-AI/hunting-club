@@ -67,11 +67,11 @@ const useStyles = makeStyles((theme) => ({
     // Floating over the map in either theme: a 3:1 control edge so the button reads on imagery.
     borderWidth: 1,
     borderColor: theme.colors.borderControl,
-    backgroundColor: theme.colors.surface0,
+    backgroundColor: theme.colors.plate,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.xs,
   },
-  pressed: { backgroundColor: theme.colors.surface2 },
+  pressed: { backgroundColor: theme.colors.raised },
   label: { ...textStyles.badge, color: theme.colors.text },
 }));

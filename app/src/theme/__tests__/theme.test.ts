@@ -18,14 +18,14 @@ import {
 } from '..';
 
 describe('color tokens', () => {
-  it('match the Design D values in docs/SPEC.md exactly', () => {
+  it('match the map-first values in docs/SPEC.md exactly', () => {
     expect(colors).toEqual({
-      surface: '#121416',
-      surfaceRaised: '#23272B',
-      border: '#2A2E33',
-      controlBorder: '#7A828A',
-      text: '#FFFFFF',
-      textSecondary: '#B8BDC2',
+      surface: '#14191C',
+      surfaceRaised: '#232B30',
+      border: '#353F45',
+      controlBorder: '#7F8B91',
+      text: '#F3F1EA',
+      textSecondary: '#AEB7B6',
       accent: '#FF7A1F',
       help: '#F5C04E',
       fresh: '#4ADE80',
@@ -59,15 +59,16 @@ describe('type tokens', () => {
       boardDetail: 24,
       boardName: 32,
       boardTitle: 40,
-      display: 40,
-      title1: 28,
-      title1Compact: 24,
-      title2: 22,
-      title3: 18,
-      stat: 36,
-      statCompact: 30,
+      display: 50,
+      displayCompact: 36,
+      title1: 32,
+      title1Compact: 28,
+      title2: 23,
+      title3: 19,
+      readout: 23,
+      readoutInline: 17,
       caption: 14,
-      code: 15,
+      code: 16,
       codeField: 24,
     });
   });
@@ -80,9 +81,9 @@ describe('type tokens', () => {
     expect(theme.textStyles.label.fontSize).toBeGreaterThanOrEqual(16);
   });
 
-  it('use the spec axis limits: weight 500–800, width 75–100', () => {
+  it('use the spec axis limits: weight 450–800, width 75–100', () => {
     expect(fontAxisLimits).toEqual({
-      weight: { min: 500, max: 800 },
+      weight: { min: 450, max: 800 },
       width: { min: 75, max: 100 },
     });
   });
@@ -97,9 +98,9 @@ describe('type tokens', () => {
     expect(wdth).toBeLessThanOrEqual(fontAxisLimits.width.max);
   });
 
-  it('draws marker names at 800 and the sheet title at 800 and 82% width', () => {
-    expect(theme.textStyles.markerName.fontVariationSettings).toEqual({ wght: 800, wdth: 100 });
-    expect(theme.textStyles.sheetTitle.fontVariationSettings).toEqual({ wght: 800, wdth: 82 });
+  it('draws marker names at 800 and 86% width and the sheet title at 800 and 88% width', () => {
+    expect(theme.textStyles.markerName.fontVariationSettings).toEqual({ wght: 800, wdth: 86 });
+    expect(theme.textStyles.sheetTitle.fontVariationSettings).toEqual({ wght: 800, wdth: 88 });
   });
 
   it('archivo() defaults to normal width', () => {
@@ -143,11 +144,11 @@ describe('bundled font file', () => {
 describe('shape and size tokens', () => {
   it('use the spec sizes and corners', () => {
     expect(sizes.control).toBe(52);
-    expect(radii.control).toBe(14);
+    expect(radii.control).toBe(12);
     expect(sizes.primaryButtonMinHeight).toBe(62);
     expect(sizes.primaryButtonMaxHeight).toBe(66);
-    expect(radii.primaryButton).toBe(12);
-    expect(radii.sheetTop).toBe(20);
+    expect(radii.primaryButton).toBe(10);
+    expect(radii.sheetTop).toBe(16);
     expect(sizes.mapHaloWidth).toBe(3);
   });
 

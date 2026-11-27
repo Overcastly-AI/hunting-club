@@ -357,7 +357,7 @@ describe('restyled screens in the light theme', () => {
     const leftover = await show(
       {
         ui: () => (
-          <View style={{ backgroundColor: darkTheme.colors.surface1 }}>
+          <View style={{ backgroundColor: darkTheme.colors.plate }}>
             <LegalScreen doc={privacyPolicy} onDone={jest.fn()} />
           </View>
         ),
@@ -366,7 +366,7 @@ describe('restyled screens in the light theme', () => {
       'light',
     );
     expect(offThemeColors(leftover, lightTheme)).toEqual([
-      `View backgroundColor ${darkTheme.colors.surface1}`,
+      `View backgroundColor ${darkTheme.colors.plate}`,
     ]);
   });
 });

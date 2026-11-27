@@ -38,7 +38,7 @@ function Probe() {
   const theme = useTheme();
   const choice = useThemePreference();
   choices.push(choice.setPreference);
-  return <Text>{`${choice.preference}:${theme.colorScheme}:${theme.colors.surface0}`}</Text>;
+  return <Text>{`${choice.preference}:${theme.colorScheme}:${theme.colors.plate}`}</Text>;
 }
 
 describe('resolveThemeName', () => {
@@ -64,7 +64,7 @@ describe('ThemeProvider', () => {
         <Probe />
       </ThemeProvider>,
     );
-    expect(await screen.findByText(`system:light:${lightTheme.colors.surface0}`)).toBeTruthy();
+    expect(await screen.findByText(`system:light:${lightTheme.colors.plate}`)).toBeTruthy();
   });
 
   it('uses the colours from @huntclub/design, not copies', async () => {
@@ -89,10 +89,10 @@ describe('ThemeProvider', () => {
         <Probe />
       </ThemeProvider>,
     );
-    await screen.findByText(`system:dark:${darkTheme.colors.surface0}`);
+    await screen.findByText(`system:dark:${darkTheme.colors.plate}`);
 
     await act(() => setPreference('light'));
-    expect(screen.getByText(`light:light:${lightTheme.colors.surface0}`)).toBeTruthy();
+    expect(screen.getByText(`light:light:${lightTheme.colors.plate}`)).toBeTruthy();
     expect(await loadThemePreference(db)).toBe('light');
 
     await first.unmount();
@@ -102,7 +102,7 @@ describe('ThemeProvider', () => {
         <Probe />
       </ThemeProvider>,
     );
-    expect(await screen.findByText(`light:light:${lightTheme.colors.surface0}`)).toBeTruthy();
+    expect(await screen.findByText(`light:light:${lightTheme.colors.plate}`)).toBeTruthy();
   });
 
   it('a forced Dark ignores a light phone', async () => {
@@ -114,7 +114,7 @@ describe('ThemeProvider', () => {
         <Probe />
       </ThemeProvider>,
     );
-    expect(await screen.findByText(`dark:dark:${darkTheme.colors.surface0}`)).toBeTruthy();
+    expect(await screen.findByText(`dark:dark:${darkTheme.colors.plate}`)).toBeTruthy();
   });
 });
 
@@ -129,7 +129,7 @@ describe('useTheme outside a provider', () => {
 });
 
 describe('makeStyles', () => {
-  const useStyles = makeStyles((theme) => ({ box: { backgroundColor: theme.colors.surface1 } }));
+  const useStyles = makeStyles((theme) => ({ box: { backgroundColor: theme.colors.plate } }));
 
   it('builds each theme once and switches with the theme', async () => {
     const db = await migratedDb();
@@ -145,7 +145,7 @@ describe('makeStyles', () => {
         <Probe />
       </ThemeProvider>,
     );
-    expect(await screen.findByText(darkTheme.colors.surface1)).toBeTruthy();
+    expect(await screen.findByText(darkTheme.colors.plate)).toBeTruthy();
     await view.rerender(
       <ThemeProvider db={db}>
         <Box />
@@ -156,6 +156,6 @@ describe('makeStyles', () => {
     expect(seen[seen.length - 1]).toBe(seen[0]);
 
     await act(() => setPreference('light'));
-    expect(screen.getByText(lightTheme.colors.surface1)).toBeTruthy();
+    expect(screen.getByText(lightTheme.colors.plate)).toBeTruthy();
   });
 });

@@ -31,12 +31,12 @@ export default function TabLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          sceneStyle: { backgroundColor: theme.colors.surface0 },
+          sceneStyle: { backgroundColor: theme.colors.plate },
           // Selected tab: accent icon and label. Others: secondary text colour.
           tabBarActiveTintColor: theme.colors.accentText,
           tabBarInactiveTintColor: theme.colors.textSecondary,
           tabBarStyle: {
-            backgroundColor: theme.colors.surface0,
+            backgroundColor: theme.colors.plate,
             borderTopColor: theme.colors.borderSubtle,
             // Includes the bottom safe-area inset (home indicator, Android gesture bar).
             height: tabBarHeight({ fontScale, bottomInset: insets.bottom }),

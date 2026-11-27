@@ -180,7 +180,7 @@ export function MapScreen({ dataSource }: Props) {
 }
 
 const useStyles = makeStyles((theme) => ({
-  root: { flex: 1, backgroundColor: theme.colors.surface0 },
+  root: { flex: 1, backgroundColor: theme.colors.plate },
   map: { flex: 1 },
   overlay: { ...StyleSheet.absoluteFill, justifyContent: 'space-between' },
   top: { paddingHorizontal: spacing.md, paddingTop: spacing.sm, gap: spacing.sm },
