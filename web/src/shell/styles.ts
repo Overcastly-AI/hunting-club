@@ -39,6 +39,8 @@ const base = `
 /* The club switcher: 4 px under its button and the rail's full inner width, edges in line. */
 .shell-club .ui-popover__panel.shell-club__panel { top: calc(100% + ${gap(1)}); left: 0; right: 0; width: auto;
   min-width: 0; }
+.shell-club__panel .shell-menu { border-top: 0; padding-top: 0; }
+.shell-club__panel .ui-button { white-space: normal; text-align: left; overflow-wrap: anywhere; }
 .shell-nav { flex: 1; min-height: 0; overflow-y: auto; }
 .shell-nav__list, .shell-more, .shell-menu { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .shell-nav__slot--more { display: none; }

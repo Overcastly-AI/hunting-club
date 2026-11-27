@@ -75,7 +75,7 @@ const signin = `
 .signin__legal { display: flex; gap: ${gap(5)}; }
 .signin__legal a { ${text('label')}; display: inline-flex; align-items: center; min-height: ${TAP};
   color: ${color('accentText')}; }
-.signin__sample { position: absolute; right: ${gap(6)}; bottom: ${gap(6)}; margin: 0; padding: ${gap(2)} ${gap(3)};
+.signin__sample { position: absolute; right: ${gap(6)}; top: ${gap(6)}; margin: 0; padding: ${gap(2)} ${gap(3)};
   ${text('label')}; ${floating} }
 ${PHONE} {
   .signin { flex-direction: column; align-items: stretch; padding: 0; }
