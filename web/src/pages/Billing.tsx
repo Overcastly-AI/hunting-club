@@ -6,6 +6,7 @@ import {
   ENTITLEMENT_GRACE_DAYS,
   entitlementFor,
   isEntitledStatus,
+  SUBSCRIPTION_STATUS_LABELS,
   type Plan,
   type Subscription,
 } from '@huntclub/shared';
@@ -14,7 +15,7 @@ import type { ClubApi } from '../api/types';
 import { Loadable } from '../components/Loadable';
 import { PageHeading } from '../components/PageHeading';
 import { useAsync } from '../components/useAsync';
-import { SUBSCRIPTION_STATUS_LABELS, formatDate } from '../format';
+import { formatDate } from '../format';
 import { navigateTo } from '../navigate';
 
 /** Subscription status, and Stripe Checkout (free trial first) when the club needs to pay. */

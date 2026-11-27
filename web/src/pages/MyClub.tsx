@@ -3,6 +3,7 @@ import {
   ClubCreateRequestSchema,
   DISPLAY_NAME_MAX,
   INITIALS_MAX,
+  SUBSCRIPTION_STATUS_LABELS,
   type Club,
 } from '@huntclub/shared';
 import { useState, type FormEvent } from 'react';
@@ -11,7 +12,6 @@ import { Field } from '../components/Field';
 import { Loadable } from '../components/Loadable';
 import { PageHeading } from '../components/PageHeading';
 import { isOffline, useAsync } from '../components/useAsync';
-import { SUBSCRIPTION_STATUS_LABELS } from '../format';
 
 /** Your club, or a form to start one. Payment is on the Billing page. */
 export function MyClub(props: { api: ClubApi }) {

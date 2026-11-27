@@ -25,7 +25,7 @@ import {
 } from '@huntclub/mesh';
 import type { CheckInBoard, CheckInController, MemberCheckIn, OpenCheckIn } from './checkIn';
 import { CORE_CONFIG, DAY_MS, MINUTE_MS, type CoreConfig } from './config';
-import { SUN, type SunApi } from './sun';
+import { SUN, type SunApi } from '@huntclub/shared';
 import {
   randomFraction,
   resolveContext,

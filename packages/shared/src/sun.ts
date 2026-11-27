@@ -4,7 +4,7 @@
  *
  * Rule: never show legal shooting hours. This module gives sunrise and sunset only.
  */
-import { DAY_MS } from './config';
+import { DAY_MS } from './time';
 
 const DEG = Math.PI / 180;
 const J1970 = 2440587.5;

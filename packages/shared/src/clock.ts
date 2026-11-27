@@ -3,7 +3,7 @@ export function formatShortDate(date: Date): string {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-/** Local clock time such as "6:52 AM" (display only; sun times come from @huntclub/core). */
+/** Local clock time such as "6:52 AM" (display only; sun times come from sun.ts). */
 export function formatClockTime(date: Date): string {
   const hours = date.getHours();
   const minutes = String(date.getMinutes()).padStart(2, '0');

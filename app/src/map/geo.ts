@@ -1,4 +1,5 @@
 import type { LatLon } from '@huntclub/mesh';
+import { downwindBearing } from '@huntclub/shared';
 
 import type { Bounds } from './tiles';
 
@@ -55,11 +56,6 @@ export function destination(start: LatLon, bearingDeg: number, distance: number)
       Math.cos(d) - Math.sin(phi1) * Math.sin(phi2),
     );
   return { lat: phi2 / DEG, lon: ((lambda2 / DEG + 540) % 360) - 180 };
-}
-
-/** Wind is reported by where it blows from; scent travels the other way. */
-export function downwindBearing(windFromDeg: number): number {
-  return (((windFromDeg + 180) % 360) + 360) % 360;
 }
 
 export const SCENT_CONE = { lengthMeters: 300, halfAngleDeg: 20, arcSteps: 8 } as const;
