@@ -33,6 +33,9 @@ import {
 import { useEffect, useState } from 'react';
 import type { Projection } from './plan';
 
+/** The live basemap a club map opens on: aerial, the picture the design is drawn for. */
+export const CLUB_MAP_BASEMAP: BasemapId = 'aerial';
+
 /** At most this many tiles under the plan: enough for a square mile at the deepest level. */
 export const BASEMAP_MAX_TILES = 64;
 
@@ -58,7 +61,7 @@ export interface BasemapPicture {
  */
 export function basemapPack(
   packs: readonly MapPack[] | undefined,
-  prefer: BasemapId = 'aerial',
+  prefer: BasemapId = CLUB_MAP_BASEMAP,
 ): ReadyPack | undefined {
   const ready = (packs ?? [])
     .filter((p): p is ReadyPack => p.status === 'ready' && basemapBySource(p.source) !== undefined)
@@ -172,4 +175,16 @@ export function useBasemap(pack: ReadyPack | undefined, deps?: BasemapDeps): Bas
     // The pack's key names its archive; deps are fixed for a page's life.
   }, [key]);
   return picture && picture.key === key ? picture.value : null;
+}
+
+/**
+ * A club map's picture, as My club draws it: live USGS tiles of `live` (pass it to ClubMap's
+ * `live`) over the club's newest ready pack of that basemap (ClubMap's `basemap`), which still
+ * shows when the live tiles cannot load.
+ */
+export function useClubBasemap(
+  packs: readonly MapPack[] | undefined,
+  live: BasemapId = CLUB_MAP_BASEMAP,
+): { live: BasemapId; basemap: BasemapPicture | null } {
+  return { live, basemap: useBasemap(basemapPack(packs, live)) };
 }

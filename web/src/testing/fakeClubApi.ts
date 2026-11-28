@@ -4,6 +4,8 @@ import { SAMPLE_PROPERTY } from '@huntclub/shared/sample';
 import {
   type AuthTokens,
   ClubApiRequestError,
+  clubPlanState,
+  entitlementFor,
   type ClubApiClient,
   CheckoutRequestSchema,
   ClubCreateRequestSchema,
@@ -215,8 +217,15 @@ export function fakeClubClient(data: FakeClubData = sampleData()): ClubApiClient
     listMapPacks: async () => data.mapPacks,
     async requestMapPack(_clubId, request) {
       const { basemap } = MapPackRequestSchema.parse(request);
-      // The club service's own checks: a property line, the size cap, one build at a time.
+      // The club service's own checks: an open plan, a property line, the size cap, one build at a time.
       const { boundary } = clubOrThrow();
+      if (clubPlanState(data.subscription, Date.now()) !== 'open') {
+        throw new ClubApiRequestError(
+          'club_inactive',
+          403,
+          'new map packs need an active club subscription',
+        );
+      }
       if (!boundary) throw new ClubApiRequestError('invalid', 400, 'draw the property line first');
       const estimate = estimateClubPack(boundary, { basemap });
       if (estimate.overLimit) throw new ClubApiRequestError('invalid', 400, 'too big');
@@ -331,7 +340,7 @@ export function fakeClubClient(data: FakeClubData = sampleData()): ClubApiClient
       data.areas = data.areas.filter((a) => a.id !== id);
     },
     listHarvests: async () => data.harvests,
-    getEntitlement: async (clubId) => ({ clubId, status: 'active' }),
+    getEntitlement: async (clubId) => entitlementFor(clubId, data.subscription ?? undefined),
     getSubscription: async () => ({ subscription: data.subscription ?? null }),
     async openBillingPortal() {
       if (data.paymentsConfigured === false) throw new ClubApiRequestError('not_configured', 503);

@@ -2,16 +2,19 @@ import {
   BASEMAP_IDS,
   BASEMAPS,
   basemapBySource,
+  CLUB_PRICING,
   ClubApiRequestError,
+  clubPlanState,
   estimateClubPack,
   formatBytes,
   MAP_PACK_BUILD,
   MAP_PACK_LIMITS,
   type BasemapId,
   type Club,
+  type ClubPlanState,
   type MapPack,
 } from '@huntclub/shared';
-import { Download, Hammer, Map as MapIcon, RefreshCw } from 'lucide-react';
+import { CreditCard, Download, Hammer, Map as MapIcon, RefreshCw } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { NoClubError, type ClubApi } from '../api/types';
 import { Loadable } from '../components/Loadable';
@@ -38,16 +41,27 @@ export const DRAW_LINE_FIRST = 'Draw it on the My club map. A map pack covers ex
 /** How long a build may take, in words ("15 minutes"). */
 const BUILD_MINUTES = `${Math.ceil(MAP_PACK_BUILD.timeoutSeconds / 60)} minutes`;
 
-type RequestState = { kind: 'idle' } | { kind: 'busy' } | { kind: 'error'; message: string };
+type RequestState =
+  | { kind: 'idle' }
+  | { kind: 'busy' }
+  | { kind: 'error'; message: string }
+  /** The club service refused it for the club's plan (403 club_inactive). */
+  | { kind: 'plan' };
 
-/** Plain words for the club API's refusals of a pack request. */
+/** A club without an open plan: what it needs before it can build (Billing has the button). */
+export const PLAN_NEEDED = {
+  title: 'Map packs come with a club plan',
+  none: `Start the ${CLUB_PRICING.trialDays}-day free trial in Billing to build one.`,
+  lapsed:
+    'Renew the club plan in Billing to build a new one. Map packs already built keep working.',
+} as const;
+
+/** Plain words for the club API's refusals of a pack request (club_inactive shows the plan). */
 function requestError(error: unknown): string {
   if (error instanceof ClubApiRequestError) {
     switch (error.code) {
       case 'conflict':
         return `A map pack is already being built. Try again when it is done (up to ${BUILD_MINUTES}).`;
-      case 'club_inactive':
-        return 'New map packs need an active club subscription. Map packs already built keep working.';
       case 'invalid':
         return `The club service refused this map pack: ${error.message}.`;
       case 'not_configured':
@@ -69,7 +83,12 @@ export function MapPacks(props: { api: ClubApi }) {
       // No club yet: nothing to list, and the page asks for a club first.
       const club = await props.api.getClub();
       if (!club) throw new NoClubError();
-      return [club, await props.api.listMapPacks()] as const;
+      const [packs, subscription] = await Promise.all([
+        props.api.listMapPacks(),
+        props.api.getSubscription(),
+      ]);
+      // Map packs are a club plan feature: the same rule the club service checks.
+      return [club, packs, clubPlanState(subscription, Date.now())] as const;
     },
     [props.api],
     { keepLastOn: isOffline },
@@ -83,13 +102,14 @@ export function MapPacks(props: { api: ClubApi }) {
       description="Download the property in full detail before you go. Maps work with no cell service."
     >
       <Loadable state={state} skeleton="table">
-        {([club, packs]) => (
+        {([club, packs, plan]) => (
           <>
             <div className="beside-map">
               <div className="beside-map__lists">
                 <BuildPack
                   api={props.api}
                   club={club}
+                  plan={plan}
                   basemap={basemap}
                   onBasemap={setBasemap}
                   building={packs.some((p) => p.status === 'building')}
@@ -120,7 +140,7 @@ export function MapPacks(props: { api: ClubApi }) {
                 </Button>
               ) : null}
             </div>
-            <PackTable packs={packs} canBuild={Boolean(club.boundary)} />
+            <PackTable packs={packs} blocker={buildBlocker(club, plan)} />
           </>
         )}
       </Loadable>
@@ -128,9 +148,34 @@ export function MapPacks(props: { api: ClubApi }) {
   );
 }
 
+/** What stands between the club and a new pack, if anything: the plan first, then the line. */
+function buildBlocker(club: Club, plan: ClubPlanState): keyof typeof EMPTY_PACKS_BODY {
+  if (plan !== 'open') return 'needsPlan';
+  return club.boundary ? 'canBuild' : 'needsLine';
+}
+
+/** The paid state, shown in place of the build form: why, and the way to Billing. */
+function PlanNeeded(props: { plan: Exclude<ClubPlanState, 'open'> }) {
+  return (
+    <EmptyState
+      icon={CreditCard}
+      title={PLAN_NEEDED.title}
+      titleAs="h2"
+      action={
+        <ButtonLink variant="primary" size="sm" href={pageHref('billing')}>
+          Go to Billing
+        </ButtonLink>
+      }
+    >
+      {PLAN_NEEDED[props.plan]}
+    </EmptyState>
+  );
+}
+
 function BuildPack(props: {
   api: ClubApi;
   club: Club;
+  plan: ClubPlanState;
   basemap: BasemapId;
   onBasemap: (basemap: BasemapId) => void;
   building: boolean;
@@ -139,6 +184,10 @@ function BuildPack(props: {
   const { basemap } = props;
   const [request, setRequest] = useState<RequestState>({ kind: 'idle' });
 
+  // No open plan: say so up front instead of offering a build the club service refuses.
+  if (props.plan !== 'open') return <PlanNeeded plan={props.plan} />;
+  // Open here, but the club service found the plan over (it ended since the page loaded).
+  if (request.kind === 'plan') return <PlanNeeded plan="lapsed" />;
   if (!props.club.boundary) {
     // No estimate without a boundary; the line is drawn on My club's map.
     return (
@@ -166,7 +215,9 @@ function BuildPack(props: {
       setRequest({ kind: 'idle' });
       props.onStarted();
     } catch (error) {
-      setRequest({ kind: 'error', message: requestError(error) });
+      if (error instanceof ClubApiRequestError && error.code === 'club_inactive')
+        setRequest({ kind: 'plan' });
+      else setRequest({ kind: 'error', message: requestError(error) });
     }
   };
 
@@ -258,9 +309,11 @@ function packStatus(p: MapPack): { status: ReactNode; size: string; date: string
 const EMPTY_PACKS_BODY = {
   canBuild: 'Build one above. It takes a few minutes.',
   needsLine: 'Draw the property line on the My club map first, then build one here.',
+  needsPlan: 'Built packs show here once the club has a plan. Start one in Billing.',
 } as const;
 
-function PackTable({ packs, canBuild }: { packs: readonly MapPack[]; canBuild: boolean }) {
+function PackTable(props: { packs: readonly MapPack[]; blocker: keyof typeof EMPTY_PACKS_BODY }) {
+  const { packs } = props;
   const rows = [...packs]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .map((p) => ({
@@ -275,7 +328,7 @@ function PackTable({ packs, canBuild }: { packs: readonly MapPack[]; canBuild: b
       rowKey={(r) => r.id}
       empty={
         <EmptyState icon={Download} title="No map packs yet" titleAs="h3">
-          {canBuild ? EMPTY_PACKS_BODY.canBuild : EMPTY_PACKS_BODY.needsLine}
+          {EMPTY_PACKS_BODY[props.blocker]}
         </EmptyState>
       }
       columns={[

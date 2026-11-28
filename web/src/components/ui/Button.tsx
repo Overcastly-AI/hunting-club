@@ -53,6 +53,8 @@ export type ButtonProps = ButtonLook &
   Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> & {
     /** Spinner plus the label: aria-busy, clicks ignored, the width holds. */
     loading?: boolean;
+    /** While `loading`, these words in place of the label ("Saving…"), so the wait says what it is. */
+    loadingLabel?: string;
     ref?: Ref<HTMLButtonElement>;
   };
 
@@ -63,6 +65,7 @@ export function Button(props: ButtonProps) {
     icon: Icon,
     block,
     loading,
+    loadingLabel,
     className,
     onClick,
     type,
@@ -94,7 +97,7 @@ export function Button(props: ButtonProps) {
       }}
     >
       {lead}
-      {iconOnly ? null : children}
+      {iconOnly ? null : loading && loadingLabel ? loadingLabel : children}
     </button>
   );
   return label ? <Tooltip content={label}>{button}</Tooltip> : button;

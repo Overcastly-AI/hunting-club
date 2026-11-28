@@ -3,6 +3,7 @@ import {
   ADMIN_PATH,
   APP_DESCRIPTION,
   APP_NAME,
+  BASEMAPS,
   CHECKOUT_RETURN_PATHS,
   CLUB_PRICING,
   type ClubApiClient,
@@ -40,7 +41,7 @@ import { go, renderSignedIn } from '../testing/app';
 import { accountButton, requestCode, signIn } from '../testing/shell';
 import { tableRows } from '../testing/tables';
 import { SAMPLE_CAPTION } from '../pages/SignIn';
-import { DRAW_LINE_FIRST } from '../pages/MapPacks';
+import { DRAW_LINE_FIRST, PLAN_NEEDED } from '../pages/MapPacks';
 import {
   COPY_INVITE,
   CREATE_INVITE,
@@ -415,6 +416,23 @@ describe('club pages', () => {
     expect(screen.getAllByText('North 40').length).toBeGreaterThan(0);
   });
 
+  it('draws the stands and areas on the same basemap as My club: live aerial tiles, no chrome', async () => {
+    renderApp();
+    await signIn();
+    go('#/stands');
+    const map = await screen.findByRole('img', { name: /^Map of the club/ });
+    const tiles = [...map.querySelectorAll('.plan__basemap--live image')];
+    expect(tiles.length).toBeGreaterThan(0);
+    for (const tile of tiles) {
+      expect(tile.getAttribute('href')!.startsWith(BASEMAPS.aerial.tileUrl.split('{z}')[0]!)).toBe(
+        true,
+      );
+    }
+    expect(map.querySelector('.plan__credit')!.textContent).toBe(BASEMAPS.aerial.credit);
+    // A map beside a list: no Layers or zoom controls over it.
+    expect(screen.queryByRole('button', { name: 'Layers' })).toBeNull();
+  });
+
   describe('harvests', () => {
     async function openHarvests(data = sampleData(), services?: WebClubServices) {
       renderApp(data, services);
@@ -559,6 +577,54 @@ describe('club pages', () => {
       await openMaps({ ...data, club: { ...data.club!, boundary: huge } });
       expect((await screen.findByRole('alert')).textContent).toMatch(/Too big for one map pack/);
       expect(buildButton().disabled).toBe(true);
+    });
+
+    it('shows the paid state up front, with the way to Billing, for a club with no plan', async () => {
+      await openMaps({ ...sampleData(), subscription: null });
+      const plate = (await screen.findByText(PLAN_NEEDED.title)).closest('.ui-empty')!;
+      expect(plate.textContent).toMatch(/Start the 14-day free trial in Billing/);
+      expect(
+        within(plate as HTMLElement)
+          .getByRole('link', { name: 'Go to Billing' })
+          .getAttribute('href'),
+      ).toBe('#/billing');
+      expect(screen.queryByRole('button', { name: 'Build map pack' })).toBeNull();
+      expect(screen.queryByText(/Build one above/)).toBeNull();
+    });
+
+    it('asks a lapsed club to renew, and keeps the packs it built', async () => {
+      const data = sampleData();
+      await openMaps({ ...data, subscription: { ...data.subscription!, status: 'canceled' } });
+      expect(
+        (await screen.findByText(PLAN_NEEDED.title)).closest('.ui-empty')!.textContent,
+      ).toMatch(/Renew the club plan in Billing/);
+      expect((await packRows()).length).toBe(2);
+    });
+
+    it('turns a 403 club_inactive from the build into the same paid state, keeping the club', async () => {
+      const client = fakeClubClient(sampleData());
+      const listMyClubs = vi.spyOn(client, 'listMyClubs');
+      vi.spyOn(client, 'requestMapPack').mockRejectedValue(
+        new ClubApiRequestError(
+          'club_inactive',
+          403,
+          'new map packs need an active club subscription',
+        ),
+      );
+      await openMaps(sampleData(), {
+        session: new ClubSession(fakeCognitoAuth(), memoryTokenStore()),
+        api: adminApi(client),
+      });
+      fireEvent.click(await screen.findByRole('button', { name: 'Build map pack' }));
+      const plate = (await screen.findByText(PLAN_NEEDED.title)).closest('.ui-empty')!;
+      expect(plate.textContent).toMatch(/Renew the club plan in Billing/);
+      expect(screen.queryByText(/Could not start the map pack/)).toBeNull();
+      expect(screen.queryByText(/access to this club/)).toBeNull();
+      // Not an access refusal: the club stays chosen (no fresh lookup of the account's clubs).
+      const lookups = listMyClubs.mock.calls.length;
+      go('#/maps');
+      await screen.findByRole('table');
+      expect(listMyClubs.mock.calls.length).toBe(lookups);
     });
 
     it('asks for the property line first', async () => {

@@ -18,7 +18,8 @@ import { initDatabase } from '../db';
 import { mapDataStore } from '../map/dataSource';
 import type { MapScreenProps } from '../map/MapScreen';
 import { RadioProvider } from '../radio/RadioProvider';
-import { MAP_SHOTS, type MapShotName } from './shots';
+import { SafetyRadioContext, type SafetyRadio } from '../safety/SafetyRadio';
+import { mapShotState } from './shots';
 import {
   SCREENSHOT_CHECK_IN_STAND,
   SCREENSHOT_CLUB,
@@ -103,6 +104,25 @@ export function standInChat(now: number): ChatRadio {
   };
 }
 
+/**
+ * Ask for a Hand over the stand-in chat radio: the slide is live (nothing is sent on a shot), so
+ * the sheet shows what a hunter with a radio sees, not "connect your radio".
+ */
+export function standInSafety(chat: ChatRadio): SafetyRadio {
+  return {
+    client: chat.client,
+    help: {
+      current: null,
+      on: never,
+      ask: () => undefined,
+      cancel: () => undefined,
+    } as unknown as SafetyRadio['help'],
+    overdue: { on: never } as unknown as SafetyRadio['overdue'],
+    board: chat.board,
+    audience: chat.audience,
+  };
+}
+
 /** The app's database, set up as after onboarding: this phone's hunter, onboarded. */
 async function screenshotDatabase(db: SQLiteDatabase): Promise<void> {
   await initDatabase(db);
@@ -128,11 +148,14 @@ const checkIn = standInCheckIn();
 
 function RadioStandIn({ children }: { children: ReactNode }) {
   const [chat] = useState(() => standInChat(Date.now()));
+  const [safety] = useState(() => standInSafety(chat));
   return (
     <RadioProvider store={noPairedRadio} createTransport={noTransport} background={noBackground}>
       <ClubEntitlementContext.Provider value={SCREENSHOT_ENTITLEMENT}>
         <CheckInRadioContext.Provider value={checkIn}>
-          <ChatRadioContext.Provider value={chat}>{children}</ChatRadioContext.Provider>
+          <ChatRadioContext.Provider value={chat}>
+            <SafetyRadioContext.Provider value={safety}>{children}</SafetyRadioContext.Provider>
+          </ChatRadioContext.Provider>
         </CheckInRadioContext.Provider>
       </ClubEntitlementContext.Provider>
     </RadioProvider>
@@ -141,19 +164,16 @@ function RadioStandIn({ children }: { children: ReactNode }) {
 
 /** The Map tab for a shot (shots.ts MAP_SHOTS): over the sample property, in that state. */
 function mapProps(shot: string | undefined): MapScreenProps {
-  const state: { detent?: 'half'; panel?: 'layers' } =
-    shot !== undefined && shot in MAP_SHOTS ? MAP_SHOTS[shot as MapShotName] : {};
+  const state = mapShotState(shot) ?? {};
   return {
     initialView: SCREENSHOT_VIEW,
     ...(shot === undefined ? {} : { panel: state.panel ?? null, detent: state.detent ?? 'peek' }),
   };
 }
 
-/** Puts the stand-in radio in the shot's state: checked in for `checked-in` only. */
+/** Puts the stand-in radio in the shot's state: checked in only where the shot says so. */
 function prepareMapShot(shot: string | undefined): void {
-  const state: { checkedIn?: boolean } =
-    shot !== undefined && shot in MAP_SHOTS ? MAP_SHOTS[shot as MapShotName] : {};
-  checkIn.setCheckedIn(!!state.checkedIn);
+  checkIn.setCheckedIn(!!mapShotState(shot)?.checkedIn);
 }
 
 /** Starts the mode once: the fixed clock, quiet dev warnings, the sample map and chat. */
