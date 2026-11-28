@@ -7,6 +7,8 @@ import {
   UNKNOWN_VALUE,
   clockReadout,
   conditionsReadout,
+  nextTimeReadout,
+  OVERDUE_ALERT_LABEL,
   sunReadout,
   temperatureReadout,
   untilSunset,
@@ -199,5 +201,24 @@ describe('conditionsReadout', () => {
       wind: { ...UNKNOWN, fromDeg: null, towardDeg: null },
       temperature: UNKNOWN,
     });
+  });
+});
+
+describe('nextTimeReadout', () => {
+  const sunset = { short: '4:38 PM', spoken: '4:38 PM' };
+  const base = { sunrise: sunset, sunset, untilSunset: null };
+  const overdue = Date.parse('2026-11-30T23:08:00Z');
+
+  it('is the sunset countdown while the sun is up', () => {
+    const until = untilSunset(SUNSET, SUNSET.getTime() - HOUR_MS)!;
+    expect(nextTimeReadout({ ...base, untilSunset: until }, overdue, 0)).toBe(until);
+  });
+
+  it('is the overdue time after sunset while it is ahead, then the sunset time', () => {
+    expect(nextTimeReadout(base, overdue, overdue - MINUTE_MS).short).toBe(
+      `${OVERDUE_ALERT_LABEL} ${formatClockTime(new Date(overdue))}`,
+    );
+    expect(nextTimeReadout(base, overdue, overdue + MINUTE_MS).short).toBe('Sunset 4:38 PM');
+    expect(nextTimeReadout(base, undefined, 0).short).toBe('Sunset 4:38 PM');
   });
 });

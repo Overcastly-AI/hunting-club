@@ -161,3 +161,30 @@ export function conditionsReadout(input: ConditionsInput): ConditionsReadout {
     temperature: temperatureReadout(input.temperatureF),
   };
 }
+
+/** The word for the time the club's overdue alert goes out (sunset plus the club's grace). */
+export const OVERDUE_ALERT_LABEL = 'Overdue at';
+
+/**
+ * The one next time for the map's top pill (docs/DESIGN.md "Map chrome"): the sunset countdown
+ * while the sun is up, then the overdue time while it is still ahead, then the sunset time.
+ * Sunrise and sunset only, never legal shooting hours.
+ */
+export function nextTimeReadout(
+  sun: SunReadout,
+  overdueAt: number | undefined,
+  now: number,
+): Wording {
+  if (sun.untilSunset) return sun.untilSunset;
+  if (overdueAt !== undefined && overdueAt > now) {
+    const at = clockReadout(overdueAt);
+    return {
+      short: `${OVERDUE_ALERT_LABEL} ${at.short}`,
+      spoken: `${OVERDUE_ALERT_LABEL} ${at.spoken}`,
+    };
+  }
+  return {
+    short: `${READOUT_LABELS.sunset} ${sun.sunset.short}`,
+    spoken: `${READOUT_LABELS.sunset} ${sun.sunset.spoken}`,
+  };
+}
