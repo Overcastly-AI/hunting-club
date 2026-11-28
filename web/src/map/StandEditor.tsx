@@ -13,12 +13,14 @@ import {
   type StandCreate,
   type StandType,
 } from '@huntclub/shared';
-import { Crosshair, X } from 'lucide-react';
+import { Crosshair } from 'lucide-react';
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { standIcon } from '../components/standIcons';
 import { Button, Field, Input, Select } from '../components/ui';
 import { mapPoint, TAP_SLOP, type MapFrame } from './ClubMap';
 import { DeleteConfirm } from './DeleteConfirm';
+import { InSlot, useEditSlots } from './editSlots';
+import { EditPill } from './MapPill';
 import { Cross, KEY_MOVE_PX, saveError } from './PropertyLineEditor';
 
 /** The stand as it is being edited: an existing one (with its id) or a new one. */
@@ -154,7 +156,11 @@ export function StandMarkerLayer(props: {
 
 const TYPE_OPTIONS = STAND_TYPES.map((type) => ({ value: type, label: STAND_TYPE_LABELS[type] }));
 
-/** The stand's name and type, Save stand and Cancel, and for a placed stand, Delete stand. */
+/**
+ * The stand editor's chrome, in the page's edit slots (editSlots.tsx): the pill with Done
+ * (saves) and Cancel; the draw bar with what to do next and Put at the cross; the sheet or panel
+ * with the name and type, and for a placed stand, Delete stand.
+ */
 export function StandFields(props: {
   draft: StandDraft;
   onChange: (draft: StandDraft) => void;
@@ -165,16 +171,24 @@ export function StandFields(props: {
   onCancel: () => void;
 }) {
   const { draft } = props;
+  const slots = useEditSlots();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
-  const failed = (e: unknown) => setError(saveError(e, 'stand'));
+  const failed = (e: unknown) => {
+    setError(saveError(e, 'stand'));
+    slots.reveal();
+  };
   const save = async () => {
     // The shared schema first: a stand it refuses is never sent.
     const checked = checkStand(draft);
     const named = checked !== STAND_PROBLEMS.name;
     setNameError(named ? null : STAND_PROBLEMS.name);
-    if (typeof checked === 'string') return setError(named ? checked : null);
+    if (typeof checked === 'string') {
+      setError(named ? checked : null);
+      slots.reveal();
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -185,76 +199,72 @@ export function StandFields(props: {
     }
   };
   const placed = draft.lat !== undefined;
-  const how = (
-    <p className="draw__how">
-      {placed
-        ? 'Click the map to move the stand there, or drag it. With the stand selected, the arrow keys move it.'
-        : 'Click the map where the stand is, or move the map and use Put at the cross.'}
-    </p>
-  );
-  // Put at the cross is how a keyboard places a new stand; a placed one moves with the arrows.
-  const cross = placed ? null : (
-    <Button size="sm" icon={Crosshair} onClick={props.onPlaceAtCross}>
-      Put at the cross
-    </Button>
-  );
-  const name = (
-    <Field label="Stand name" error={nameError}>
-      <Input
-        maxLength={60}
-        value={draft.name}
-        onChange={(e) => props.onChange({ ...draft, name: e.target.value })}
-      />
-    </Field>
-  );
-  const type = (
-    <Field label="Type">
-      <Select
-        options={TYPE_OPTIONS}
-        value={draft.type}
-        onChange={(e) => props.onChange({ ...draft, type: e.target.value as StandType })}
-      />
-    </Field>
-  );
-  const saveButton = (
-    <Button variant="primary" size="sm" loading={busy} onClick={() => void save()}>
-      Save stand
-    </Button>
-  );
-  const cancel = (
-    <Button size="sm" icon={X} onClick={props.onCancel} disabled={busy}>
-      Cancel
-    </Button>
-  );
-  const remove = props.onDelete ? (
-    <DeleteConfirm
-      noun="stand"
-      name={draft.name}
-      onDelete={props.onDelete}
-      onError={failed}
-      disabled={busy}
-    />
-  ) : null;
-  const errorLine = error ? (
-    <p className="draw__error" role="alert">
-      {error}
-    </p>
-  ) : null;
-
   return (
-    <div className="draw draw--stand">
-      {how}
-      {cross ? <div className="draw__actions">{cross}</div> : null}
-      <div className="draw__fields">
-        {name}
-        {type}
-      </div>
-      <div className="draw__actions">
-        {saveButton}
-        {cancel}
-        {remove}
-      </div>
-      {errorLine}
-    </div>
+    <>
+      <InSlot slot="pill">
+        <EditPill
+          label={draft.id ? 'Moving the stand' : 'Placing a stand'}
+          onDone={() => void save()}
+          onCancel={props.onCancel}
+          busy={busy}
+        />
+      </InSlot>
+      <InSlot slot="bar">
+        <div className="draw-bar" role="group" aria-label="Placing the stand">
+          <p className="draw__count">{placed ? 'Drag it to move it' : 'Tap the map where it is'}</p>
+          {/* Put at the cross is how a keyboard places a new stand; a placed one moves with the arrows. */}
+          {placed ? null : (
+            <Button
+              size="sm"
+              iconOnly
+              label="Put at the cross"
+              icon={Crosshair}
+              onClick={props.onPlaceAtCross}
+            />
+          )}
+        </div>
+      </InSlot>
+      <InSlot slot="body">
+        <div className="draw draw--stand">
+          <p className="draw__how">
+            {placed
+              ? 'Click the map to move the stand there, or drag it. With the stand selected, the arrow keys move it.'
+              : 'Click the map where the stand is, or move the map and use Put at the cross.'}
+          </p>
+          <div className="draw__fields">
+            <Field label="Stand name" error={nameError}>
+              <Input
+                maxLength={60}
+                value={draft.name}
+                onChange={(e) => props.onChange({ ...draft, name: e.target.value })}
+              />
+            </Field>
+            <Field label="Type">
+              <Select
+                options={TYPE_OPTIONS}
+                value={draft.type}
+                onChange={(e) => props.onChange({ ...draft, type: e.target.value as StandType })}
+              />
+            </Field>
+          </div>
+          {props.onDelete ? (
+            <div className="draw__actions">
+              <DeleteConfirm
+                noun="stand"
+                name={draft.name}
+                onDelete={props.onDelete}
+                onError={failed}
+                disabled={busy}
+              />
+            </div>
+          ) : null}
+          {error ? (
+            <p className="draw__error" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
+      </InSlot>
+    </>
   );
 }

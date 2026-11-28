@@ -63,6 +63,8 @@ export function mapChromeVariables(): Record<string, string> {
     '--map-chrome-zoom-height': px(stack.zoomHeight),
     '--map-chrome-sheet-handle': px(sheet.handleZone),
     '--map-chrome-sheet-peek': px(sheet.detents.peek),
+    '--map-chrome-sheet-half': `${sheet.detents.half * 100}%`,
+    '--map-chrome-sheet-full': `${sheet.detents.full * 100}%`,
     '--map-chrome-footer-height': px(footer.height),
     '--map-chrome-fade': `${autoHide.fadeMs}ms`,
     '--map-chrome-label-max-width': px(labels.maxWidth),

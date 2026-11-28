@@ -17,8 +17,9 @@ export const PHONE = `@media ${COMPACT_MEDIA}`;
 export const TABLET = `@media (min-width: ${breakpoints.tablet}px) and (max-width: ${breakpoints.desktop - 1}px)`;
 /** Tablet and up (not phones). */
 export const TABLET_UP = `@media (min-width: ${breakpoints.tablet}px)`;
-/** Desktop and up. */
-export const DESKTOP = `@media (min-width: ${breakpoints.desktop}px)`;
+/** Desktop and up, as a query (for matchMedia) and as a media rule. */
+export const DESKTOP_QUERY = `(min-width: ${breakpoints.desktop}px)`;
+export const DESKTOP = `@media ${DESKTOP_QUERY}`;
 
 /** Declarations for one shared text style. */
 export const text = (name: TextStyleName) => textStyleCss(textScale[name]);
@@ -32,6 +33,9 @@ export const gap = (step: keyof typeof space) => `var(--space-${step})`;
 /** A control's outline: 1.5 px of `token` (the border-control edge by default). */
 export const edge = (token: Parameters<typeof themeVar>[0] = 'borderControl') =>
   `var(--control-border) solid ${color(token)}`;
+
+/** A plate floating over the map: the plate tone and the floating shadow (over imagery only). */
+export const FLOATING = `background: ${color('plate')}; border-radius: var(--radius-lg); box-shadow: ${color('shadowPlate')};`;
 
 /** A hairline: 1 px of border-subtle, dividing cells and rows. */
 export const HAIR = `1px solid ${color('borderSubtle')}`;

@@ -1,10 +1,15 @@
 import { mapChromeVariables, rootVariablesCss } from '../../src/css';
 import {
+  chromePinned,
   coverageBudget,
   coveredFraction,
   formatCoverage,
   mapChrome,
   measureCoverage,
+  rectsOverlap,
+  sheetDetentHeights,
+  snapDetent,
+  visibleLabels,
   type Rect,
 } from '../../src/mapChrome';
 import { breakpoints, sizes } from '../../src/sizes';
@@ -114,5 +119,78 @@ describe('mapChrome spec', () => {
     const css = rootVariablesCss();
     expect(css).toContain('--map-chrome-sheet-peek: 64px;');
     expect(css).toMatch(/prefers-reduced-motion[^}]*--map-chrome-fade: 0ms/);
+  });
+});
+
+describe('chromePinned', () => {
+  const overdueAt = Date.UTC(2026, 10, 28, 23, 8);
+  const minutes = (n: number) => n * 60 * 1000;
+
+  it('pins during an alert and while the mesh is quiet', () => {
+    expect(chromePinned({ now: 0, alertActive: true })).toBe(true);
+    expect(chromePinned({ now: 0, meshQuiet: true })).toBe(true);
+    expect(chromePinned({ now: 0 })).toBe(false);
+  });
+
+  it('pins from 30 minutes before the overdue time until it passes', () => {
+    expect(chromePinned({ now: overdueAt - minutes(31), overdueAt })).toBe(false);
+    expect(chromePinned({ now: overdueAt - minutes(30), overdueAt })).toBe(true);
+    expect(chromePinned({ now: overdueAt, overdueAt })).toBe(true);
+    expect(chromePinned({ now: overdueAt + 1, overdueAt })).toBe(false);
+    expect(chromePinned({ now: overdueAt, overdueAt: undefined })).toBe(false);
+  });
+});
+
+describe('visibleLabels', () => {
+  const marker = (x: number, y: number) => rect(x - 24, y - 24, 48, 48);
+  const label = (x: number, y: number) => rect(x + 25, y - 14, 120, 28);
+  const at = (id: string, x: number, y: number) => ({
+    id,
+    marker: marker(x, y),
+    label: label(x, y),
+  });
+  const deep = mapChrome.labels.minZoom;
+
+  it('shows no labels below the zoom threshold, except the selected one', () => {
+    const stands = [at('a', 100, 100), at('b', 400, 400)];
+    expect([...visibleLabels(stands, deep - 1)]).toEqual([]);
+    expect([...visibleLabels(stands, deep - 1, 'b')]).toEqual(['b']);
+    expect([...visibleLabels(stands, deep)].sort()).toEqual(['a', 'b']);
+  });
+
+  it('drops a label that would overlap another label or marker, keeping the selected one', () => {
+    // b sits just right of a: a's label would cover b's marker.
+    const stands = [at('a', 100, 100), at('b', 200, 100), at('c', 100, 300)];
+    expect([...visibleLabels(stands, deep)].sort()).toEqual(['b', 'c']);
+    expect([...visibleLabels(stands, deep, 'a')].sort()).toEqual(['a', 'c']);
+  });
+
+  it('knows touching rects do not overlap', () => {
+    expect(rectsOverlap(rect(0, 0, 10, 10), rect(10, 0, 10, 10))).toBe(false);
+    expect(rectsOverlap(rect(0, 0, 10, 10), rect(9, 9, 10, 10))).toBe(true);
+  });
+});
+
+describe('the sheet', () => {
+  const heights = sheetDetentHeights(700);
+
+  it('has a fixed peek and half and full of the map', () => {
+    expect(heights).toEqual({ peek: mapChrome.sheet.detents.peek, half: 350, full: 616 });
+    expect(sheetDetentHeights(50).half).toBe(mapChrome.sheet.detents.peek);
+  });
+
+  it('snaps a slow release to the nearest detent', () => {
+    expect(snapDetent(heights, 'peek', 100, 0)).toBe('peek');
+    expect(snapDetent(heights, 'peek', 300, 0.1)).toBe('half');
+    expect(snapDetent(heights, 'half', 560, -0.2)).toBe('full');
+  });
+
+  it('moves a flick one detent its way, never past the ends', () => {
+    const flick = mapChrome.sheet.flickVelocity + 0.1;
+    expect(snapDetent(heights, 'peek', 90, -flick)).toBe('half');
+    expect(snapDetent(heights, 'half', 340, -flick)).toBe('full');
+    expect(snapDetent(heights, 'full', 600, flick)).toBe('half');
+    expect(snapDetent(heights, 'peek', 64, flick)).toBe('peek');
+    expect(snapDetent(heights, 'full', 616, -flick)).toBe('full');
   });
 });

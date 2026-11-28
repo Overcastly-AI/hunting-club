@@ -15,27 +15,13 @@ import {
   ringAcres,
   type Polygon,
 } from '@huntclub/shared';
-import {
-  Check,
-  ChevronDown,
-  Ellipsis,
-  Plus,
-  Trash2,
-  Undo2,
-  X,
-  type LucideIcon,
-} from 'lucide-react';
-import {
-  useId,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type PointerEvent,
-  type ReactNode,
-} from 'react';
+import { Pentagon, Plus, Trash2, Undo2, type LucideIcon } from 'lucide-react';
+import { useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import { Button } from '../components/ui';
 import { cx } from '../components/ui/cx';
 import { mapPoint, TAP_SLOP, type MapFrame } from './ClubMap';
+import { InSlot, useEditSlots } from './editSlots';
+import { EditPill } from './MapPill';
 import { canClose, drawnPolygon, drawProblem, type DrawAction, type DrawState } from './draw';
 import { ringsPath } from './plan';
 
@@ -191,57 +177,9 @@ export function Cross(props: { width: number; height: number }) {
   );
 }
 
-/**
- * A phone's editing bar along the map's bottom: `children` (fields, notes), then a row of
- * `lead` (a count), More tools and the main `action`. More tools opens `panel` above it; Esc
- * closes it and gives focus back to its button. It is not called More: the tab bar has one.
- */
-export function ToolsBar(props: {
-  label: string;
-  panel: ReactNode;
-  lead?: ReactNode;
-  action: ReactNode;
-  children?: ReactNode;
-}) {
-  const [more, setMore] = useState(false);
-  const moreButton = useRef<HTMLButtonElement>(null);
-  const panelId = useId();
-  const onKeyDown = (e: KeyboardEvent) => {
-    if (e.key !== 'Escape' || !more) return;
-    e.preventDefault();
-    setMore(false);
-    moreButton.current?.focus();
-  };
-  return (
-    <div className="draw-bar" role="group" aria-label={props.label} onKeyDown={onKeyDown}>
-      {more ? (
-        <div id={panelId} className="draw-bar__more">
-          {props.panel}
-        </div>
-      ) : null}
-      {props.children}
-      <div className="draw-bar__row">
-        {props.lead ?? <span className="draw-bar__space" />}
-        <Button
-          ref={moreButton}
-          size="sm"
-          icon={more ? ChevronDown : Ellipsis}
-          aria-expanded={more}
-          aria-controls={more ? panelId : undefined}
-          onClick={() => setMore((open) => !open)}
-        >
-          More tools
-        </Button>
-        {props.action}
-      </div>
-    </div>
-  );
-}
-
-/** What is being drawn: its name in words, its Save button, and its shared rule and words. */
+/** What is being drawn: its name in words, and its shared rule and words. */
 export interface DrawSubject {
   noun: string;
-  save: string;
   rule: (polygon: Polygon) => string | null;
   problems: Readonly<Record<string, string>>;
 }
@@ -249,11 +187,10 @@ export interface DrawSubject {
 export const DRAW_SUBJECTS = {
   line: {
     noun: 'property line',
-    save: 'Save line',
     rule: propertyLineProblem,
     problems: PROPERTY_LINE_PROBLEMS,
   },
-  area: { noun: 'area', save: 'Save area', rule: areaProblem, problems: AREA_PROBLEMS },
+  area: { noun: 'area', rule: areaProblem, problems: AREA_PROBLEMS },
 } as const satisfies Record<string, DrawSubject>;
 
 /** Plain words for the club API's refusals of a save (of a shape, a stand or a deletion). */
@@ -274,6 +211,7 @@ export function saveError(error: unknown, noun: string): string {
 /** What an open shape still needs before it can be saved. */
 const OPEN = 'Close the shape to save it: tap the first corner, or Close shape.';
 
+/** A draw-bar tool: a 48 px icon button with its name as a tooltip. */
 function Action(props: {
   icon: LucideIcon;
   onClick: () => void;
@@ -281,17 +219,22 @@ function Action(props: {
   children: string;
 }) {
   return (
-    <Button size="sm" icon={props.icon} onClick={props.onClick} disabled={props.disabled}>
-      {props.children}
-    </Button>
+    <Button
+      size="sm"
+      iconOnly
+      label={props.children}
+      icon={props.icon}
+      onClick={props.onClick}
+      disabled={props.disabled}
+    />
   );
 }
 
 /**
- * The editor's words and buttons: how to draw, how many corners and acres, what is still
- * needed, and Add corner, Undo, Remove corner, Close shape, Save and Cancel. On the map's plate
- * (`plate`), or on a phone as a bar along the map's bottom (`bar`): the count and Save line,
- * with the other tools behind More tools (not the tab bar's More), so the map keeps most of the screen.
+ * The shape editor's chrome, in the page's edit slots (editSlots.tsx): the pill names what is
+ * drawn, with Done (saves) and Cancel; the draw bar has the count and Add corner, Undo, Remove
+ * corner and Close shape; the sheet or panel has how to draw, the subject's fields and what is
+ * still needed. What may be saved is the subject's shared rule.
  */
 export function DrawControls(props: {
   frame: MapFrame;
@@ -299,24 +242,28 @@ export function DrawControls(props: {
   dispatch: Dispatch;
   onSave: (boundary: Polygon) => Promise<void>;
   onCancel: () => void;
-  layout?: 'plate' | 'bar';
   /** What is drawn (default: the property line). */
   subject?: DrawSubject;
-  /** More fields for what is drawn (an area's name, its delete), shown with the count. */
+  /** More fields for what is drawn (an area's name, its delete), with the how-to. */
   fields?: ReactNode;
   /** A check of those fields before the shape's own: what to fix, or null. */
   validate?: () => string | null;
 }) {
   const { state, dispatch } = props;
+  const slots = useEditSlots();
   const subject: DrawSubject = props.subject ?? DRAW_SUBJECTS.line;
   const stillNeeded = (problem: string) =>
     problem === 'open' ? OPEN : (subject.problems[problem] ?? problem);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setErrorState] = useState<string | null>(null);
+  const setError = (message: string | null) => {
+    setErrorState(message);
+    if (message) slots.reveal();
+  };
   const problem = drawProblem(state, subject.rule);
   const n = state.corners.length;
   const act = (action: DrawAction) => {
-    setError(null);
+    setErrorState(null);
     dispatch(action);
   };
   const save = async () => {
@@ -325,7 +272,7 @@ export function DrawControls(props: {
     if (invalid) return setError(invalid);
     if (problem) return setError(stillNeeded(problem));
     setBusy(true);
-    setError(null);
+    setErrorState(null);
     try {
       await props.onSave(drawnPolygon(state));
     } catch (e) {
@@ -334,13 +281,6 @@ export function DrawControls(props: {
     }
   };
 
-  const how = (
-    <p className="draw__how">
-      {state.closed
-        ? 'Drag a corner to move it, or select it and use the arrow keys.'
-        : 'Click the map to add corners, or move the map and use Add corner. Drag a corner to move it.'}
-    </p>
-  );
   const count = (
     <p className="draw__count" aria-live="polite">
       <span className="text-readout-inline">{pluralize(n, 'corner')}</span>
@@ -354,82 +294,67 @@ export function DrawControls(props: {
       ) : null}
     </p>
   );
-  const notes = (
-    <>
-      {state.closed && problem ? <p className="draw__problem">{stillNeeded(problem)}</p> : null}
-      {error ? (
-        <p className="draw__error" role="alert">
-          {error}
-        </p>
-      ) : null}
-    </>
-  );
-  const tools = (
-    <>
-      {state.closed ? null : (
-        <Action icon={Plus} onClick={() => act({ type: 'add', at: centre(props.frame) })}>
-          Add corner
-        </Action>
-      )}
-      <Action icon={Undo2} onClick={() => act({ type: 'undo' })} disabled={!state.history.length}>
-        Undo
-      </Action>
-      <Action
-        icon={Trash2}
-        onClick={() => state.selected !== null && act({ type: 'remove', index: state.selected })}
-        disabled={state.selected === null}
-      >
-        Remove corner
-      </Action>
-      {state.closed ? null : (
-        <Action icon={Check} onClick={() => act({ type: 'close' })} disabled={!canClose(state)}>
-          Close shape
-        </Action>
-      )}
-    </>
-  );
-  const saveButton = (
-    <Button variant="primary" size="sm" loading={busy} onClick={() => void save()}>
-      {subject.save}
-    </Button>
-  );
-  const cancel = (
-    <Button size="sm" icon={X} onClick={props.onCancel} disabled={busy}>
-      Cancel
-    </Button>
-  );
-
-  if (props.layout === 'bar')
-    return (
-      <ToolsBar
-        label={`Drawing the ${subject.noun}`}
-        panel={
-          <>
-            {how}
-            <div className="draw__actions">
-              {tools}
-              {cancel}
-            </div>
-          </>
-        }
-        lead={count}
-        action={saveButton}
-      >
-        {props.fields}
-        {notes}
-      </ToolsBar>
-    );
   return (
-    <div className="draw">
-      {how}
-      {count}
-      {props.fields}
-      {notes}
-      <div className="draw__actions">{tools}</div>
-      <div className="draw__actions">
-        {saveButton}
-        {cancel}
-      </div>
-    </div>
+    <>
+      <InSlot slot="pill">
+        <EditPill
+          label={`Drawing ${subject.noun}`}
+          onDone={() => void save()}
+          onCancel={props.onCancel}
+          busy={busy}
+        />
+      </InSlot>
+      <InSlot slot="bar">
+        <div className="draw-bar" role="group" aria-label={`Drawing the ${subject.noun}`}>
+          {count}
+          {state.closed ? null : (
+            <Action icon={Plus} onClick={() => act({ type: 'add', at: centre(props.frame) })}>
+              Add corner
+            </Action>
+          )}
+          <Action
+            icon={Undo2}
+            onClick={() => act({ type: 'undo' })}
+            disabled={!state.history.length}
+          >
+            Undo
+          </Action>
+          <Action
+            icon={Trash2}
+            onClick={() =>
+              state.selected !== null && act({ type: 'remove', index: state.selected })
+            }
+            disabled={state.selected === null}
+          >
+            Remove corner
+          </Action>
+          {state.closed ? null : (
+            <Action
+              icon={Pentagon}
+              onClick={() => act({ type: 'close' })}
+              disabled={!canClose(state)}
+            >
+              Close shape
+            </Action>
+          )}
+        </div>
+      </InSlot>
+      <InSlot slot="body">
+        <div className="draw">
+          <p className="draw__how">
+            {state.closed
+              ? 'Drag a corner to move it, or select it and use the arrow keys. Done saves the shape.'
+              : 'Click the map to add corners, or move the map and use Add corner. Drag a corner to move it.'}
+          </p>
+          {props.fields}
+          {state.closed && problem ? <p className="draw__problem">{stillNeeded(problem)}</p> : null}
+          {error ? (
+            <p className="draw__error" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
+      </InSlot>
+    </>
   );
 }
