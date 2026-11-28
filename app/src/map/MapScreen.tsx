@@ -38,7 +38,7 @@ import {
   type BasemapView,
 } from './basemaps';
 import { useAutoHide } from './chrome/useAutoHide';
-import { AreasLayer } from './components/AreasLayer';
+import { AreaNames, AreasLayer } from './components/AreasLayer';
 import { DownloadAreaSheet } from './components/DownloadAreaSheet';
 import { LayersSheet } from './components/LayersSheet';
 import { MapBottomSheet, type NearestStand } from './components/MapBottomSheet';
@@ -55,7 +55,7 @@ import { describeMeshStatus } from './meshStatus';
 import type { Bounds } from './tiles';
 import { ALL_LAYERS_ON, MAP_LAYER_IDS, type MapLayerVisibility } from './layers';
 import { placeOf } from './place';
-import { labelledStands } from './standLabels';
+import { mapLabels } from './mapLabels';
 import { useMapPacks } from './useMapPacks';
 import { useYourLocation } from './useYourLocation';
 import { useConditions } from '../weather/useConditions';
@@ -175,9 +175,17 @@ export function MapScreen({
   const mapTop = insets.top;
   const mapHeight = Math.max(0, size.height - mapTop);
   const peekHeight = mapChrome.sheet.peekBySurface.app;
-  const standLabels = useMemo(
-    () => labelledStands(data.openStands, view, size, selectedStand),
-    [data.openStands, view, size, selectedStand],
+  // Names on the map: stands beside their markers, areas clear of every stand (shared rules).
+  const labels = useMemo(
+    () =>
+      mapLabels(
+        layers.stands ? data.openStands : [],
+        layers.areas ? (clubAreas ?? []) : [],
+        view,
+        size,
+        selectedStand,
+      ),
+    [data.openStands, clubAreas, layers.stands, layers.areas, view, size, selectedStand],
   );
 
   const onLayout = useCallback((event: LayoutChangeEvent) => {
@@ -244,16 +252,21 @@ export function MapScreen({
   };
   const hasAreas = !!clubAreas?.some((a) => a.boundary);
 
-  // The faded pieces take no taps and are hidden from screen readers.
+  // At full the sheet covers the map with its own header: the pill, stack and footer hide.
+  const sheetFull = detent === 'full';
+  const hidden = chrome.hidden || sheetFull;
+  // The faded or hidden pieces take no taps and are hidden from screen readers.
   const fade = {
-    style: { opacity: chrome.opacity },
-    pointerEvents: chrome.hidden ? ('none' as const) : ('box-none' as const),
-    accessibilityElementsHidden: chrome.hidden,
-    importantForAccessibility: chrome.hidden ? ('no-hide-descendants' as const) : ('auto' as const),
+    style: { opacity: sheetFull ? 0 : chrome.opacity },
+    pointerEvents: hidden ? ('none' as const) : ('box-none' as const),
+    accessibilityElementsHidden: hidden,
+    importantForAccessibility: hidden ? ('no-hide-descendants' as const) : ('auto' as const),
   };
+  const groupLabel = club?.clubName ?? 'Party';
   const sheetCommon = {
     mapTop,
     mapHeight,
+    title: groupLabel,
     detent,
     onDetent: setDetent,
     reduceMotion,
@@ -280,12 +293,13 @@ export function MapScreen({
       >
         <Camera ref={cameraRef} initialViewState={initialView} />
         {layers.areas && clubAreas ? <AreasLayer areas={clubAreas} /> : null}
+        <AreaNames labels={labels.areas} />
         <MapLayers
           data={data}
           alerts={alerts}
           now={now}
           layers={layers}
-          standLabels={standLabels}
+          standLabels={labels.stands}
           onStandPress={setSelectedStand}
         />
         {/* No scent cone while the wind is calm or unknown, or with its layer off. */}
@@ -314,7 +328,7 @@ export function MapScreen({
         ]}
       >
         <MapPill
-          groupLabel={club?.clubName ?? 'Party'}
+          groupLabel={groupLabel}
           mesh={data.mesh}
           now={now}
           next={next}

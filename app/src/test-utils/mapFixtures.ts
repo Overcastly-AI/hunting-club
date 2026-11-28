@@ -40,6 +40,7 @@ export function sheetFixture(overrides: Partial<SheetCommon> = {}): SheetCommon 
   return {
     mapTop: 47,
     mapHeight: 701,
+    title: 'Pine Ridge Hunt Club',
     detent: 'peek',
     onDetent: jest.fn(),
     reduceMotion: true,

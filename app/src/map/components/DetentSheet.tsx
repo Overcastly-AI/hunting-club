@@ -1,22 +1,26 @@
 import {
   SHEET_DETENTS,
+  SHEET_TOGGLE,
   mapChrome,
   sheetDetentHeights,
   snapDetent,
   type SheetDetent,
 } from '@huntclub/design';
+import { ChevronDown } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Animated,
   PanResponder,
+  Pressable,
   ScrollView,
+  Text,
   View,
   type AccessibilityActionEvent,
   type LayoutChangeEvent,
 } from 'react-native';
 
 import { Grabber } from '../../components/Grabber';
-import { makeStyles, radii, spacing } from '../../theme';
+import { ICON_SIZE, makeStyles, radii, sizes, spacing, textStyles, useTheme } from '../../theme';
 
 /** What each detent is called to a screen reader. */
 export const DETENT_NAMES: Record<SheetDetent, string> = {
@@ -32,6 +36,8 @@ type Props = {
   /** Where the map starts under the status bar, and how tall it is down to the tab bar. */
   mapTop: number;
   mapHeight: number;
+  /** At full, the header: this name in place of the status line, beside a collapse button. */
+  title: string;
   detent: SheetDetent;
   onDetent: (detent: SheetDetent) => void;
   reduceMotion: boolean;
@@ -49,11 +55,15 @@ type Props = {
  * One bottom sheet with real detents (docs/DESIGN.md "Map chrome" 4): peek (the app's 104 px:
  * the grabber zone and the action row), half and full of the map. The 48 px grabber zone drags
  * it; a release snaps to the nearest detent, and a flick moves one detent its way (snapDetent).
- * Screen readers move it with swipe up and down on the zone. The peek never hides. Built on
+ * Screen readers move it with swipe up and down on the zone. The peek never hides. At full it
+ * covers the map with its own header: the title (the club's name) and a 48 px collapse button
+ * that returns it to half (the map screen hides its pill, stack and footer meanwhile). Built on
  * React Native's own PanResponder and Animated: no gesture library.
  */
 export function DetentSheet(props: Props) {
   const styles = useStyles();
+  const theme = useTheme();
+  const full = props.detent === 'full';
   const [measuredPeek, setMeasuredPeek] = useState(0);
   const heights = useMemo(() => {
     const spec = sheetDetentHeights(props.mapHeight, 'app');
@@ -122,20 +132,45 @@ export function DetentSheet(props: Props) {
       ]}
     >
       <View onLayout={(e: LayoutChangeEvent) => setMeasuredPeek(e.nativeEvent.layout.height)}>
-        <View
-          {...pan.panHandlers}
-          accessible
-          accessibilityRole="adjustable"
-          accessibilityLabel={props.statusSpoken}
-          accessibilityValue={{ text: DETENT_NAMES[props.detent] }}
-          accessibilityHint="Swipe up or down to show more or less"
-          accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
-          onAccessibilityAction={step}
-          style={styles.handle}
-          testID="map-sheet-handle"
-        >
-          <Grabber />
-          {props.status}
+        <View style={styles.zone}>
+          <View
+            {...pan.panHandlers}
+            accessible
+            accessibilityRole="adjustable"
+            accessibilityLabel={full ? props.title : props.statusSpoken}
+            accessibilityValue={{ text: DETENT_NAMES[props.detent] }}
+            accessibilityHint="Swipe up or down to show more or less"
+            accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+            onAccessibilityAction={step}
+            style={styles.handle}
+            testID="map-sheet-handle"
+          >
+            <Grabber />
+            {full ? (
+              <Text testID="map-sheet-title" numberOfLines={1} style={styles.title}>
+                {props.title}
+              </Text>
+            ) : (
+              props.status
+            )}
+          </View>
+          {full ? (
+            // Outside the zone's one accessible element, so a screen reader reaches it on its own.
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={SHEET_TOGGLE.less}
+              onPress={() => props.onDetent('half')}
+              style={({ pressed }) => [styles.collapse, pressed && styles.pressed]}
+              testID="map-sheet-collapse"
+            >
+              <ChevronDown
+                size={ICON_SIZE.md}
+                color={theme.colors.text}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              />
+            </Pressable>
+          ) : null}
         </View>
         <View style={styles.actions}>{props.actions}</View>
       </View>
@@ -164,13 +199,26 @@ const useStyles = makeStyles((theme) => ({
     borderTopWidth: 1,
     borderColor: theme.colors.borderSubtle,
   },
-  // The 48 px zone that drags: the grabber over the one status line.
+  // The 48 px zone: the part that drags (the grabber over the one status line, or at full the
+  // title) and, at full, the collapse button beside it.
+  zone: { flexDirection: 'row', alignItems: 'flex-end' },
   handle: {
+    flex: 1,
     minHeight: mapChrome.sheet.handleZone,
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.xs,
     gap: spacing.xs,
   },
+  title: { ...textStyles.label, color: theme.colors.text },
+  collapse: {
+    width: sizes.minTapTarget,
+    height: sizes.minTapTarget,
+    marginRight: spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.control,
+  },
+  pressed: { backgroundColor: theme.colors.raised },
   actions: {
     minHeight: mapChrome.sheet.actionRow,
     flexDirection: 'row',

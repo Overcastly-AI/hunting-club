@@ -1,8 +1,10 @@
-import { GeoJSONSource, Layer } from '@maplibre/maplibre-react-native';
+import { GeoJSONSource, Layer, Marker } from '@maplibre/maplibre-react-native';
 import { useMemo } from 'react';
 
 import type { ClubArea } from '../../checkin/placement';
 import { colors, sizes } from '../../theme';
+import type { AreaLabel } from '../mapLabels';
+import { MapLabel } from './MapLabel';
 
 /**
  * The club's areas (docs/DESIGN.md "Dotted club areas"): each outline dotted in the map's text
@@ -40,5 +42,27 @@ export function AreasLayer({ areas }: { areas: readonly ClubArea[] }) {
         }}
       />
     </GeoJSONSource>
+  );
+}
+
+/**
+ * The areas' names (`mapLabels`): each centred inside its area's north edge, or moved off a stand
+ * it would cover. Names take no taps, so a tap there reaches the map or the stand under it.
+ */
+export function AreaNames({ labels }: { labels: readonly AreaLabel[] }) {
+  return (
+    <>
+      {labels.map((label) => (
+        <Marker
+          key={label.id}
+          id={`area-name-${label.id}`}
+          lngLat={[label.position.lon, label.position.lat]}
+          anchor="center"
+          offset={[0, label.dy]}
+        >
+          <MapLabel testID="area-label" text={label.text} pointerEvents="none" />
+        </Marker>
+      ))}
+    </>
   );
 }

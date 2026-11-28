@@ -16,15 +16,16 @@ import {
   radii,
   sizes,
   space,
+  standLabelCandidate,
+  standLabelLayout,
   textWidth,
   visibleLabels,
-  type FontWidth,
-  type LabelCandidate,
 } from '@huntclub/design';
 import {
   BASEMAP_IDS,
   BASEMAPS,
   polygonRings,
+  ringsLabelPoint,
   STAND_STATUS_LABELS,
   STAND_TYPE_LABELS,
   type BasemapId,
@@ -60,9 +61,7 @@ import {
   LOCATION_ZOOM,
   panView,
   pinchView,
-  plateSide,
   planBounds,
-  ringsLabelPoint,
   ringsPath,
   scaleBar,
   viewProjection,
@@ -123,7 +122,7 @@ const EDGE = FIT_PADDING;
  */
 export const DRAW_PADDING = sizes.minTapTarget / 2 + mapChrome.inset;
 /** An area's name sits this far inside its north edge, in px. */
-const AREA_LABEL_DROP = 20;
+const AREA_LABEL_DROP = mapChrome.labels.area.drop;
 /** The scale bar's longest length, in px: it shares the footer line with the credit. */
 const SCALE_MAX_PX = 96;
 /** Gaps on the footer line: bar to its length, length to the credit, in px. */
@@ -142,12 +141,6 @@ const HIT = sizes.minTapTarget;
 const ICON = ICON_SIZE.md;
 /** Padding around an area name's tap target. */
 const PLATE_PAD = 8;
-/** A stand's label: its name on one line over its halo, within the label cap. */
-const LABEL_HEIGHT = Math.min(
-  LABEL.maxHeight,
-  Math.ceil(LABEL.text.size * 1.25) + 2 * LABEL.text.halo,
-);
-const LABEL_FROM_CENTRE = STAND / 2 + LABEL.gap;
 /** A press that moves less than this many px is a tap, not a drag. */
 export const TAP_SLOP = 4;
 /** Arrow keys move the map this many px (ten times that with Shift). */
@@ -156,27 +149,6 @@ export const KEY_PAN_PX = 64;
 const WHEEL_ZOOM_PER_PX = 1 / 200;
 const GESTURES = mapChrome.gestures;
 
-/** `text`, cut with an ellipsis where it would run past `maxPx`. */
-export function fitText(text: string, maxPx: number, size: number, width: FontWidth): string {
-  if (textWidth(text, size, width) <= maxPx) return text;
-  const chars = Math.max(1, Math.floor(maxPx / textWidth('m', size, width)) - 1);
-  return `${text.slice(0, chars).trimEnd()}…`;
-}
-
-/** A stand's label on the map: its name as shown, its width (with the halo) and its side. */
-function standLabel(stand: PlanStand, x: number, mapWidth: number) {
-  const halo = LABEL.text.halo;
-  const name = fitText(stand.name, LABEL.maxWidth - 2 * halo, LABEL.text.size, fontWidth.normal);
-  const width = Math.min(
-    LABEL.maxWidth,
-    2 * halo + textWidth(name, LABEL.text.size, fontWidth.normal),
-  );
-  // Right of the stand, or left of it where the right would run off the map.
-  const side = plateSide(x, LABEL_FROM_CENTRE, width, mapWidth);
-  const offset = side === 'right' ? LABEL_FROM_CENTRE : -(LABEL_FROM_CENTRE + width);
-  return { name, width, side, offset };
-}
-
 /** Which stands show their name (mapChrome.labels): the rest are icons until tapped or zoomed. */
 function labelledStands(
   stands: readonly PlanStand[],
@@ -184,19 +156,9 @@ function labelledStands(
   mapWidth: number,
   selected: string | null,
 ): Set<string> {
-  const candidates: LabelCandidate[] = stands.map((stand) => {
+  const candidates = stands.map((stand) => {
     const [x, y] = projection.project(stand.lon, stand.lat);
-    const label = standLabel(stand, x, mapWidth);
-    return {
-      id: stand.id,
-      marker: { x: x - HIT / 2, y: y - HIT / 2, width: HIT, height: HIT },
-      label: {
-        x: x + label.offset,
-        y: y - LABEL_HEIGHT / 2,
-        width: label.width,
-        height: LABEL_HEIGHT,
-      },
-    };
+    return standLabelCandidate(stand, x, y, mapWidth);
   });
   return visibleLabels(candidates, projection.view.zoom, selected);
 }
@@ -1024,7 +986,7 @@ function Stand(props: {
   const [x, y] = props.at;
   const Icon = standIcon(stand.type);
   const status = STAND_STATUS_LABELS[stand.active ? 'open' : 'closed'];
-  const label = standLabel(stand, x, props.mapWidth);
+  const label = standLabelLayout(stand.name, x, props.mapWidth);
   return (
     <g
       transform={`translate(${x.toFixed(1)} ${y.toFixed(1)})`}
@@ -1072,7 +1034,7 @@ function Stand(props: {
           y={(LABEL.text.size * 0.35).toFixed(1)}
           data-width={label.width.toFixed(1)}
         >
-          {label.name}
+          {label.text}
         </text>
       ) : null}
     </g>
