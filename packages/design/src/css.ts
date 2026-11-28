@@ -1,6 +1,7 @@
 // CSS for the web surfaces (club admin and public site), generated from the tokens so no
 // page retypes a value. Plain strings: no DOM code here.
 import { colors, mapPlanColors } from './colors';
+import { mapChrome } from './mapChrome';
 import { breakpoints, motion, radii, sizes, spacing } from './sizes';
 import {
   THEME_ATTRIBUTE,
@@ -44,7 +45,29 @@ export function tokenVariables(): Record<string, string> {
   vars['--motion-fast'] = `${motion.fast}ms`;
   vars['--motion-base'] = `${motion.base}ms`;
   vars['--motion-easing'] = motion.easing;
+  Object.assign(vars, mapChromeVariables());
   return vars;
+}
+
+/** The map chrome spec as `--map-chrome-*` variables (px and ms), e.g. `--map-chrome-pill-height`. */
+export function mapChromeVariables(): Record<string, string> {
+  const { inset, pill, stack, sheet, footer, autoHide, labels } = mapChrome;
+  const px = (n: number) => `${n}px`;
+  return {
+    '--map-chrome-inset': px(inset),
+    '--map-chrome-pill-height': px(pill.height),
+    '--map-chrome-pill-max-width': px(pill.maxWidth),
+    '--map-chrome-stack-button': px(stack.button),
+    '--map-chrome-stack-gap': px(stack.gap),
+    '--map-chrome-zoom-width': px(stack.zoomWidth),
+    '--map-chrome-zoom-height': px(stack.zoomHeight),
+    '--map-chrome-sheet-handle': px(sheet.handleZone),
+    '--map-chrome-sheet-peek': px(sheet.detents.peek),
+    '--map-chrome-footer-height': px(footer.height),
+    '--map-chrome-fade': `${autoHide.fadeMs}ms`,
+    '--map-chrome-label-max-width': px(labels.maxWidth),
+    '--map-chrome-label-max-height': px(labels.maxHeight),
+  };
 }
 
 const declarations = (vars: Record<string, string>) =>
@@ -56,7 +79,7 @@ const declarations = (vars: Record<string, string>) =>
 export function rootVariablesCss(): string {
   return [
     `:root { ${declarations(tokenVariables())} color-scheme: dark; }`,
-    `@media (prefers-reduced-motion: reduce) { :root { --motion-fast: 0ms; --motion-base: 0ms; } }`,
+    `@media (prefers-reduced-motion: reduce) { :root { --motion-fast: 0ms; --motion-base: 0ms; --map-chrome-fade: 0ms; } }`,
   ].join('\n');
 }
 

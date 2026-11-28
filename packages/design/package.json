@@ -9,6 +9,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./colors": "./src/colors.ts",
+    "./mapChrome": "./src/mapChrome.ts",
     "./fonts/*": "./fonts/*",
     "./png": "./scripts/png.ts",
     "./aerial": "./src/aerial.ts",
