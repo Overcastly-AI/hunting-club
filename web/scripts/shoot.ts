@@ -5,7 +5,12 @@
 // issue, and that the phone's More sheet takes focus and gives it back to the More tab. On My
 // club it measures the map chrome's real rects against the coverage budget (docs/DESIGN.md
 // "Map chrome" 1, the shared measureCoverage) and fails above it at rest and while drawing;
-// every My club shot's coverage is printed. Screenshots (deviceScaleFactor 1) go to
+// every My club shot's coverage is printed. On phones (PHONE_VIEWPORTS, from the iPhone audit)
+// it checks that the sign-in email field is in the first screen on an SE, the "Sample property"
+// label is clear of the form in landscape, every page plus the club switcher and More are on
+// screen in landscape, the More sheet, account menu and stand drawer stay within the sheet's
+// full detent with Sign out reachable, and the roster filter's words keep to one line ("phones"
+// in the shot list runs only these). Screenshots (deviceScaleFactor 1) go to
 // docs/redesign/<folder>/ (m2 unless named), optionally only the named shots. The sample
 // property's committed aerial map pack (sample-pack/, built by scripts/sample-pack.ts) is
 // served with range requests, as CloudFront serves packs: at the demo club's key (My club)
@@ -21,6 +26,8 @@ import {
   formatCoverage,
   mapChrome,
   measureCoverage,
+  PHONE_VIEWPORTS,
+  type PhoneViewport,
   THEME_STORAGE_KEY,
   type Rect,
 } from '@huntclub/design';
@@ -34,6 +41,7 @@ import { extname, join, resolve } from 'node:path';
 import { contentSecurityPolicy, PERMISSIONS_POLICY } from '../../infra/src/security-headers';
 import { SAMPLE_PACK, samplePack } from '../src/map/samplePack';
 import { sampleData } from '../src/testing/fakeClubApi';
+import { PAGES } from '../src/shell/routes';
 import { samplePackFile } from './samplePackFile';
 
 const WEB = process.cwd();
@@ -373,6 +381,142 @@ function serve(packArchive: Buffer): Promise<{ server: Server; origin: string }>
   );
 }
 
+/** A page the phone checks open (closing it closes its context). */
+type PhonePage = Page;
+
+/** A box in the window, from the page. */
+interface Box {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+  height: number;
+}
+const boxOf = (page: Page, selector: string) =>
+  page.evaluate<Box | null>(
+    `(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return null;
+      const r = el.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height }; })()`,
+  );
+const meets = (a: Box, b: Box) =>
+  a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+
+/**
+ * The iPhone audit's checks (docs/STATUS.md, 2026-11-28), on the phones in PHONE_VIEWPORTS.
+ * `open(scenario, hash, phone)` loads the demo on that phone with touch, in the dark theme.
+ */
+async function phoneChecks(
+  open: (scenario: string, hash: string, phone: PhoneViewport) => Promise<PhonePage>,
+  problems: string[],
+) {
+  const { sePortrait, iphone15Portrait, iphone15Landscape, proMaxLandscape } = PHONE_VIEWPORTS;
+  /** A screenshot of the window as checked: `phone-<what>-<phone>.png`. */
+  const shoot = (page: Page, what: string, phone: PhoneViewport) =>
+    page.screenshot({
+      path: join(OUT, `phone-${what}-${phone.name.toLowerCase().replaceAll(' ', '-')}.png`),
+      fullPage: false,
+    });
+  const sheetMax = (phone: PhoneViewport) => phone.height * mapChrome.sheet.detents.full + 1;
+
+  // Sign-in: the email field in the first screen on an SE; in landscape, the caption off the form.
+  for (const phone of [sePortrait, iphone15Portrait, iphone15Landscape, proMaxLandscape]) {
+    const page = await open('signedOut', '', phone);
+    const field = await boxOf(page, 'input[type="email"]');
+    console.log(
+      `${phone.name}: sign-in email field ends at ${field?.bottom}px (first screen ${phone.fold ?? phone.height}px)`,
+    );
+    if (phone === sePortrait && (!field || field.bottom > (phone.fold ?? phone.height)))
+      problems.push(
+        `${phone.name}: the sign-in email field ends at ${field?.bottom}px, below the fold`,
+      );
+    const door = await boxOf(page, '.signin__door');
+    const caption = await boxOf(page, '.signin__sample');
+    if (door && caption && meets(door, caption))
+      problems.push(`${phone.name}: the "Sample property" label is under the sign-in form`);
+    await shoot(page, 'signin', phone);
+    await page.close();
+  }
+
+  // Every page, the club switcher and More are on screen and on top, both ways up.
+  const navTargets = [
+    ...PAGES.filter((p) => !('inMore' in p)).map((p) => `.shell-nav a[href="#/${p.path}"]`),
+    '.shell-nav__slot--more button',
+    '.shell-club__button',
+    '.shell-account__button',
+  ];
+  for (const phone of [sePortrait, iphone15Portrait, iphone15Landscape, proMaxLandscape]) {
+    const page = await open('active', '#/roster', phone);
+    const hidden = await page.evaluate<string[]>(
+      `${JSON.stringify(navTargets)}.filter((sel) => {
+        const el = document.querySelector(sel); if (!el) return true;
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 || r.left < 0 || r.top < 0 || r.right > innerWidth + 1 || r.bottom > innerHeight + 1) return true;
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return !hit || !el.contains(hit);
+      })`,
+    );
+    for (const sel of hidden)
+      problems.push(
+        `${phone.name}: ${sel} is not on screen ` +
+          (await page.evaluate<string>(
+            `(() => { const el = document.querySelector(${JSON.stringify(sel)}); if (!el) return 'missing'; const r = el.getBoundingClientRect(); const h = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return JSON.stringify([r.left, r.top, r.right, r.bottom, innerWidth, innerHeight, h && h.className]); })()`,
+          )),
+      );
+    // The roster filter: each segment's words on one line (a segment is one 48 px row).
+    const wrapped = await page.evaluate<string[]>(
+      `[...document.querySelectorAll('.filters .ui-segment')].filter((el) => el.getBoundingClientRect().height > ${mapChrome.stack.button} + 1).map((el) => el.textContent)`,
+    );
+    for (const w of wrapped) problems.push(`${phone.name}: the roster filter "${w}" wraps`);
+    await shoot(page, 'roster', phone);
+    await page.close();
+  }
+
+  // Phone sheets: as tall as their contents, never over the full detent, Sign out reachable.
+  for (const phone of [sePortrait, iphone15Portrait]) {
+    const sheets: [string, string, (page: PhonePage) => Promise<void>][] = [
+      [
+        'More sheet',
+        '.ui-dialog[open]',
+        (page) => page.getByRole('button', { name: /^More/ }).click(),
+      ],
+      ['Account menu', '.shell-account__panel:not([hidden])', openAccount],
+    ];
+    for (const [name, selector, act] of sheets) {
+      const page = await open('active', '#/roster', phone);
+      await act(page);
+      await page.waitForSelector(selector);
+      await page.waitForTimeout(250);
+      const sheet = await boxOf(page, selector);
+      console.log(`${phone.name}: ${name} ${sheet?.height}px of ${phone.height}px`);
+      if (!sheet || sheet.height > sheetMax(phone))
+        problems.push(
+          `${phone.name}: the ${name} is ${sheet?.height}px tall, over ${sheetMax(phone)}px`,
+        );
+      // Scrolled to inside the sheet, as a thumb would: it must then be in the window.
+      const button = await page.evaluate<Box | null>(
+        `(() => { const b = [...document.querySelectorAll(${JSON.stringify(`${selector} button`)})]
+          .find((el) => el.textContent.trim() === 'Sign out'); if (!b) return null;
+          b.scrollIntoView({ block: 'nearest' }); const r = b.getBoundingClientRect();
+          return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height }; })()`,
+      );
+      if (!button || button.top < 0 || button.bottom > phone.height)
+        problems.push(`${phone.name}: Sign out in the ${name} cannot be reached`);
+      await shoot(page, name.toLowerCase().replaceAll(' ', '-'), phone);
+      await page.close();
+    }
+    const page = await open('trial', '#/club', phone);
+    await page.waitForSelector('.plan__basemap image');
+    await openStand(page);
+    const drawer = await boxOf(page, '.ui-dialog--side[open]');
+    console.log(`${phone.name}: stand drawer ${drawer?.height}px of ${phone.height}px`);
+    if (!drawer || drawer.height > sheetMax(phone))
+      problems.push(
+        `${phone.name}: the stand drawer is ${drawer?.height}px tall, over ${sheetMax(phone)}px`,
+      );
+    await shoot(page, 'stand-drawer', phone);
+    await page.close();
+  }
+}
+
 async function main() {
   if (!existsSync(join(DIST, 'index.html')))
     throw new Error('Build the kit first: npm run build:kit');
@@ -405,6 +549,29 @@ async function main() {
   const coverage: string[] = [];
   let count = 0;
   try {
+    if (!only || only.includes('phones')) {
+      const open = async (scenario: string, hash: string, phone: PhoneViewport) => {
+        const context = await browser.newContext({
+          viewport: { width: phone.width, height: phone.height },
+          deviceScaleFactor: 1,
+          isMobile: true,
+          hasTouch: true,
+          reducedMotion: 'reduce',
+          timezoneId: 'America/Chicago',
+        });
+        const page = (await context.newPage()) as unknown as PhonePage;
+        await page.goto(`${origin}${ADMIN_PATH}?demo=${scenario}${hash}`);
+        await page.waitForSelector('h1');
+        await page.waitForTimeout(400);
+        const close = page.close.bind(page);
+        page.close = async () => {
+          await close();
+          await context.close();
+        };
+        return page;
+      };
+      await phoneChecks(open, problems);
+    }
     for (const shot of SHOTS) {
       if (only && !only.includes(shot.name)) continue;
       for (const width of widthsFor(shot)) {

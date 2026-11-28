@@ -160,7 +160,9 @@ const segmented = `
 .ui-segment:has(:disabled) { cursor: not-allowed; color: ${color('textTertiary')}; background: transparent; }
 .ui-segment:has(:checked:disabled) { background: ${color('raised')}; color: ${color('textTertiary')}; }
 .ui-segment__preview { display: block; border-radius: var(--radius-sm); overflow: hidden; }
-${PHONE} { .ui-segmented { display: flex; justify-self: stretch; } .ui-segment { flex: 1 1 0; } }
+/* Phones: the row spans the width, each segment as wide as its words need ("Everyone 12" on one line). */
+${PHONE} { .ui-segmented { display: flex; justify-self: stretch; }
+  .ui-segment { flex: 1 1 auto; padding-inline: ${gap(2)}; white-space: nowrap; } }
 `;
 
 export const controlsCss = () =>

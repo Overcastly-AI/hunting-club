@@ -51,7 +51,7 @@ One family, with a rule that carries meaning: words are set at normal width, and
 
 | Role | Size | Width | Weight |
 |---|---|---|---|
-| Site headline | 50 px (36 on a phone) | 88 | 800 |
+| Site headline | 50 px (36 under 640 px wide; 30 on a phone either way up) | 88 | 800 |
 | Page and sheet titles | 23 to 38 px | 88 | 800 |
 | Body | 17 px / 1.5 (16 in the phone) | 100 | 450 |
 | Buttons | 17 to 20 px | 92 | 750 to 800 |

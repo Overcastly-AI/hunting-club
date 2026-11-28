@@ -127,10 +127,16 @@ export const spacing = {
   xl: space[8],
 } as const;
 
-/** Layout breakpoints in px: tablet from 640, desktop from 1024. */
+/**
+ * Layout breakpoints in px: tablet from 640, desktop from 1024. A phone is narrower than
+ * `phone` held upright, or shorter than `shortHeight` on its side (every iPhone in landscape
+ * is 640 to 932 px wide but at most 430 px tall).
+ */
 export const breakpoints = {
+  phone: 480,
   tablet: 640,
   desktop: 1024,
+  shortHeight: 480,
 } as const;
 
 /** Motion (docs/UI_REDESIGN.md 4.4). Under prefers-reduced-motion: no transforms, instant. */

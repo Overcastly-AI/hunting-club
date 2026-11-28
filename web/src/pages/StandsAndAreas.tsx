@@ -17,10 +17,14 @@ import { DataTable, EmptyState } from '../components/ui';
 import { ICON_SIZE } from '@huntclub/design';
 import { useClubBasemap } from '../map/basemap';
 import { ClubMap } from '../map/ClubMap';
+import { HOME_PATH, PAGES } from '../shell/routes';
+
+/** Where the web edits them: My club's map (its name from the routes). */
+const ON_THE_MAP = `on the ${PAGES.find((p) => p.path === HOME_PATH)!.label} map`;
 
 /**
- * The club's stands and named areas, beside the club plan. They are placed and drawn in the
- * app (on the phone, at the spot); the web lists them.
+ * The club's stands and named areas, beside the club plan. They are placed and drawn on My
+ * club's map, or in the app (on the phone, at the spot); this page lists them.
  */
 export function StandsAndAreas(props: { api: ClubApi }) {
   // Both lists together: stand rows show their area's name, area rows count their stands.
@@ -42,7 +46,7 @@ export function StandsAndAreas(props: { api: ClubApi }) {
       title="Stands and areas"
       description={
         places.status === 'ready'
-          ? `${pluralize(places.value[0].length, 'stand')} and ${pluralize(places.value[1].length, 'area')}. Place and draw them in the app.`
+          ? `${pluralize(places.value[0].length, 'stand')} and ${pluralize(places.value[1].length, 'area')}. Add and edit them ${ON_THE_MAP} or in the app.`
           : undefined
       }
     >
@@ -78,7 +82,7 @@ function Places(props: {
           initialSort={{ key: 'name', direction: 'ascending' }}
           empty={
             <EmptyState icon={MapPin} title="No stands yet" titleAs="h3">
-              Add stands in the app, standing at the spot.
+              Add stands {ON_THE_MAP}, or in the app standing at the spot.
             </EmptyState>
           }
           columns={[
@@ -123,7 +127,7 @@ function Places(props: {
           initialSort={{ key: 'name', direction: 'ascending' }}
           empty={
             <EmptyState icon={MapPin} title="No areas yet" titleAs="h3">
-              Draw areas in the app to split the property into named parts.
+              Draw areas {ON_THE_MAP} or in the app to split the property into named parts.
             </EmptyState>
           }
           columns={[
@@ -153,7 +157,7 @@ function Places(props: {
         insets={{ top: 24, right: 24, bottom: 40, left: 24 }}
         empty={{
           title: 'Nothing to draw yet',
-          line: 'Place stands and draw areas in the app, at the spot.',
+          line: `Place stands and draw areas ${ON_THE_MAP} or in the app.`,
         }}
       />
     </div>

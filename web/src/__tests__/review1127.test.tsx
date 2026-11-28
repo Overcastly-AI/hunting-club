@@ -1,6 +1,6 @@
 // UI Director review, 2026-11-27, batch 2: the sign-in code step and backdrop, loading
 // skeletons, empty states and wording.
-import { opacity } from '@huntclub/design';
+import { opacity, PHONE_MEDIA } from '@huntclub/design';
 import {
   ClubSession,
   emailCodeRules,
@@ -14,6 +14,7 @@ import { adminApi } from '../api/admin';
 import { App } from '../App';
 import { Loading, type LoadingLayout } from '../components/Loading';
 import { SKELETON_DELAY_MS } from '../components/ui';
+import { SHELL } from '../components/ui/sizes';
 import { SAMPLE_PACK } from '../map/samplePack';
 import { SAMPLE_PROPERTY } from '@huntclub/shared/sample';
 import { globalCss } from '../theme/css';
@@ -79,6 +80,18 @@ describe('sign-in page', () => {
       vi.unstubAllGlobals();
     }
     expect(globalCss()).toContain(`.signin__map .plan__basemap { opacity: ${opacity.backdrop}; }`);
+  });
+
+  it('on a phone: a short sample map and a smaller title, so the email field is in the first screen', () => {
+    const css = globalCss();
+    expect(css).toContain(
+      `.signin__map { position: relative; inset: auto; z-index: 0; order: -1; height: ${SHELL.signInMapHeightPhone}px;`,
+    );
+    expect(css).toContain(
+      `@media ${PHONE_MEDIA} { .signin__door .ui-page-header__title { font-size: 1.875rem; line-height: 2.25rem; } }`,
+    );
+    // From the tablet width up, the caption wraps before it reaches the form's room.
+    expect(css).toContain(`max-width: calc(100% - ${SHELL.signInDoorRoom}px - var(--space-6));`);
   });
 
   it('sizes the form plate to its contents, centred, with the field on the plate fill', () => {

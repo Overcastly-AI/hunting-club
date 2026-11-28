@@ -2,7 +2,18 @@
 // map-first look (docs/DESIGN.md). Things that float over the page are plates with the floating shadow; a
 // tooltip is inverted (plate on ink); tabs are words with the orange bar under the chosen one.
 import { MOBILE_TAB_BAR_HEIGHT, SHELL } from '../sizes';
-import { color, focusRing, gap, HAIR, PHONE, TABLET_UP, TAP, text, transition } from './shared';
+import {
+  color,
+  focusRing,
+  gap,
+  HAIR,
+  PHONE,
+  SHELL_BARS,
+  TABLET_UP,
+  TAP,
+  text,
+  transition,
+} from './shared';
 
 /** Floating layers (toasts): a plate with a hairline edge and the popover shadow. */
 const popover = `background: ${color('plate')}; border: ${HAIR}; box-shadow: ${color('shadowPopover')};
@@ -32,9 +43,10 @@ ${TABLET_UP} {
     max-height: 100dvh; border-width: 0 0 0 1px; border-radius: var(--radius-xl) 0 0 var(--radius-xl); }
   .ui-dialog--side[open] { animation: ui-slide-in-end var(--motion-base) var(--motion-easing); }
 }
-/* Phones: a sheet rising from the bottom (16 px top corners), the main action on top, full width. */
+/* Phones: a sheet rising from the bottom (16 px top corners), the main action on top, full width,
+   as tall as its contents up to the sheet's full detent (mapChrome); the body scrolls past that. */
 ${PHONE} {
-  .ui-dialog { width: 100%; max-width: 100%; margin: auto 0 0; max-height: calc(100dvh - ${gap(8)});
+  .ui-dialog { width: 100%; max-width: 100%; margin: auto 0 0; max-height: var(--map-chrome-sheet-max);
     border-radius: var(--radius-xl) var(--radius-xl) 0 0; border-bottom: 0;
     padding-bottom: env(safe-area-inset-bottom); }
   .ui-dialog__header { padding-left: ${gap(4)}; }
@@ -47,7 +59,7 @@ ${PHONE} {
 const toast = `
 .ui-toast-viewport { position: fixed; right: ${gap(6)}; bottom: ${gap(6)}; z-index: 100; display: grid; gap: ${gap(2)};
   width: min(420px, calc(100vw - 2 * ${gap(4)})); margin: 0; padding: 0; list-style: none; outline: none; }
-${PHONE} {
+${SHELL_BARS} {
   .ui-toast-viewport { left: ${gap(3)}; right: ${gap(3)}; width: auto;
     bottom: calc(${MOBILE_TAB_BAR_HEIGHT}px + env(safe-area-inset-bottom) + ${gap(3)}); }
 }

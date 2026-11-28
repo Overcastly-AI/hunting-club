@@ -9,8 +9,8 @@ import {
   focusRing,
   gap,
   HAIR,
-  PHONE,
-  TABLET,
+  SHELL_BARS,
+  SHELL_RAIL,
   TAP,
   text,
   transition,
@@ -85,9 +85,9 @@ ${focusRing(['.shell-nav__item'])}
 .shell-nav__item:focus-visible { outline-offset: -3px; }
 `;
 
-/** 640–1023 px: the rail narrows to icons over short words; the club block moves to the pages. */
+/** 640–1023 px and tall: the rail narrows to icons over short words; the club block moves to the pages. */
 const rail = `
-${TABLET} {
+${SHELL_RAIL} {
   .shell-side { width: ${SHELL.railWidth}px; padding: ${gap(3)} ${gap(1)} ${gap(2)}; }
   .shell-brand { justify-content: center; padding: 0; }
   .shell-brand__name, .shell-club, .shell-account__who, .shell-nav__label-rest { display: none; }
@@ -101,9 +101,9 @@ ${TABLET} {
 }
 `;
 
-/** Under 640 px: the side becomes the top bar and its nav the docked tab bar. */
+/** Phones either way up (under 640 px, or on their side): the top bar and the docked tab bar. */
 const phone = `
-${PHONE} {
+${SHELL_BARS} {
   .shell-side { bottom: auto; right: 0; width: auto; height: ${SHELL.topBarHeight}px; flex-direction: row;
     align-items: center; gap: ${gap(2)}; padding: 0 ${gap(2)} 0 ${gap(4)}; border-right: 0; border-bottom: ${HAIR}; }
   .shell-brand { padding: 0; min-height: 0; }
@@ -131,6 +131,10 @@ ${PHONE} {
   .shell-account__button { padding: 0; min-width: ${TAP}; min-height: ${TAP}; justify-content: center; }
   .shell-account .ui-popover__panel { position: fixed; top: ${SHELL.topBarHeight + 8}px; bottom: auto; left: auto;
     right: ${gap(4)}; }
+  /* Menus under the top bar: as tall as their contents, up to the sheet's full detent, then they scroll. */
+  .shell-account .ui-popover__panel, .shell-club .ui-popover__panel.shell-club__panel {
+    max-height: calc(var(--map-chrome-sheet-max) - ${SHELL.topBarHeight + 8}px); overflow-y: auto;
+    overscroll-behavior: contain; }
   .shell-main { margin: 0; padding: calc(${SHELL.topBarHeight}px + ${gap(5)}) ${gap(4)} calc(${TAB_BAR} + ${gap(8)}); }
   .shell-main--bleed { padding: ${SHELL.topBarHeight}px 0 ${TAB_BAR}; }
 }
@@ -141,7 +145,7 @@ const publicShell = `
 .shell-public-bar { display: flex; align-items: center; min-height: ${SHELL.topBarHeight}px; padding: 0 ${gap(4)};
   background: ${color('canvas')}; border-bottom: ${HAIR}; }
 .shell-public-main { max-width: calc(${SHELL.contentMaxWidth}px + 2 * ${gap(8)}); margin: 0 auto; padding: ${gap(8)}; }
-${PHONE} { .shell-public-main { padding: ${gap(6)} ${gap(4)}; } }
+${SHELL_BARS} { .shell-public-main { padding: ${gap(6)} ${gap(4)}; } }
 `;
 
 export const shellCss = () => [base, rail, phone, publicShell].join('\n');

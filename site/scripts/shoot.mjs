@@ -2,8 +2,13 @@
 // scrolls sideways from a 360 px phone to the widest screen the hero covers (1920 px), the
 // home map hero is full-bleed and its words are at map text size or more, the content
 // column is 1120 px on wide screens, and the phone menu opens as a sheet under a 64 px
-// header. Widths and sizes come from the site's own source (loaded with Vite), never
-// retyped. Uses the Playwright already on the machine (never installs a browser):
+// header. On the phones of the iPhone audit (PHONE_VIEWPORTS: SE and iPhone 15 upright, iPhone
+// 15 and Pro Max on their side) no word on any page starts inside the 16 px phone gutter and no
+// label or plate on the home map is cut by the window's edge. Pages are served with the real
+// Content-Security-Policy (infra/src/security-headers.ts), and any violation fails the run, in
+// Chromium and, where Playwright has it, WebKit. Widths and sizes come from the site's own
+// source (loaded with Vite), never retyped. Uses the Playwright already on the machine (never
+// installs a browser):
 //   npm run build -w @huntclub/site
 //   NODE_PATH=/opt/node-tools/node_modules node site/scripts/shoot.mjs docs/redesign/m4
 // Writes <page>-<width>-<dark|daylight>.png at deviceScaleFactor 1 (home at 390, 1280, 1440
@@ -17,15 +22,21 @@ import { fileURLToPath } from 'node:url';
 import { runnerImport } from 'vite';
 
 const require = createRequire(import.meta.url);
-const { chromium } = require('playwright');
+const { chromium, webkit } = require('playwright');
 
 const SITE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const source = async (file) => (await runnerImport(join(SITE, 'src', file))).module;
 const { MAP_COVERED_WIDTH } = await source('map/mapCss.ts');
-const { CONTENT_MAX_WIDTH, NARROWEST_PHONE } = await source('styles.ts');
+const { CONTENT_MAX_WIDTH, GUTTER, NARROWEST_PHONE } = await source('styles.ts');
 const { MENU_OPEN_CLASS, MENU_SHEET_ID, MENU_TOGGLE_CLASS, PHONE_HEADER_HEIGHT } =
   await source('menu/menu.ts');
 const { fontSize } = (await runnerImport(join(SITE, '..', 'packages/design/src/type.ts'))).module;
+const { PHONE_VIEWPORTS } = (await runnerImport(join(SITE, '..', 'packages/design/src/phones.ts')))
+  .module;
+const { contentSecurityPolicy } = (
+  await runnerImport(join(SITE, '..', 'infra/src/security-headers.ts'))
+).module;
+const CSP = contentSecurityPolicy({ name: 'dev' });
 
 const DIST = join(SITE, 'dist');
 const OUT = resolve(process.argv[2] ?? 'docs/redesign/m4');
@@ -69,7 +80,10 @@ const server = createServer((req, res) => {
     res.writeHead(404);
     return res.end();
   }
-  res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream' });
+  res.writeHead(200, {
+    'content-type': TYPES[extname(file)] ?? 'application/octet-stream',
+    'content-security-policy': CSP,
+  });
   createReadStream(file).pipe(res);
 });
 await new Promise((ok) => server.listen(0, ok));
@@ -78,6 +92,10 @@ mkdirSync(OUT, { recursive: true });
 
 const browser = await chromium.launch();
 const failures = [];
+/** Records every CSP violation a page reports (read back with `cspSeen`). */
+const CSP_WATCH = `window.__csp = []; document.addEventListener('securitypolicyviolation',
+  (e) => window.__csp.push(e.violatedDirective + ' ' + (e.blockedURI || 'inline')));`;
+const cspSeen = (page) => page.evaluate(() => window.__csp ?? []);
 const open = async (path, width, colorScheme, height = 900) => {
   const page = await browser.newPage({
     viewport: { width, height },
@@ -243,6 +261,72 @@ try {
       await check.close();
     }
   }
+  // The phones of the iPhone audit: words clear of the 16 px gutter, the hero's labels whole,
+  // and no CSP violation, in Chromium and (where it is installed) WebKit.
+  const engines = [['Chromium', browser]];
+  try {
+    engines.push(['WebKit', await webkit.launch()]);
+  } catch {
+    console.log('WebKit is not installed here: the CSP check runs in Chromium only.');
+  }
+  for (const [engine, b] of engines) {
+    for (const phone of Object.values(PHONE_VIEWPORTS)) {
+      const context = await b.newContext({
+        viewport: { width: phone.width, height: phone.height },
+        deviceScaleFactor: 1,
+        hasTouch: true,
+        ...(engine === 'Chromium' ? { isMobile: true } : {}),
+      });
+      await context.addInitScript(CSP_WATCH);
+      const page = await context.newPage();
+      for (const path of PAGES) {
+        await page.goto(origin + path, { waitUntil: 'networkidle' });
+        for (const v of await cspSeen(page))
+          failures.push(`${engine} ${phone.name} ${path}: CSP violation ${v}`);
+        if (engine !== 'Chromium') continue;
+        // Every element with words of its own starts at the gutter or further in (the full-bleed
+        // map hero and the header bar's own 12 px edge are their own layouts).
+        const early = await page.evaluate((gutter) => {
+          const out = [];
+          for (const el of document.querySelectorAll('main *, footer *')) {
+            if (el.closest('.hero, .mapview, .sym')) continue;
+            const own = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
+            if (!own) continue;
+            const r = el.getBoundingClientRect();
+            if (r.width === 0 || r.height === 0 || getComputedStyle(el).visibility === 'hidden')
+              continue;
+            if (el.closest('.sr-only')) continue;
+            if (r.left < gutter - 0.5)
+              out.push(
+                `${el.tagName.toLowerCase()} "${el.textContent.trim().slice(0, 30)}" at ${Math.round(r.left)}px`,
+              );
+          }
+          return out.slice(0, 5);
+        }, GUTTER.phone);
+        for (const e of early)
+          failures.push(`${phone.name} ${path}: ${e}, inside the ${GUTTER.phone}px gutter`);
+        if (path !== '/') continue;
+        const cut = await page.evaluate(() => {
+          const hero = document.querySelector('.hero').getBoundingClientRect();
+          return [...document.querySelectorAll('.hero .world .tag, .hero .world .lbl')]
+            .filter((el) => {
+              const r = el.getBoundingClientRect();
+              return (
+                r.width > 0 &&
+                r.right > hero.left &&
+                r.left < hero.right &&
+                (r.left < hero.left || r.right > hero.right)
+              );
+            })
+            .map((el) => el.textContent.trim());
+        });
+        for (const c of cut)
+          failures.push(`${phone.name}: the home map's "${c}" is cut by the window's edge`);
+      }
+      await context.close();
+    }
+    if (b !== browser) await b.close();
+  }
 } finally {
   await browser.close();
   server.close();
@@ -252,5 +336,5 @@ if (failures.length) {
   process.exit(1);
 }
 console.log(
-  `No page scrolls sideways; the home map hero is full-bleed with map text of ${fontSize.mapLabelMin}px or more and no marker or scale bar under a plate, and the content column at most ${CONTENT_MAX_WIDTH}px, at ${CHECK_WIDTHS.join(', ')}px. The phone menu opens and closes.`,
+  `No CSP violation; on the audit's phones no word sits in the ${GUTTER.phone}px gutter and no label on the home map is cut. No page scrolls sideways; the home map hero is full-bleed with map text of ${fontSize.mapLabelMin}px or more and no marker or scale bar under a plate, and the content column at most ${CONTENT_MAX_WIDTH}px, at ${CHECK_WIDTHS.join(', ')}px. The phone menu opens and closes.`,
 );
