@@ -2,6 +2,7 @@ export * from './colors';
 export * from './theme';
 export * from './contrast';
 export * from './sizes';
+export * from './mapChrome';
 export * from './type';
 export * from './logo';
 export * from './css';

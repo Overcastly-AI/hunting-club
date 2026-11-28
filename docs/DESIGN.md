@@ -65,25 +65,23 @@ Text is left aligned everywhere. Mixed case throughout; no capitals-only labels.
 ## Layout
 
 ```
-Phone, Map                          Phone, layers open
+Phone, Map (at rest)                Phone, drawing a property line
 +----------------------------+      +----------------------------+
-| 2:24                       |      | Sunrise|Sunset| Wind | Temp |
-| [Pine Ridge v][Mesh: 3 rad]|      |          map               |
-| Sunrise|Sunset| Wind | Temp|      |   (DB) Creek Stand         |
-| 6:52   | 4:38 | NW 6 | 34  |      +----------------------------+
-|                    [Layers]|      | Map layers          [Done] |
-|  (DB) Creek Stand  [North ]|      | [Aerial] [Topo] [Hybrid]   |
-|       Dale B., 2m  [Findme]|      | Property line and areas On |
-|     On the move (RT)       |      | Stands                  On |
-|          (o) You  \ scent  |      | Hunters checked in      On |
-| |_500 ft_| (JH) Hickory    |      | Wind and your scent     On |
-+----------------------------+      | Saved on this phone        |
-| Not checked in   2 h 14 min|      +----------------------------+
-| [ Check In ][Ask for a Hand|      | Map | Chat | Check In |Club|
-| Map | Chat | Check In |Club|      +----------------------------+
-+----------------------------+
+| 2:24                       |      | 2:24                       |
+| (o Pine Ridge  2h 14m sun) |      | (Drawing line [Done][Cncl])|
+|                     [Lyr]  |      |                            |
+|  [DB]               [Me ]  |      |   +---+                    |
+|       (DB) Creek Stand     |      |   |   +----+  vertices     |
+|     (RT)                   |      |   +--------+               |
+|          (o) You  \ scent  |      |                            |
+|                            |      | [Undo] [Close shape]       |
+| |_500 ft_| (c) USGS        |      +----------------------------+
++----------------------------+      | Line name, area, editor    |
+| ---- Not checked in  5 out |      | fields (sheet at half)     |
+| Map | Chat | Check In |Club|      | Map | Chat | Check In |Club|
++----------------------------+      +----------------------------+
 
-Admin, My club (1280)
+Admin, My club (1280; the map chrome follows "Map chrome" below)
 +---------+------------------------------------+------------------+
 | mark    | [Pine Ridge Hunt Club        ]     | Out now   5 of 14|
 | My club | [412 acres, 7 stands, 2 areas]     | (DB) Dale B. 2min|
@@ -116,12 +114,26 @@ On a 390 px screen the same pieces stack: the map on top, the panel rising over 
 
 ## Principles
 
-1. The map is the page. On the phone, the site hero, the sign-in page and My club, the map runs edge to edge and the interface floats on it. Nothing frames the map.
+1. The map is the page. On the phone, the site hero, the sign-in page and My club, the map runs edge to edge and the interface floats on it. Nothing frames the map, and the chrome over it stays inside the coverage budget (see "Map chrome" below).
 2. Plates, not cards. A plate exists only because something has to float over imagery. Away from the map (roster, pricing) the content is a table with hairlines, with no boxes around the parts.
-3. Read out, do not decorate. A value that matters is a number in a labelled cell. The same four-cell strip (sunrise, sunset, wind, temperature) appears on the phone, the site hero and My club.
+3. Read out, do not decorate. A value that matters is a number in a labelled cell. Over a map the readout collapses to one next time in the top pill ("2h 14m to sunset"); the full cells (sunrise, sunset, overdue at, and wind and temperature where we have a forecast) are in the pill's card, the side panel or the site hero.
 4. A ring that tells the truth. Solid green means the radio was heard just now. Broken gold means it was not, and the plate says how long ago. An old position is never drawn as a live one.
 5. Orange has three jobs: you, the main action, the selected item. One orange dot on any map.
-6. A word on every control, at 48 px or more.
+6. Every control is 48 px or more. Over the map, controls are icons with an accessible name and a tooltip, so the map is not buried under words; away from the map, controls carry a word.
+
+## Map chrome
+
+The UI Director's review (owner-backed, 2026-11-28) found the map buried in chrome: on web My club at 500 px a title card, the sun strip and a two-row tray of labelled buttons covered about 65 to 70% of the map. These rules replace the earlier "one plate of labelled controls" and "strip on every map" rules, on the app and the web alike. Every number here is in `mapChrome` (`packages/design/src/mapChrome.ts`), and the web gets them as `--map-chrome-*` variables; nothing retypes them.
+
+1. **Budget.** At rest, chrome may cover at most 25% of the map at 390 by 844 (the phone, and the web at 390 and 500), and at most 15% at 1280. The map is the area between the status or app bar and the tab bar. Overlaps count once. `coveredFraction` and `measureCoverage` in the same file measure it from the overlay rects; each surface has an automated layout test that fails above budget, and every map PR reports the measured percentage.
+2. **One top pill**, 48 px tall, at most 300 px wide, 12 px from the edges. It shows the mesh status dot, the club name and the next time: "2h 14m to sunset", or the overdue time while someone is checked in. Tapping it drops a card with Sunrise, Sunset, Overdue at, the mesh detail and a Party link. On the web desktop the conditions are in the side panel and the pill shows only the name and the next time. The web has no wind or temperature (no forecast host in the CSP), so its card is Sunrise, Sunset and Overdue at.
+3. **One right-edge icon stack**: 48 by 48 icon buttons, 8 px apart, 12 px from the edge, each with an accessible name and a tooltip. On touch, Layers and Find me only. On the desktop, Layers, a split zoom (+ over -, 48 by 96) and Find me. The Layers popover holds Topo or Aerial, the map pack, Fit property, show or hide for stands, areas and people, and Edit property line.
+4. **One bottom sheet with detents** on phones: peek (64 px: the grabber and one summary line), half and full (50% and 88% of the map). The grabber zone is 48 px; a drag snaps to the nearest detent, and a flick faster than 0.5 px per ms moves one detent its way. On the web at phone widths the My club side panel is this sheet; the desktop keeps the side panel.
+5. **Auto-hide.** Panning, zooming or rotating fades the pill, the stack and the footer to nothing over 150 ms; they come back after 1.5 s still, or on a map tap. The sheet's peek never hides. The chrome stays pinned during an active alert, while the mesh is quiet, and from 30 minutes before an overdue time. Under reduced motion it is instant.
+6. **One footer line**: the scale bar and the attribution on one line at the bottom left, above the peek. Nothing covers the attribution.
+7. **Editing is its own mode.** "Edit property line" lives in the side panel's Stands and areas section and the Layers popover, never on the map. While drawing, the stack hides, the pill becomes one line ("Drawing property line" with Done and Cancel), the editor's fields are in the sheet or the panel, and the draw bar fits the same budget.
+8. **Stand labels.** Below zoom 15, or where two labels would overlap, stands are icons only; the name shows on a tap or once zoomed in. A label is at most 140 by 32 px.
+9. **The web at phone widths.** The My club map fills the viewport between the app bar and the tab bar. The panel is the sheet, never a page that scrolls under the map.
 
 ## The one memorable element
 
@@ -133,22 +145,22 @@ The freshness ring with its plate: "Creek Stand / Dale B., 2 min ago". It is the
 |---|---|
 | The genre is a full-screen map, floating controls and a bottom sheet | Every map screen |
 | Charcoal and orange is the genre's uniform, not onX's own | Kept, with our orange and near-black text on it |
-| Readouts in hairline-divided cells (Gaia, Garmin, BaseMap) | The conditions strip |
+| Readouts in hairline-divided cells (Gaia, Garmin, BaseMap) | The conditions card under the top pill, and the side panel |
 | Layers as a sheet: three basemap thumbnails, then on/off rows | Phone, layers open |
-| A right-edge stack of map controls | Layers, North, Find me |
+| A right-edge stack of map controls | Layers and Find me (plus split zoom on desktop), one icon each |
 | A ring around a person, a tag with the name | Made to mean freshness |
 | Sites sell with the map and one sentence per feature | The hero is the live map; features are a legend |
 | A plan comparison table with ticks | Pricing |
-| Nobody shows sunrise and sunset on the map | We do, first in the strip |
+| Nobody shows sunrise and sunset on the map | We do, as the next time in the top pill |
 
 ## Deliberately different from onX
 
 | onX | Map-first |
 |---|---|
 | Red-orange #FF3300 with white text, used across the brand | Hunter orange #FF7A1F with near-black text, three jobs only |
-| A wordmark bar across the top of the map | No logo on the map. The top is the club button, mesh status and the strip |
+| A wordmark bar across the top of the map | No logo on the map. The top is one pill: mesh dot, club name, the next time |
 | A floating pill tab bar with five tools | A docked bar with four tabs: Map, Chat, Check In, Club |
-| Round floating buttons | One squared plate of three controls, each with a word |
+| Round floating buttons | Squared 48 px icon buttons in one right-edge stack, each with a name and tooltip |
 | Teardrop pins | Hunters are circles, stands are rounded squares, each with a plate |
 | Photo avatars with a decorative ring | Initials, and the ring states how fresh the position is |
 | White sheets over the map | Dark sheets by default; white only in the daylight theme |
@@ -164,6 +176,7 @@ The freshness ring with its plate: "Creek Stand / Dale B., 2 min ago". It is the
 - Archivo only (`packages/design/fonts/Archivo-Latin.woff2`).
 - Every colour is a token (`packages/design`; in the mockups, the top of `styles.css`). The aerial stand-in's picture values are in the mockups' `tools/build.mjs`, since they are imagery, not interface.
 - Body text is 16 px or more; map text is 13 px or more; tab labels and second lines in sheets are 14 px.
+- Map chrome stays inside the coverage budget: 25% of the map on phones, 15% at 1280, measured by a test.
 - Buttons, tabs, switches, list rows and the slider are 48 px or taller. Hunter markers are drawn at 42 px and stands at 38 px so the map stays readable; in the build their tap area must be padded to 48 px.
 - Sunrise and sunset only. "2 h 14 min until sunset" and "5:08 pm, sunset plus 30 minutes" are the only derived times. No legal shooting hours, no first or last light.
 - Ask for a Hand is gold on a dark gold wash with a hand icon and names who it pings. The only red is the unread badge and the north arrow.
@@ -218,7 +231,7 @@ The tools and `shared.css` come from the `design-directions` branch and were ext
 
 - The aerial is a drawn stand-in. Real USGS imagery is busier, so marker plates may need the full 94% backing they have here.
 - "2 h 14 min until sunset", the "Needs you" list and the roster's locator map are proposals, not things the product shows today.
-- The spec's top bar puts the club button beside the conditions panel. Here they are one plate with two rows, and the mesh line sits in the first row.
+- The spec's top bar put the club button beside the conditions panel, and the mockups made them one plate with two rows. Superseded by "Map chrome": one top pill, conditions in its card.
 - The spec's cream light marketing band (#F4F1EA) is gone. Since M4 the site is drawn in the theme tokens, dark or daylight by the device setting, and `lightColors` is removed.
 - The site hero's aerial is `@huntclub/design/aerial` (the same stand-in as the mockups, served as one SVG file); real imagery replaces it later.
 

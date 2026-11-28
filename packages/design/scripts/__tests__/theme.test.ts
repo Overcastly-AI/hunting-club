@@ -256,7 +256,7 @@ describe('type, spacing, radii and motion', () => {
     expect(root).toContain('--control-border: 1.5px;');
     expect(root).toContain('--motion-fast: 120ms;');
     expect(root).toContain(
-      '@media (prefers-reduced-motion: reduce) { :root { --motion-fast: 0ms; --motion-base: 0ms; } }',
+      '@media (prefers-reduced-motion: reduce) { :root { --motion-fast: 0ms; --motion-base: 0ms; --map-chrome-fade: 0ms; } }',
     );
   });
 });
