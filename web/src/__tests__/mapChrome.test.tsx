@@ -143,7 +143,8 @@ describe('the bottom sheet (phones and tablets)', () => {
     phone();
     await renderSignedIn();
     expect(detentOf()).toBe('peek');
-    within(sheet()).getByRole('button', { name: 'Add stand' }).focus();
+    // Add stand shows once the club's places have loaded (after the heading): wait for it.
+    (await within(sheet()).findByRole('button', { name: 'Add stand' })).focus();
     await waitFor(() => expect(detentOf()).toBe('half'));
   });
 });
