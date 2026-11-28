@@ -49,7 +49,7 @@ describe('stands on My club (admins)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add stand' }));
     // Not placed yet: Save says where to put it, and nothing is sent.
     fireEvent.change(nameField('Stand name'), { target: { value: 'Fence Row' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save stand' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect((await screen.findByRole('alert')).textContent).toBe(STAND_PROBLEMS.place);
     tap(400, 300);
     const marker = placing().getByRole('button', { name: /^Fence Row: drag it/ });
@@ -57,7 +57,7 @@ describe('stands on My club (admins)', () => {
     fireEvent.change(screen.getByRole('combobox', { name: 'Type' }), {
       target: { value: 'ladder' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Save stand' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(spy.createStand).toHaveBeenCalledTimes(1));
     const [, sent] = spy.createStand.mock.calls[0]!;
     expect(sent).toMatchObject({ name: 'Fence Row', type: 'ladder' });
@@ -80,7 +80,7 @@ describe('stands on My club (admins)', () => {
     fireEvent.keyDown(marker, { key: 'ArrowRight', shiftKey: true });
     expect(translateOf(placing().getByRole('button'))[0]).toBeCloseTo(MAP_W / 2 + 40, 0);
     fireEvent.change(nameField('Stand name'), { target: { value: '   ' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save stand' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect(screen.getByText(STAND_PROBLEMS.name)).toBeTruthy();
     expect(spy.createStand).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
@@ -102,12 +102,14 @@ describe('stands on My club (admins)', () => {
     const [x2, y2] = translateOf(placing().getByRole('button'));
     expect(x2).toBeCloseTo(x + 30, 0);
     expect(y2).toBeCloseTo(y - 20, 0);
-    // The stand being edited is drawn by the editor alone, not also as part of the plan.
+    // The stand being edited is drawn by the editor alone, not also as part of the plan
+    // (one level closer, past the zoom where stands show their names).
+    fireEvent.keyDown(ground(), { key: '+' });
     const names = [...ground().querySelectorAll('.plan__plate-name')].map((t) => t.textContent);
     expect(names).not.toContain('Big Oak Ladder');
     expect(names).toContain('Creek Stand');
     fireEvent.change(nameField('Stand name'), { target: { value: 'Big Oak' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save stand' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(spy.updateStand).toHaveBeenCalledTimes(1));
     const [, id, patch] = spy.updateStand.mock.calls[0]!;
     expect(id).toBe(oak.id);
@@ -153,10 +155,10 @@ describe('areas on My club (admins)', () => {
     tap(500, 450);
     fireEvent.click(screen.getByRole('button', { name: 'Close shape' }));
     // A name first (the shared schema's rule), then the shape.
-    fireEvent.click(screen.getByRole('button', { name: 'Save area' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect((await screen.findByRole('alert')).textContent).toBe(AREA_NAME_PROBLEM);
     fireEvent.change(nameField('Area name'), { target: { value: 'Food Plot' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save area' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(spy.createArea).toHaveBeenCalledTimes(1));
     const [, sent] = spy.createArea.mock.calls[0]!;
     expect(sent.name).toBe('Food Plot');
@@ -173,7 +175,7 @@ describe('areas on My club (admins)', () => {
     tap(500, 300);
     tap(300, 450);
     fireEvent.click(screen.getByRole('button', { name: 'Close shape' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Save area' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect((await screen.findByRole('alert')).textContent).toBe(AREA_PROBLEMS.crosses);
     expect(spy.createArea).not.toHaveBeenCalled();
   });
@@ -191,7 +193,7 @@ describe('areas on My club (admins)', () => {
       shiftKey: true,
     });
     fireEvent.change(nameField('Area name'), { target: { value: 'North Forty' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save area' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(spy.updateArea).toHaveBeenCalledTimes(1));
     const [, id, patch] = spy.updateArea.mock.calls[0]!;
     expect(id).toBe(north.id);

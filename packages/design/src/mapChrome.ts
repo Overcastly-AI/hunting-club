@@ -137,3 +137,99 @@ export function measureCoverage(
 
 /** `0.1834` → `"18.3%"`, for test messages and PR reports. */
 export const formatCoverage = (fraction: number) => `${(fraction * 100).toFixed(1)}%`;
+
+/** What keeps the chrome on screen while the map moves. */
+export interface ChromePinInput {
+  now: number;
+  /** When the overdue alert goes out (sunset plus the club's grace), if known. */
+  overdueAt?: number | undefined;
+  /** An alert (Ask for a Hand, overdue) is open. */
+  alertActive?: boolean | undefined;
+  /** The mesh has gone quiet (no radio heard). */
+  meshQuiet?: boolean | undefined;
+}
+
+/**
+ * Whether the chrome stays pinned (never auto-hides): during an active alert, while the mesh is
+ * quiet, and from `pinBeforeOverdueMs` before an overdue time until it has passed.
+ */
+export function chromePinned(input: ChromePinInput): boolean {
+  if (input.alertActive || input.meshQuiet) return true;
+  const at = input.overdueAt;
+  if (at === undefined || !Number.isFinite(at)) return false;
+  return input.now >= at - mapChrome.autoHide.pinBeforeOverdueMs && input.now <= at;
+}
+
+/** Whether two rects overlap (touching edges do not). */
+export const rectsOverlap = (a: Rect, b: Rect) =>
+  a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+/** A marker and the label it would show, in map px. */
+export interface LabelCandidate {
+  id: string;
+  marker: Rect;
+  label: Rect;
+}
+
+/**
+ * Which markers show their label: none below `labels.minZoom` but the `selected` one; above it,
+ * each in turn (the selected one first) unless its label would overlap a label already shown or
+ * another marker. The rest are icons only, and show their name on a tap.
+ */
+export function visibleLabels(
+  candidates: readonly LabelCandidate[],
+  zoom: number,
+  selected?: string | null,
+): Set<string> {
+  const shown = new Set<string>();
+  const ordered = [...candidates].sort(
+    (a, b) => Number(b.id === selected) - Number(a.id === selected),
+  );
+  const placed: Rect[] = [];
+  for (const c of ordered) {
+    const chosen = c.id === selected;
+    if (!chosen && zoom < mapChrome.labels.minZoom) continue;
+    const blocked =
+      placed.some((r) => rectsOverlap(r, c.label)) ||
+      candidates.some((o) => o.id !== c.id && rectsOverlap(o.marker, c.label));
+    if (blocked && !chosen) continue;
+    shown.add(c.id);
+    placed.push(c.label);
+  }
+  return shown;
+}
+
+/** The bottom sheet's detents, in order from lowest. */
+export const SHEET_DETENTS = ['peek', 'half', 'full'] as const;
+export type SheetDetent = (typeof SHEET_DETENTS)[number];
+
+/** Each detent's height in px on a map this tall. */
+export function sheetDetentHeights(mapHeight: number): Record<SheetDetent, number> {
+  const { peek, half, full } = mapChrome.sheet.detents;
+  return {
+    peek,
+    half: Math.max(peek, Math.round(mapHeight * half)),
+    full: Math.max(peek, Math.round(mapHeight * full)),
+  };
+}
+
+/**
+ * Where a released sheet settles: a flick (faster than `sheet.flickVelocity`, in px per ms,
+ * positive downward) moves to the next detent its way from `from`; a slow release snaps to the
+ * detent nearest `height`.
+ */
+export function snapDetent(
+  heights: Record<SheetDetent, number>,
+  from: SheetDetent,
+  height: number,
+  velocity: number,
+): SheetDetent {
+  const at = SHEET_DETENTS.indexOf(from);
+  if (Math.abs(velocity) > mapChrome.sheet.flickVelocity) {
+    const next = at + (velocity < 0 ? 1 : -1);
+    return SHEET_DETENTS[Math.max(0, Math.min(SHEET_DETENTS.length - 1, next))]!;
+  }
+  return SHEET_DETENTS.reduce((best, d) =>
+    Math.abs(heights[d] - height) < Math.abs(heights[best] - height) ? d : best,
+  );
+}

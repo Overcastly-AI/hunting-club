@@ -8,12 +8,13 @@ import {
   type Polygon,
 } from '@huntclub/shared';
 import { SAMPLE_PROPERTY } from '@huntclub/shared/sample';
+import { mapChrome } from '@huntclub/design';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { useState } from 'react';
 import { liveBasemap } from '../map/basemap';
 import { ClubMap } from '../map/ClubMap';
 import { canClose, drawProblem, drawReducer, startDrawing, type DrawState } from '../map/draw';
-import { DEFAULT_VIEW, DRAW_BAR_HEIGHT, panView, viewProjection, zoomView } from '../map/plan';
+import { DEFAULT_VIEW, panView, viewProjection, zoomView } from '../map/plan';
 import { SAMPLE_PLAN } from '../map/sampleProperty';
 import { renderSignedIn } from '../testing/app';
 import { sampleData } from '../testing/fakeClubApi';
@@ -146,6 +147,8 @@ describe('live basemap tiles', () => {
       new RegExp(`^${BASEMAPS[id].tileUrl.replace(/[.]/g, '\\.').replace(/\{[zxy]\}/g, '\\d+')}$`);
     for (const href of hrefs()) expect(href).toMatch(template('aerial'));
     expect(map.querySelector('.plan__credit')!.textContent).toBe(BASEMAPS.aerial.credit);
+    // The basemap is in the Layers popover, on the icon stack.
+    fireEvent.click(screen.getByRole('button', { name: 'Layers' }));
     fireEvent.click(screen.getByRole('radio', { name: 'Topo' }));
     for (const href of hrefs()) expect(href).toMatch(template('topo'));
     expect(map.querySelector('.plan__credit')!.textContent).toBe(BASEMAPS.topo.credit);
@@ -214,14 +217,14 @@ describe('drawing the property line on My club', () => {
     fireEvent.pointerUp(first, { clientX: 330, clientY: 170, pointerId: 3 });
     expect(screen.queryByRole('button', { name: 'Close shape' })).toBeNull();
     expect(document.querySelector('.draw__count')!.textContent).toMatch(/^4 corners, \d+ acres$/);
-    fireEvent.click(screen.getByRole('button', { name: 'Save line' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     const [, patch] = save.mock.calls[0]!;
     const boundary = patch.boundary as Polygon;
     expect(boundary.type).toBe('Polygon');
     expect((boundary.coordinates[0] as unknown[]).length).toBe(5);
     expect(propertyLineProblem(boundary)).toBeNull();
-    // Saved: the line is the club's, and the plate offers to edit it.
+    // Saved: the line is the club's, and the panel offers to edit it.
     expect(await screen.findByRole('button', { name: 'Edit property line' })).toBeTruthy();
     expect(ground().querySelectorAll('.plan__line')).toHaveLength(1);
     expect(screen.queryByText(/^Draw your property line/)).toBeNull();
@@ -251,7 +254,7 @@ describe('drawing the property line on My club', () => {
     ).toBe(true);
     add();
     fireEvent.click(screen.getByRole('button', { name: 'Close shape' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Save line' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
   });
 
@@ -264,17 +267,17 @@ describe('drawing the property line on My club', () => {
     tap(330, 470);
     fireEvent.click(screen.getByRole('button', { name: 'Close shape' }));
     expect(screen.getByText(PROPERTY_LINE_PROBLEMS.crosses)).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Save line' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect((await screen.findByRole('alert')).textContent).toBe(PROPERTY_LINE_PROBLEMS.crosses);
     expect(save).not.toHaveBeenCalled();
     // An open shape says how to finish it.
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Save line' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect(screen.getByRole('alert').textContent).toMatch(/^Close the shape to save it/);
     expect(save).not.toHaveBeenCalled();
   });
 
-  it('cancels with nothing saved, back to the club plate', async () => {
+  it('cancels with nothing saved, back to the club pill', async () => {
     const { save } = await noLineYet();
     tap(330, 170);
     tap(630, 170);
@@ -283,6 +286,7 @@ describe('drawing the property line on My club', () => {
     expect(save).not.toHaveBeenCalled();
     expect(screen.queryByRole('group', { name: 'Property line corners' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Draw property line' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1 }).closest('.map-pill')).toBeTruthy();
     expect(ground().querySelectorAll('.plan__line')).toHaveLength(0);
   });
 
@@ -306,7 +310,7 @@ describe('drawing the property line on My club', () => {
     expect(screen.queryByRole('button', { name: 'Close shape' })).toBeNull();
     // Remove a corner of the L: still a good line, saved without it.
     fireEvent.keyDown(corners().getByRole('button', { name: /^Corner 4 of 6/ }), { key: 'Delete' });
-    fireEvent.click(screen.getByRole('button', { name: 'Save line' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     expect((save.mock.calls[0]![1].boundary as Polygon).coordinates[0]).toHaveLength(6);
   });
@@ -327,7 +331,7 @@ describe('drawing the property line on My club', () => {
       new ClubApiRequestError('network', 0),
     );
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Save line' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     });
     expect((await screen.findByRole('alert')).textContent).toBe(
       'No connection. Try again when you are online.',
@@ -337,8 +341,8 @@ describe('drawing the property line on My club', () => {
   });
 });
 
-describe('drawing on a phone', () => {
-  it('keeps the count and Save on a bar along the map, with the other tools behind More tools', async () => {
+describe('drawing is its own mode', () => {
+  it('hides the icon stack, puts Done and Cancel in the pill and the tools on the draw bar in the sheet', async () => {
     // Every element laid out at a phone's map size.
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
       width: 390,
@@ -347,37 +351,48 @@ describe('drawing on a phone', () => {
       top: 0,
     } as DOMRect);
     const { save } = await noLineYet();
-    const bar = within(screen.getByRole('group', { name: 'Drawing the property line' }));
+    expect(screen.queryByRole('group', { name: 'Map controls' })).toBeNull();
+    const pill = within(screen.getByRole('group', { name: 'Drawing property line' }));
+    expect(pill.getByRole('button', { name: 'Done' })).toBeTruthy();
+    expect(pill.getByRole('button', { name: 'Cancel' })).toBeTruthy();
+    // The draw bar is the sheet's one line, so it shows at the peek.
+    const sheet = screen.getByRole('region', { name: 'Club panel' });
+    const bar = within(within(sheet).getByRole('group', { name: 'Drawing the property line' }));
     expect(bar.getByText('0 corners')).toBeTruthy();
-    // Only the bar: no tools on the club plate, and none until More opens.
-    expect(screen.queryByRole('button', { name: 'Add corner' })).toBeNull();
-    const more = bar.getByRole('button', { name: 'More tools' });
-    expect(more.getAttribute('aria-expanded')).toBe('false');
-    fireEvent.click(more);
-    expect(more.getAttribute('aria-expanded')).toBe('true');
-    const panel = document.getElementById(more.getAttribute('aria-controls')!)!;
-    for (const name of ['Add corner', 'Undo', 'Remove corner', 'Close shape', 'Cancel'])
-      expect(within(panel).getByRole('button', { name })).toBeTruthy();
-    // The scale bar and credit move up above the bar.
-    const scale = ground().querySelector('.plan__scale')!.getAttribute('transform')!;
-    expect(Number(scale.match(/ ([-\d.]+)\)$/)![1])).toBeLessThanOrEqual(724 - DRAW_BAR_HEIGHT);
-    // Draw from the keyboard through the panel; it stays open between corners.
-    const add = () => fireEvent.click(within(panel).getByRole('button', { name: 'Add corner' }));
+    expect(sheet.querySelector('.map-sheet__handle .draw-bar')).toBeTruthy();
+    expect(sheet.classList.contains('map-sheet--peek')).toBe(true);
+    // The footer line (scale bar and credit) sits above the peek.
+    const footer = ground().querySelector('.plan__footer')!.getAttribute('transform')!;
+    expect(Number(footer.match(/ ([-\d.]+)\)$/)![1])).toBeLessThanOrEqual(
+      724 - mapChrome.sheet.detents.peek,
+    );
+    // Draw from the keyboard with the bar's tools.
+    const add = () => fireEvent.click(bar.getByRole('button', { name: 'Add corner' }));
     add();
     fireEvent.keyDown(ground(), { key: 'ArrowLeft', shiftKey: true });
     add();
     fireEvent.keyDown(ground(), { key: 'ArrowUp', shiftKey: true });
     add();
     expect(bar.getByText('3 corners')).toBeTruthy();
-    fireEvent.click(within(panel).getByRole('button', { name: 'Close shape' }));
-    // Esc closes More and gives focus back to it.
-    fireEvent.keyDown(within(panel).getByRole('button', { name: 'Undo' }), { key: 'Escape' });
-    expect(more.getAttribute('aria-expanded')).toBe('false');
-    expect(document.activeElement).toBe(more);
+    fireEvent.click(bar.getByRole('button', { name: 'Close shape' }));
     expect(document.querySelector('.draw-bar .draw__count')!.textContent).toMatch(
       /^3 corners, \d+ acres$/,
     );
-    fireEvent.click(bar.getByRole('button', { name: 'Save line' }));
+    fireEvent.click(pill.getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    // Saved: the pill and the stack are back.
+    expect(await screen.findByRole('group', { name: 'Map controls' })).toBeTruthy();
+  });
+
+  it('raises the sheet to show what to fix when Done is refused', async () => {
+    await noLineYet();
+    tap(330, 170);
+    tap(630, 170);
+    tap(630, 470);
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(screen.getByRole('alert').textContent).toMatch(/^Close the shape to save it/);
+    expect(
+      screen.getByRole('region', { name: 'Club panel' }).classList.contains('map-sheet--half'),
+    ).toBe(true);
   });
 });

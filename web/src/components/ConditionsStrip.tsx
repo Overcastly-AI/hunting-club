@@ -1,9 +1,12 @@
-import { clockReadout, READOUT_LABELS, type SunReadout, type Wording } from '@huntclub/shared';
+import {
+  clockReadout,
+  OVERDUE_ALERT_LABEL,
+  READOUT_LABELS,
+  type SunReadout,
+  type Wording,
+} from '@huntclub/shared';
 import { AlarmClock, Sunrise, Sunset } from 'lucide-react';
 import { StatGrid, StatTile } from './ui';
-
-/** The strip's word for the time the club's overdue alert goes out (sunset plus the grace). */
-export const OVERDUE_ALERT_LABEL = 'Overdue at';
 
 /** A value as it is shown ("6:52 am", "—") and as it is read ("not known"). */
 export function Spoken(props: { wording: Wording }) {
