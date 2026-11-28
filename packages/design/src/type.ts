@@ -244,3 +244,10 @@ export const AVERAGE_ADVANCE = 0.56;
 /** About how wide `text` is, in px, at `size` px and `width` percent of normal width. */
 export const textWidth = (text: string, size: number, width: number = fontWidth.normal) =>
   text.length * size * AVERAGE_ADVANCE * (width / 100);
+
+/** `text`, cut with an ellipsis where it would run past `maxPx` (by the `textWidth` estimate). */
+export function fitText(text: string, maxPx: number, size: number, width: number): string {
+  if (textWidth(text, size, width) <= maxPx) return text;
+  const chars = Math.max(1, Math.floor(maxPx / textWidth('m', size, width)) - 1);
+  return `${text.slice(0, chars).trimEnd()}…`;
+}

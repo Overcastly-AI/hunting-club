@@ -2,17 +2,26 @@ import { boundary } from '../../src/colors';
 import { contrastRatio } from '../../src/contrast';
 import { mapChromeVariables, rootVariablesCss } from '../../src/css';
 import { themes } from '../../src/theme';
-import { fontSize, fontWeight } from '../../src/type';
+import { fitText, fontSize, fontWeight } from '../../src/type';
 import {
   chromePinned,
   coverageBudget,
   coveredFraction,
+  areaLabelBox,
   formatCoverage,
+  giveWay,
+  LABEL_FROM_CENTRE,
+  LABEL_HEIGHT,
   mapChrome,
   measureCoverage,
+  placeAreaLabels,
+  PLATE_EDGE_ROOM,
+  plateSide,
   rectsOverlap,
   sheetDetentHeights,
   snapDetent,
+  standLabelCandidate,
+  standLabelLayout,
   visibleLabels,
   type Rect,
 } from '../../src/mapChrome';
@@ -212,6 +221,107 @@ describe('visibleLabels', () => {
   it('knows touching rects do not overlap', () => {
     expect(rectsOverlap(rect(0, 0, 10, 10), rect(10, 0, 10, 10))).toBe(false);
     expect(rectsOverlap(rect(0, 0, 10, 10), rect(9, 9, 10, 10))).toBe(true);
+  });
+});
+
+describe('plateSide', () => {
+  it('is right unless that crosses the edge and the left fits; then the side with more room', () => {
+    expect(plateSide(100, 25, 120, 1000)).toBe('right');
+    expect(plateSide(900, 25, 120, 1000)).toBe('left');
+    // Exactly at the edge room still fits on the right.
+    expect(plateSide(1000 - PLATE_EDGE_ROOM - 145, 25, 120, 1000)).toBe('right');
+    // Too wide for either side of a narrow map.
+    expect(plateSide(60, 25, 300, 200)).toBe('right');
+    expect(plateSide(150, 25, 300, 200)).toBe('left');
+  });
+});
+
+describe('stand label layout', () => {
+  const { marker, gap, maxWidth, text } = mapChrome.labels;
+
+  it('cuts a long name with an ellipsis within the 140 px cap, and keeps a short one', () => {
+    expect(fitText('Creek', 100, 15, 86)).toBe('Creek');
+    const long = standLabelLayout('East Ridge Box Blind by the Creek Bottom', 100, 1000);
+    expect(long.text).toMatch(/…$/);
+    expect(long.width).toBeLessThanOrEqual(maxWidth);
+    expect(LABEL_HEIGHT).toBeLessThanOrEqual(mapChrome.labels.maxHeight);
+    expect(LABEL_HEIGHT).toBeGreaterThanOrEqual(text.size + 2 * text.halo);
+  });
+
+  it('sits 6 px from the 32 px marker, on the right unless that crosses the edge', () => {
+    expect(LABEL_FROM_CENTRE).toBe(marker / 2 + gap);
+    const right = standLabelLayout('Creek', 100, 1000);
+    expect([right.side, right.offset]).toEqual(['right', LABEL_FROM_CENTRE]);
+    const left = standLabelLayout('Creek', 990, 1000);
+    expect(left.side).toBe('left');
+    expect(left.offset + left.width).toBe(-LABEL_FROM_CENTRE);
+  });
+
+  it("gives visibleLabels the stand's 48 px target and its label's rect", () => {
+    const c = standLabelCandidate({ id: 's', name: 'Creek' }, 100, 200, 1000);
+    expect(c.marker).toEqual(rect(76, 176, 48, 48));
+    expect(c.label.x).toBe(100 + LABEL_FROM_CENTRE);
+    expect(c.label.y + c.label.height / 2).toBe(200);
+  });
+});
+
+describe('area labels give way to stands', () => {
+  const { gap, area } = mapChrome.labels;
+  const deep = mapChrome.labels.minZoom;
+  /** A stand's 48 px tap target centred on (x, y). */
+  const stand = (x: number, y: number) => rect(x - 24, y - 24, 48, 48);
+
+  it('centres an area name below the point it is given', () => {
+    const { text, rect: r } = areaLabelBox('North 40', 200, 100);
+    expect(text).toBe('North 40');
+    expect(r.x + r.width / 2).toBeCloseTo(200);
+    expect(r.y + r.height / 2).toBe(100 + area.drop);
+    expect(r.height).toBe(LABEL_HEIGHT);
+  });
+
+  it('stays put when nothing is in the way', () => {
+    const label = rect(100, 100, 80, 21);
+    expect(giveWay(label, [stand(400, 400)])).toBe(label);
+  });
+
+  it('moves down past a stand it would cover, the gap to spare, before trying up', () => {
+    const label = rect(100, 100, 80, 21);
+    // The stand's top edge is 10 px under the label's top: down needs 48 - 10 + 6 = 44 px,
+    // up needs 21 - 10 + 6 = 17 px. The smaller move wins.
+    const moved = giveWay(label, [rect(120, 110, 48, 48)])!;
+    expect(moved.y).toBe(110 - gap - 21);
+    expect(moved.x).toBe(label.x);
+    // Equal moves either way: down first (into the area, away from its edge).
+    const centred = rect(100, 100, 80, 20);
+    const down = giveWay(centred, [rect(120, 100, 48, 20)])!;
+    expect(down.y).toBe(100 + 20 + gap);
+  });
+
+  it('hides where no move within one tap target clears every stand', () => {
+    const label = rect(100, 100, 80, 21);
+    // Stands stacked above, on and below the label: every way out is too far.
+    const wall = [stand(140, 60), stand(140, 110), stand(140, 160)];
+    expect(giveWay(label, wall)).toBeNull();
+    expect(area.maxShift).toBe(sizes.minTapTarget);
+  });
+
+  it('places area labels clear of stands and of each other, and none below zoom 15', () => {
+    const labels = [
+      { id: 'a', rect: rect(100, 100, 80, 21) },
+      { id: 'b', rect: rect(110, 105, 80, 21) },
+      { id: 'c', rect: rect(400, 400, 80, 21) },
+    ];
+    const stands = [stand(140, 112)];
+    expect(placeAreaLabels(labels, stands, deep - 0.5).size).toBe(0);
+    const placed = placeAreaLabels(labels, stands, deep);
+    expect(placed.get('c')).toEqual(labels[2]!.rect);
+    const shown = [...placed.values()];
+    for (const r of shown) {
+      expect(stands.some((s) => rectsOverlap(s, r))).toBe(false);
+      expect(shown.filter((o) => o !== r).some((o) => rectsOverlap(o, r))).toBe(false);
+    }
+    expect(placed.has('a')).toBe(true);
+    expect(placed.get('a')!.y).not.toBe(100);
   });
 });
 

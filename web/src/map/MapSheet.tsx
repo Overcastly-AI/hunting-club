@@ -9,6 +9,7 @@
 import {
   ICON_SIZE,
   SHEET_DETENTS,
+  SHEET_TOGGLE,
   sheetDetentHeights,
   snapDetent,
   type SheetDetent,
@@ -112,7 +113,7 @@ export function MapSheet(props: {
         <button
           type="button"
           className="map-sheet__toggle"
-          aria-label={top ? 'Show less' : 'Show more'}
+          aria-label={top ? SHEET_TOGGLE.less : SHEET_TOGGLE.more}
           aria-expanded={props.detent !== 'peek'}
           onClick={() => props.onDetent(top ? 'peek' : step(props.detent, 1))}
           onKeyDown={(e) => {

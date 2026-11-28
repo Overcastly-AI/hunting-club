@@ -3,7 +3,7 @@
 // map that chrome covers. Plain numbers and functions: no DOM or React Native code here.
 import { breakpoints, sizes } from './sizes';
 import type { ThemeColorToken } from './theme';
-import { fontSize, fontWeight } from './type';
+import { fitText, fontSize, fontWeight, fontWidth, textWidth } from './type';
 
 /**
  * The sheet's peek on each surface, px. The web's is the grabber and one summary line; the
@@ -104,6 +104,12 @@ export const mapChrome = {
       color: ThemeColorToken;
       haloColor: ThemeColorToken;
     },
+    /**
+     * An area's name: drawn like a stand's label, centred `drop` px inside the area's north edge.
+     * Where it would sit on a stand it gives way (`placeAreaLabels`): it moves up or down by at
+     * most `maxShift` px, else it hides, so a tap there always lands on the stand.
+     */
+    area: { drop: 20, maxShift: sizes.minTapTarget },
   },
 } as const;
 
@@ -247,6 +253,146 @@ export function visibleLabels(
   }
   return shown;
 }
+
+/** Room kept between a marker's label (or plate) and the map's edge, px. */
+export const PLATE_EDGE_ROOM = 8;
+
+/**
+ * Which side of its marker a plate goes: the right, unless it would cross the map's right edge
+ * there and fits on the left (a stand on the property's east side).
+ */
+export function plateSide(
+  markerX: number,
+  offset: number,
+  plateWidth: number,
+  mapWidth: number,
+): 'right' | 'left' {
+  const fitsRight = markerX + offset + plateWidth <= mapWidth - PLATE_EDGE_ROOM;
+  if (fitsRight) return 'right';
+  const fitsLeft = markerX - offset - plateWidth >= PLATE_EDGE_ROOM;
+  if (fitsLeft) return 'left';
+  // Neither fits (a very narrow map): the side with more room.
+  return markerX > mapWidth / 2 ? 'left' : 'right';
+}
+
+/** A map label's height: one line of its text over its halo, within `labels.maxHeight`. */
+export const LABEL_HEIGHT = Math.min(
+  mapChrome.labels.maxHeight,
+  Math.ceil(mapChrome.labels.text.size * 1.25) + 2 * mapChrome.labels.text.halo,
+);
+
+/** From a stand marker's centre to its label's near edge: half the marker, then the gap. */
+export const LABEL_FROM_CENTRE = mapChrome.labels.marker / 2 + mapChrome.labels.gap;
+
+/** A map label's text as drawn (cut to fit `labels.maxWidth`) and its width with the halo. */
+export function mapLabelText(name: string): { text: string; width: number } {
+  const { maxWidth, text: spec } = mapChrome.labels;
+  const text = fitText(name, maxWidth - 2 * spec.halo, spec.size, fontWidth.normal);
+  const width = Math.min(maxWidth, 2 * spec.halo + textWidth(text, spec.size, fontWidth.normal));
+  return { text, width };
+}
+
+/** A stand's label: its text, its width with the halo, its side and its x from the marker's centre. */
+export interface StandLabelLayout {
+  text: string;
+  width: number;
+  side: 'right' | 'left';
+  /** The label's left edge, px from the marker's centre (negative on the left). */
+  offset: number;
+}
+
+/** Where a stand's label goes beside a marker at `markerX` on a map `mapWidth` px wide. */
+export function standLabelLayout(
+  name: string,
+  markerX: number,
+  mapWidth: number,
+): StandLabelLayout {
+  const { text, width } = mapLabelText(name);
+  // Right of the stand, or left of it where the right would run off the map.
+  const side = plateSide(markerX, LABEL_FROM_CENTRE, width, mapWidth);
+  const offset = side === 'right' ? LABEL_FROM_CENTRE : -(LABEL_FROM_CENTRE + width);
+  return { text, width, side, offset };
+}
+
+/**
+ * A stand at (`x`, `y`) on the map as `visibleLabels` and `placeAreaLabels` see it: its 48 px
+ * tap target and the label it would show.
+ */
+export function standLabelCandidate(
+  stand: { id: string; name: string },
+  x: number,
+  y: number,
+  mapWidth: number,
+): LabelCandidate {
+  const hit = sizes.minTapTarget;
+  const { width, offset } = standLabelLayout(stand.name, x, mapWidth);
+  return {
+    id: stand.id,
+    marker: { x: x - hit / 2, y: y - hit / 2, width: hit, height: hit },
+    label: { x: x + offset, y: y - LABEL_HEIGHT / 2, width, height: LABEL_HEIGHT },
+  };
+}
+
+/** An area's name: its text as drawn and its rect, centred `area.drop` px below (`x`, `y`). */
+export function areaLabelBox(name: string, x: number, y: number): { text: string; rect: Rect } {
+  const { text, width } = mapLabelText(name);
+  const cy = y + mapChrome.labels.area.drop;
+  return {
+    text,
+    rect: { x: x - width / 2, y: cy - LABEL_HEIGHT / 2, width, height: LABEL_HEIGHT },
+  };
+}
+
+/**
+ * Where `label` goes so it overlaps none of `obstacles`: where it is, else moved straight up or
+ * down just clear of one (with `labels.gap` to spare), the smallest move first and down before
+ * up, at most `maxShift` px. Null when no such place exists: the label hides.
+ */
+export function giveWay(
+  label: Rect,
+  obstacles: readonly Rect[],
+  maxShift: number = mapChrome.labels.area.maxShift,
+): Rect | null {
+  const gap = mapChrome.labels.gap;
+  const clear = (r: Rect) => !obstacles.some((o) => rectsOverlap(o, r));
+  if (clear(label)) return label;
+  const across = obstacles.filter((o) => o.x < label.x + label.width && label.x < o.x + o.width);
+  const moves = across
+    .flatMap((o) => [o.y + o.height + gap - label.y, o.y - gap - (label.y + label.height)])
+    .filter((dy) => Math.abs(dy) <= maxShift)
+    .sort((a, b) => Math.abs(a) - Math.abs(b) || b - a);
+  for (const dy of moves) {
+    const moved = { ...label, y: label.y + dy };
+    if (clear(moved)) return moved;
+  }
+  return null;
+}
+
+/**
+ * The area labels that show, and where (docs/DESIGN.md "Map chrome" 8): none below
+ * `labels.minZoom`; above it each, in order, gives way (`giveWay`) to `obstacles` (the stands'
+ * tap targets and their shown labels) and to the area labels already placed, so a tap on a
+ * stand never lands on an area's name. Ids missing from the result are hidden.
+ */
+export function placeAreaLabels(
+  labels: readonly { id: string; rect: Rect }[],
+  obstacles: readonly Rect[],
+  zoom: number,
+): Map<string, Rect> {
+  const placed = new Map<string, Rect>();
+  if (zoom < mapChrome.labels.minZoom) return placed;
+  for (const { id, rect } of labels) {
+    const at = giveWay(rect, [...obstacles, ...placed.values()]);
+    if (at) placed.set(id, at);
+  }
+  return placed;
+}
+
+/**
+ * The spoken names of the sheet's toggle: Show more raises it a detent; Show less, in the full
+ * sheet's header beside the club's name, lowers it (the app to half, the web to peek).
+ */
+export const SHEET_TOGGLE = { more: 'Show more', less: 'Show less' } as const;
 
 /** The bottom sheet's detents, in order from lowest. */
 export const SHEET_DETENTS = ['peek', 'half', 'full'] as const;

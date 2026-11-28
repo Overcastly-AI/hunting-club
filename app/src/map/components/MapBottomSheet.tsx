@@ -24,6 +24,8 @@ export type NearestStand = { stand: ClubStand; distance: string | null };
 type Common = {
   mapTop: number;
   mapHeight: number;
+  /** The club's name (or Party): the full sheet's header, beside the collapse button. */
+  title: string;
   detent: SheetDetent;
   onDetent: (detent: SheetDetent) => void;
   reduceMotion: boolean;
@@ -68,6 +70,7 @@ export function MapBottomSheet(props: MapBottomSheetProps) {
       testID="map-chrome-sheet"
       mapTop={props.mapTop}
       mapHeight={props.mapHeight}
+      title={props.title}
       detent={props.detent}
       onDetent={props.onDetent}
       reduceMotion={props.reduceMotion}

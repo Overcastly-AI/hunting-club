@@ -1,8 +1,7 @@
 import { BASEMAPS } from '@huntclub/shared';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { mapChrome } from '@huntclub/design';
-import { ClubMap, FIT_PADDING, fitText } from '../map/ClubMap';
-import { plateSide, PLATE_EDGE_ROOM } from '../map/plan';
+import { mapChrome, PLATE_EDGE_ROOM } from '@huntclub/design';
+import { ClubMap, FIT_PADDING } from '../map/ClubMap';
 import { SAMPLE_PLAN } from '../map/sampleProperty';
 import { translateOf } from '../testing/mapPointer';
 
@@ -115,7 +114,6 @@ describe('the club map', () => {
     const names = stands.map((s) => s.querySelector('.plan__stand-label')!.textContent!);
     expect(names[0]).toBe(WEST.name);
     expect(names[1]).toMatch(/^East Ridge .*…$/);
-    expect(fitText('Creek', 100, 15, 86)).toBe('Creek');
   });
 
   it('small maps beside a list (compact) leave every name to the list', () => {
@@ -152,17 +150,5 @@ describe('the club map', () => {
     // The picture is under everything else.
     const order = [...map().querySelectorAll('.plan__basemap, .plan__line, .plan__stand')];
     expect(order[0]!.classList.contains('plan__basemap')).toBe(true);
-  });
-});
-
-describe('plateSide', () => {
-  it('is right unless that crosses the edge and the left fits; then the side with more room', () => {
-    expect(plateSide(100, 25, 120, 1000)).toBe('right');
-    expect(plateSide(900, 25, 120, 1000)).toBe('left');
-    // Exactly at the edge room still fits on the right.
-    expect(plateSide(1000 - PLATE_EDGE_ROOM - 145, 25, 120, 1000)).toBe('right');
-    // Too wide for either side of a narrow map.
-    expect(plateSide(60, 25, 300, 200)).toBe('right');
-    expect(plateSide(150, 25, 300, 200)).toBe('left');
   });
 });

@@ -6,14 +6,23 @@ import { ICON_SIZE, makeStyles, radii, sizes, useTheme } from '../theme';
 import { StandTypeIcon } from './icons';
 
 /**
- * A stand: its type's icon in a 38 px rounded square with a control edge, the same on the map
- * (the stand marker) and in the Check In list. A pin when the type isn't known.
+ * A stand: its type's icon in a 38 px rounded square with a control edge, in the Check In list,
+ * the sheet and the clubhouse board. The Map tab draws it at `size` (mapChrome.labels.marker,
+ * 32 px). A pin when the type isn't known.
  */
-export function StandSquare({ type, testID }: { type?: StandType; testID?: string }) {
+export function StandSquare({
+  type,
+  testID,
+  size = sizes.standMarker,
+}: {
+  type?: StandType;
+  testID?: string;
+  size?: number;
+}) {
   const styles = useStyles();
   const theme = useTheme();
   return (
-    <View testID={testID} style={styles.square}>
+    <View testID={testID} style={[styles.square, { width: size, height: size }]}>
       {type ? (
         <StandTypeIcon type={type} />
       ) : (
@@ -30,8 +39,6 @@ export function StandSquare({ type, testID }: { type?: StandType; testID?: strin
 
 const useStyles = makeStyles((theme) => ({
   square: {
-    width: sizes.standMarker,
-    height: sizes.standMarker,
     borderRadius: radii.standMarker,
     borderWidth: sizes.controlBorder,
     borderColor: theme.colors.borderControl,

@@ -2,11 +2,16 @@ import { Marker } from '@maplibre/maplibre-react-native';
 
 import { HelpMarker } from '../../safety/components/HelpMarker';
 import type { IncomingAlert } from '../../safety/alerts';
+import { sizes } from '../../theme';
 import { ALL_LAYERS_ON, type MapLayerVisibility } from '../layers';
+import type { LabelSide } from '../mapLabels';
 import type { MapData } from '../types';
 import { HunterMarker } from './HunterMarker';
-import { MARKER_ANCHOR } from './MarkerPlate';
+import { MARKER_ANCHOR, markerAnchor } from './MarkerPlate';
 import { OpenStandMarker } from './OpenStandMarker';
+
+/** A stand whose name shows on the left is anchored by its right end. */
+const LEFT_LABEL_ANCHOR = markerAnchor(sizes.minTapTarget, 'left');
 
 /** MapLibre's own logo, attribution, compass and scale bar are off; the app draws its own. */
 export const MAP_CHROME_OFF = {
@@ -25,10 +30,10 @@ type Props = {
   /** Rings only, no plates or stands: the chat's strip of map. */
   compact?: boolean;
   /**
-   * The Map tab: the stands that show their capped name (`labelledStands`); the rest are icons.
-   * Unset elsewhere, where every stand has its full plate.
+   * The Map tab: the stands that show their name and on which side (`mapLabels`); the rest are
+   * icons. Unset elsewhere, where every stand has its full plate.
    */
-  standLabels?: ReadonlySet<string>;
+  standLabels?: ReadonlyMap<string, LabelSide>;
   /** A tap on a stand (the Map tab shows its name). */
   onStandPress?: (id: string) => void;
 };
@@ -49,20 +54,23 @@ export function MapLayers({
   return (
     <>
       {layers.stands && !compact
-        ? data.openStands.map((stand) => (
-            <Marker
-              key={stand.id}
-              id={`stand-${stand.id}`}
-              lngLat={[stand.position.lon, stand.position.lat]}
-              {...MARKER_ANCHOR}
-            >
-              <OpenStandMarker
-                stand={stand}
-                label={standLabels ? (standLabels.has(stand.id) ? 'name' : 'none') : 'full'}
-                {...(onStandPress ? { onPress: () => onStandPress(stand.id) } : {})}
-              />
-            </Marker>
-          ))
+        ? data.openStands.map((stand) => {
+            const label = standLabels ? (standLabels.get(stand.id) ?? 'none') : 'full';
+            return (
+              <Marker
+                key={stand.id}
+                id={`stand-${stand.id}`}
+                lngLat={[stand.position.lon, stand.position.lat]}
+                {...(label === 'left' ? LEFT_LABEL_ANCHOR : MARKER_ANCHOR)}
+              >
+                <OpenStandMarker
+                  stand={stand}
+                  label={label}
+                  {...(onStandPress ? { onPress: () => onStandPress(stand.id) } : {})}
+                />
+              </Marker>
+            );
+          })
         : null}
       {layers.hunters
         ? data.hunters.map((hunter) => (

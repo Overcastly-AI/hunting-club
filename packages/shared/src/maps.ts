@@ -237,6 +237,18 @@ export function polygonRings(polygon: { coordinates: unknown }): Ring[] {
   return rings;
 }
 
+/**
+ * Where a polygon's name goes: the middle of its north edge (the map sets it just inside, by
+ * `mapChrome.labels.area.drop`), so stands, usually inside an area, rarely sit on it.
+ */
+export function ringsLabelPoint(rings: readonly Ring[]): [lon: number, lat: number] | null {
+  const points = rings[0];
+  if (!points || points.length === 0) return null;
+  const lons = points.map((p) => p[0]);
+  const north = Math.max(...points.map((p) => p[1]));
+  return [(Math.min(...lons) + Math.max(...lons)) / 2, north];
+}
+
 /** Bounding box of a GeoJSON Polygon or MultiPolygon (a club's property line). */
 export function polygonBounds(polygon: { coordinates: unknown }): Bounds {
   const points = polygonRings(polygon).flat();

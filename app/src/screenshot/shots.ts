@@ -27,7 +27,10 @@ export const MAP_SHOTS = {
   'checked-in': { state: { checkedIn: true }, caption: 'Map, checked in at a stand' },
   'sheet-peek': { state: { detent: 'peek' }, caption: 'Sheet at peek' },
   'sheet-half': { state: { detent: 'half' }, caption: 'Sheet half open' },
-  'sheet-full': { state: { detent: 'full' }, caption: 'Sheet full open' },
+  'sheet-full': {
+    state: { detent: 'full' },
+    caption: 'Sheet full open: the club name and Show less; no pill, stack or footer',
+  },
   'ask-for-hand': {
     state: { checkedIn: true, panel: 'askForHand' },
     caption: 'Ask for a Hand open, checked in',

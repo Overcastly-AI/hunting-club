@@ -15,6 +15,7 @@ import {
   polygonBounds,
   polygonRings,
   rangeTileCount,
+  ringsLabelPoint,
   tileBounds,
   tileRangeAt,
   tileUrl,
@@ -94,6 +95,20 @@ describe('shared map maths', () => {
     expect(polygonRings({ coordinates: [ring] })).toEqual([ring]);
     expect(polygonRings({ coordinates: [[ring], [ring, ring]] })).toHaveLength(3);
     expect(polygonRings({ coordinates: [['x'], 7, null] })).toEqual([]);
+  });
+
+  it('names an area at the middle of its north edge', () => {
+    const [lon, lat] = ringsLabelPoint([
+      [
+        [-90, 40],
+        [-89.98, 40],
+        [-89.98, 40.01],
+        [-90, 40],
+      ],
+    ])!;
+    expect(lon).toBeCloseTo(-89.99, 9);
+    expect(lat).toBe(40.01);
+    expect(ringsLabelPoint([])).toBeNull();
   });
 
   it('caps club packs so a build at the polite rate fits the builder timeout', () => {

@@ -209,18 +209,6 @@ export function ringsPath(rings: readonly Ring[], projection: Projection): strin
     .join(' ');
 }
 
-/**
- * Where a polygon's name goes: the middle of its north edge (the caller sets it just inside),
- * so stands, usually inside an area, never sit on it.
- */
-export function ringsLabelPoint(rings: readonly Ring[]): [number, number] | null {
-  const points = rings[0];
-  if (!points || points.length === 0) return null;
-  const lons = points.map((p) => p[0]);
-  const north = Math.max(...points.map((p) => p[1]));
-  return [(Math.min(...lons) + Math.max(...lons)) / 2, north];
-}
-
 /** Scale bar lengths a hunter reads at a glance, in feet (US clubs). */
 const SCALE_STEPS_FEET = [
   50,
@@ -256,25 +244,4 @@ export function scaleBar(metresPerPx: number, maxPx: number): ScaleBar {
   const feet = [...SCALE_STEPS_FEET].reverse().find(fits) ?? SCALE_STEPS_FEET[0]!;
   const metres = feet / FEET_PER_METRE;
   return { px: metres / metresPerPx, metres, label: feetLabel(feet) };
-}
-
-/** Room kept between a marker's plate and the map's edge, in px. */
-export const PLATE_EDGE_ROOM = 8;
-
-/**
- * Which side of its marker a plate goes: the right, unless it would cross the map's right edge
- * there and fits on the left (a stand on the property's east side).
- */
-export function plateSide(
-  markerX: number,
-  offset: number,
-  plateWidth: number,
-  mapWidth: number,
-): 'right' | 'left' {
-  const fitsRight = markerX + offset + plateWidth <= mapWidth - PLATE_EDGE_ROOM;
-  if (fitsRight) return 'right';
-  const fitsLeft = markerX - offset - plateWidth >= PLATE_EDGE_ROOM;
-  if (fitsLeft) return 'left';
-  // Neither fits (a very narrow map): the side with more room.
-  return markerX > mapWidth / 2 ? 'left' : 'right';
 }

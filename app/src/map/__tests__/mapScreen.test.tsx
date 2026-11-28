@@ -9,20 +9,21 @@ import {
   fontWidth,
   formatCoverage,
   mapChrome,
+  SHEET_TOGGLE,
   measureCoverage,
   textWidth,
   type CoverageReport,
   type Rect,
 } from '@huntclub/design';
 import { CheckInMode } from '@huntclub/mesh';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import { AccessibilityInfo, StyleSheet } from 'react-native';
 import type { TestInstance } from 'test-renderer';
 
 import { CheckInRadioContext, type CheckInRadio } from '../../checkin/CheckInRadio';
 import { ClubEntitlementContext } from '../../club/entitlement';
 import { tabBarHeight } from '../../navigation/tabBarLayout';
-import { ICON_SIZE } from '../../theme';
+import { ICON_SIZE, sizes } from '../../theme';
 import { createMapDataStore } from '../dataSource';
 import { hunterFixture, openStandFixture } from '../../test-utils/mapFixtures';
 import { inTheme } from '../../test-utils/themeAudit';
@@ -232,7 +233,12 @@ async function showMap({
 }
 
 const region = (
-  over: Partial<{ zoom: number; bearing: number; userInteraction: boolean }> = {},
+  over: Partial<{
+    center: [number, number];
+    zoom: number;
+    bearing: number;
+    userInteraction: boolean;
+  }> = {},
 ) => ({
   nativeEvent: {
     center: [-77.86, 40.8],
@@ -475,7 +481,81 @@ describe('stand labels', () => {
     expect(text.props.numberOfLines).toBe(1);
     expect(flat(text.parent!).maxWidth).toBe(mapChrome.labels.maxWidth);
     expect(screen.queryByText('Available')).toBeNull();
-    await fireEvent(map(), 'regionDidChange', region({ zoom: 19 }));
+    // Zoomed in with both on screen, each name fits beside its stand.
+    await fireEvent(map(), 'regionDidChange', region({ zoom: 19, center: [-77.84985, 40.8] }));
     expect(labelled()).toHaveLength(2);
+  });
+
+  it('hide just below zoom 15 and show at it', async () => {
+    await showMap({ stands: [openStandFixture] });
+    const at = (zoom: number) =>
+      fireEvent(map(), 'regionDidChange', region({ zoom, center: [-77.8501, 40.8] }));
+    await at(mapChrome.labels.minZoom - 0.01);
+    expect(labelled()).toHaveLength(0);
+    expect(screen.queryByTestId('stand-label')).toBeNull();
+    await at(mapChrome.labels.minZoom);
+    expect(labelled()).toHaveLength(1);
+    await at(mapChrome.labels.minZoom - 1);
+    expect(labelled()).toHaveLength(0);
+  });
+
+  it('draw no box: 13 px semibold theme text on a 2 px plate halo, beside a 32 px marker, in a 48 px target', async () => {
+    await showMap({ stands: [openStandFixture] });
+    await fireEvent(map(), 'regionDidChange', region({ zoom: 16, center: [-77.8501, 40.8] }));
+    const { text, marker, halo } = { ...mapChrome.labels, halo: mapChrome.labels.text.halo };
+    const name = flat(screen.getByText('Ridge Stand'));
+    expect([name.fontSize, name.color]).toEqual([text.size, darkTheme.colors[text.color]]);
+    expect(name.fontVariationSettings).toMatchObject({ wght: text.weight });
+    expect(name.fontSize).toBeGreaterThanOrEqual(13);
+    // The halo: the name again in the plate colour, 2 px around it, hidden from screen readers.
+    const copies = byId('stand-label').queryAll(
+      (n) => n.type === 'Text' && flat(n).color === darkTheme.colors[text.haloColor],
+    );
+    expect(copies.length).toBeGreaterThan(0);
+    for (const copy of copies) {
+      const { left, top } = flat(copy);
+      expect(Math.hypot(num(left) - halo, num(top) - halo)).toBeCloseTo(halo, 1);
+    }
+    // No plate behind it.
+    expect(flat(byId('stand-label')).backgroundColor).toBeUndefined();
+    expect(flat(byId('stand-square')).width).toBe(marker);
+    const target = screen.getByRole('button', { name: /^Ridge Stand, ladder stand/ });
+    expect(flat(target).minHeight).toBe(sizes.minTapTarget);
+  });
+});
+
+describe('the sheet at full', () => {
+  const chromeIds = ['map-chrome-pill', 'map-chrome-stack', 'map-chrome-footer'];
+
+  it('hides the pill, stack and footer, and its header names the club with a collapse to half', async () => {
+    await showMap();
+    await swipe('increment');
+    await swipe('increment');
+    expect(screen.getByTestId('map-sheet-handle').props.accessibilityValue).toEqual({
+      text: 'Open',
+    });
+    for (const id of chromeIds) {
+      const piece = byId(id);
+      expect(flat(piece).opacity).toBe(0);
+      expect(piece.props.pointerEvents).toBe('none');
+      expect(piece.props.accessibilityElementsHidden).toBe(true);
+    }
+    // Hidden from screen readers: the only club name read out is the sheet's header.
+    expect(screen.queryByRole('button', { name: /^Pine Ridge Hunt Club\./ })).toBeNull();
+    expect(within(byId('map-chrome-sheet')).getByText('Pine Ridge Hunt Club')).toBeTruthy();
+    // Ask for a Hand stays one tap away at every detent.
+    expect(screen.getByRole('button', { name: 'Ask for a Hand. Pings club members' })).toBeTruthy();
+    const collapse = screen.getByRole('button', { name: SHEET_TOGGLE.less });
+    expect([flat(collapse).width, flat(collapse).height]).toEqual([
+      sizes.minTapTarget,
+      sizes.minTapTarget,
+    ]);
+    await fireEvent.press(collapse);
+    expect(screen.getByTestId('map-sheet-handle').props.accessibilityValue).toEqual({
+      text: 'Half open',
+    });
+    for (const id of chromeIds) expect(flat(byId(id)).opacity).toBe(1);
+    expect(screen.queryByRole('button', { name: SHEET_TOGGLE.less })).toBeNull();
+    expect(screen.getByRole('button', { name: /^Pine Ridge Hunt Club\./ })).toBeTruthy();
   });
 });

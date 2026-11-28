@@ -1,7 +1,7 @@
 import { EARTH_CIRCUMFERENCE_METRES, STAND_TYPE_ICON_NAMES, STAND_TYPES } from '@huntclub/shared';
 import { STAND_ICON_COMPONENTS, standIcon } from '../components/standIcons';
 import { SAMPLE_PLAN } from '../map/sampleProperty';
-import { boundsCentre, fitPlan, planBounds, ringsLabelPoint, scaleBar } from '../map/plan';
+import { boundsCentre, fitPlan, planBounds, scaleBar } from '../map/plan';
 
 const insets = { top: 0, right: 0, bottom: 0, left: 0 };
 
@@ -42,20 +42,6 @@ describe('the club plan', () => {
   it('shows some ground around a lone stand', () => {
     const { metresPerPx } = fitPlan([-90, 40, -90, 40], 400, 400, insets);
     expect(metresPerPx * 400).toBeCloseTo(400, 6);
-  });
-
-  it('names an area at the middle of its north edge', () => {
-    const [lon, lat] = ringsLabelPoint([
-      [
-        [-90, 40],
-        [-89.98, 40],
-        [-89.98, 40.01],
-        [-90, 40],
-      ],
-    ])!;
-    expect(lon).toBeCloseTo(-89.99, 9);
-    expect(lat).toBe(40.01);
-    expect(ringsLabelPoint([])).toBeNull();
   });
 
   it('picks the longest round scale bar that fits, in feet then miles', () => {
