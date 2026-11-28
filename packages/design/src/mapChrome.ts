@@ -121,10 +121,17 @@ export interface CoverageReport {
   withinBudget: boolean;
 }
 
-/** `coveredFraction` checked against `coverageBudget(viewport.width)`. */
-export function measureCoverage(viewport: Rect, overlays: readonly Rect[]): CoverageReport {
+/**
+ * `coveredFraction` checked against the budget for the screen: `screenWidth` is the window's
+ * width (1280 on a desktop whose map sits beside a rail and a panel), the map's own by default.
+ */
+export function measureCoverage(
+  viewport: Rect,
+  overlays: readonly Rect[],
+  screenWidth: number = viewport.width,
+): CoverageReport {
   const fraction = coveredFraction(viewport, overlays);
-  const budget = coverageBudget(viewport.width);
+  const budget = coverageBudget(screenWidth);
   return { fraction, budget, withinBudget: fraction <= budget };
 }
 

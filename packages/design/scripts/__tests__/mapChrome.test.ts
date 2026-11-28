@@ -74,6 +74,8 @@ describe('budget', () => {
       withinBudget: true,
     });
     expect(measureCoverage(viewport, [rect(0, 0, 51, 50)]).withinBudget).toBe(false);
+    // A desktop map is narrower than the screen it is on: the screen's budget applies.
+    expect(measureCoverage(rect(232, 0, 648, 860), [], 1280).budget).toBe(0.15);
     expect(formatCoverage(0.1834)).toBe('18.3%');
   });
 
