@@ -2,6 +2,8 @@
 // chrome"), shared by the app and the web, plus the pure helper that measures how much of the
 // map that chrome covers. Plain numbers and functions: no DOM or React Native code here.
 import { breakpoints, sizes } from './sizes';
+import type { ThemeColorToken } from './theme';
+import { fontSize, fontWeight } from './type';
 
 /**
  * The sheet's peek on each surface, px. The web's is the grabber and one summary line; the
@@ -21,8 +23,12 @@ export const mapChrome = {
   budget: { phone: 0.25, desktop: 0.15 },
   /** Gap between every piece of chrome and the map's edge. */
   inset: 12,
-  /** The one top pill: mesh dot, club name, the next time. Tap drops the conditions card. */
-  pill: { height: sizes.minTapTarget, maxWidth: 300 },
+  /**
+   * The one top pill. In the app: mesh dot, club name, the next time (up to `maxWidth`). On the
+   * web, whose app bar or sidebar already names the club: the next time only, `width` wide.
+   * A tap drops the conditions card where they are not beside the map.
+   */
+  pill: { height: sizes.minTapTarget, maxWidth: 300, width: 200 },
   /** The right-edge icon stack: Layers, (desktop) split zoom, Find me. */
   stack: {
     button: sizes.minTapTarget,
@@ -44,14 +50,17 @@ export const mapChrome = {
       peek: SHEET_PEEK.web,
       /** Fraction of the map's height. */
       half: 0.5,
-      /** Fraction of the map's height; the pill stays visible above it. */
+      /** Fraction of the map's height. The sheet covers the map, and the web hides the map's chrome. */
       full: 0.88,
     },
     /** A release faster than this (px per ms) moves one detent in the swipe's direction. */
     flickVelocity: 0.5,
   },
-  /** The single footer line: scale bar and attribution, bottom left, above the peek. */
-  footer: { height: 24 },
+  /**
+   * The single footer line: scale bar and attribution, bottom left, above the peek. It moves
+   * with the sheet and keeps `clearance` px between its lowest ink and the sheet's top.
+   */
+  footer: { height: 24, clearance: 8 },
   /** Auto-hide while the map moves (pan, zoom, rotate). */
   autoHide: {
     /** Fade out (and back in) over this long. Instant under reduced motion. */
@@ -67,6 +76,28 @@ export const mapChrome = {
     maxHeight: 32,
     /** Below this map zoom, stands are icons only; the name shows on tap. */
     minZoom: 15,
+    /** The stand marker a label sits beside, px (its tap target stays `sizes.minTapTarget`). */
+    marker: 32,
+    /** Gap between the marker's edge and its label, px. */
+    gap: 6,
+    /**
+     * The label itself: no box, just the name over a halo. Colours are theme tokens: light text
+     * on a dark halo in the dark theme, dark text on a light halo in daylight.
+     */
+    text: {
+      size: fontSize.mapLabelMin,
+      weight: fontWeight.semiBold,
+      /** The halo's width around each glyph, px. */
+      halo: 2,
+      color: 'text',
+      haloColor: 'plate',
+    } as const satisfies {
+      size: number;
+      weight: number;
+      halo: number;
+      color: ThemeColorToken;
+      haloColor: ThemeColorToken;
+    },
   },
 } as const;
 

@@ -12,6 +12,8 @@ import { STAND_PROBLEMS } from '../map/StandEditor';
 import { renderSignedIn } from '../testing/app';
 import { sampleData, type FakeClubData } from '../testing/fakeClubApi';
 import {
+  ADD_MENU,
+  addToMap,
   drag,
   ground,
   MAP_H,
@@ -26,7 +28,7 @@ usePointerEvents();
 /** My club for the sample club, signed in as its admin, with the club API calls watched. */
 async function myClub(data: FakeClubData = sampleData()) {
   const view = await renderSignedIn(data);
-  await screen.findByRole('button', { name: 'Add stand' });
+  await screen.findByRole('button', { name: ADD_MENU });
   const spy = {
     createStand: vi.spyOn(view.client, 'createStand'),
     updateStand: vi.spyOn(view.client, 'updateStand'),
@@ -47,7 +49,7 @@ const nameField = (label: string) => screen.getByRole('textbox', { name: label }
 describe('stands on My club (admins)', () => {
   it('places a new stand with a tap, names it, sets its type and saves it through the club API', async () => {
     const { spy } = await myClub();
-    fireEvent.click(screen.getByRole('button', { name: 'Add stand' }));
+    addToMap('stand');
     // Not placed yet: Save says where to put it, and nothing is sent.
     fireEvent.change(nameField('Stand name'), { target: { value: 'Fence Row' } });
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
@@ -81,7 +83,7 @@ describe('stands on My club (admins)', () => {
       await held;
       return client.createStand(...args);
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Add stand' }));
+    addToMap('stand');
     fireEvent.change(nameField('Stand name'), { target: { value: 'Fence Row' } });
     tap(400, 300);
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
@@ -100,7 +102,7 @@ describe('stands on My club (admins)', () => {
 
   it('places a stand from the keyboard, refuses a blank name with the shared rule, and cancels', async () => {
     const { spy } = await myClub();
-    fireEvent.click(screen.getByRole('button', { name: 'Add stand' }));
+    addToMap('stand');
     fireEvent.click(screen.getByRole('button', { name: 'Put at the cross' }));
     const marker = placing().getByRole('button', { name: /^New stand: drag it/ });
     expect(translateOf(marker)).toEqual([MAP_W / 2, MAP_H / 2]);
@@ -132,7 +134,7 @@ describe('stands on My club (admins)', () => {
     // The stand being edited is drawn by the editor alone, not also as part of the plan
     // (one level closer, past the zoom where stands show their names).
     fireEvent.keyDown(ground(), { key: '+' });
-    const names = [...ground().querySelectorAll('.plan__plate-name')].map((t) => t.textContent);
+    const names = [...ground().querySelectorAll('.plan__stand-label')].map((t) => t.textContent);
     expect(names).not.toContain('Big Oak Ladder');
     expect(names).toContain('Creek Stand');
     fireEvent.change(nameField('Stand name'), { target: { value: 'Big Oak' } });
@@ -176,7 +178,7 @@ describe('stands on My club (admins)', () => {
 describe('areas on My club (admins)', () => {
   it('draws a new area with the polygon tool, names it and saves it through the club API', async () => {
     const { spy } = await myClub();
-    fireEvent.click(screen.getByRole('button', { name: 'Add area' }));
+    addToMap('area');
     tap(300, 300);
     tap(500, 300);
     tap(500, 450);
@@ -195,7 +197,7 @@ describe('areas on My club (admins)', () => {
 
   it('refuses an area that crosses itself, with the shared words, and sends nothing', async () => {
     const { spy } = await myClub();
-    fireEvent.click(screen.getByRole('button', { name: 'Add area' }));
+    addToMap('area');
     fireEvent.change(nameField('Area name'), { target: { value: 'Bow Tie' } });
     tap(300, 300);
     tap(500, 450);
@@ -244,7 +246,7 @@ describe('areas on My club (admins)', () => {
 describe('the Stands and areas list (admins)', () => {
   it('opens a saved area for editing from its row, as the map does', async () => {
     await myClub();
-    const list = within(screen.getByRole('list', { name: 'Areas' }));
+    const list = within(screen.getByRole('list', { name: 'Stands and areas' }));
     fireEvent.click(list.getByRole('button', { name: 'Edit Creek Bottom' }));
     expect((nameField('Area name') as HTMLInputElement).value).toBe('Creek Bottom');
     expect(corners().getAllByRole('button')).toHaveLength(5);

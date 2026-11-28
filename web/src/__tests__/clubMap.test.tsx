@@ -1,5 +1,5 @@
 import { BASEMAPS } from '@huntclub/shared';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { mapChrome } from '@huntclub/design';
 import { ClubMap, FIT_PADDING, fitText } from '../map/ClubMap';
 import { plateSide, PLATE_EDGE_ROOM } from '../map/plan';
@@ -56,20 +56,20 @@ describe('the club map', () => {
     }
   });
 
-  it('puts a plate to the left of its stand where the right would cross the edge', () => {
+  it('puts a label to the left of its stand where the right would cross the edge', () => {
     const [west, east] = drawStands(1000, 600);
-    expect(west!.querySelector('.plan__plate-group--right')).toBeTruthy();
-    expect(east!.querySelector('.plan__plate-group--left')).toBeTruthy();
-    // The flipped plate ends left of the marker, inside the map.
-    const plate = east!.querySelector('.plan__plate')!;
-    const shift = Number(
-      east!
-        .querySelector('.plan__plate-group')!
-        .getAttribute('transform')!
-        .match(/translate\(([-\d.]+)/)![1],
-    );
-    expect(shift + Number(plate.getAttribute('width'))).toBeLessThan(0);
-    expect(markerAt(east!)[0] + shift).toBeGreaterThanOrEqual(PLATE_EDGE_ROOM);
+    const { marker, gap, text } = mapChrome.labels;
+    // No box: the name alone, 6 px from the 32 px marker's edge (past its halo).
+    expect(west!.querySelector('.plan__plate, .plan__stand-label rect')).toBeNull();
+    const right = west!.querySelector('.plan__stand-label--right')!;
+    expect(Number(right.getAttribute('x'))).toBeCloseTo(marker / 2 + gap + text.halo, 1);
+    expect(Number(west!.querySelector('.plan__stand-box')!.getAttribute('width'))).toBe(marker);
+    // The flipped label ends left of the marker, inside the map.
+    const left = east!.querySelector('.plan__stand-label--left')!;
+    const x = Number(left.getAttribute('x')) - text.halo;
+    const width = Number(left.getAttribute('data-width'));
+    expect(x + width).toBeCloseTo(-(marker / 2 + gap), 1);
+    expect(markerAt(east!)[0] + x).toBeGreaterThanOrEqual(PLATE_EDGE_ROOM);
   });
 
   it('collapses stand names to icons below the label zoom, and leaves area names to wider maps', () => {
@@ -78,18 +78,41 @@ describe('the club map', () => {
     const map = screen.getByRole('img', { name: 'Narrow' });
     // The whole property on a small map is below the label zoom: icons only.
     expect(map.querySelectorAll('.plan__stand')).toHaveLength(SAMPLE_PLAN.stands.length);
-    expect(map.querySelectorAll('.plan__plate')).toHaveLength(0);
+    expect(map.querySelectorAll('.plan__stand-label')).toHaveLength(0);
     expect(map.querySelectorAll('.plan__label')).toHaveLength(0);
   });
 
-  it('caps every stand label at 140 by 32, cutting a long name', () => {
+  it('hides stand names below zoom 15 and shows them from it, as the map zooms', () => {
+    laidOutAt(1000, 600);
+    render(<ClubMap areas={[]} stands={[WEST, EAST]} label="Zooming" interactive />);
+    const map = screen.getByRole('img', { name: /^Zooming/ });
+    const zoom = () => Number(map.getAttribute('data-zoom'));
+    const names = () => map.querySelectorAll('.plan__stand-label').length;
+    const key = (k: string) => fireEvent.keyDown(map, { key: k });
+    // Out until below the label zoom, then in, a level at a time, checking each side of it.
+    while (zoom() >= mapChrome.labels.minZoom) key('-');
+    for (let i = 0; i < 6; i++) {
+      expect(names()).toBe(zoom() < mapChrome.labels.minZoom ? 0 : 2);
+      key('+');
+    }
+    expect(zoom()).toBeGreaterThanOrEqual(mapChrome.labels.minZoom);
+    expect(names()).toBe(2);
+    while (zoom() >= mapChrome.labels.minZoom) key('-');
+    expect(names()).toBe(0);
+  });
+
+  it('caps every stand label at 140 px, cutting a long name, within the 32 px label height', () => {
     const stands = drawStands(1000, 600);
     for (const stand of stands) {
-      const plate = stand.querySelector('.plan__plate')!;
-      expect(Number(plate.getAttribute('width'))).toBeLessThanOrEqual(mapChrome.labels.maxWidth);
-      expect(Number(plate.getAttribute('height'))).toBeLessThanOrEqual(mapChrome.labels.maxHeight);
+      const label = stand.querySelector('.plan__stand-label')!;
+      expect(Number(label.getAttribute('data-width'))).toBeLessThanOrEqual(
+        mapChrome.labels.maxWidth,
+      );
     }
-    const names = stands.map((s) => s.querySelector('.plan__plate-name')!.textContent!);
+    expect(mapChrome.labels.text.size + 2 * mapChrome.labels.text.halo).toBeLessThanOrEqual(
+      mapChrome.labels.maxHeight,
+    );
+    const names = stands.map((s) => s.querySelector('.plan__stand-label')!.textContent!);
     expect(names[0]).toBe(WEST.name);
     expect(names[1]).toMatch(/^East Ridge .*…$/);
     expect(fitText('Creek', 100, 15, 86)).toBe('Creek');
@@ -99,7 +122,7 @@ describe('the club map', () => {
     laidOutAt(1000, 600);
     render(<ClubMap {...SAMPLE_PLAN} compact label="Inset" />);
     const map = screen.getByRole('img', { name: 'Inset' });
-    expect(map.querySelectorAll('.plan__plate')).toHaveLength(0);
+    expect(map.querySelectorAll('.plan__stand-label')).toHaveLength(0);
     expect(map.querySelectorAll('.plan__label')).toHaveLength(0);
   });
 

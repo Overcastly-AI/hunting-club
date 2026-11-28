@@ -85,6 +85,7 @@ const popoverCss = `
 .ui-popover__panel--bottom-end { top: calc(100% + ${gap(2)}); right: 0; }
 .ui-popover__panel--top-start { bottom: calc(100% + ${gap(2)}); left: 0; }
 .ui-popover__panel--right-end { bottom: 0; left: calc(100% + ${gap(2)}); }
+.ui-popover__panel--left-start { top: 0; right: calc(100% + ${gap(2)}); }
 `;
 
 const tabs = `

@@ -93,8 +93,16 @@ const clubview = `
 .clubview { position: relative; display: grid; height: 100vh; overflow: hidden; isolation: isolate; }
 .clubview > .clubview__map { position: absolute; inset: 0; }
 .clubview__pill { display: contents; }
-.clubview__facts { ${text('label')}; color: ${color('textSecondary')}; margin: 0; overflow: hidden;
+.clubview__facts { ${text('body')}; color: ${color('textSecondary')}; margin: 0 0 ${gap(2)}; }
+/* The sheet's peek: what the admin acts on, and the chip that opens Needs you. */
+.clubview__peek { display: flex; align-items: center; gap: ${gap(2)}; min-width: 0; }
+.clubview__lead { ${text('label')}; font-weight: 750; flex: 1; min-width: 0; margin: 0; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap; }
+.clubview__chip { flex: none; display: inline-flex; align-items: center; min-height: ${TAP}; margin: 0;
+  padding: 0 ${gap(3)}; border: var(--control-border) solid ${color('borderControl')}; border-radius: var(--radius-full);
+  background: ${color('raised')}; color: ${color('text')}; font-size: 1rem; cursor: pointer; white-space: nowrap; }
+.clubview__chip:hover { background: ${color('pressed')}; }
+.clubview__chip:focus-visible { outline: 3px solid ${color('focusRing')}; outline-offset: 2px; }
 .clubview__editor[hidden] { display: none; }
 .clubview__side > *, .map-sheet__body > * { flex: none; }
 /* A column that scrolls: flex, so no row shrinks under its contents (grid rows would). */
@@ -102,11 +110,50 @@ const clubview = `
   padding: ${gap(5)} ${gap(5)} ${gap(8)}; background: ${color('plate')}; border-left: ${HAIR}; }
 .clubview__overdue { ${text('body')}; color: ${color('textSecondary')}; margin: 0; padding-top: ${gap(3)};
   border-top: ${HAIR}; }
-.side-section__title { ${text('title2')}; display: flex; justify-content: space-between; align-items: baseline;
+.side-section__title { ${text('title3')}; display: flex; justify-content: space-between; align-items: baseline;
   margin: 0 0 ${gap(2)}; }
 .side-section__count { color: ${color('textSecondary')}; }
+.side-section__title:focus { outline: none; }
+.side-section__title:focus-visible { outline: 3px solid ${color('focusRing')}; outline-offset: 2px; }
+/* One header row: the title, a quiet text action and the "+" menu. */
+.side-section__head { display: flex; align-items: center; gap: ${gap(1)}; margin: 0 0 ${gap(2)}; }
+.side-section__head .side-section__title { flex: 1; min-width: 0; margin: 0; white-space: nowrap; }
+.side-section__quiet { ${text('label')}; font-weight: 650; min-height: ${TAP}; margin: 0; padding: 0 ${gap(1)}; border: 0;
+  white-space: nowrap;
+  border-radius: var(--radius-md); background: transparent; color: ${color('accentText')}; cursor: pointer; }
+.side-section__quiet:hover { background: ${color('raised')}; }
+.side-section__quiet:focus-visible { outline: 3px solid ${color('focusRing')}; outline-offset: -3px; }
+.side-section__add { display: inline-flex; align-items: center; justify-content: center; width: ${TAP}; padding: 0;
+  border: var(--control-border) solid ${color('borderControl')}; }
+.add-menu.ui-popover__panel:not([hidden]) { display: grid; gap: ${gap(2)}; min-width: 200px; padding: ${gap(2)}; }
+.side-section__note { ${text('body')}; color: ${color('textSecondary')}; margin: 0; }
+.side-section__note a { color: ${color('accentText')}; font-weight: 650; }
+/* A stand or area: its icon, name and a chevron, the whole row one 48 px target. */
+.place-row { display: flex; align-items: center; gap: ${gap(3)}; box-sizing: border-box; width: 100%; min-height: ${TAP};
+  margin: 0; padding: ${gap(1)} ${gap(1)}; border: 0; border-radius: var(--radius-sm); background: transparent;
+  color: ${color('text')}; font: inherit; text-align: left; }
+button.place-row { cursor: pointer; }
+button.place-row:hover { background: ${color('raised')}; }
+button.place-row:focus-visible { outline: 3px solid ${color('focusRing')}; outline-offset: -3px; }
+button.place-row:disabled { cursor: default; color: ${color('textTertiary')}; background: transparent; }
+.place-row > svg { flex: none; }
+.place-row__name { ${text('body')}; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.place-row__chevron { color: ${color('textSecondary')}; }
+.place-row__area .plan__area { fill: currentColor; stroke: currentColor; }
+/* The map key: folded away under one 48 px line, the marks drawn with the map's own classes. */
+.map-key__summary { ${text('label')}; font-weight: 750; display: flex; align-items: center; gap: ${gap(2)};
+  min-height: ${TAP}; cursor: pointer; list-style: none; }
+.map-key__summary::-webkit-details-marker { display: none; }
+.map-key__summary::after { content: ''; width: 8px; height: 8px; margin-left: ${gap(1)}; border: solid currentColor;
+  border-width: 0 2px 2px 0; rotate: 45deg; translate: 0 -2px; transition: rotate var(--motion-fast) var(--motion-easing); }
+.map-key[open] > .map-key__summary::after { rotate: 225deg; translate: 0 2px; }
+.map-key__summary:focus-visible { outline: 3px solid ${color('focusRing')}; outline-offset: 2px; }
+.map-key__list { list-style: none; margin: 0; padding: 0; }
+.map-key__row { display: flex; align-items: center; gap: ${gap(3)}; min-height: 40px; border-top: ${HAIR};
+  ${text('body')}; }
+/* On the map's own ground, which is the same in both themes, like the map. */
+.map-key__swatch { flex: none; border-radius: var(--radius-sm); background: var(--color-map-ground); }
 .side-section__empty-state { border-top: ${HAIR}; }
-.side-section__tools { display: grid; gap: ${gap(3)}; padding-top: ${gap(3)}; border-top: ${HAIR}; }
 .side-section__hint { ${text('body')}; color: ${color('textSecondary')}; margin: 0; }
 .side-section__empty-state .ui-empty { padding: ${gap(4)} 0 ${gap(2)}; }
 .your-name .form-plate { padding-top: ${gap(3)}; border-top: ${HAIR}; }
@@ -126,7 +173,6 @@ ${DESKTOP} {
   .clubview { grid-template-columns: minmax(0, 1fr) ${SHELL.sidePanelWidth}px; }
   .clubview > .clubview__map { position: relative; inset: auto; min-height: 0; }
 }
-.side-section__line { display: grid; gap: ${gap(2)}; justify-items: start; }
 `;
 
 /** Lists beside a small map: the map on top on phones, to the right (sticky) from desktop. */

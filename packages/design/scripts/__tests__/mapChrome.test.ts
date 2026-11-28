@@ -1,4 +1,8 @@
+import { boundary } from '../../src/colors';
+import { contrastRatio } from '../../src/contrast';
 import { mapChromeVariables, rootVariablesCss } from '../../src/css';
+import { themes } from '../../src/theme';
+import { fontSize, fontWeight } from '../../src/type';
 import {
   chromePinned,
   coverageBudget,
@@ -119,6 +123,46 @@ describe('mapChrome spec', () => {
     const css = rootVariablesCss();
     expect(css).toContain('--map-chrome-sheet-peek: 64px;');
     expect(css).toMatch(/prefers-reduced-motion[^}]*--map-chrome-fade: 0ms/);
+  });
+
+  it('draws stand labels as 13px semibold text on a 2px themed halo, 6px from a 32px marker', () => {
+    const { marker, gap, text, maxHeight } = mapChrome.labels;
+    expect(text.size).toBe(fontSize.mapLabelMin);
+    expect(text.size).toBeGreaterThanOrEqual(13);
+    expect(text.weight).toBe(fontWeight.semiBold);
+    expect(text.halo).toBe(2);
+    expect([marker, gap]).toEqual([32, 6]);
+    expect(marker).toBeLessThan(sizes.minTapTarget);
+    expect(text.size + 2 * text.halo).toBeLessThanOrEqual(maxHeight);
+    const vars = mapChromeVariables();
+    expect(vars['--map-chrome-label-color']).toBe('var(--theme-text)');
+    expect(vars['--map-chrome-label-halo-color']).toBe('var(--theme-plate)');
+    // Light on dark in the dark theme, dark on light in daylight; readable either way.
+    for (const theme of [themes.dark, themes.light]) {
+      const ink = theme.colors[text.color];
+      const halo = theme.colors[text.haloColor];
+      expect(contrastRatio(ink, halo)).toBeGreaterThanOrEqual(7);
+    }
+    expect(contrastRatio(themes.dark.colors[text.color], '#000000')).toBeGreaterThan(
+      contrastRatio(themes.dark.colors[text.haloColor], '#000000'),
+    );
+    expect(contrastRatio(themes.light.colors[text.color], '#000000')).toBeLessThan(
+      contrastRatio(themes.light.colors[text.haloColor], '#000000'),
+    );
+  });
+});
+
+describe('the property line on a light basemap', () => {
+  /** USGS Topo's paper and its tint for wooded land, the lightest grounds the line crosses. */
+  const TOPO_GROUNDS = ['#FFFFFF', '#F4F2EC', '#D3E9C8'];
+  it('is wider over a dark halo that stands out at 3:1 or better on the paper', () => {
+    const { onLight } = boundary;
+    expect(onLight.width).toBeGreaterThan(boundary.width);
+    expect(onLight.haloWidth).toBeGreaterThanOrEqual(onLight.width + 2 * 2);
+    expect(onLight.innerLineWidth).toBeGreaterThan(boundary.innerLineWidth);
+    for (const ground of TOPO_GROUNDS)
+      expect(contrastRatio(onLight.halo, ground)).toBeGreaterThanOrEqual(3);
+    expect(contrastRatio(onLight.stroke, onLight.halo)).toBeGreaterThanOrEqual(3);
   });
 });
 

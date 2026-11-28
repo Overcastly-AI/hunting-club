@@ -40,7 +40,9 @@ const statTile = `
 .ui-stat-grid { ${plateFace} display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px;
   background: ${color('borderSubtle')}; overflow: hidden; list-style: none; margin: 0; padding: 0; }
 ${DESKTOP} { .ui-stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.ui-stat-grid.ui-stat-grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* Three cells (the conditions): the last is a little wider, so "Overdue at" sits on one line
+   and all three values share a baseline. */
+.ui-stat-grid.ui-stat-grid--three { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); }
 .ui-stat-grid > li { display: grid; background: ${color('plate')}; min-width: 0; }
 .ui-stat-tile { display: grid; align-content: start; gap: 2px; padding: ${gap(2)} ${gap(3)} ${gap(3)};
   color: ${color('text')}; text-decoration: none; min-width: 0; min-height: 76px; }

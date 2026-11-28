@@ -7,6 +7,7 @@ import { APP_NAME, CLUB_PRICING, FREE_PARTY_MAX_MEMBERS, LEGAL_DOCS } from '@hun
 import {
   ADMIN_PATH,
   CHECKOUT_RETURN_PATHS,
+  DOWNLOAD_PATH,
   JOIN_PATH,
   LEGAL_PATHS,
   WEB_DOMAINS,
@@ -35,7 +36,7 @@ export const PAGE_PATHS = {
   features: '/features',
   clubs: '/clubs',
   pricing: '/pricing',
-  download: '/download',
+  download: DOWNLOAD_PATH,
   faq: '/faq',
   contact: '/contact',
   privacy: LEGAL_PATHS.privacy,

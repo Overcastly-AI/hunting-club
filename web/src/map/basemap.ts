@@ -17,6 +17,7 @@ import {
 } from '@huntclub/pmtiles/reader';
 
 import {
+  BASEMAP_IDS,
   BASEMAPS,
   basemapBySource,
   mapPackPath,
@@ -35,6 +36,28 @@ import type { Projection } from './plan';
 
 /** The live basemap a club map opens on: aerial, the picture the design is drawn for. */
 export const CLUB_MAP_BASEMAP: BasemapId = 'aerial';
+
+/** Where this browser remembers the live basemap last chosen (per browser, never sent). */
+export const BASEMAP_STORAGE_KEY = 'hcm-basemap';
+
+/** The basemap this browser last chose, else `fallback` (also when storage is blocked). */
+export function storedBasemap(fallback: BasemapId): BasemapId {
+  try {
+    const stored = localStorage.getItem(BASEMAP_STORAGE_KEY);
+    return BASEMAP_IDS.find((id) => id === stored) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/** Remembers the chosen basemap for the next visit; a browser that refuses storage just forgets. */
+export function storeBasemap(id: BasemapId): void {
+  try {
+    localStorage.setItem(BASEMAP_STORAGE_KEY, id);
+  } catch {
+    // Private mode or blocked storage: the choice lasts for this visit only.
+  }
+}
 
 /** At most this many tiles under the plan: enough for a square mile at the deepest level. */
 export const BASEMAP_MAX_TILES = 64;
@@ -180,11 +203,19 @@ export function useBasemap(pack: ReadyPack | undefined, deps?: BasemapDeps): Bas
 /**
  * A club map's picture, as My club draws it: live USGS tiles of `live` (pass it to ClubMap's
  * `live`) over the club's newest ready pack of that basemap (ClubMap's `basemap`), which still
- * shows when the live tiles cannot load.
+ * shows when the live tiles cannot load. `live` starts on the basemap this browser chose last
+ * (else CLUB_MAP_BASEMAP), and `setLive` (the Layers popover's Topo or Aerial) remembers the
+ * choice across reloads, so every club map opens on the same picture.
  */
-export function useClubBasemap(
-  packs: readonly MapPack[] | undefined,
-  live: BasemapId = CLUB_MAP_BASEMAP,
-): { live: BasemapId; basemap: BasemapPicture | null } {
-  return { live, basemap: useBasemap(basemapPack(packs, live)) };
+export function useClubBasemap(packs: readonly MapPack[] | undefined): {
+  live: BasemapId;
+  setLive: (id: BasemapId) => void;
+  basemap: BasemapPicture | null;
+} {
+  const [live, setLiveState] = useState<BasemapId>(() => storedBasemap(CLUB_MAP_BASEMAP));
+  const setLive = (id: BasemapId) => {
+    setLiveState(id);
+    storeBasemap(id);
+  };
+  return { live, setLive, basemap: useBasemap(basemapPack(packs, live)) };
 }

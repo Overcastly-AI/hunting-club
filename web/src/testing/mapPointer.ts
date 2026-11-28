@@ -8,9 +8,17 @@ import { fireEvent, screen } from '@testing-library/react';
  */
 class TestPointerEvent extends MouseEvent {
   readonly pointerId: number;
-  constructor(type: string, init: MouseEventInit & { pointerId?: number } = {}) {
+  readonly pointerType: string;
+  constructor(
+    type: string,
+    init: MouseEventInit & { pointerId?: number; pointerType?: string; timeStamp?: number } = {},
+  ) {
     super(type, init);
     this.pointerId = init.pointerId ?? 1;
+    this.pointerType = init.pointerType ?? 'mouse';
+    // A given time, so a test can make a slow drag or a flick.
+    if (init.timeStamp !== undefined)
+      Object.defineProperty(this, 'timeStamp', { value: init.timeStamp });
   }
 }
 
@@ -52,3 +60,14 @@ export const translateOf = (el: Element) =>
     .match(/translate\(([-\d.]+) ([-\d.]+)\)/)!
     .slice(1)
     .map(Number) as [number, number];
+
+/** My club's "+" menu beside Stands and areas (admins). */
+export const ADD_MENU = 'Add a stand or area';
+
+/** Starts adding a stand or an area from My club's "+" menu. */
+export function addToMap(what: 'stand' | 'area') {
+  fireEvent.click(screen.getByRole('button', { name: ADD_MENU }));
+  fireEvent.click(
+    screen.getByRole('button', { name: what === 'stand' ? 'Add stand' : 'Add area' }),
+  );
+}

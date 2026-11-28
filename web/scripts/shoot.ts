@@ -120,15 +120,28 @@ const openLayers = async (page: Page) => {
   await page.getByRole('button', { name: 'Layers' }).click();
   await page.waitForSelector('.map-layers:not([hidden])');
 };
+/** Switches the basemap to Topo (the property line's stronger stroke), then closes Layers. */
+const topo = async (page: Page) => {
+  await openLayers(page);
+  await page.getByRole('radio', { name: 'Topo' }).click();
+  await page.keyboard.press('Escape');
+  await page.evaluate(`document.activeElement.blur()`);
+  await page.waitForTimeout(250);
+};
 /** Drops the pill's card (phones and tablets: on a desktop the conditions are in the panel). */
 const openPill = async (page: Page) => {
-  await page.getByRole('button', { name: 'Today at the property' }).click();
+  await page.getByRole('button', { name: /^Today at the property/ }).click();
   await page.waitForSelector('.map-pill__card:not([hidden])');
 };
 /** Raises the sheet to half with its handle's button. */
 const sheetHalf = async (page: Page) => {
   await page.getByRole('button', { name: 'Show more' }).click();
   await page.waitForTimeout(300);
+};
+/** Raises the sheet to full, where it covers the map and the map's chrome hides. */
+const sheetFull = async (page: Page) => {
+  await sheetHalf(page);
+  await sheetHalf(page);
 };
 /** Moves the map from the keyboard (+ zooms in), then waits for the chrome to come back. */
 const keys = async (page: Page, ...pressed: string[]) => {
@@ -170,16 +183,17 @@ const [west, south, east, north] = polygonBounds(SAMPLE_PROPERTY.boundary);
 const AT_THE_PROPERTY = { latitude: (south + north) / 2, longitude: (west + east) / 2 };
 /**
  * My club with no property line yet: Find me (the browser is at the property), one level
- * closer, Draw property line from the Layers popover, then four corners tapped in the open map
- * between the pill and the footer line.
+ * closer, Draw property line (Stands and areas, in the panel or the sheet), then four corners
+ * tapped in the open map between the pill and the footer line.
  */
 const drawLine = async (page: Page) => {
   await page.getByRole('button', { name: 'Find me' }).click();
   await page.waitForTimeout(250);
   await keys(page, '+');
-  await openLayers(page);
+  // Off the map (no focus ring round it in the shot), then the panel's or sheet's text action.
+  await page.evaluate(`document.activeElement.blur()`);
   await page.evaluate(
-    `[...document.querySelectorAll('.map-layers button')].find((b) => b.textContent === 'Draw property line').click()`,
+    `[...document.querySelectorAll('.side-section__quiet')].find((b) => b.textContent === 'Draw property line').click()`,
   );
   await page.waitForSelector('.map-pill--edit');
   const open = await page.evaluate<{ left: number; right: number; top: number; bottom: number }>(
@@ -249,6 +263,15 @@ const SHOTS: readonly Shot[] = [
     coverage: 'report',
     only: PHONES,
   },
+  {
+    name: 'my-club-sheet-full',
+    scenario: 'trial',
+    hash: '#/club',
+    act: sheetFull,
+    coverage: 'report',
+    only: PHONES,
+  },
+  { name: 'my-club-topo', scenario: 'trial', hash: '#/club', act: topo, only: ONCE_EACH },
   { name: 'my-club-stand', scenario: 'trial', hash: '#/club', act: openStand },
   { name: 'my-club-stand-edit', scenario: 'trial', hash: '#/club', act: editStand },
   {
