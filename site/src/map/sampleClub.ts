@@ -150,6 +150,13 @@ export const SAMPLE_LABELS: readonly SampleLabel[] = [
   ...SAMPLE_CLUB.areas.map((a) => ({ text: a.name, at: a.at, kind: 'name' as const })),
 ];
 
+/** "Your scent", downwind of your dot. */
+export const SCENT_LABEL = {
+  text: 'Your scent',
+  at: [SAMPLE_CLUB.you[0] + 128, SAMPLE_CLUB.you[1] + 58],
+  kind: 'name',
+} as const satisfies SampleLabel;
+
 /** The moment the example map shows. */
 const SAMPLE_NOW = Date.UTC(2026, 10, 14, 17, 0);
 

@@ -6,4 +6,5 @@ export * from './mapChrome';
 export * from './type';
 export * from './logo';
 export * from './css';
+export * from './phones';
 export * from './components';

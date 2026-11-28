@@ -2,7 +2,8 @@
 // map is the page (docs/DESIGN.md "The map is the page"). Under it, live USGS tiles of the chosen
 // basemap (basemap.ts: plain images from the one USGS host the CSP allows), over the club's own
 // map pack when one is ready, which still shows offline; with neither, a plain ground. An
-// `interactive` map pans and zooms (drag, wheel, arrow keys, and its own buttons) and goes
+// `interactive` map pans and zooms (drag, wheel, arrow keys, its own buttons on a desktop, and
+// on touch a two-finger pinch anywhere on the map or a double tap on its ground) and goes
 // anywhere, so an admin with nothing drawn yet can find the property. It draws only real
 // geometry: nothing here is decoration or a sample unless the caller says so. Everything is
 // SVG with classes, so the CSP needs no inline styles.
@@ -27,6 +28,7 @@ import {
   STAND_STATUS_LABELS,
   STAND_TYPE_LABELS,
   type BasemapId,
+  type Bounds,
   type StandType,
 } from '@huntclub/shared';
 import {
@@ -54,8 +56,10 @@ import { liveBasemap, type BasemapPicture } from './basemap';
 import {
   DEFAULT_VIEW,
   fitPlan,
+  fitView,
   LOCATION_ZOOM,
   panView,
+  pinchView,
   plateSide,
   planBounds,
   ringsLabelPoint,
@@ -64,6 +68,7 @@ import {
   viewProjection,
   zoomView,
   type Insets,
+  type Pinch,
   type PlanGeometry,
   type Projection,
   type View,
@@ -100,6 +105,11 @@ export interface MapFrame {
   height: number;
   /** The map's own box on the page, for turning a pointer's page position into map px. */
   box: () => DOMRect | undefined;
+  /**
+   * The cross, in px: the middle of the open map, between the plates over its top and the sheet
+   * or bar along its bottom (where the plan fits). Add corner and Put at the cross put things here.
+   */
+  cross: [number, number];
 }
 
 /** Until the box is measured (and in tests): a desktop map's size. */
@@ -107,6 +117,11 @@ const FALLBACK_SIZE = { width: 960, height: 640 };
 /** Ground kept around everything the plan draws, in px: it fits to its bounds with this padding. */
 export const FIT_PADDING = space[12];
 const EDGE = FIT_PADDING;
+/**
+ * While drawing, the plan fits closer to the edges: a corner's whole 48 px target and the
+ * chrome's own gap stay inside the open map, and the property is as large as it can be.
+ */
+export const DRAW_PADDING = sizes.minTapTarget / 2 + mapChrome.inset;
 /** An area's name sits this far inside its north edge, in px. */
 const AREA_LABEL_DROP = 20;
 /** The scale bar's longest length, in px: it shares the footer line with the credit. */
@@ -139,6 +154,7 @@ export const TAP_SLOP = 4;
 export const KEY_PAN_PX = 64;
 /** One wheel notch (100 px of scroll) zooms this many levels. */
 const WHEEL_ZOOM_PER_PX = 1 / 200;
+const GESTURES = mapChrome.gestures;
 
 /** `text`, cut with an ellipsis where it would run past `maxPx`. */
 export function fitText(text: string, maxPx: number, size: number, width: FontWidth): string {
@@ -241,6 +257,12 @@ export function ClubMap(props: {
    * halfway between `top` px (a plate's bottom) and the footer. `top` 0 waits for it.
    */
   focus?: { key: string; at: [number, number]; top: number } | null;
+  /**
+   * Fits `bounds` (the property) into the open map once per `key` (an editor opened), within
+   * the insets and above the footer, so what is drawn on fills the map. Then `focus` moves the
+   * map only if its point is not already in the open map.
+   */
+  fit?: { key: string; bounds: Bounds } | null;
   /** Editing on the map (docs/DESIGN.md "Map chrome" 7): the icon stack hides. */
   editing?: boolean;
   /** A sheet covers the map (its full detent): the pill, the stack and the footer line hide. */
@@ -263,7 +285,9 @@ export function ClubMap(props: {
   const stands = shownLayers.stands ? props.stands : [];
   // The plan fits clear of the icon stack and above the footer line.
   const given = typeof props.insets === 'function' ? props.insets(size) : props.insets;
-  const stackRoom = interactive ? mapChrome.stack.button + 2 * mapChrome.inset : EDGE;
+  // (While editing the stack hides, and the plan and the cross centre in the whole width.)
+  const stackRoom =
+    interactive && !props.editing ? mapChrome.stack.button + 2 * mapChrome.inset : EDGE;
   const footerRoom = footer + mapChrome.footer.height + mapChrome.inset;
   const insets: Insets = {
     top: EDGE,
@@ -319,6 +343,19 @@ export function ClubMap(props: {
   useEffect(() => {
     if (pin && !view && shown.current) setView(shown.current);
   }, [pin]);
+  const fitted = useRef<string | null>(null);
+  const fit = props.fit;
+  useEffect(() => {
+    if (!fit) {
+      fitted.current = null;
+      return;
+    }
+    if (fitted.current === fit.key) return;
+    fitted.current = fit.key;
+    // Shown at once, so a focus on the same opening starts from it.
+    shown.current = fitView(fit.bounds, width, height, insets);
+    setView(shown.current);
+  }, [fit?.key]);
   const focused = useRef<string | null>(null);
   const focus = props.focus;
   useEffect(() => {
@@ -329,6 +366,9 @@ export function ClubMap(props: {
     if (focus.top <= 0 || focused.current === focus.key || !shown.current) return;
     focused.current = focus.key;
     const bottom = height - footerRoom;
+    const [x, y] = viewProjection(shown.current, width, height).project(...focus.at);
+    const open = x >= insets.left && x <= width - insets.right && y >= focus.top && y <= bottom;
+    if (fit && open) return;
     const centred = { ...shown.current, lon: focus.at[0], lat: focus.at[1] };
     setView(panView(centred, 0, (focus.top + bottom) / 2 - height / 2));
   }, [focus?.key, focus?.top]);
@@ -348,9 +388,11 @@ export function ClubMap(props: {
 
   const move = (next: View) => setView(next);
   const drag = useRef<{ x: number; y: number; from: View; moved: boolean } | null>(null);
+  // The last tap on the ground, for a double tap (where, and when).
+  const lastTap = useRef<{ at: [number, number]; time: number } | null>(null);
   const onPointerDown = (e: PointerEvent<SVGSVGElement>) => {
     if (!projection || (!interactive && !props.onMapClick)) return;
-    if (e.button !== 0) return;
+    if (e.button !== 0 || pinch.current) return;
     setLayersOpen(false);
     drag.current = { x: e.clientX, y: e.clientY, from: projection.view, moved: false };
     e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -368,9 +410,61 @@ export function ClubMap(props: {
   const onPointerUp = (e: PointerEvent<SVGSVGElement>) => {
     const d = drag.current;
     drag.current = null;
-    if (d && !d.moved) still();
-    if (!d || d.moved || !projection || !props.onMapClick) return;
-    props.onMapClick(projection.unproject(...mapPoint(frame(), e)));
+    if (!d || d.moved || !projection) return;
+    const at = mapPoint(frame(), e);
+    if (props.onMapClick) {
+      still();
+      return props.onMapClick(projection.unproject(...at));
+    }
+    // A double tap zooms in a level about it (not while taps draw: two taps are two corners).
+    const last = lastTap.current;
+    const double =
+      interactive &&
+      last !== null &&
+      e.timeStamp - last.time <= GESTURES.doubleTapMs &&
+      Math.hypot(at[0] - last.at[0], at[1] - last.at[1]) <= GESTURES.doubleTapSlop;
+    lastTap.current = double ? null : { at, time: e.timeStamp };
+    if (!double) return still();
+    moved();
+    move(zoomView(projection.view, 1, width, height, at));
+  };
+  // Pinch: every finger down on the map's layers (the ground, a stand, a corner) is followed
+  // here, before the layer under it sees it, so a pinch works wherever it starts. While two are
+  // down the map zooms about their midpoint, and nothing under them is dragged or tapped.
+  const fingers = useRef(new Map<number, [number, number]>());
+  const pinch = useRef<{ from: Pinch; start: View } | null>(null);
+  // This gesture pinched: until every finger is up and a new one lands, nothing is tapped.
+  const pinched = useRef(false);
+  const twoFingers = (): Pinch => {
+    const [a, b] = [...fingers.current.values()];
+    return [a!, b!];
+  };
+  const onFingerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (fingers.current.size === 0) pinched.current = false;
+    if (!interactive || !projection || e.pointerType === 'mouse') return;
+    if (!(e.target as Element).closest('.plan__svg')) return; // the chrome takes its own taps
+    fingers.current.set(e.pointerId, mapPoint(frame(), e));
+    if (fingers.current.size !== 2) return;
+    pinch.current = { from: twoFingers(), start: projection.view };
+    pinched.current = true;
+    drag.current = null;
+    lastTap.current = null;
+    setLayersOpen(false);
+    e.stopPropagation(); // the second finger selects nothing
+  };
+  const onFingerMove = (e: PointerEvent<HTMLDivElement>) => {
+    if (!fingers.current.has(e.pointerId)) return;
+    fingers.current.set(e.pointerId, mapPoint(frame(), e));
+    const p = pinch.current;
+    if (!p) return;
+    e.stopPropagation(); // a pinching finger drags no corner or stand
+    moved();
+    move(pinchView(p.start, width, height, p.from, twoFingers()));
+  };
+  const onFingerUp = (e: PointerEvent<HTMLDivElement>) => {
+    if (!fingers.current.delete(e.pointerId)) return;
+    pinch.current = null;
+    if (pinched.current) e.stopPropagation(); // lifting from a pinch taps nothing
   };
   const onKeyDown = (e: KeyboardEvent) => {
     if (!projection) return;
@@ -422,6 +516,14 @@ export function ClubMap(props: {
       // Focus reaching the chrome (Tab from the map) brings it back.
       onFocus={(e) => {
         if ((e.target as Element) !== svg.current) still();
+      }}
+      onPointerDownCapture={onFingerDown}
+      onPointerMoveCapture={onFingerMove}
+      onPointerUpCapture={onFingerUp}
+      onPointerCancelCapture={onFingerUp}
+      // A stand under a finger that pinched does not open (a click from a key still does).
+      onClickCapture={(e) => {
+        if (pinched.current && e.detail > 0) e.stopPropagation();
       }}
     >
       <svg
@@ -484,7 +586,16 @@ export function ClubMap(props: {
         />
       ) : null}
       {projection && props.overlay
-        ? props.overlay({ projection, width, height, box: frame })
+        ? props.overlay({
+            projection,
+            width,
+            height,
+            box: frame,
+            cross: [
+              (insets.left + width - insets.right) / 2,
+              (insets.top + height - insets.bottom) / 2,
+            ],
+          })
         : null}
       {props.children}
       {interactive && projection && !props.editing ? (

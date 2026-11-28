@@ -1,13 +1,14 @@
-// The page head that Vite writes into index.html at build (and dev) time: title,
+// The page head that Vite writes into index.html at build (and dev) time: the viewport, title,
 // description, theme color, noindex and the favicons, all from the shared sources. The
 // favicons themselves are served from the site root by the public site (site/).
 import { colors, FAVICON_ICO, FAVICON_SVG, FONT_FILE_PATTERN, logoMarkSvg } from '@huntclub/design';
-import { APP_DESCRIPTION, APP_NAME } from '@huntclub/shared/app';
+import { APP_DESCRIPTION, APP_NAME, VIEWPORT_META } from '@huntclub/shared/app';
 import type { Plugin } from 'vite';
 
 /** Tags added to <head>; index.html carries no copy of any of these values. */
 export function siteHeadTags() {
   return [
+    { tag: 'meta', attrs: { name: 'viewport', content: VIEWPORT_META } },
     { tag: 'title', children: APP_NAME },
     { tag: 'meta', attrs: { name: 'description', content: APP_DESCRIPTION } },
     // Dark-first with a light theme (themeCss, data-theme set by theme-bootstrap.ts).

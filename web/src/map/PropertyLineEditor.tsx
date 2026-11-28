@@ -30,12 +30,12 @@ const DOT = 9;
 const HIT = sizes.minTapTarget;
 /** Arrow keys move the selected corner this many px (ten times that with Shift). */
 export const KEY_MOVE_PX = 4;
-/** The cross in the middle of the map, where Add corner puts one, in px. */
+/** How far each arm of the cross reaches from its middle, in px. */
 const CROSS = 12;
 
 type Dispatch = (action: DrawAction) => void;
 
-const centre = (frame: MapFrame) => frame.projection.unproject(frame.width / 2, frame.height / 2);
+const centre = (frame: MapFrame) => frame.projection.unproject(...frame.cross);
 
 /** The line being drawn and its corners, over the map. */
 export function DrawLayer(props: {
@@ -122,7 +122,7 @@ export function DrawLayer(props: {
                 .join(' ')}
             />
           ) : null}
-          <Cross width={width} height={height} />
+          <Cross at={frame.cross} />
         </g>
       )}
       {points.map(([x, y], index) => {
@@ -163,10 +163,9 @@ export function DrawLayer(props: {
   );
 }
 
-/** The cross in the middle of the map: where Add corner and Put at the cross put things. */
-export function Cross(props: { width: number; height: number }) {
-  const x = props.width / 2;
-  const y = props.height / 2;
+/** The cross in the middle of the open map (MapFrame.cross): where Add corner and Put at the cross put things. */
+export function Cross(props: { at: [number, number] }) {
+  const [x, y] = props.at;
   return (
     <path
       className="draw__cross"

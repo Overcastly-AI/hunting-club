@@ -2,14 +2,7 @@
 // (../../global-stylesheet.ts) writes it to a hashed file at build time, so the page needs
 // no inline styles under its Content-Security-Policy; tests and `vite dev` use globalCss().
 // Colours are the theme's (`--theme-*`), so dark and daylight both work.
-import {
-  fontFaceCss,
-  rootVariablesCss,
-  textClasses,
-  textScale,
-  textStyleCss,
-  themeCss,
-} from '@huntclub/design';
+import { baseCss, textClasses, textScale, textStyleCss } from '@huntclub/design';
 import { uiCss } from '../components/ui/styles';
 import { color, FOCUS_OUTLINE, gap } from '../components/ui/styles/shared';
 import { mapCss } from '../map/styles';
@@ -19,13 +12,7 @@ import { shellCss } from '../shell/styles';
 /** The whole stylesheet: font face, tokens, base elements, components, the map, pages and shell. */
 export function globalCssFor(fontUrl: string): string {
   return `
-${fontFaceCss(fontUrl)}
-${rootVariablesCss()}
-${themeCss()}
-* { box-sizing: border-box; }
-/* Native controls and scrollbars follow the theme. */
-html { color-scheme: var(--theme-color-scheme); }
-html, body { margin: 0; background: ${color('canvas')}; color: ${color('text')}; }
+${baseCss(fontUrl)}
 body { ${textStyleCss(textScale.body)}; }
 ${textClasses()}
 h1, h2, h3, p { margin: 0; }

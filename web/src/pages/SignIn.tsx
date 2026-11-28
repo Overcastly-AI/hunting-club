@@ -33,9 +33,6 @@ export const NEW_HERE = `New here? Sign in with your email, then start your club
 /** The caption on the map behind the form: nobody is signed in, so it is a made-up club. */
 export const SAMPLE_CAPTION = `Sample property: ${SAMPLE_PROPERTY.name}`;
 
-/** Room the form's plate covers from the tablet width up (its width and margins), kept clear of the map. */
-const DOOR_ROOM = 520;
-
 /**
  * Email, then the code from that email (the shared sign-in client). No passwords. Submit
  * stays enabled; input is checked on submit and problems show under the field. The form
@@ -245,7 +242,7 @@ export function SignIn(props: {
         basemap={basemap}
         label={`${SAMPLE_CAPTION}: a property line with two areas and three stands.`}
         insets={({ width }) =>
-          width >= breakpoints.tablet ? { left: DOOR_ROOM } : { top: 56, bottom: 56 }
+          width >= breakpoints.tablet ? { left: SHELL.signInDoorRoom } : { top: 56, bottom: 32 }
         }
       >
         <p className="signin__sample" aria-hidden="true">

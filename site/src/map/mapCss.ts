@@ -3,9 +3,27 @@
 // its halo, the you dot and the property line) from `colors` (--color-*), the same in both
 // themes because the picture is. Marker positions are classes generated from SAMPLE_CLUB.
 import { AERIAL_WORLD, type AerialPoint } from '@huntclub/design/aerial';
-import { opacity, radii, rem, sizes, textScale, textStyleCss } from '@huntclub/design';
+import {
+  fontWidth,
+  opacity,
+  radii,
+  rem,
+  sizes,
+  textScale,
+  textStyleCss,
+  textWidth,
+} from '@huntclub/design';
 import { AT } from './MapView';
-import { SAMPLE_CLUB, SAMPLE_CONDITIONS, SAMPLE_LABELS, SAMPLE_SCALE } from './sampleClub';
+import {
+  hunterFreshness,
+  openStands,
+  SAMPLE_CLUB,
+  SAMPLE_CONDITIONS,
+  SAMPLE_LABELS,
+  SAMPLE_SCALE,
+  SCENT_LABEL,
+  type SampleLabel,
+} from './sampleClub';
 
 /** At this width and below the hero stacks: the map on top, the pitch rising over it as a sheet. */
 export const MAP_PHONE_MAX_WIDTH = 700;
@@ -30,6 +48,17 @@ export const MAP_COVERED_WIDTH = 1920;
 /** The hero's height on a wide screen, and the map's height above the sheet on a phone. */
 export const HERO_HEIGHT = { wide: 720, phone: 400 } as const;
 
+/** A marker's plate starts this far from the marker's point (your own: `you`). */
+const TAG_OFFSET = { marker: 28, you: 20 } as const;
+/** A plate's side padding, px. */
+const TAG_PADDING_X = 8;
+/** Each kind of map label on the aerial (`.lbl-<kind>`): its size in px and width in %. */
+const LABEL = {
+  water: { size: 14, width: 90 },
+  road: { size: textScale.mapLabel.size, width: 80 },
+  name: { size: 14, width: textScale.markerName.width },
+} as const satisfies Record<SampleLabel['kind'], { size: number; width: number }>;
+
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 const at = ([x, y]: AerialPoint) => `left: ${x}px; top: ${y}px;`;
 
@@ -44,9 +73,111 @@ function positionsCss(): string {
     ...SAMPLE_CLUB.hunters.map((h, i) => `.${AT.hunter(i)} { ${at(h.at)} }`),
     `.${AT.you} { ${at(SAMPLE_CLUB.you)} }`,
     `.${AT.camp} { ${at(SAMPLE_CLUB.camp)} }`,
-    `.${AT.scentLabel} { ${at([SAMPLE_CLUB.you[0] + 128, SAMPLE_CLUB.you[1] + 58])} }`,
+    `.${AT.scentLabel} { ${at(SCENT_LABEL.at)} }`,
   ];
   return rules.join('\n');
+}
+
+/** About how wide a marker plate is: its longer line, plus the side padding (a little over, never under). */
+const tagWidth = (name: string, detail = '') =>
+  Math.max(
+    textWidth(name, textScale.markerName.size, fontWidth.marker),
+    textWidth(detail, textScale.markerDetail.size, fontWidth.markerDetail),
+  ) *
+    1.15 +
+  2 * TAG_PADDING_X;
+
+/** About how wide a map label is, across its turn. */
+function labelWidth(l: SampleLabel): number {
+  const { size, width } = LABEL[l.kind];
+  const w = textWidth(l.text, size, width) * 1.15;
+  const turn = ((l.turn ?? 0) * Math.PI) / 180;
+  return w * Math.abs(Math.cos(turn)) + size * 1.2 * Math.abs(Math.sin(turn));
+}
+
+/** A thing on the aerial: its class and how far it reaches left and right of its point's x, px. */
+interface Reach {
+  readonly cls: string;
+  readonly x: number;
+  readonly left: number;
+  readonly right: number;
+}
+
+/** Everything the hero draws on the aerial, with its reach (marker and plate together). */
+function reaches(): Reach[] {
+  const marker = (cls: string, x: number, half: number, plate: number, onLeft: boolean): Reach =>
+    onLeft
+      ? { cls, x, left: TAG_OFFSET.marker + plate, right: half }
+      : { cls, x, left: half, right: TAG_OFFSET.marker + plate };
+  const open = new Set(openStands().map((s) => s.name));
+  const standHalf = sizes.standMarker / 2 + sizes.controlBorder;
+  const hunterHalf = sizes.hunterMarker / 2 + sizes.freshnessRing;
+  const camp = tagWidth('Camp') / 2;
+  return [
+    ...SAMPLE_LABELS.map((l, i) => {
+      const half = labelWidth(l) / 2;
+      return { cls: AT.label(i), x: l.at[0], left: half, right: half };
+    }),
+    ...SAMPLE_CLUB.stands.flatMap((s, i) =>
+      open.has(s.name)
+        ? [marker(AT.stand(i), s.at[0], standHalf, tagWidth(s.name, 'Open'), 'left' in s)]
+        : [],
+    ),
+    ...SAMPLE_CLUB.hunters.map((h, i) =>
+      marker(
+        AT.hunter(i),
+        h.at[0],
+        hunterHalf,
+        tagWidth(h.where, `${h.name}, ${hunterFreshness(h).short}`),
+        'left' in h,
+      ),
+    ),
+    {
+      cls: AT.you,
+      x: SAMPLE_CLUB.you[0],
+      left: sizes.youPulse / 2,
+      right: TAG_OFFSET.you + tagWidth('You'),
+    },
+    { cls: AT.camp, x: SAMPLE_CLUB.camp[0], left: camp, right: camp },
+    {
+      cls: AT.scentLabel,
+      x: SCENT_LABEL.at[0],
+      left: labelWidth(SCENT_LABEL) / 2,
+      right: labelWidth(SCENT_LABEL) / 2,
+    },
+  ];
+}
+
+/**
+ * The window widths over which each frame holds still: the phone frame up to
+ * MAP_PHONE_MAX_WIDTH, then the wide frame until the aerial's right edge reaches the window's
+ * (past that it slides with the window).
+ */
+const STILL_FRAMES = [
+  { x: MAP_FRAME.phone[0], from: 0, to: MAP_PHONE_MAX_WIDTH },
+  {
+    x: MAP_FRAME.wide[0],
+    from: MAP_PHONE_MAX_WIDTH + 1,
+    to: AERIAL_WORLD.width - MAP_FRAME.wide[0],
+  },
+] as const;
+
+/**
+ * The map window shows the aerial from its frame's left edge to the window's width. A label or
+ * marker whose plate would run off that edge is left out at the widths where it would be cut,
+ * so nothing on the hero is ever half a word (site/scripts/shoot.mjs checks it).
+ */
+function edgeCss(): string {
+  return STILL_FRAMES.flatMap((frame) =>
+    reaches().flatMap(({ cls, x, left, right }) => {
+      const from = Math.max(frame.from, Math.floor(x - frame.x - left));
+      const to = Math.min(frame.to, Math.ceil(x - frame.x + right));
+      if (to < from) return [];
+      return [
+        `@media (min-width: ${from}px) and (max-width: ${to}px) { .hero .${cls} { display: none; } }`,
+      ];
+    }),
+  ).join('\n');
 }
 
 /** Text on the aerial: map ink with a dark halo, so it reads over any picture. */
@@ -65,9 +196,10 @@ export function mapCss(): string {
 .lbl, .mk, .scent { position: absolute; }
 .lbl { transform: translate(-50%, -50%); color: var(--color-text); ${textStyleCss(textScale.mapLabel)}; line-height: 1.2;
   white-space: nowrap; ${halo} }
-.lbl-water { color: var(--color-water-label); font-style: italic; font-stretch: 90%; font-size: ${rem(14)}; }
-.lbl-road { font-stretch: 80%; }
-.lbl-name { ${textStyleCss(textScale.markerName)}; font-size: ${rem(14)}; }
+.lbl-water { color: var(--color-water-label); font-style: italic; font-stretch: ${LABEL.water.width}%;
+  font-size: ${rem(LABEL.water.size)}; }
+.lbl-road { font-stretch: ${LABEL.road.width}%; }
+.lbl-name { ${textStyleCss(textScale.markerName)}; font-size: ${rem(LABEL.name.size)}; }
 .scent { overflow: visible; }
 .scent path { fill: var(--color-text); fill-opacity: ${opacity.scentFill}; stroke: var(--color-text);
   stroke-opacity: ${opacity.scentLine}; stroke-width: 1.2; stroke-dasharray: 3 4; }
@@ -88,11 +220,12 @@ ${positionsCss()}
   border: ${ring}px solid var(--color-text);
   box-shadow: 0 0 0 1.5px var(--color-map-halo), 0 0 0 11px color-mix(in srgb, var(--color-accent) 30%, transparent),
     0 0 0 ${sizes.youPulse / 2 - 4}px color-mix(in srgb, var(--color-accent) 13%, transparent); }
-.mk .tag { position: absolute; left: 28px; top: 0; transform: translateY(-50%); display: block; padding: 4px 8px 5px;
+.mk .tag { position: absolute; left: ${TAG_OFFSET.marker}px; top: 0; transform: translateY(-50%); display: block;
+  padding: 4px ${TAG_PADDING_X}px 5px;
   border-radius: ${radii.markerPlate}px; background: color-mix(in srgb, var(--theme-plate) ${pct(opacity.markerPlate)}, transparent);
   color: var(--theme-text); box-shadow: var(--theme-shadow-plate); white-space: nowrap; line-height: 1.12; }
-.mk.left .tag { left: auto; right: 28px; }
-.mk.you .tag { left: 20px; }
+.mk.left .tag { left: auto; right: ${TAG_OFFSET.marker}px; }
+.mk.you .tag { left: ${TAG_OFFSET.you}px; }
 .mk.place .tag { left: 0; transform: translate(-50%, 14px); padding: 2px 7px 3px; }
 .mk .tag b { display: block; ${textStyleCss(textScale.markerName)}; }
 .mk.place .tag b { ${textStyleCss(textScale.mapLabel)}; font-weight: 700; }
@@ -137,6 +270,7 @@ ${positionsCss()}
   .hero .scale, .live .mesh { display: none; }
   .hero .map-note { left: 16px; top: ${HERO_HEIGHT.phone - 40}px; bottom: auto; }
 }
+${edgeCss()}
 
 /* A legend symbol: one marker or line on a scrap of map ground. */
 .sym { position: relative; width: 76px; height: 60px; border-radius: 8px; background: var(--color-map-ground); overflow: hidden; }
