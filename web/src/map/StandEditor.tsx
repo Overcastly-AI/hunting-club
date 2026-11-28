@@ -79,7 +79,7 @@ export function StandMarkerLayer(props: {
   const { frame, draft } = props;
   const { projection, width, height } = frame;
   const placed = draft.lat !== undefined && draft.lon !== undefined;
-  const [x, y] = placed ? projection.project(draft.lon!, draft.lat!) : [width / 2, height / 2];
+  const [x, y] = placed ? projection.project(draft.lon!, draft.lat!) : frame.cross;
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const Icon = standIcon(draft.type);
   const onPointerDown = (e: PointerEvent<SVGGElement>) => {
@@ -117,7 +117,7 @@ export function StandMarkerLayer(props: {
       role="group"
       aria-label="Stand being placed"
     >
-      {placed ? null : <Cross width={width} height={height} />}
+      {placed ? null : <Cross at={frame.cross} />}
       {!placed ? null : (
         <g
           transform={`translate(${x.toFixed(1)} ${y.toFixed(1)})`}
@@ -164,7 +164,7 @@ const TYPE_OPTIONS = STAND_TYPES.map((type) => ({ value: type, label: STAND_TYPE
 export function StandFields(props: {
   draft: StandDraft;
   onChange: (draft: StandDraft) => void;
-  /** Puts the stand at the cross in the middle of the map. */
+  /** Puts the stand at the cross in the middle of the open map. */
   onPlaceAtCross: () => void;
   onSave: (stand: StandCreate) => Promise<void>;
   onDelete?: (() => Promise<void>) | undefined;

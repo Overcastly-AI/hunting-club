@@ -3,11 +3,13 @@
 // 640 px, and below that a top bar and a docked tab bar. The selected item is raised with the
 // orange edge (orange's "selected item" job); everything else is ink and quiet. Theme colours
 // and tokens only; every target is 48 px or more.
+import { SAFE_AREA } from '@huntclub/design';
 import { MOBILE_TAB_BAR_HEIGHT, SHELL } from '../components/ui/sizes';
 import {
   color,
   focusRing,
   gap,
+  DESKTOP,
   HAIR,
   PHONE,
   TABLET,
@@ -16,8 +18,10 @@ import {
   transition,
 } from '../components/ui/styles/shared';
 
-const SAFE_BOTTOM = 'env(safe-area-inset-bottom)';
+const SAFE_BOTTOM = SAFE_AREA.bottom;
 const TAB_BAR = `calc(${MOBILE_TAB_BAR_HEIGHT}px + ${SAFE_BOTTOM})`;
+/** The phone's top bar with the notch's room over it (a home-screen page in portrait). */
+const TOP_BAR = `calc(${SHELL.topBarHeight}px + ${SAFE_AREA.top})`;
 /** The selected item's orange edge: inset, so it never shifts the word. */
 const SELECTED_EDGE = `inset 3px 0 0 ${color('accent')}`;
 
@@ -144,4 +148,37 @@ const publicShell = `
 ${PHONE} { .shell-public-main { padding: ${gap(6)} ${gap(4)}; } }
 `;
 
-export const shellCss = () => [base, rail, phone, publicShell].join('\n');
+/**
+ * The notch, the rounded corners and the home indicator, at every width (0 where there are
+ * none): the rail or sidebar widens by the left inset, the content keeps clear of the right one
+ * (a phone on its side), and the phone's bars grow by the top and bottom ones. Last, so it adds
+ * the insets to the layouts above.
+ */
+const safeArea = `
+${DESKTOP} {
+  .shell-side { width: calc(${SHELL.sidebarWidth}px + ${SAFE_AREA.left}); padding-left: calc(${gap(3)} + ${SAFE_AREA.left});
+    padding-bottom: calc(${gap(2)} + ${SAFE_AREA.bottom}); }
+  .shell-main { margin-left: calc(${SHELL.sidebarWidth}px + ${SAFE_AREA.left}); padding-right: calc(${gap(8)} + ${SAFE_AREA.right});
+    padding-bottom: calc(${gap(10)} + ${SAFE_AREA.bottom}); }
+  .shell-main--bleed { padding: 0 ${SAFE_AREA.right} ${SAFE_AREA.bottom} 0; }
+}
+${TABLET} {
+  .shell-side { width: calc(${SHELL.railWidth}px + ${SAFE_AREA.left}); padding-left: calc(${gap(1)} + ${SAFE_AREA.left});
+    padding-bottom: calc(${gap(2)} + ${SAFE_AREA.bottom}); }
+  .shell-main { margin-left: calc(${SHELL.railWidth}px + ${SAFE_AREA.left}); padding-right: calc(${gap(6)} + ${SAFE_AREA.right});
+    padding-bottom: calc(${gap(6)} + ${SAFE_AREA.bottom}); }
+  .shell-main--bleed { padding: 0 ${SAFE_AREA.right} ${SAFE_AREA.bottom} 0; }
+}
+${PHONE} {
+  .shell-side { height: ${TOP_BAR}; padding-top: ${SAFE_AREA.top}; padding-left: calc(${gap(4)} + ${SAFE_AREA.left});
+    padding-right: calc(${gap(2)} + ${SAFE_AREA.right}); }
+  .shell-nav { padding-left: ${SAFE_AREA.left}; padding-right: ${SAFE_AREA.right}; }
+  .shell-club .ui-popover__panel.shell-club__panel, .shell-account .ui-popover__panel {
+    top: calc(${TOP_BAR} + ${gap(2)}); }
+  .shell-main { padding: calc(${TOP_BAR} + ${gap(5)}) calc(${gap(4)} + ${SAFE_AREA.right}) calc(${TAB_BAR} + ${gap(8)})
+    calc(${gap(4)} + ${SAFE_AREA.left}); }
+  .shell-main--bleed { padding: ${TOP_BAR} ${SAFE_AREA.right} ${TAB_BAR} ${SAFE_AREA.left}; }
+}
+`;
+
+export const shellCss = () => [base, rail, phone, publicShell, safeArea].join('\n');

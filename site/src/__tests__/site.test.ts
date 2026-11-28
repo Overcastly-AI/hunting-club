@@ -10,6 +10,7 @@ import {
   MIN_TEXT_CONTRAST,
   MIN_UI_CONTRAST,
   ROOT_FONT_PX,
+  SAFE_AREA,
   sizes,
   themes,
   themeVariables,
@@ -25,7 +26,7 @@ import {
   SAFETY_NOTE,
   SECOND_MS,
 } from '@huntclub/shared';
-import { ADMIN_PATH, SUPPORT_EMAIL } from '@huntclub/shared/app';
+import { ADMIN_PATH, SUPPORT_EMAIL, VIEWPORT_META } from '@huntclub/shared/app';
 import { renderJoin, renderNotFound, renderPage } from '../render';
 import { cspViolations } from '../csp';
 import { FAQ, FAQ_PREVIEW } from '../faq';
@@ -158,6 +159,13 @@ describe.each(pages)('page $route.path', ({ route, html }) => {
     expect(classic).toEqual(home ? [`<script src="${FORWARD_SCRIPT}"></script>`] : []);
     expect(modules).toEqual([`<script type="module" src="${MENU_SCRIPT}"></script>`]);
     expect(count(html, /<script/gi)).toBe(classic.length + modules.length + data);
+  });
+
+  it("fits the iPhone's whole screen with the admin's own viewport, keeping clear of the notch", () => {
+    expect(html).toContain(`<meta name="viewport" content="${VIEWPORT_META}"/>`);
+    expect(css).toContain(
+      `body { padding: 0 ${SAFE_AREA.right} ${SAFE_AREA.bottom} ${SAFE_AREA.left}; }`,
+    );
   });
 
   it('colours the browser bar like the header, in each theme', () => {
