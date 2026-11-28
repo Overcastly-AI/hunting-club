@@ -89,8 +89,17 @@ export const SCREENSHOT_CLUB: { stands: readonly ClubStand[]; areas: readonly Cl
     position: { lat: s.lat, lon: s.lon },
     ...(s.name === creekStand.name ? { occupiedBy: HUNTERS[0]!.displayName } : {}),
   })),
-  areas: [northArea, creekArea].map((a, i) => ({ meshId: i + 1, name: a.name })),
+  areas: [northArea, creekArea].map((a, i) => ({
+    meshId: i + 1,
+    name: a.name,
+    boundary: a.boundary,
+  })),
 };
+
+/** Where this phone checks in for the checked-in shot: the open stand. */
+export const SCREENSHOT_CHECK_IN_STAND = SCREENSHOT_CLUB.stands.find(
+  (s) => s.name === bigOak.name,
+)!;
 
 export const SCREENSHOT_NODES = {
   me: MY_NODE,

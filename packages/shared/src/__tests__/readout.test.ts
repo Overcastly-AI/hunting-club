@@ -221,4 +221,15 @@ describe('nextTimeReadout', () => {
     expect(nextTimeReadout(base, overdue, overdue + MINUTE_MS).short).toBe('Sunset 4:38 PM');
     expect(nextTimeReadout(base, undefined, 0).short).toBe('Sunset 4:38 PM');
   });
+
+  it('puts your overdue time first while you are checked in (overdueFirst)', () => {
+    const until = untilSunset(SUNSET, SUNSET.getTime() - HOUR_MS)!;
+    const sun = { ...base, untilSunset: until };
+    expect(nextTimeReadout(sun, overdue, 0, { overdueFirst: true }).short).toBe(
+      `${OVERDUE_ALERT_LABEL} ${formatClockTime(new Date(overdue))}`,
+    );
+    // Once it has passed (or with none), the countdown again.
+    expect(nextTimeReadout(sun, overdue, overdue + 1, { overdueFirst: true })).toBe(until);
+    expect(nextTimeReadout(sun, undefined, 0, { overdueFirst: true })).toBe(until);
+  });
 });

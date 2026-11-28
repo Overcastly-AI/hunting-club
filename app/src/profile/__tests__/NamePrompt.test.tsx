@@ -3,7 +3,7 @@
 import { CheckInMode } from '@huntclub/mesh';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 
-import CheckInTab from '../../app/(tabs)/check-in';
+import CheckInTab from '../../app/check-in';
 import { CheckInRadioContext } from '../../checkin/CheckInRadio';
 import { loadNameSkippedAt, loadProfile, saveProfile } from '../../db/appState';
 import { migrate } from '../../db/migrate';
@@ -44,7 +44,7 @@ async function database(setUp?: (db: SqlDatabase) => Promise<void>) {
   return db;
 }
 
-/** The Check In tab with a linked radio (for its name) and a party check-in radio. */
+/** The Check In screen with a linked radio (for its name) and a party check-in radio. */
 async function showCheckIn(db: SqlDatabase) {
   const checkIns = checkInRadio('party');
   await renderWithRadio(

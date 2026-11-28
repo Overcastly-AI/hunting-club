@@ -1,6 +1,8 @@
 import { GeoJSONSource, Layer, Marker } from '@maplibre/maplibre-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { AccessibilityInfo, Animated, Easing, StyleSheet, View } from 'react-native';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
+
+import { useReduceMotion } from '../../hooks/useReduceMotion';
 
 import { colors, opacity, sizes } from '../../theme';
 import { scentConeRing, scentLabelPosition } from '../geo';
@@ -86,26 +88,20 @@ function ScentCone({ position, windFromDeg }: { position: LatLon; windFromDeg: n
 
 function Pulse() {
   const [progress] = useState(() => new Animated.Value(0));
+  const reduceMotion = useReduceMotion();
   useEffect(() => {
-    let loop: Animated.CompositeAnimation | undefined;
-    let cancelled = false;
-    void AccessibilityInfo.isReduceMotionEnabled().then((reduce) => {
-      if (cancelled || reduce) return;
-      loop = Animated.loop(
-        Animated.timing(progress, {
-          toValue: 1,
-          duration: PULSE_MS,
-          easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
-        }),
-      );
-      loop.start();
-    });
-    return () => {
-      cancelled = true;
-      loop?.stop();
-    };
-  }, [progress]);
+    if (reduceMotion) return;
+    const loop = Animated.loop(
+      Animated.timing(progress, {
+        toValue: 1,
+        duration: PULSE_MS,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [progress, reduceMotion]);
   const scale = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [sizes.youDot / sizes.youPulse, 1],

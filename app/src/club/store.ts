@@ -11,6 +11,7 @@ import type {
   Entitlement,
   Member,
   MemberRole,
+  Polygon,
   Stand,
   StandType,
 } from '@huntclub/shared';
@@ -20,7 +21,7 @@ import type { SqlDatabase } from '../db/types';
 import type { RadioClub } from '../radio/RadioServices';
 import { SECURE_KEYS, type SecureStorage } from '../storage/secure';
 
-/** A club as the Party/Club tab shows it. */
+/** A club as the Club tab shows it. */
 export type LocalClub = {
   id: string;
   name: string;
@@ -220,11 +221,15 @@ export async function loadClubStands(db: SqlDatabase, clubId: string): Promise<C
 }
 
 export async function loadClubAreas(db: SqlDatabase, clubId: string): Promise<ClubArea[]> {
-  return db.getAllAsync<ClubArea>(
-    `SELECT mesh_id AS meshId, name FROM areas
+  const rows = await db.getAllAsync<{ meshId: number; name: string; boundary: string | null }>(
+    `SELECT mesh_id AS meshId, name, boundary FROM areas
      WHERE club_id = ? AND active = 1 AND mesh_id IS NOT NULL ORDER BY name`,
     clubId,
   );
+  return rows.map(({ boundary, ...area }) => {
+    const shape = boundary ? (JSON.parse(boundary) as Polygon | null) : null;
+    return shape ? { ...area, boundary: shape } : area;
+  });
 }
 
 /** What the radio uses of the clubs: the account's club, and channels it must never use. */

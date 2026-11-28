@@ -3,6 +3,14 @@
 // map that chrome covers. Plain numbers and functions: no DOM or React Native code here.
 import { breakpoints, sizes } from './sizes';
 
+/**
+ * The sheet's peek on each surface, px. The web's is the grabber and one summary line; the
+ * app's is the 48 px grabber zone (grabber and status line) over a 56 px action row (Check In
+ * or Check Out, and the 56 by 56 Ask for a Hand).
+ */
+const SHEET_PEEK = { web: 64, app: 104 } as const;
+export type ChromeSurface = keyof typeof SHEET_PEEK;
+
 /** The map chrome spec, in px, ms and fractions. */
 export const mapChrome = {
   /**
@@ -27,9 +35,13 @@ export const mapChrome = {
   sheet: {
     /** The draggable zone at the top of the sheet; the whole peek is this tall. */
     handleZone: sizes.minTapTarget,
+    /** The peek's height on each surface, px. Never hides. */
+    peekBySurface: SHEET_PEEK,
+    /** The app's action row under the grabber zone: Check In or Check Out, and Ask for a Hand. */
+    actionRow: 56,
     detents: {
-      /** px: the grabber and one summary line. Never hides. */
-      peek: 64,
+      /** px: the web's peek (`peekBySurface.web`). */
+      peek: SHEET_PEEK.web,
       /** Fraction of the map's height. */
       half: 0.5,
       /** Fraction of the map's height; the pill stays visible above it. */
@@ -203,9 +215,13 @@ export function visibleLabels(
 export const SHEET_DETENTS = ['peek', 'half', 'full'] as const;
 export type SheetDetent = (typeof SHEET_DETENTS)[number];
 
-/** Each detent's height in px on a map this tall. */
-export function sheetDetentHeights(mapHeight: number): Record<SheetDetent, number> {
-  const { peek, half, full } = mapChrome.sheet.detents;
+/** Each detent's height in px on a map this tall, on `surface` (the web by default). */
+export function sheetDetentHeights(
+  mapHeight: number,
+  surface: ChromeSurface = 'web',
+): Record<SheetDetent, number> {
+  const { half, full } = mapChrome.sheet.detents;
+  const peek = mapChrome.sheet.peekBySurface[surface];
   return {
     peek,
     half: Math.max(peek, Math.round(mapHeight * half)),

@@ -229,3 +229,14 @@ export const textScale = {
 } as const satisfies Record<string, TextScaleEntry>;
 
 export type TextStyleName = keyof typeof textScale;
+
+/**
+ * Archivo's average advance width at the plate weights, as a share of the font size. With the
+ * width axis it estimates how wide a line of text is where nothing lays it out: the web map's
+ * SVG plates, and the app's map chrome coverage test (Jest has no layout).
+ */
+export const AVERAGE_ADVANCE = 0.56;
+
+/** About how wide `text` is, in px, at `size` px and `width` percent of normal width. */
+export const textWidth = (text: string, size: number, width: number = fontWidth.normal) =>
+  text.length * size * AVERAGE_ADVANCE * (width / 100);

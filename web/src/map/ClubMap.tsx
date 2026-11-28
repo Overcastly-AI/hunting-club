@@ -14,6 +14,7 @@ import {
   radii,
   sizes,
   space,
+  textWidth,
   visibleLabels,
   type FontWidth,
   type LabelCandidate,
@@ -131,14 +132,6 @@ export const TAP_SLOP = 4;
 export const KEY_PAN_PX = 64;
 /** One wheel notch (100 px of scroll) zooms this many levels. */
 const WHEEL_ZOOM_PER_PX = 1 / 200;
-
-/**
- * Archivo's average advance width at bold weights, as a share of the font size; with the
- * width axis it sizes a plate to its words (SVG text has no layout of its own).
- */
-const AVERAGE_ADVANCE = 0.56;
-const textWidth = (text: string, size: number, width: FontWidth) =>
-  text.length * size * AVERAGE_ADVANCE * (width / 100);
 
 /** `text`, cut with an ellipsis where it would run past `maxPx`. */
 export function fitText(text: string, maxPx: number, size: number, width: FontWidth): string {

@@ -29,10 +29,6 @@ export const sizes = {
   controlBorder: 1.5,
   /** Outline of the selected option (a basemap, a check-in mode): 2 px of accent edge. */
   selectedBorder: 2,
-  /** The map's control column (Layers, North, Find me): one plate this wide. */
-  mapToolWidth: 58,
-  /** One control in that column. */
-  mapToolHeight: 56,
   /** A check-in mode button (At a stand, In an area, Right here, On the move). */
   modeButton: 58,
   /** A row in a sheet list (stands to check in at, map layers). */

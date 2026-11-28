@@ -10,7 +10,7 @@ export const SLIDE_TO_CHECK_OUT = 'Slide to check out';
 
 type Props = { radio: CheckInRadio | null; visible: boolean; onClose: () => void };
 
-/** Check Out from the map: the same slide-to-confirm as the Check In tab. */
+/** Check Out from the map: the same slide-to-confirm as the Check In screen. */
 export function CheckOutSheet({ radio, visible, onClose }: Props) {
   const styles = useStyles();
   const { checkOut, status } = useCheckInActions(radio);

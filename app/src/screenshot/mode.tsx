@@ -2,6 +2,9 @@
 // EXPO_PUBLIC_SCREENSHOT_MODE=1), never in a production bundle. It fixes the clock, skips
 // onboarding, and puts a stand-in radio under the screens: the sample club's stands and chat
 // and three other hunters' radios (sample.ts). No Bluetooth, no account, no club service.
+import type { OpenCheckIn } from '@huntclub/core';
+import { CheckInMode } from '@huntclub/mesh';
+import { MINUTE_MS } from '@huntclub/shared';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { useState, type ReactNode } from 'react';
 import { LogBox } from 'react-native';
@@ -15,7 +18,9 @@ import { initDatabase } from '../db';
 import { mapDataStore } from '../map/dataSource';
 import type { MapScreenProps } from '../map/MapScreen';
 import { RadioProvider } from '../radio/RadioProvider';
+import { MAP_SHOTS, type MapShotName } from './shots';
 import {
+  SCREENSHOT_CHECK_IN_STAND,
   SCREENSHOT_CLUB,
   SCREENSHOT_ENTITLEMENT,
   SCREENSHOT_ME,
@@ -39,19 +44,41 @@ export function fixClock(at = SCREENSHOT_NOW): () => void {
 const sent = () => ({ id: 0, result: Promise.resolve({ status: 'sent' as const }) });
 const never = () => () => undefined;
 
-/** Check In for the sample club: its open stands, nobody checked in on this phone yet. */
-export function standInCheckIn(): CheckInRadio {
+/** Check In for the sample club: its open stands; nobody checked in until a shot says so. */
+export function standInCheckIn(): CheckInRadio & { setCheckedIn: (on: boolean) => void } {
+  const listeners = new Set<() => void>();
+  const checkIns = {
+    current: null as OpenCheckIn | null,
+    on: (_event: 'change', listener: () => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    checkIn: sent,
+    checkOut: sent,
+    extend: sent,
+  };
   return {
     audience: 'club',
     graceMinutes: 30,
     club: SCREENSHOT_CLUB,
-    checkIns: {
-      current: null,
-      on: never,
-      checkIn: sent,
-      checkOut: sent,
-      extend: sent,
-    } as unknown as CheckInRadio['checkIns'],
+    checkIns: checkIns as unknown as CheckInRadio['checkIns'],
+    /** Checked in at the open stand since 40 minutes ago, or not checked in. */
+    setCheckedIn(on) {
+      const now = Date.now();
+      checkIns.current = on
+        ? {
+            placement: {
+              mode: CheckInMode.Stand,
+              standId: SCREENSHOT_CHECK_IN_STAND.meshId,
+              pin: SCREENSHOT_CHECK_IN_STAND.position,
+            },
+            messageId: 0x7000,
+            checkedInAt: now - 40 * MINUTE_MS,
+            modeSince: now - 40 * MINUTE_MS,
+          }
+        : null;
+      for (const listener of listeners) listener();
+    },
   };
 }
 
@@ -97,8 +124,9 @@ const noTransport = (): never => {
  * In place of AppRadioProvider: the real RadioProvider with no radio paired (so the Party tab
  * still works), and the sample club's Check In, chat and entitlement over it.
  */
+const checkIn = standInCheckIn();
+
 function RadioStandIn({ children }: { children: ReactNode }) {
-  const [checkIn] = useState(standInCheckIn);
   const [chat] = useState(() => standInChat(Date.now()));
   return (
     <RadioProvider store={noPairedRadio} createTransport={noTransport} background={noBackground}>
@@ -111,12 +139,21 @@ function RadioStandIn({ children }: { children: ReactNode }) {
   );
 }
 
-/** The Map tab for a shot: over the sample property, with Layers open for `layers`. */
+/** The Map tab for a shot (shots.ts MAP_SHOTS): over the sample property, in that state. */
 function mapProps(shot: string | undefined): MapScreenProps {
+  const state: { detent?: 'half'; panel?: 'layers' } =
+    shot !== undefined && shot in MAP_SHOTS ? MAP_SHOTS[shot as MapShotName] : {};
   return {
     initialView: SCREENSHOT_VIEW,
-    ...(shot === undefined ? {} : { panel: shot === 'layers' ? 'layers' : null }),
+    ...(shot === undefined ? {} : { panel: state.panel ?? null, detent: state.detent ?? 'peek' }),
   };
+}
+
+/** Puts the stand-in radio in the shot's state: checked in for `checked-in` only. */
+function prepareMapShot(shot: string | undefined): void {
+  const state: { checkedIn?: boolean } =
+    shot !== undefined && shot in MAP_SHOTS ? MAP_SHOTS[shot as MapShotName] : {};
+  checkIn.setCheckedIn(!!state.checkedIn);
 }
 
 /** Starts the mode once: the fixed clock, quiet dev warnings, the sample map and chat. */
@@ -127,7 +164,7 @@ export function startScreenshotMode() {
   const now = Date.now();
   mapDataStore.set(screenshotMapData(now));
   for (const item of screenshotChat(now)) chatStore.add(item);
-  return { initDatabase: screenshotDatabase, RadioStandIn, mapProps };
+  return { initDatabase: screenshotDatabase, RadioStandIn, mapProps, prepareMapShot };
 }
 
 export type ScreenshotMode = ReturnType<typeof startScreenshotMode>;

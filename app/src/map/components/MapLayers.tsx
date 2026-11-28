@@ -24,13 +24,28 @@ type Props = {
   layers?: MapLayerVisibility;
   /** Rings only, no plates or stands: the chat's strip of map. */
   compact?: boolean;
+  /**
+   * The Map tab: the stands that show their capped name (`labelledStands`); the rest are icons.
+   * Unset elsewhere, where every stand has its full plate.
+   */
+  standLabels?: ReadonlySet<string>;
+  /** A tap on a stand (the Map tab shows its name). */
+  onStandPress?: (id: string) => void;
 };
 
 /**
  * Open stands, other hunters and help/overdue pins: the shared layers of the Map tab, the
  * chat and Check In strips, and the clubhouse board. Help and overdue pins are never hidden.
  */
-export function MapLayers({ data, alerts, now, layers = ALL_LAYERS_ON, compact }: Props) {
+export function MapLayers({
+  data,
+  alerts,
+  now,
+  layers = ALL_LAYERS_ON,
+  compact,
+  standLabels,
+  onStandPress,
+}: Props) {
   return (
     <>
       {layers.stands && !compact
@@ -41,7 +56,11 @@ export function MapLayers({ data, alerts, now, layers = ALL_LAYERS_ON, compact }
               lngLat={[stand.position.lon, stand.position.lat]}
               {...MARKER_ANCHOR}
             >
-              <OpenStandMarker stand={stand} />
+              <OpenStandMarker
+                stand={stand}
+                label={standLabels ? (standLabels.has(stand.id) ? 'name' : 'none') : 'full'}
+                {...(onStandPress ? { onPress: () => onStandPress(stand.id) } : {})}
+              />
             </Marker>
           ))
         : null}

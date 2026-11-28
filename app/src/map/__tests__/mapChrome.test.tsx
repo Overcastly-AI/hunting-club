@@ -1,21 +1,28 @@
 // The map-first map chrome (docs/DESIGN.md): the freshness ring, padded marker tap areas, the
 // readout strip with missing data, and the bottom sheet's states, in both themes.
-import { darkTheme, lightTheme, type Theme, type ThemePreference } from '@huntclub/design';
+import {
+  darkTheme,
+  lightTheme,
+  mapChrome,
+  sheetDetentHeights,
+  type Theme,
+  type ThemePreference,
+} from '@huntclub/design';
 import { CALM, UNKNOWN_VALUE, conditionsReadout, type ConditionsReadout } from '@huntclub/shared';
 import { render, screen } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { StyleSheet } from 'react-native';
 
-import {
-  NOW,
-  UNTIL_SUNSET_FIXTURE,
-  hunterFixture,
-  openStandFixture,
-} from '../../test-utils/mapFixtures';
+import { NOW, hunterFixture, openStandFixture, sheetFixture } from '../../test-utils/mapFixtures';
 import { inTheme } from '../../test-utils/themeAudit';
 import { sizes } from '../../theme';
 import { FRESHNESS_RING, HunterMarker } from '../components/HunterMarker';
-import { MapBottomSheet, NOBODY_SEES_YOU, NOT_CHECKED_IN } from '../components/MapBottomSheet';
+import {
+  MapBottomSheet,
+  NOBODY_SEES_YOU,
+  NOT_CHECKED_IN,
+  OUT_NOW,
+} from '../components/MapBottomSheet';
 import { MARKER_ANCHOR } from '../components/MarkerPlate';
 import { OpenStandMarker } from '../components/OpenStandMarker';
 import { ReadoutStrip, splitUnit } from '../components/ReadoutStrip';
@@ -24,6 +31,8 @@ const flat = (style: unknown) =>
   (StyleSheet.flatten(style as never) ?? {}) as Record<string, unknown>;
 const styleOf = (testID: string, index = 0) =>
   flat(screen.getAllByTestId(testID)[index]!.props.style);
+
+const NEAR = { lat: 40.8, lon: -77.85 };
 
 const THEMES: [ThemePreference, Theme][] = [
   ['dark', darkTheme],
@@ -161,88 +170,95 @@ describe('the readout strip', () => {
 });
 
 describe('the bottom sheet', () => {
-  it('not checked in: nobody can see you yet, the time to sunset, Check In and Ask for a Hand', async () => {
+  it('not checked in: one status line, Check In and the 56 px Ask for a Hand, no sunset', async () => {
     await draw(
       <MapBottomSheet
+        {...sheetFixture({ audience: 'club' })}
         state="notCheckedIn"
-        untilSunset={UNTIL_SUNSET_FIXTURE}
-        audience="club"
-        onAskForHand={jest.fn()}
         onCheckIn={jest.fn()}
       />,
       'dark',
       NOT_CHECKED_IN,
     );
-    expect(screen.getByText(NOBODY_SEES_YOU)).toBeTruthy();
-    expect(screen.getByText('2 h 14 min')).toBeTruthy();
-    expect(screen.getByLabelText('2 hours 14 minutes until sunset')).toBeTruthy();
+    expect(screen.getByText(new RegExp(NOBODY_SEES_YOU))).toBeTruthy();
+    // The sunset time is in the top pill only.
+    expect(screen.queryByText(/until sunset|Sunset/)).toBeNull();
     expect(screen.getByRole('button', { name: 'Check In' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Ask for a Hand. Pings club members' })).toBeTruthy();
-  });
-
-  it.each(THEMES)('draws Ask for a Hand gold on its wash, never red (%s)', async (name, theme) => {
-    await draw(
-      <MapBottomSheet
-        state="notCheckedIn"
-        untilSunset={null}
-        audience="party"
-        onAskForHand={jest.fn()}
-        onCheckIn={jest.fn()}
-      />,
-      name,
-      NOT_CHECKED_IN,
-    );
     const ask = flat(
-      screen.getByRole('button', { name: 'Ask for a Hand. Pings your party' }).props.style,
+      screen.getByRole('button', { name: 'Ask for a Hand. Pings club members' }).props.style,
     );
-    expect([ask.backgroundColor, ask.borderColor]).toEqual([
-      theme.colors.warningTint,
-      theme.colors.warning,
-    ]);
-    expect(flat(screen.getByText('Ask for a Hand').props.style).color).toBe(theme.colors.warning);
-    expect(flat(screen.getByText('Pings your party').props.style).color).toBe(theme.colors.text);
-    for (const red of [theme.colors.alert, theme.colors.danger]) {
-      expect([ask.backgroundColor, ask.borderColor]).not.toContain(red);
-    }
-    expect(screen.queryByText(/SOS|911|emergency/i)).toBeNull();
+    expect([ask.width, ask.height]).toEqual([mapChrome.sheet.actionRow, mapChrome.sheet.actionRow]);
   });
 
-  it('after sunset: no countdown', async () => {
-    await draw(
-      <MapBottomSheet
-        state="notCheckedIn"
-        untilSunset={null}
-        audience="party"
-        onAskForHand={jest.fn()}
-        onCheckIn={jest.fn()}
-      />,
-      'dark',
-      NOT_CHECKED_IN,
-    );
-    expect(screen.queryByText(/until sunset/)).toBeNull();
-  });
+  it.each(THEMES)(
+    'draws Ask for a Hand gold on its wash with a hand, never red (%s)',
+    async (name, theme) => {
+      await draw(
+        <MapBottomSheet {...sheetFixture()} state="notCheckedIn" onCheckIn={jest.fn()} />,
+        name,
+        NOT_CHECKED_IN,
+      );
+      const ask = flat(
+        screen.getByRole('button', { name: 'Ask for a Hand. Pings your party' }).props.style,
+      );
+      expect([ask.backgroundColor, ask.borderColor]).toEqual([
+        theme.colors.warningTint,
+        theme.colors.warning,
+      ]);
+      for (const red of [theme.colors.alert, theme.colors.danger]) {
+        expect([ask.backgroundColor, ask.borderColor]).not.toContain(red);
+      }
+      expect(screen.queryByText(/SOS|911|emergency/i)).toBeNull();
+    },
+  );
 
-  it('checked in on the move: where, since when, Check Out, Ask for a Hand, change mode', async () => {
+  it('checked in on the move: where and since when, Check Out and Ask for a Hand; half has the rest', async () => {
     await draw(
       <MapBottomSheet
+        {...sheetFixture({
+          detent: 'half',
+          nearestStand: {
+            stand: { meshId: 2, name: 'Ridge Ladder', position: NEAR },
+            distance: '0.3 mi',
+          },
+          hunters: [hunterFixture(2)],
+        })}
         state="checkedIn"
         place={{ kind: 'moving' }}
         checkedInAt={NOW - 5 * 60_000}
-        now={NOW}
-        untilSunset={UNTIL_SUNSET_FIXTURE}
-        audience="party"
-        onAskForHand={jest.fn()}
         onCheckOut={jest.fn()}
-        onChangeMode={jest.fn()}
-        onLogHarvest={jest.fn()}
+        onChangeSpot={jest.fn()}
       />,
       'dark',
-      'On the move',
+      /On the move, since 5 min ago/,
     );
-    expect(screen.getByText('Since 5 min ago')).toBeTruthy();
     expect(screen.queryByText(NOBODY_SEES_YOU)).toBeNull();
-    for (const name of ['Check Out', 'Ask for a Hand. Pings your party', 'Change mode']) {
+    for (const name of [
+      'Check Out',
+      'Ask for a Hand. Pings your party',
+      'Change spot',
+      'Log a harvest. Private',
+      'Nearest stand: Ridge Ladder, 0.3 mi away',
+    ]) {
       expect(screen.getByRole('button', { name })).toBeTruthy();
     }
+    expect(screen.getByText(OUT_NOW)).toBeTruthy();
+    expect(screen.getByText('Dale, 2 min ago')).toBeTruthy();
+  });
+
+  it("peeks at the app's 104 px, the grabber zone over the action row", async () => {
+    await draw(
+      <MapBottomSheet {...sheetFixture()} state="notCheckedIn" onCheckIn={jest.fn()} />,
+      'dark',
+      NOT_CHECKED_IN,
+    );
+    const sheet = flat(screen.getByTestId('map-chrome-sheet').props.style);
+    const { full } = sheetDetentHeights(701, 'app');
+    expect(sheet.top).toBe(47 + 701 - full);
+    expect(sheet.transform).toEqual([{ translateY: full - mapChrome.sheet.peekBySurface.app }]);
+    expect(mapChrome.sheet.peekBySurface.app).toBe(104);
+    expect(flat(screen.getByTestId('map-sheet-handle').props.style).minHeight).toBe(
+      mapChrome.sheet.handleZone,
+    );
   });
 });

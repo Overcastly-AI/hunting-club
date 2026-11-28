@@ -1,24 +1,42 @@
-import { UNTIL_SUNSET, describeAge, positionAge, type UntilSunset } from '@huntclub/shared';
+import type { SheetDetent } from '@huntclub/design';
+import { describeAge, positionAge } from '@huntclub/shared';
 import { Hand, MapPin, NotebookPen, Repeat2 } from 'lucide-react-native';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { Grabber } from '../../components/Grabber';
 import { Button } from '../../components/Button';
+import { StandSquare } from '../../components/StandSquare';
 import { HELP_AUDIENCE_TEXT, type Audience } from '../../domain/audience';
-import { makeStyles, radii, spacing, textStyles } from '../../theme';
-import { placeLabel } from '../labels';
-import type { HunterPlace } from '../types';
+import { ASK_FOR_A_HAND } from '../../safety/wording';
+import { makeStyles, sizes, spacing, textStyles } from '../../theme';
+import { hunterPlateDetail, placeLabel } from '../labels';
+import type { HunterOnMap, HunterPlace } from '../types';
+import type { ClubStand } from '../../checkin/placement';
+import { DetentSheet } from './DetentSheet';
 
 /** What the sheet says before you check in: nobody sees your location until you do. */
 export const NOT_CHECKED_IN = 'Not checked in';
 export const NOBODY_SEES_YOU = 'Nobody can see you yet.';
+export const OUT_NOW = 'Out now';
+
+/** The nearest open stand, and how far, for the half sheet. */
+export type NearestStand = { stand: ClubStand; distance: string | null };
 
 type Common = {
-  /** "2 h 14 min until sunset"; null after sunset or before the phone knows where it is. */
-  untilSunset: UntilSunset | null;
+  mapTop: number;
+  mapHeight: number;
+  detent: SheetDetent;
+  onDetent: (detent: SheetDetent) => void;
+  reduceMotion: boolean;
   /** Who Ask for a Hand pings: your party or your club. */
   audience: Audience;
   onAskForHand: () => void;
+  onLogHarvest: () => void;
+  /** Club: the nearest open stand; a tap shows it on the map. Stands are optional. */
+  nearestStand: NearestStand | null;
+  onShowStand: (stand: ClubStand) => void;
+  /** Everyone out, for the full sheet. */
+  hunters: readonly HunterOnMap[];
+  now: number;
 };
 
 export type MapBottomSheetProps = Common &
@@ -27,158 +45,162 @@ export type MapBottomSheetProps = Common &
         state: 'checkedIn';
         place: HunterPlace;
         checkedInAt: number;
-        now: number;
         onCheckOut: () => void;
-        onChangeMode: () => void;
-        onLogHarvest: () => void;
+        onChangeSpot: () => void;
       }
-    | {
-        state: 'notCheckedIn';
-        /** Club: the nearest open stand, suggested on the button. */
-        suggestion?: string;
-        onCheckIn: () => void;
-      }
+    | { state: 'notCheckedIn'; onCheckIn: () => void }
   );
 
 /**
- * The map's bottom sheet (docs/DESIGN.md "Layout"): where you stand (not checked in, or
- * checked in and where), the time left until sunset, the main action and Ask for a Hand.
- * Stands are optional: checking in works at a spot or on the move.
+ * The map's one bottom sheet (docs/DESIGN.md "Map chrome" 4). Peek: one status line, then
+ * Check In (or Check Out) and the 56 by 56 Ask for a Hand. Half: change spot, log a harvest,
+ * the nearest stand. Full: everyone out. Stands are optional: every state works at a spot or
+ * on the move. The sunset time is in the top pill, not here.
  */
 export function MapBottomSheet(props: MapBottomSheetProps) {
   const styles = useStyles();
+  const checkedIn = props.state === 'checkedIn';
+  const status = checkedIn
+    ? checkedInStatus(props)
+    : { title: NOT_CHECKED_IN, rest: NOBODY_SEES_YOU };
   return (
-    <View style={styles.sheet}>
-      <Grabber />
-      {props.state === 'checkedIn' ? <CheckedIn {...props} /> : <NotCheckedIn {...props} />}
-    </View>
-  );
-}
-
-/** "2 h 14 min" over "until sunset", at the right of the sheet's first row. */
-function Countdown({ untilSunset }: { untilSunset: UntilSunset | null }) {
-  const styles = useStyles();
-  if (!untilSunset) return null;
-  return (
-    <View accessible accessibilityLabel={untilSunset.spoken} style={styles.countdown}>
-      <Text style={styles.span}>{untilSunset.span}</Text>
-      <Text style={styles.spanLabel}>{UNTIL_SUNSET}</Text>
-    </View>
-  );
-}
-
-/** Ask for a Hand: gold, a hand, and who it pings. Never red, never worded like an emergency. */
-function AskForHandButton({ audience, onAskForHand }: Common) {
-  return (
-    <Button
-      variant="help"
-      size="hero"
-      icon={Hand}
-      label="Ask for a Hand"
-      detail={HELP_AUDIENCE_TEXT[audience]}
-      onPress={onAskForHand}
-    />
-  );
-}
-
-function NotCheckedIn(props: Extract<MapBottomSheetProps, { state: 'notCheckedIn' }>) {
-  const styles = useStyles();
-  return (
-    <>
-      <View style={styles.state}>
-        <View accessible accessibilityRole="header" style={styles.flex}>
-          <Text style={styles.title}>{NOT_CHECKED_IN}</Text>
-          <Text style={styles.subtitle}>{NOBODY_SEES_YOU}</Text>
-        </View>
-        <Countdown untilSunset={props.untilSunset} />
-      </View>
-      <View style={styles.actions}>
-        <View style={styles.main}>
+    <DetentSheet
+      testID="map-chrome-sheet"
+      mapTop={props.mapTop}
+      mapHeight={props.mapHeight}
+      detent={props.detent}
+      onDetent={props.onDetent}
+      reduceMotion={props.reduceMotion}
+      statusSpoken={`${status.title}. ${status.rest}`}
+      status={
+        <Text style={styles.status}>
+          <Text style={styles.statusTitle}>{status.title}</Text> {status.rest}
+        </Text>
+      }
+      actions={
+        <>
+          <View style={styles.main}>
+            {checkedIn ? (
+              <Button variant="primary" size="sheet" label="Check Out" onPress={props.onCheckOut} />
+            ) : (
+              <Button
+                variant="primary"
+                size="sheet"
+                icon={MapPin}
+                label="Check In"
+                onPress={props.onCheckIn}
+              />
+            )}
+          </View>
+          {/* Gold, a hand, and who it pings. Never red, never worded like an emergency. */}
           <Button
-            variant="primary"
-            size="lg"
-            icon={MapPin}
-            label="Check In"
-            detail={props.suggestion ? `Nearest open: ${props.suggestion}` : undefined}
-            onPress={props.onCheckIn}
+            variant="help"
+            size="sheet"
+            iconOnly
+            icon={Hand}
+            label={ASK_FOR_A_HAND}
+            detail={HELP_AUDIENCE_TEXT[props.audience]}
+            onPress={props.onAskForHand}
           />
-        </View>
-        <View style={styles.flex}>
-          <AskForHandButton {...props} />
-        </View>
-      </View>
-    </>
+        </>
+      }
+    >
+      {checkedIn ? (
+        <Button icon={Repeat2} label="Change spot" onPress={props.onChangeSpot} />
+      ) : null}
+      <Button
+        icon={NotebookPen}
+        label="Log a harvest"
+        detail="Private"
+        onPress={props.onLogHarvest}
+      />
+      {props.nearestStand ? (
+        <NearestStandRow nearest={props.nearestStand} onPress={props.onShowStand} />
+      ) : null}
+      <OutNow hunters={props.hunters} now={props.now} />
+    </DetentSheet>
   );
 }
 
-function CheckedIn(props: Extract<MapBottomSheetProps, { state: 'checkedIn' }>) {
+function checkedInStatus(p: Extract<MapBottomSheetProps, { state: 'checkedIn' }>) {
+  const since = describeAge(positionAge(p.checkedInAt, p.now)).short;
+  const where = p.place.kind === 'moving' ? placeLabel(p.place) : `at ${placeLabel(p.place)}`;
+  return {
+    title: 'Checked in',
+    rest: `${where}, since ${since === 'Just now' ? 'just now' : since}`,
+  };
+}
+
+/** "Nearest stand", the stand's square, its name and how far: a tap shows it on the map. */
+function NearestStandRow({
+  nearest,
+  onPress,
+}: {
+  nearest: NearestStand;
+  onPress: (stand: ClubStand) => void;
+}) {
   const styles = useStyles();
-  const since = describeAge(positionAge(props.checkedInAt, props.now)).short;
+  const { stand, distance } = nearest;
   return (
-    <>
-      <View style={styles.state}>
-        <View accessible accessibilityRole="header" style={styles.flex}>
-          <Text style={styles.subtitle}>
-            {props.place.kind === 'moving' ? 'Checked in' : 'Checked in at'}
-          </Text>
-          {/* Wraps rather than cutting off a long place name at large text sizes. */}
-          <Text style={styles.title}>{placeLabel(props.place)}</Text>
-          <Text style={styles.subtitle}>Since {since === 'Just now' ? 'just now' : since}</Text>
-        </View>
-        <Countdown untilSunset={props.untilSunset} />
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Nearest stand: ${stand.name}${distance ? `, ${distance} away` : ''}`}
+      accessibilityHint="Shows it on the map"
+      onPress={() => onPress(stand)}
+      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+    >
+      <StandSquare type={stand.type} />
+      <View style={styles.texts}>
+        <Text style={styles.rowDetail}>Nearest stand</Text>
+        <Text style={styles.rowTitle}>{stand.name}</Text>
       </View>
-      <View style={styles.actions}>
-        <View style={styles.flex}>
-          <AskForHandButton {...props} />
-        </View>
-        <View style={styles.flex}>
-          <Button variant="primary" size="hero" label="Check Out" onPress={props.onCheckOut} />
-        </View>
-      </View>
-      <View style={styles.actions}>
-        <View style={styles.flex}>
-          <Button icon={Repeat2} label="Change mode" onPress={props.onChangeMode} />
-        </View>
-        <View style={styles.flex}>
-          <Button
-            variant="tertiary"
-            icon={NotebookPen}
-            label="Log a harvest"
-            detail="Private"
-            onPress={props.onLogHarvest}
-          />
-        </View>
-      </View>
-    </>
+      {distance ? <Text style={styles.distance}>{distance}</Text> : null}
+    </Pressable>
+  );
+}
+
+/** Everyone out: name, where, and how long ago their radio was heard. */
+function OutNow({ hunters, now }: { hunters: readonly HunterOnMap[]; now: number }) {
+  const styles = useStyles();
+  return (
+    <View>
+      <Text accessibilityRole="header" style={styles.heading}>
+        {OUT_NOW}
+      </Text>
+      {hunters.length === 0 ? (
+        <Text style={styles.rowDetail}>Nobody else is checked in.</Text>
+      ) : (
+        hunters.map((hunter) => (
+          <View key={hunter.id} accessible style={styles.row}>
+            <View style={styles.texts}>
+              <Text style={styles.rowTitle}>{placeLabel(hunter.place)}</Text>
+              <Text style={styles.rowDetail}>{hunterPlateDetail(hunter, now)}</Text>
+            </View>
+          </View>
+        ))
+      )}
+    </View>
   );
 }
 
 const useStyles = makeStyles((theme) => ({
-  sheet: {
-    backgroundColor: theme.colors.plate,
-    borderTopLeftRadius: radii.sheetTop,
-    borderTopRightRadius: radii.sheetTop,
-    borderTopWidth: 1,
-    borderColor: theme.colors.borderSubtle,
-    paddingHorizontal: spacing.sm + spacing.xs,
-    paddingBottom: spacing.sm + spacing.xs,
-    gap: spacing.sm,
-  },
-  state: {
+  status: { ...textStyles.body, color: theme.colors.textSecondary },
+  statusTitle: { ...textStyles.label, color: theme.colors.text },
+  main: { flexGrow: 1, flexShrink: 1, flexBasis: 0 },
+  heading: { ...textStyles.label, color: theme.colors.text, paddingVertical: spacing.xs },
+  row: {
+    minHeight: sizes.listRow,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
+    alignItems: 'center',
     gap: spacing.sm + spacing.xs,
     paddingHorizontal: spacing.xs / 2,
+    paddingVertical: spacing.xs,
+    borderTopWidth: 1,
+    borderColor: theme.colors.borderSubtle,
   },
-  flex: { flexGrow: 1, flexShrink: 1, flexBasis: 0 },
-  // Check In takes a little more of the row than Ask for a Hand, as in the design.
-  main: { flexGrow: 1.08, flexShrink: 1, flexBasis: 0 },
-  title: { ...textStyles.title2, color: theme.colors.text },
-  subtitle: { ...textStyles.body, color: theme.colors.textSecondary },
-  countdown: { alignItems: 'flex-end' },
-  span: { ...textStyles.readout, color: theme.colors.text },
-  spanLabel: { ...textStyles.caption, color: theme.colors.textSecondary },
-  actions: { flexDirection: 'row', gap: spacing.sm + spacing.xs / 2 },
+  pressed: { backgroundColor: theme.colors.raised },
+  texts: { flex: 1 },
+  rowTitle: { ...textStyles.label, color: theme.colors.text },
+  rowDetail: { ...textStyles.caption, color: theme.colors.textSecondary },
+  distance: { ...textStyles.readoutInline, color: theme.colors.text },
 }));

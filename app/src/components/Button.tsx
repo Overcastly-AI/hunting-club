@@ -1,3 +1,4 @@
+import { mapChrome } from '@huntclub/design';
 import type { LucideIcon } from 'lucide-react-native';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
@@ -27,20 +28,20 @@ export const BUTTON_VARIANTS = ['primary', 'secondary', 'tertiary', 'danger', 'h
 export type ButtonVariant = (typeof BUTTON_VARIANTS)[number];
 
 /**
- * md 48 (default) and lg 56, as on the web. `hero` (62 px, the old primary height) is
- * only for Check Out and Ask for a Hand on the map, where a gloved thumb must hit it.
+ * md (default) and lg, as on the web. `sheet` (56 px, mapChrome.sheet.actionRow) is only for
+ * the map sheet's action row: Check In or Check Out, and the 56 by 56 Ask for a Hand.
  */
-export type AppButtonSize = 'md' | 'lg' | 'hero';
+export type AppButtonSize = 'md' | 'lg' | 'sheet';
 
 const HEIGHT: Record<AppButtonSize, number> = {
   md: BUTTON_HEIGHT.md,
   lg: BUTTON_HEIGHT.lg,
-  hero: sizes.primaryButtonMinHeight,
+  sheet: mapChrome.sheet.actionRow,
 };
 const PADDING: Record<AppButtonSize, number> = {
   md: BUTTON_PADDING.md,
   lg: BUTTON_PADDING.lg,
-  hero: BUTTON_PADDING.lg,
+  sheet: BUTTON_PADDING.md,
 };
 
 type Props = {
@@ -56,6 +57,11 @@ type Props = {
   /** A spinner beside the label; presses are ignored and screen readers hear "busy". */
   loading?: boolean;
   accessibilityHint?: string;
+  /**
+   * A square of the size's height with the icon only (the map's 56 by 56 Ask for a Hand). The
+   * label and detail are still spoken; give an icon.
+   */
+  iconOnly?: boolean;
 };
 
 /** Label colour token per variant (and when disabled). */
@@ -78,6 +84,7 @@ export function Button({
   disabled,
   loading,
   accessibilityHint,
+  iconOnly,
 }: Props) {
   const styles = useStyles();
   const theme = useTheme();
@@ -94,7 +101,9 @@ export function Button({
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,
-        { minHeight: HEIGHT[size], paddingHorizontal: PADDING[size] },
+        iconOnly
+          ? { width: HEIGHT[size], height: HEIGHT[size], paddingHorizontal: 0 }
+          : { minHeight: HEIGHT[size], paddingHorizontal: PADDING[size] },
         styles[variant],
         pressed && styles[`${variant}Pressed`],
         disabled && (variant === 'tertiary' ? styles.disabledQuiet : styles.disabled),
@@ -110,16 +119,22 @@ export function Button({
           importantForAccessibility="no-hide-descendants"
         />
       ) : null}
-      <View style={styles.texts}>
-        <Text style={[styles.label, textStyle]}>{label}</Text>
-        {detail ? (
-          <Text
-            style={[styles.detail, textStyle, variant === 'help' && !disabled && styles.helpDetail]}
-          >
-            {detail}
-          </Text>
-        ) : null}
-      </View>
+      {iconOnly ? null : (
+        <View style={styles.texts}>
+          <Text style={[styles.label, textStyle]}>{label}</Text>
+          {detail ? (
+            <Text
+              style={[
+                styles.detail,
+                textStyle,
+                variant === 'help' && !disabled && styles.helpDetail,
+              ]}
+            >
+              {detail}
+            </Text>
+          ) : null}
+        </View>
+      )}
     </Pressable>
   );
 }

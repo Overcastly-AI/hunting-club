@@ -2,7 +2,9 @@ import { formatShortDate } from '@huntclub/shared';
 import {
   Check,
   Download,
+  Fullscreen,
   Map as MapIcon,
+  Pentagon,
   Trash2,
   Users,
   Wind,
@@ -51,6 +53,10 @@ type Props = {
   /** Which layers are drawn over the basemap. */
   layers: MapLayerVisibility;
   onLayerChange: (layer: MapLayerId, on: boolean) => void;
+  /** The layers this map has (Club areas only where the club's areas have outlines). */
+  available?: readonly MapLayerId[];
+  /** Frames the club's ground (its map pack, or its stands); unset with nothing to frame. */
+  onFitProperty?: () => void;
   packs: readonly MapPack[];
   /** The club's map pack for this basemap, when one is downloaded. */
   clubPack?: LocalClubMapPack;
@@ -64,6 +70,7 @@ type Props = {
 /** Each layer's icon in its row. */
 const LAYER_ICONS: Record<MapLayerId, LucideIcon> = {
   stands: STAND_ICON_COMPONENTS.ArrowUpFromLine,
+  areas: Pentagon,
   hunters: Users,
   scent: Wind,
 };
@@ -90,15 +97,21 @@ export function clubPackText(pack: LocalClubMapPack): string {
 /** What is saved on this phone: the heading, then the club's map and each downloaded area. */
 export const SAVED_ON_THIS_PHONE = 'Saved on this phone';
 
+/** The Layers button that frames the club's ground. */
+export const FIT_PROPERTY = 'Fit property';
+
 /**
- * Map layers (docs/DESIGN.md "Phone, layers open"): the three basemap thumbnails, the on/off
- * rows for what is drawn over them, then the maps saved on this phone so they work offline.
+ * Map layers (docs/DESIGN.md "Map chrome" 3, "Phone, layers open"): the three basemap
+ * thumbnails, Fit property, the on/off rows for what is drawn over them (stands, club areas,
+ * hunters, your scent), then the maps saved on this phone so they work offline.
  */
 export function LayersSheet({
   visible,
   basemap,
   layers,
   onLayerChange,
+  available = MAP_LAYER_IDS,
+  onFitProperty,
   packs,
   clubPack,
   progress,
@@ -128,9 +141,12 @@ export function LayersSheet({
         ))}
       </View>
       <Text style={styles.credit}>Map data: {BASEMAPS[baseOf(basemap)].attribution}</Text>
+      {onFitProperty ? (
+        <Button icon={Fullscreen} label={FIT_PROPERTY} onPress={onFitProperty} />
+      ) : null}
 
       <View style={styles.rows}>
-        {MAP_LAYER_IDS.map((id) => (
+        {available.map((id) => (
           <ToggleRow
             key={id}
             label={MAP_LAYER_LABELS[id]}

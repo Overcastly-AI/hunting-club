@@ -1,10 +1,11 @@
 import { CORE_CONFIG } from '@huntclub/core';
 import { CheckInMode, type LatLon } from '@huntclub/mesh';
-import { Footprints, MapPin, Pentagon, type LucideIcon } from 'lucide-react-native';
+import { Footprints, MapPin, Pentagon, X, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Button } from '../components/Button';
 import { Choice } from '../components/Choice';
 import { Field } from '../components/Field';
 import { STAND_ICON_COMPONENTS } from '../components/icons';
@@ -49,13 +50,20 @@ export function slideLabel(changing: boolean, place: string | null): string {
   return place ? `Slide to check in at ${place}` : 'Slide to check in';
 }
 
+/** The way back to the map from Check In. */
+export const BACK_TO_MAP = 'Back to the map';
+
 /**
- * Check In tab (docs/DESIGN.md, Check In): a peek of the map, then where you are hunting (at a
- * stand, in an area, right here or on the move), the club's stands nearest first, when an
- * overdue alert would go out, and the slider. Stands are optional: every mode works without one.
- * `onCheckedIn` runs after a check-in is sent (not a change of mode), e.g. for the name prompt.
+ * Check In (docs/DESIGN.md, Check In), opened from the map's sheet: a peek of the map, then
+ * where you are hunting (at a stand, in an area, right here or on the move), the club's stands
+ * nearest first, when an overdue alert would go out, and the slider. Stands are optional: every
+ * mode works without one. `onCheckedIn` runs after a check-in is sent (not a change of mode),
+ * e.g. for the name prompt; `onClose` goes back to the map.
  */
-export function CheckInScreen({ onCheckedIn }: { onCheckedIn?: () => void } = {}) {
+export function CheckInScreen({
+  onCheckedIn,
+  onClose,
+}: { onCheckedIn?: () => void; onClose?: () => void } = {}) {
   const styles = useStyles();
   const { radio, current } = useCheckInState();
   const now = useNow();
@@ -107,16 +115,21 @@ export function CheckInScreen({ onCheckedIn }: { onCheckedIn?: () => void } = {}
       <ScrollView contentContainerStyle={styles.scroll}>
         <MapStrip height={sizes.checkInMapPeek} />
         <View style={styles.panel}>
-          {current ? (
-            <View accessible accessibilityRole="header">
-              <Text style={styles.overline}>Checked in at</Text>
-              <Text style={styles.title}>{placeLabel(placeOf(current.placement))}</Text>
-            </View>
-          ) : (
-            <Text accessibilityRole="header" style={styles.title}>
-              {WHERE_ARE_YOU_HUNTING}
-            </Text>
-          )}
+          <View style={styles.head}>
+            {current ? (
+              <View accessible accessibilityRole="header" style={styles.headText}>
+                <Text style={styles.overline}>Checked in at</Text>
+                <Text style={styles.title}>{placeLabel(placeOf(current.placement))}</Text>
+              </View>
+            ) : (
+              <Text accessibilityRole="header" style={[styles.title, styles.headText]}>
+                {WHERE_ARE_YOU_HUNTING}
+              </Text>
+            )}
+            {onClose ? (
+              <Button variant="tertiary" iconOnly icon={X} label={BACK_TO_MAP} onPress={onClose} />
+            ) : null}
+          </View>
           {changing ? (
             <Text accessibilityRole="header" style={styles.heading}>
               Change mode
@@ -229,6 +242,8 @@ const useStyles = makeStyles((theme) => ({
     paddingBottom: spacing.md,
     gap: spacing.sm + spacing.xs,
   },
+  head: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  headText: { flex: 1 },
   overline: { ...textStyles.body, color: theme.colors.textSecondary },
   title: { ...textStyles.sheetTitle, color: theme.colors.text },
   heading: { ...textStyles.label, color: theme.colors.text, paddingVertical: spacing.xs },

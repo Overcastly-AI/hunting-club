@@ -1,10 +1,10 @@
 import type { Placement } from '@huntclub/core';
 import { CheckInMode, type LatLon } from '@huntclub/mesh';
-import type { StandType } from '@huntclub/shared';
+import type { Polygon, StandType } from '@huntclub/shared';
 
 import { distanceMeters } from '../map/geo';
 
-/** What the hunter has picked so far on the Check In tab. */
+/** What the hunter has picked so far on the Check In screen. */
 export type CheckInDraft = {
   mode: CheckInMode;
   /** Our location, if known. Needed for a spot; shared with others in the other modes when known. */
@@ -44,7 +44,7 @@ export function placementFrom(draft: CheckInDraft): DraftResult {
   }
 }
 
-/** A club stand as the Check In tab lists it. */
+/** A club stand as the Check In screen lists it. */
 export type ClubStand = {
   meshId: number;
   name: string;
@@ -53,7 +53,8 @@ export type ClubStand = {
   type?: StandType;
   occupiedBy?: string;
 };
-export type ClubArea = { meshId: number; name: string };
+/** A club area as Check In lists it; its outline is drawn dotted on the map when known. */
+export type ClubArea = { meshId: number; name: string; boundary?: Polygon };
 
 /** Open stands first, nearest first when we know where we are; occupied stands last. */
 export function sortStands(stands: readonly ClubStand[], here: LatLon | undefined): ClubStand[] {

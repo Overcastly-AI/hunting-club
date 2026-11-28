@@ -24,9 +24,27 @@ const drawChildren = ({ children, testID }: { children?: ReactNode; testID?: str
   createElement(View, { testID }, children);
 const drawNothing = () => null;
 
+/**
+ * The map: its children, and its event props (`onRegionWillChange`, `onPress`, ...) on the view,
+ * so a test can fire them: `fireEvent(screen.getByTestId('map'), 'regionWillChange', event)`.
+ */
+const drawMap = ({
+  children,
+  testID,
+  ...props
+}: { children?: ReactNode; testID?: string } & Record<string, unknown>) =>
+  createElement(
+    View,
+    {
+      testID,
+      ...Object.fromEntries(Object.entries(props).filter(([key]) => /^on[A-Z]/.test(key))),
+    },
+    children,
+  );
+
 export const fakeMapLibreModule = {
   LocationManager: fakeLocationManager,
-  Map: drawChildren,
+  Map: drawMap,
   Marker: drawChildren,
   Camera: drawNothing,
   GeoJSONSource: drawChildren,

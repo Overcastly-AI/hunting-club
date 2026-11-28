@@ -1,4 +1,4 @@
-// Club mode on the Party/Club tab and the join screen, on an in-memory database and a
+// Club mode on the Club tab and the join screen, on an in-memory database and a
 // fake club API (no network, no native modules).
 import { Fragment } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';

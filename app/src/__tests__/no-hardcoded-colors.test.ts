@@ -22,6 +22,7 @@ describe('theme usage', () => {
     const STATIC_COLOR_FILES = [
       'components/QrCode.tsx',
       'map/basemaps.ts',
+      'map/components/AreasLayer.tsx',
       'map/components/HaloText.tsx',
       'map/components/ScaleBar.tsx',
       'map/components/YouMarker.tsx',
