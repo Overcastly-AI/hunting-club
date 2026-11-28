@@ -30,6 +30,24 @@ const kebab = (name: string) => name.replace(/[A-Z]|\d+/g, (c) => `-${c.toLowerC
 /** Below this width the compact type sizes apply (phones). */
 export const COMPACT_MEDIA = `(max-width: ${breakpoints.tablet - 1}px)`;
 
+/** Under desktop width and shorter than a tablet: a phone on its side. */
+export const SHORT_MEDIA = `(max-width: ${breakpoints.desktop - 1}px) and (max-height: ${breakpoints.shortHeight - 1}px)`;
+
+/** A phone held either way: narrower than `breakpoints.phone`, or on its side (SHORT_MEDIA). */
+export const PHONE_MEDIA = `(max-width: ${breakpoints.phone - 1}px), ${SHORT_MEDIA}`;
+
+/**
+ * The iPhone's notch, rounded corners and home indicator, for CSS: what each edge of a web page
+ * keeps clear once the viewport is viewport-fit=cover (VIEWPORT_META, @huntclub/shared); 0 on
+ * screens without them. The club admin and the public site both pad with these.
+ */
+export const SAFE_AREA = {
+  top: 'env(safe-area-inset-top, 0px)',
+  right: 'env(safe-area-inset-right, 0px)',
+  bottom: 'env(safe-area-inset-bottom, 0px)',
+  left: 'env(safe-area-inset-left, 0px)',
+} as const;
+
 /** CSS custom properties for every design token, e.g. `--color-surface-raised`. */
 export function tokenVariables(): Record<string, string> {
   const vars: Record<string, string> = {};
@@ -66,6 +84,8 @@ export function mapChromeVariables(): Record<string, string> {
     '--map-chrome-sheet-peek': px(sheet.detents.peek),
     '--map-chrome-sheet-half': `${sheet.detents.half * 100}%`,
     '--map-chrome-sheet-full': `${sheet.detents.full * 100}%`,
+    // The tallest any phone sheet gets (dialogs, menus), as a share of the window.
+    '--map-chrome-sheet-max': `${sheet.detents.full * 100}dvh`,
     '--map-chrome-footer-height': px(footer.height),
     '--map-chrome-fade': `${autoHide.fadeMs}ms`,
     '--map-chrome-label-max-width': px(labels.maxWidth),
@@ -158,22 +178,52 @@ export function textStyleCss(entry: TextScaleEntry): string {
     .join('; ');
 }
 
-/** The compact (phone) override of a text style, or '' when it has none. */
-function compactCss(selector: string, entry: TextScaleEntry): string {
-  if (!entry.compact) return '';
-  const { size, lineHeight } = entry.compact;
-  return `@media ${COMPACT_MEDIA} { ${selector} { font-size: ${rem(size)}; line-height: ${rem(lineHeight)}; } }`;
+/** A smaller step of a text style under `media`, or '' when the style has none. */
+function stepCss(
+  media: string,
+  selector: string,
+  step: TextScaleEntry['compact'] | TextScaleEntry['phone'],
+): string {
+  if (!step) return '';
+  return `@media ${media} { ${selector} { font-size: ${rem(step.size)}; line-height: ${rem(step.lineHeight)}; } }`;
+}
+
+/**
+ * One text style as rules for `selector`: the style, then its compact step (below the tablet
+ * width) and its phone step (PHONE_MEDIA), in that order so the smallest that applies wins.
+ */
+export function textRulesCss(selector: string, entry: TextScaleEntry): string {
+  return [
+    `${selector} { ${textStyleCss(entry)}; }`,
+    stepCss(COMPACT_MEDIA, selector, entry.compact),
+    stepCss(PHONE_MEDIA, selector, entry.phone),
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 /** Utility classes `.text-body`, `.text-title-1`, … one per text style, with phone sizes. */
 export function textClasses(): string {
   return (Object.entries(textScale) as [TextStyleName, TextScaleEntry][])
-    .flatMap(([name, entry]) => {
-      const selector = `.text-${kebab(name)}`;
-      return [`${selector} { ${textStyleCss(entry)}; }`, compactCss(selector, entry)];
-    })
-    .filter(Boolean)
+    .map(([name, entry]) => textRulesCss(`.text-${kebab(name)}`, entry))
     .join('\n');
+}
+
+/**
+ * The base every web page starts from (the club admin and the public site): the Archivo face at
+ * `fontUrl`, the token and theme variables, border-box sizing, native controls in the theme,
+ * text the browser never inflates (iOS Safari enlarges text in landscape without it), and the
+ * page in the canvas tone with the theme's text colour.
+ */
+export function baseCss(fontUrl: string): string {
+  return [
+    fontFaceCss(fontUrl),
+    rootVariablesCss(),
+    themeCss(),
+    '* { box-sizing: border-box; }',
+    'html { color-scheme: var(--theme-color-scheme); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }',
+    `html, body { margin: 0; background: ${themeVar('canvas')}; color: ${themeVar('text')}; }`,
+  ].join('\n');
 }
 
 /** The Archivo @font-face for the WOFF2 at `url` (fonts/Archivo-Latin.woff2, fingerprinted). */

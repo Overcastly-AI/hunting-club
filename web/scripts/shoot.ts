@@ -1,11 +1,20 @@
 // Browser checks and screenshots of the admin over sample data (the dev-only demo, src/demo),
 // served from the kit build with the real security headers (infra/src/security-headers.ts).
-// For every page at 1280 and 390 px wide (My club also at 500), in the dark and daylight themes, it checks:
+// For every page at 1280 and 390 px wide (My club also at 500, and on the iPhone audit's phones
+// with touch: SE portrait, iPhone 15 portrait and landscape), in the dark and daylight themes (the
+// phones dark only), it checks:
 // no Content-Security-Policy violation, no horizontal scroll, axe with no serious or critical
 // issue, and that the phone's More sheet takes focus and gives it back to the More tab. On My
 // club it measures the map chrome's real rects against the coverage budget (docs/DESIGN.md
 // "Map chrome" 1, the shared measureCoverage) and fails above it at rest and while drawing;
-// every My club shot's coverage is printed. Screenshots (deviceScaleFactor 1) go to
+// every My club shot's coverage is printed. On the touch phones My club is also pinched (one finger
+// on a stand) and double tapped with real touch events: the map must zoom and the page must not.
+// On phones (PHONE_VIEWPORTS, from the iPhone audit)
+// it checks that the sign-in email field is in the first screen on an SE, the "Sample property"
+// label is clear of the form in landscape, every page plus the club switcher and More are on
+// screen in landscape, the More sheet, account menu and stand drawer stay within the sheet's
+// full detent with Sign out reachable, and the roster filter's words keep to one line ("phones"
+// in the shot list runs only these). Screenshots (deviceScaleFactor 1) go to
 // docs/redesign/<folder>/ (m2 unless named), optionally only the named shots. The sample
 // property's committed aerial map pack (sample-pack/, built by scripts/sample-pack.ts) is
 // served with range requests, as CloudFront serves packs: at the demo club's key (My club)
@@ -21,6 +30,8 @@ import {
   formatCoverage,
   mapChrome,
   measureCoverage,
+  PHONE_VIEWPORTS,
+  type PhoneViewport,
   THEME_STORAGE_KEY,
   type Rect,
 } from '@huntclub/design';
@@ -34,16 +45,38 @@ import { extname, join, resolve } from 'node:path';
 import { contentSecurityPolicy, PERMISSIONS_POLICY } from '../../infra/src/security-headers';
 import { SAMPLE_PACK, samplePack } from '../src/map/samplePack';
 import { sampleData } from '../src/testing/fakeClubApi';
+import { PAGES } from '../src/shell/routes';
 import { samplePackFile } from './samplePackFile';
 
 const WEB = process.cwd();
 const DIST = resolve(WEB, 'dist-kit');
 const [FOLDER = 'm2', ONLY_SHOTS] = process.argv.slice(2);
 const OUT = resolve(WEB, '../docs/redesign', FOLDER);
-const WIDTHS = [1280, 500, 390] as const;
-/** 500 px is the map-chrome review's in-between width: My club only. */
-const widthsFor = (shot: Shot) => WIDTHS.filter((w) => w !== 500 || shot.hash === '#/club');
-const HEIGHT: Record<(typeof WIDTHS)[number], number> = { 1280: 860, 500: 844, 390: 844 };
+interface Viewport {
+  /** In the file name: the width, or the phone's name. */
+  name: string;
+  width: number;
+  height: number;
+  /** A phone with touch (isMobile: the page can be pinch-zoomed, as Safari can). */
+  touch?: boolean;
+  /** Only My club is shot here. */
+  myClubOnly?: boolean;
+}
+const VIEWPORTS: readonly Viewport[] = [
+  { name: '1280', width: 1280, height: 860 },
+  // The map-chrome review's in-between width.
+  { name: '500', width: 500, height: 844, myClubOnly: true },
+  { name: '390', width: 390, height: 844 },
+  // The iPhone audit (2026-11-28): CSS px of each phone's browser viewport.
+  { name: 'se', width: 375, height: 667, touch: true, myClubOnly: true },
+  { name: 'iphone15', width: 393, height: 852, touch: true, myClubOnly: true },
+  { name: 'iphone15-landscape', width: 852, height: 393, touch: true, myClubOnly: true },
+];
+const viewportsFor = (shot: Shot) =>
+  VIEWPORTS.filter((v) => !v.myClubOnly || shot.hash === '#/club').filter(
+    // `only` names widths of the main three; the phones take every My club shot that has none.
+    (v) => !v.touch || !shot.only,
+  );
 /** File name word for each stored theme preference. */
 const THEMES = { dark: 'dark', light: 'daylight' } as const;
 
@@ -66,6 +99,7 @@ interface Shot {
 /** The Playwright surface used here (the package is loaded from NODE_PATH at run time). */
 interface Page {
   goto(url: string): Promise<unknown>;
+  touchscreen: { tap(x: number, y: number): Promise<void> };
   waitForLoadState(state: 'networkidle'): Promise<void>;
   mouse: { click(x: number, y: number): Promise<void> };
   waitForSelector(selector: string): Promise<unknown>;
@@ -78,6 +112,11 @@ interface Page {
   ): { click(): Promise<void>; fill(value: string): Promise<void> };
   keyboard: { press(key: string): Promise<void> };
   close(): Promise<void>;
+}
+
+/** A Chrome DevTools Protocol session (real touch events). */
+interface Cdp {
+  send(method: string, params: object): Promise<unknown>;
 }
 
 const openInvite = async (page: Page) => {
@@ -166,7 +205,11 @@ const editArea = async (page: Page) => {
   const onMap = await page.evaluate<boolean>(
     `!!document.querySelector('.plan__area-button[aria-label^="North 40"]')`,
   );
-  if (onMap) await page.getByRole('button', { name: /^North 40, area/ }).click();
+  // (A dispatched click: on a phone on its side a stand's marker sits over the name.)
+  if (onMap)
+    await page.evaluate(
+      `document.querySelector('.plan__area-button[aria-label^="North 40"]').dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))`,
+    );
   else {
     await sheetHalf(page);
     await page.getByRole('button', { name: 'Edit North 40' }).click();
@@ -178,6 +221,81 @@ const openClubSwitcher = async (page: Page) => {
   await page.getByRole('button', { name: /Club:/ }).click();
   await page.waitForTimeout(250);
 };
+/** My club with a new stand being placed (the "+" menu beside Stands and areas, Add stand). */
+const addStand = async (page: Page) => {
+  // From the panel or the sheet (at its peek on a phone), as drawLine does.
+  await page.evaluate(`document.querySelector('.side-section__add').click()`);
+  await page.waitForSelector('.add-menu:not([hidden])');
+  await page.evaluate(
+    `[...document.querySelectorAll('.add-menu .ui-button')].find((b) => b.textContent === 'Add stand').click()`,
+  );
+  await page.waitForSelector('.draw__cross');
+  await settle(page);
+};
+/** My club with its property line open in the editor (the panel's or sheet's text action). */
+const editLine = async (page: Page) => {
+  await page.evaluate(
+    `[...document.querySelectorAll('.side-section__quiet')].find((b) => b.textContent === 'Edit property line').click()`,
+  );
+  await page.waitForSelector('.draw__corner');
+  await settle(page);
+};
+/** The map's zoom (the ground's data-zoom) and the page's own pinch zoom. */
+const zooms = (page: Page) =>
+  page.evaluate<{ map: number; page: number }>(
+    `({ map: Number(document.querySelector('.plan__svg--ground').dataset.zoom), page: visualViewport.scale })`,
+  );
+/**
+ * Real touch on My club (CDP touch events, as a phone sends them): a pinch with one finger on a
+ * stand and one beside it, then a double tap on open ground. The map zooms in each time; the page
+ * never zooms and no stand opens.
+ */
+async function touchChecks(page: Page, cdp: Cdp, label: string, problems: string[]) {
+  const at = await page.evaluate<{ stand: [number, number]; ground: [number, number] }>(
+    `(() => {
+      const s = document.querySelector('.plan__stand--button .plan__stand-hit').getBoundingClientRect();
+      const m = document.querySelector('.clubview__map').getBoundingClientRect();
+      return { stand: [s.left + s.width / 2, s.top + s.height / 2], ground: [m.left + 24, m.top + m.height * 0.45] };
+    })()`,
+  );
+  const touch = (type: string, points: readonly (readonly [number, number])[]) =>
+    cdp.send('Input.dispatchTouchEvent', {
+      type,
+      touchPoints: points.map(([x, y], id) => ({ x, y, id })),
+    });
+  const [x, y] = at.stand;
+  const before = await zooms(page);
+  await touch('touchStart', [[x, y]]);
+  await touch('touchStart', [
+    [x, y],
+    [x + 60, y],
+  ]);
+  for (let i = 1; i <= 6; i++)
+    await touch('touchMove', [
+      [x - 10 * i, y],
+      [x + 60 + 10 * i, y],
+    ]);
+  await touch('touchEnd', []);
+  await page.waitForTimeout(300);
+  const pinched = await zooms(page);
+  const opened = await page.evaluate<boolean>(`!!document.querySelector('.ui-dialog--side[open]')`);
+  await page.touchscreen.tap(...at.ground);
+  await page.waitForTimeout(80);
+  await page.touchscreen.tap(...at.ground);
+  await page.waitForTimeout(300);
+  const tapped = await zooms(page);
+  touchReport.push(
+    `${label}: pinch from a stand ${before.map.toFixed(2)} → ${pinched.map.toFixed(2)}, double tap → ${tapped.map.toFixed(2)}; page scale ${tapped.page}`,
+  );
+  if (!(pinched.map > before.map + 0.5)) problems.push(`${label}: a pinch did not zoom the map`);
+  if (!(tapped.map > pinched.map + 0.5))
+    problems.push(`${label}: a double tap did not zoom the map`);
+  if (pinched.page !== 1 || tapped.page !== 1)
+    problems.push(`${label}: the page zoomed (scale ${tapped.page})`);
+  if (opened) problems.push(`${label}: a pinch opened the stand under it`);
+}
+const touchReport: string[] = [];
+
 /** The middle of the sample property: where "My location" puts the browser for the draw shot. */
 const [west, south, east, north] = polygonBounds(SAMPLE_PROPERTY.boundary);
 const AT_THE_PROPERTY = { latitude: (south + north) / 2, longitude: (west + east) / 2 };
@@ -274,6 +392,20 @@ const SHOTS: readonly Shot[] = [
   { name: 'my-club-topo', scenario: 'trial', hash: '#/club', act: topo, only: ONCE_EACH },
   { name: 'my-club-stand', scenario: 'trial', hash: '#/club', act: openStand },
   { name: 'my-club-stand-edit', scenario: 'trial', hash: '#/club', act: editStand },
+  {
+    name: 'my-club-stand-add',
+    scenario: 'trial',
+    hash: '#/club',
+    act: addStand,
+    coverage: 'report',
+  },
+  {
+    name: 'my-club-line-edit',
+    scenario: 'trial',
+    hash: '#/club',
+    act: editLine,
+    coverage: 'budget',
+  },
   {
     name: 'my-club-area-edit',
     scenario: 'trial',
@@ -373,6 +505,142 @@ function serve(packArchive: Buffer): Promise<{ server: Server; origin: string }>
   );
 }
 
+/** A page the phone checks open (closing it closes its context). */
+type PhonePage = Page;
+
+/** A box in the window, from the page. */
+interface Box {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+  height: number;
+}
+const boxOf = (page: Page, selector: string) =>
+  page.evaluate<Box | null>(
+    `(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return null;
+      const r = el.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height }; })()`,
+  );
+const meets = (a: Box, b: Box) =>
+  a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+
+/**
+ * The iPhone audit's checks (docs/STATUS.md, 2026-11-28), on the phones in PHONE_VIEWPORTS.
+ * `open(scenario, hash, phone)` loads the demo on that phone with touch, in the dark theme.
+ */
+async function phoneChecks(
+  open: (scenario: string, hash: string, phone: PhoneViewport) => Promise<PhonePage>,
+  problems: string[],
+) {
+  const { sePortrait, iphone15Portrait, iphone15Landscape, proMaxLandscape } = PHONE_VIEWPORTS;
+  /** A screenshot of the window as checked: `phone-<what>-<phone>.png`. */
+  const shoot = (page: Page, what: string, phone: PhoneViewport) =>
+    page.screenshot({
+      path: join(OUT, `phone-${what}-${phone.name.toLowerCase().replaceAll(' ', '-')}.png`),
+      fullPage: false,
+    });
+  const sheetMax = (phone: PhoneViewport) => phone.height * mapChrome.sheet.detents.full + 1;
+
+  // Sign-in: the email field in the first screen on an SE; in landscape, the caption off the form.
+  for (const phone of [sePortrait, iphone15Portrait, iphone15Landscape, proMaxLandscape]) {
+    const page = await open('signedOut', '', phone);
+    const field = await boxOf(page, 'input[type="email"]');
+    console.log(
+      `${phone.name}: sign-in email field ends at ${field?.bottom}px (first screen ${phone.fold ?? phone.height}px)`,
+    );
+    if (phone === sePortrait && (!field || field.bottom > (phone.fold ?? phone.height)))
+      problems.push(
+        `${phone.name}: the sign-in email field ends at ${field?.bottom}px, below the fold`,
+      );
+    const door = await boxOf(page, '.signin__door');
+    const caption = await boxOf(page, '.signin__sample');
+    if (door && caption && meets(door, caption))
+      problems.push(`${phone.name}: the "Sample property" label is under the sign-in form`);
+    await shoot(page, 'signin', phone);
+    await page.close();
+  }
+
+  // Every page, the club switcher and More are on screen and on top, both ways up.
+  const navTargets = [
+    ...PAGES.filter((p) => !('inMore' in p)).map((p) => `.shell-nav a[href="#/${p.path}"]`),
+    '.shell-nav__slot--more button',
+    '.shell-club__button',
+    '.shell-account__button',
+  ];
+  for (const phone of [sePortrait, iphone15Portrait, iphone15Landscape, proMaxLandscape]) {
+    const page = await open('active', '#/roster', phone);
+    const hidden = await page.evaluate<string[]>(
+      `${JSON.stringify(navTargets)}.filter((sel) => {
+        const el = document.querySelector(sel); if (!el) return true;
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 || r.left < 0 || r.top < 0 || r.right > innerWidth + 1 || r.bottom > innerHeight + 1) return true;
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return !hit || !el.contains(hit);
+      })`,
+    );
+    for (const sel of hidden)
+      problems.push(
+        `${phone.name}: ${sel} is not on screen ` +
+          (await page.evaluate<string>(
+            `(() => { const el = document.querySelector(${JSON.stringify(sel)}); if (!el) return 'missing'; const r = el.getBoundingClientRect(); const h = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return JSON.stringify([r.left, r.top, r.right, r.bottom, innerWidth, innerHeight, h && h.className]); })()`,
+          )),
+      );
+    // The roster filter: each segment's words on one line (a segment is one 48 px row).
+    const wrapped = await page.evaluate<string[]>(
+      `[...document.querySelectorAll('.filters .ui-segment')].filter((el) => el.getBoundingClientRect().height > ${mapChrome.stack.button} + 1).map((el) => el.textContent)`,
+    );
+    for (const w of wrapped) problems.push(`${phone.name}: the roster filter "${w}" wraps`);
+    await shoot(page, 'roster', phone);
+    await page.close();
+  }
+
+  // Phone sheets: as tall as their contents, never over the full detent, Sign out reachable.
+  for (const phone of [sePortrait, iphone15Portrait]) {
+    const sheets: [string, string, (page: PhonePage) => Promise<void>][] = [
+      [
+        'More sheet',
+        '.ui-dialog[open]',
+        (page) => page.getByRole('button', { name: /^More/ }).click(),
+      ],
+      ['Account menu', '.shell-account__panel:not([hidden])', openAccount],
+    ];
+    for (const [name, selector, act] of sheets) {
+      const page = await open('active', '#/roster', phone);
+      await act(page);
+      await page.waitForSelector(selector);
+      await page.waitForTimeout(250);
+      const sheet = await boxOf(page, selector);
+      console.log(`${phone.name}: ${name} ${sheet?.height}px of ${phone.height}px`);
+      if (!sheet || sheet.height > sheetMax(phone))
+        problems.push(
+          `${phone.name}: the ${name} is ${sheet?.height}px tall, over ${sheetMax(phone)}px`,
+        );
+      // Scrolled to inside the sheet, as a thumb would: it must then be in the window.
+      const button = await page.evaluate<Box | null>(
+        `(() => { const b = [...document.querySelectorAll(${JSON.stringify(`${selector} button`)})]
+          .find((el) => el.textContent.trim() === 'Sign out'); if (!b) return null;
+          b.scrollIntoView({ block: 'nearest' }); const r = b.getBoundingClientRect();
+          return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height }; })()`,
+      );
+      if (!button || button.top < 0 || button.bottom > phone.height)
+        problems.push(`${phone.name}: Sign out in the ${name} cannot be reached`);
+      await shoot(page, name.toLowerCase().replaceAll(' ', '-'), phone);
+      await page.close();
+    }
+    const page = await open('trial', '#/club', phone);
+    await page.waitForSelector('.plan__basemap image');
+    await openStand(page);
+    const drawer = await boxOf(page, '.ui-dialog--side[open]');
+    console.log(`${phone.name}: stand drawer ${drawer?.height}px of ${phone.height}px`);
+    if (!drawer || drawer.height > sheetMax(phone))
+      problems.push(
+        `${phone.name}: the stand drawer is ${drawer?.height}px tall, over ${sheetMax(phone)}px`,
+      );
+    await shoot(page, 'stand-drawer', phone);
+    await page.close();
+  }
+}
+
 async function main() {
   if (!existsSync(join(DIST, 'index.html')))
     throw new Error('Build the kit first: npm run build:kit');
@@ -388,6 +656,7 @@ async function main() {
   };
   interface Context {
     addInitScript(script: string): Promise<void>;
+    newCDPSession(page: Page): Promise<Cdp>;
     newPage(): Promise<
       Page & { on(event: string, fn: (m: { text(): string; type(): string }) => void): void }
     >;
@@ -405,14 +674,40 @@ async function main() {
   const coverage: string[] = [];
   let count = 0;
   try {
+    if (!only || only.includes('phones')) {
+      const open = async (scenario: string, hash: string, phone: PhoneViewport) => {
+        const context = await browser.newContext({
+          viewport: { width: phone.width, height: phone.height },
+          deviceScaleFactor: 1,
+          isMobile: true,
+          hasTouch: true,
+          reducedMotion: 'reduce',
+          timezoneId: 'America/Chicago',
+        });
+        const page = (await context.newPage()) as unknown as PhonePage;
+        await page.goto(`${origin}${ADMIN_PATH}?demo=${scenario}${hash}`);
+        await page.waitForSelector('h1');
+        await page.waitForTimeout(400);
+        const close = page.close.bind(page);
+        page.close = async () => {
+          await close();
+          await context.close();
+        };
+        return page;
+      };
+      await phoneChecks(open, problems);
+    }
     for (const shot of SHOTS) {
       if (only && !only.includes(shot.name)) continue;
-      for (const width of widthsFor(shot)) {
+      for (const viewport of viewportsFor(shot)) {
+        const { width } = viewport;
         for (const theme of Object.keys(THEMES) as (keyof typeof THEMES)[]) {
           if (shot.only && !shot.only.some(([w, t]) => w === width && t === theme)) continue;
+          if (viewport.touch && theme !== 'dark') continue;
           const context = await browser.newContext({
-            viewport: { width, height: HEIGHT[width] },
+            viewport: { width, height: viewport.height },
             deviceScaleFactor: 1,
+            ...(viewport.touch ? { isMobile: true, hasTouch: true } : {}),
             reducedMotion: 'reduce',
             // The sample club is in Illinois: its sunrise and sunset read in its own time.
             timezoneId: 'America/Chicago',
@@ -430,7 +725,7 @@ async function main() {
           page.on('console', (m) => {
             if (m.type() === 'error') errors.push(m.text());
           });
-          const label = `${shot.name} ${width} ${THEMES[theme]}`;
+          const label = `${shot.name} ${viewport.name} ${THEMES[theme]}`;
           await page.goto(`${origin}${ADMIN_PATH}?demo=${shot.scenario}${shot.hash}`);
           await page.waitForSelector(shot.ready ?? 'h1');
           await page.waitForTimeout(400);
@@ -483,9 +778,11 @@ async function main() {
             if (back !== 'false') problems.push(`${label}: Esc did not return focus to More`);
           }
           await page.screenshot({
-            path: join(OUT, `${shot.name}-${width}-${THEMES[theme]}.png`),
+            path: join(OUT, `${shot.name}-${viewport.name}-${THEMES[theme]}.png`),
             fullPage: true,
           });
+          if (viewport.touch && shot.name === 'my-club')
+            await touchChecks(page, await context.newCDPSession(page), label, problems);
           count += 1;
           await context.close();
         }
@@ -497,6 +794,7 @@ async function main() {
   }
   console.log(`${count} screenshots in ${OUT}`);
   if (coverage.length) console.log(['Map chrome coverage:', ...coverage].join('\n'));
+  if (touchReport.length) console.log(['Touch (map zoom):', ...touchReport].join('\n'));
   if (problems.length) {
     console.error(problems.join('\n'));
     process.exit(1);

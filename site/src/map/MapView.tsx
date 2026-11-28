@@ -21,6 +21,7 @@ import {
   SAMPLE_LABELS,
   SAMPLE_MESH,
   SAMPLE_SCALE,
+  SCENT_LABEL,
 } from './sampleClub';
 
 /** One lucide icon per stand type, by the shared names the app and the admin use. */
@@ -123,7 +124,7 @@ export function World(props: { aerialUrl: string }) {
         </span>
       ))}
       <ScentCone className={AT.you} />
-      <span className={`lbl lbl-name ${AT.scentLabel}`}>Your scent</span>
+      <span className={`lbl lbl-name ${AT.scentLabel}`}>{SCENT_LABEL.text}</span>
       <span className={`mk place ${AT.camp}`}>
         <Plate name="Camp" />
       </span>

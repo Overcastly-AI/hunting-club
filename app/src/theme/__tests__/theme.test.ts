@@ -62,6 +62,7 @@ describe('type tokens', () => {
       boardTitle: 40,
       display: 50,
       displayCompact: 36,
+      displayPhone: 30,
       title1: 32,
       title1Compact: 28,
       title2: 23,

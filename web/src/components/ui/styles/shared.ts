@@ -4,6 +4,7 @@ import {
   BUTTON_HEIGHT,
   breakpoints,
   COMPACT_MEDIA,
+  SHORT_MEDIA,
   space,
   textScale,
   textStyleCss,
@@ -13,8 +14,17 @@ import {
 
 /** Phones (below the tablet breakpoint): the same query as the compact type sizes. */
 export const PHONE = `@media ${COMPACT_MEDIA}`;
+const TABLET_QUERY = `(min-width: ${breakpoints.tablet}px) and (max-width: ${breakpoints.desktop - 1}px)`;
 /** Tablets: from the tablet breakpoint up to desktop. */
-export const TABLET = `@media (min-width: ${breakpoints.tablet}px) and (max-width: ${breakpoints.desktop - 1}px)`;
+export const TABLET = `@media ${TABLET_QUERY}`;
+/**
+ * The admin shell's phone layout (a top bar and the docked tab bar): a phone held upright, or
+ * on its side (SHORT_MEDIA), so landscape has every tab, the club switcher and More, as portrait.
+ */
+export const SHELL_BARS_QUERY = `${COMPACT_MEDIA}, ${SHORT_MEDIA}`;
+export const SHELL_BARS = `@media ${SHELL_BARS_QUERY}`;
+/** The admin shell's icon rail: tablet widths tall enough to hold every item. */
+export const SHELL_RAIL = `@media ${TABLET_QUERY} and (min-height: ${breakpoints.shortHeight}px)`;
 /** Tablet and up (not phones). */
 export const TABLET_UP = `@media (min-width: ${breakpoints.tablet}px)`;
 /** Desktop and up, as a query (for matchMedia) and as a media rule. */

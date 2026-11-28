@@ -2,7 +2,7 @@
 // sign-in and My club, with plates floating on it; away from the map, content is tables and
 // rows divided by hairlines, never boxes around each part. Components draw themselves
 // (components/ui/styles); this file only places them. Theme tokens only.
-import { opacity, sizes } from '@huntclub/design';
+import { opacity, SAFE_AREA, sizes, SHORT_MEDIA, textRulesCss, textScale } from '@huntclub/design';
 import { MOBILE_TAB_BAR_HEIGHT, SHELL } from '../components/ui/sizes';
 import {
   color,
@@ -11,6 +11,7 @@ import {
   gap,
   HAIR,
   PHONE,
+  SHELL_BARS,
   TAP,
   text,
 } from '../components/ui/styles/shared';
@@ -59,7 +60,7 @@ const signin = `
 .signin__brand { display: flex; align-items: center; gap: ${gap(3)}; }
 .signin__app-name { ${text('title3')}; margin: 0; }
 .signin__door .ui-page-header { margin: ${gap(6)} 0 0; }
-.signin__door .ui-page-header__title { ${text('display')}; }
+${textRulesCss('.signin__door .ui-page-header__title', textScale.display)}
 .signin__door .ui-page-header__description { ${text('body')}; }
 .signin__form { display: grid; gap: ${gap(4)}; }
 .signin__code { ${text('codeField')}; }
@@ -72,15 +73,19 @@ const signin = `
 .signin__legal { display: flex; gap: ${gap(5)}; }
 .signin__legal a { ${text('label')}; display: inline-flex; align-items: center; min-height: ${TAP};
   color: ${color('accentText')}; }
+/* Top right, never under the form's plate: it wraps before it reaches the plate's room. */
 .signin__sample { position: absolute; right: ${gap(6)}; top: ${gap(6)}; margin: 0; padding: ${gap(2)} ${gap(3)};
-  ${text('label')}; ${FLOATING} }
+  max-width: calc(100% - ${SHELL.signInDoorRoom}px - ${gap(6)}); ${text('label')}; ${FLOATING} }
+/* A phone on its side: the plate starts near the top, so the field is in the first screen. */
+@media ${SHORT_MEDIA} { .signin { padding: ${gap(4)} ${gap(6)}; } .signin__door { padding-top: ${gap(5)}; } }
 ${PHONE} {
   .signin { flex-direction: column; align-items: stretch; padding: 0; }
-  .signin__map { position: relative; inset: auto; z-index: 0; order: -1; height: 300px; flex: none; }
+  .signin__map { position: relative; inset: auto; z-index: 0; order: -1; height: ${SHELL.signInMapHeightPhone}px; flex: none; }
   .signin__door { width: auto; min-height: 0; flex: 1; margin: -${gap(4)} 0 0; padding: ${gap(6)} ${gap(4)} ${gap(4)};
     border-radius: var(--radius-xl) var(--radius-xl) 0 0; z-index: 1; }
   .signin__door .ui-page-header { margin-top: ${gap(2)}; }
-  .signin__sample { top: ${gap(3)}; bottom: auto; left: ${gap(3)}; right: auto; ${text('caption')}; font-weight: 700; }
+  .signin__sample { top: ${gap(3)}; bottom: auto; left: ${gap(3)}; right: auto; max-width: calc(100% - 2 * ${gap(3)});
+    ${text('caption')}; font-weight: 700; }
 }
 `;
 
@@ -89,8 +94,14 @@ ${PHONE} {
  * map chrome on it (map/styles.ts); the side panel beside it on a desktop, and below that the
  * same panel as the bottom sheet over the map (docs/DESIGN.md "Map chrome" 9).
  */
+/** On a phone My club's map is the viewport less the top bar and the tab bar, and the insets they grow by. */
+const CLUBVIEW_PHONE_BARS = `${SHELL.topBarHeight}px - ${MOBILE_TAB_BAR_HEIGHT}px - ${SAFE_AREA.top} - ${SAFE_AREA.bottom}`;
+
 const clubview = `
-.clubview { position: relative; display: grid; height: 100vh; overflow: hidden; isolation: isolate; }
+.clubview { position: relative; display: grid; overflow: hidden; isolation: isolate;
+  /* The visible height (dvh: not under Safari's toolbar), less the home indicator; vh before it
+     for browsers without dvh. */
+  height: calc(100vh - ${SAFE_AREA.bottom}); height: calc(100dvh - ${SAFE_AREA.bottom}); }
 .clubview > .clubview__map { position: absolute; inset: 0; }
 .clubview__pill { display: contents; }
 .clubview__facts { ${text('body')}; color: ${color('textSecondary')}; margin: 0 0 ${gap(2)}; }
@@ -168,7 +179,9 @@ button.place-row:disabled { cursor: default; color: ${color('textTertiary')}; ba
   padding: 0 ${gap(1)}; color: ${color('text')}; text-decoration: none; border-radius: var(--radius-sm); }
 .row-link:hover { background: ${color('raised')}; }
 .row-link__label { ${text('body')}; color: ${color('textSecondary')}; }
-${PHONE} { .clubview { height: calc(100dvh - ${SHELL.topBarHeight}px - ${MOBILE_TAB_BAR_HEIGHT}px - env(safe-area-inset-bottom)); } }
+${SHELL_BARS} {
+  .clubview { height: calc(100vh - ${CLUBVIEW_PHONE_BARS}); height: calc(100dvh - ${CLUBVIEW_PHONE_BARS}); }
+}
 ${DESKTOP} {
   .clubview { grid-template-columns: minmax(0, 1fr) ${SHELL.sidePanelWidth}px; }
   .clubview > .clubview__map { position: relative; inset: auto; min-height: 0; }

@@ -1,4 +1,4 @@
-import { APP_DESCRIPTION, APP_NAME } from '@huntclub/shared/app';
+import { APP_DESCRIPTION, APP_NAME, VIEWPORT_META } from '@huntclub/shared/app';
 import { siteHeadTags } from '../../site-head';
 import {
   MIN_TEXT_CONTRAST,
@@ -109,6 +109,10 @@ describe('page head and favicon', () => {
     expect(attrs).toContainEqual({ name: 'description', content: APP_DESCRIPTION });
     expect(attrs).toContainEqual({ name: 'theme-color', content: colors.surface });
     expect(attrs).toContainEqual({ name: 'color-scheme', content: 'dark light' });
+    // The shared viewport, under the notch (viewport-fit=cover); index.html carries no copy.
+    expect(attrs).toContainEqual({ name: 'viewport', content: VIEWPORT_META });
+    expect(VIEWPORT_META).toContain('viewport-fit=cover');
+    expect(VIEWPORT_META).not.toMatch(/user-scalable|maximum-scale/);
     expect(attrs).toContainEqual(expect.objectContaining({ rel: 'icon', href: `/${FAVICON_SVG}` }));
   });
 
