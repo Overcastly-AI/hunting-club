@@ -41,6 +41,9 @@ interface ClubHarvests {
   areas: readonly Area[];
 }
 
+/** The season's stat strip (harvests, species, members, weeks). */
+export const SEASON_AT_A_GLANCE = 'Season at a glance';
+
 /**
  * Season summaries of the harvests members shared with the club. The season is
  * whatever date range the admin picks; changing it needs no network.
@@ -140,7 +143,7 @@ function Report(props: { data: ClubHarvests; season: Season; onRefresh: () => vo
         </EmptyState>
       ) : (
         <>
-          <StatGrid aria-label="Season at a glance">
+          <StatGrid aria-label={SEASON_AT_A_GLANCE}>
             <StatTile label="Harvests" value={report.total} />
             <StatTile label="Species" value={report.bySpecies.length} />
             <StatTile label="Members" value={report.byMember.length} />
