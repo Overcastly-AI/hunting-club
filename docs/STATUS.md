@@ -101,6 +101,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 - 2026-11-27: #92–#96 merged and deployed to dev. #96 added the sample PMTiles pack deploy, the shared code entry and "Available" wording, one invite path, and a manual Android screenshot workflow (`app-screenshots.yml`). That workflow has not run yet: the owner must start it from the Actions tab (the coordinator token can't dispatch it).
 - 2026-11-27: #98 (web stand detail drawer on the club map) and #99 (selected club cleared on sign-out, 403 no-access state) merged.
 - 2026-11-27: merged and deployed to dev: #98 stand detail drawer (read-only, no coordinates, per SPEC); #99–#101 account-switch fixes from the UAT 18:50 MAJOR (web club keyed to the user, the 403 no-access state, the app hides other accounts' clubs, the radio and paid features follow the signed-in account); #102 display-name prompt (app and web, one shared name rule); #103 renamed names sync to clubs (queued offline). The app-screenshots workflow (`app-screenshots.yml`) is still waiting for the owner to run it from the Actions tab.
+- 2026-11-28: **Merged and deployed:** #104 through #108. **Open owner questions:** the app-screenshots workflow run, Out now positions, the dawn scene, TestFlight or Android, the public theme toggle, Stripe and the older items. **Backlog:** the phone app has no property-line, stand or area editing yet. The web is the editing surface. App drawing tools are a later milestone.
 - All workers paused 15:15 UTC (remaining work waits on owner: GitHub dev env/variable, Stripe, Apple Team ID/Android fingerprints, field test).
 - Was in progress: M12 app side (onboarding worker); map packs #41 backend → app (club-data); #41 review then web Map packs admin (web).
 
@@ -117,6 +118,9 @@ Owner rule (2026-11-26): Grok Bot runs UAT and reviews UI decisions by email. Ev
 
 | Date | Thread / subject | Finding | Decision | PR |
 |---|---|---|---|---|
+| 2026-11-27 | Owner | "The maps do not work and you cannot draw property lines." The web map had no basemap, and no surface could draw the line | Fixed: live USGS basemap and property-line drawing on the web (#106), a phone draw bar (#107), and stands and areas editing for admins (#108). The CSP img-src now allows the USGS basemap host only, and geolocation=(self) for Find me | #106–#108 |
+| 2026-11-27 | UAT retest 22:55 | The club-switch Major is fixed and everything passes. The grey dot was the emulator's touch cursor | Closed. The 1024px home strip is to be confirmed on the next pass | — |
+| 2026-11-27 | UI Director 22:02 | Judging screens only on dev | Lighthouse CI added: a11y 100, perf 99–100, best practices 100, SEO 66–69 (dev is noindex). Email-name fallbacks removed. The full on-screen review is pending | #105 |
 | 2026-11-27 | UAT retest 18:50 | MAJOR: the previous user's club was kept after sign-out, giving 403s on every admin page | Accepted | #99 |
 | 2026-11-27 | UAT retest 18:50 | POLISH: the generic error on a 403 | Accepted: "You don't have access to this club." | #99 |
 | 2026-11-27 | UAT retest 14:57 | 3 polish items | Accepted | #92 |
