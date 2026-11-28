@@ -7,8 +7,11 @@ import {
   MIN_UI_CONTRAST,
 } from '../../src/contrast';
 import {
+  baseCss,
+  PHONE_MEDIA,
   rootVariablesCss,
   textClasses,
+  textRulesCss,
   themeBootstrapJs,
   themeCss,
   themeVariables,
@@ -164,6 +167,25 @@ describe('theme CSS', () => {
   });
 });
 
+describe('base stylesheet (club admin and public site)', () => {
+  it('never lets the browser inflate text, and draws the page in the theme', () => {
+    const css = baseCss('/font.woff2');
+    expect(css).toContain(
+      'html { color-scheme: var(--theme-color-scheme); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }',
+    );
+    expect(css).toContain(
+      'html, body { margin: 0; background: var(--theme-canvas); color: var(--theme-text); }',
+    );
+    expect(css).toContain("src: url('/font.woff2') format('woff2')");
+    expect(css).toContain(rootVariablesCss());
+    expect(css).toContain(themeCss());
+  });
+
+  it('caps phone sheets at the full detent of the window', () => {
+    expect(rootVariablesCss()).toContain('--map-chrome-sheet-max: 88dvh;');
+  });
+});
+
 describe('theme bootstrap script', () => {
   /** Runs the script against a stand-in <html> and localStorage. */
   function run(stored: string | null | Error) {
@@ -227,6 +249,19 @@ describe('type, spacing, radii and motion', () => {
       '@media (max-width: 639px) { .text-display { font-size: 2.25rem; line-height: 2.625rem; } }',
     );
     expect(classes).not.toMatch(/text-transform:\s*uppercase|letter-spacing|monospace/);
+  });
+
+  it('steps the headline down to 30 px on a phone held either way, after the compact step', () => {
+    expect(PHONE_MEDIA).toBe('(max-width: 479px), (max-width: 1023px) and (max-height: 479px)');
+    const rules = textRulesCss('h1', textScale.display).split('\n');
+    expect(rules).toEqual([
+      expect.stringMatching(/^h1 \{ font-family: 'Archivo'.*font-size: 3\.125rem/),
+      '@media (max-width: 639px) { h1 { font-size: 2.25rem; line-height: 2.625rem; } }',
+      `@media ${PHONE_MEDIA} { h1 { font-size: 1.875rem; line-height: 2.25rem; } }`,
+    ]);
+    expect(textClasses()).toContain(
+      `@media ${PHONE_MEDIA} { .text-display { font-size: 1.875rem; line-height: 2.25rem; } }`,
+    );
   });
 
   it('sets words at normal width and anything measured condensed with tabular figures', () => {

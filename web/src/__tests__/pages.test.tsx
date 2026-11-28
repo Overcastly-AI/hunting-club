@@ -414,6 +414,11 @@ describe('club pages', () => {
     expect(await screen.findByText('Big Oak Ladder')).toBeTruthy();
     expect(screen.getByText('Tree stand')).toBeTruthy();
     expect(screen.getAllByText('North 40').length).toBeGreaterThan(0);
+    // The web edits them now: the page says where, not "in the app" alone.
+    const heading = screen.getByRole('heading', { level: 1, name: 'Stands and areas' });
+    const description = heading.closest('.ui-page-header')!.textContent!;
+    expect(description).toContain('Add and edit them on the My club map or in the app.');
+    expect(description).not.toMatch(/Place and draw them in the app/);
   });
 
   it('draws the stands and areas on the same basemap as My club: live aerial tiles, no chrome', async () => {

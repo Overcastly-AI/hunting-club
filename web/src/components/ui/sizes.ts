@@ -31,6 +31,10 @@ export const SHELL = {
   phoneMapHeight: 580,
   insetMapHeight: 360,
   insetMapHeightPhone: 280,
+  /** Sign-in: the sample map's band above the form on a phone (short, so the email field shows on an SE). */
+  signInMapHeightPhone: 200,
+  /** Sign-in, from the tablet width up: room the form's plate covers (its width and margins), kept clear of the map. */
+  signInDoorRoom: 520,
 } as const;
 
 /** How long a toast stays, in ms. */

@@ -9,6 +9,8 @@ import {
   MIN_DAYLIGHT_BODY_CONTRAST,
   MIN_TEXT_CONTRAST,
   MIN_UI_CONTRAST,
+  PHONE_MEDIA,
+  rem,
   ROOT_FONT_PX,
   SAFE_AREA,
   sizes,
@@ -688,6 +690,54 @@ describe('phone first', () => {
     expect(ruleBody('.rows.cols')).toContain('grid-template-columns: 1fr;');
     expect(narrow).toMatch(/\.plan-heads \{ grid-template-columns: 1fr; \}/);
     expect(GUTTER.phone).toBe(16);
+  });
+});
+
+describe('phone margins and type', () => {
+  /** Classes that sit on the same element as `.wrap` on any page. */
+  const besideWrap = [
+    ...new Set(
+      allPages.flatMap(({ html }) =>
+        [...html.matchAll(/class="([^"]*\bwrap\b[^"]*)"/g)].flatMap((m) =>
+          m[1]!.split(/\s+/).filter((c) => c && c !== 'wrap'),
+        ),
+      ),
+    ),
+  ];
+
+  it('never lets a class beside .wrap reset its side gutters (only block padding)', () => {
+    expect(besideWrap).toContain('page-head');
+    for (const { selector, body } of rules) {
+      if (!besideWrap.some((c) => selector === `.${c}`)) continue;
+      expect([selector, body]).toEqual([
+        selector,
+        expect.not.stringMatching(/(^|[;\s])padding(-left|-right|-inline)?:/),
+      ]);
+    }
+    expect(rules.find((r) => r.selector === '.page-head')?.body).toContain(
+      'padding-block: 64px 36px;',
+    );
+  });
+
+  it('never lets iOS inflate text, and steps the headline down on a phone either way up', () => {
+    expect(css).toContain('-webkit-text-size-adjust: 100%; text-size-adjust: 100%;');
+    expect(css).toContain(
+      `@media ${PHONE_MEDIA} { h1 { font-size: ${rem(fontSize.displayPhone)}; line-height: 2.25rem; } }`,
+    );
+  });
+
+  it('leaves out a hero label or plate at the widths where the window would cut it', () => {
+    // Pond Box's plate, on the left of a marker just off an SE's screen, was cut at 375 px.
+    const pond = SAMPLE_CLUB.stands.findIndex((s) => s.name === 'Pond Box');
+    const hides = [
+      ...css.matchAll(
+        new RegExp(
+          `@media \\(min-width: (\\d+)px\\) and \\(max-width: (\\d+)px\\) \\{ \\.hero \\.${AT.stand(pond)} \\{ display: none; \\} \\}`,
+          'g',
+        ),
+      ),
+    ].map((m) => [Number(m[1]), Number(m[2])] as const);
+    expect(hides.some(([from, to]) => from <= 375 && 375 <= to)).toBe(true);
   });
 });
 

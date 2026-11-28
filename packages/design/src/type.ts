@@ -85,9 +85,10 @@ export const fontSize = {
   boardName: 32,
   /** Clubhouse board: the club name and clock. */
   boardTitle: 40,
-  /** Display: the site headline (`displayCompact` on a phone). */
+  /** Display: the site headline (`displayCompact` below the tablet width, `displayPhone` on a phone). */
   display: DISPLAY_SIZE,
   displayCompact: 36,
+  displayPhone: 30,
   /** Page title (title-1); `title1Compact` below the tablet breakpoint. */
   title1: 32,
   title1Compact: 28,
@@ -116,6 +117,8 @@ export interface TextScaleEntry {
   readonly lineHeight?: number;
   /** Size and line height below the tablet breakpoint (web), when they differ. */
   readonly compact?: { readonly size: number; readonly lineHeight: number };
+  /** Size and line height on a phone held either way (web, `PHONE_MEDIA`), when smaller still. */
+  readonly phone?: { readonly size: number; readonly lineHeight: number };
   /** Tabular (fixed-width) digits, for numbers that line up or change in place. */
   readonly tabularNums?: boolean;
 }
@@ -149,6 +152,7 @@ export const textScale = {
     size: fontSize.display,
     lineHeight: 56,
     compact: { size: fontSize.displayCompact, lineHeight: 42 },
+    phone: { size: fontSize.displayPhone, lineHeight: 36 },
   },
   /** Page title. */
   title1: {

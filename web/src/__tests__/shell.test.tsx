@@ -7,6 +7,7 @@ import {
 } from '@huntclub/design';
 import { SAFE_AREA } from '@huntclub/design';
 import { globalCss } from '../theme/css';
+import { SHELL_BARS_QUERY } from '../components/ui/styles/shared';
 import { ADMIN_PATH, emailStandInName, LEGAL_PATHS, signInCopy } from '@huntclub/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { SESSION_EXPIRED } from '../App';
@@ -146,6 +147,41 @@ describe('the club switcher', () => {
     const css = globalCss();
     expect(css).toContain(
       '.shell-club .ui-popover__panel.shell-club__panel { top: calc(100% + var(--space-1)); left: 0; right: 0; width: auto;',
+    );
+  });
+});
+
+describe('phone layout', () => {
+  const rulesUnder = (css: string, query: string) =>
+    css.split(`@media ${query} {`).slice(1).join('');
+
+  it('on its side keeps the top bar and tab bar (every tab, the club switcher and More), not the rail', () => {
+    const css = globalCss();
+    const bars = rulesUnder(css, SHELL_BARS_QUERY);
+    expect(SHELL_BARS_QUERY).toBe(
+      '(max-width: 639px), (max-width: 1023px) and (max-height: 479px)',
+    );
+    expect(bars).toMatch(/\.shell-nav \{ position: fixed; left: 0; right: 0; bottom: 0;/);
+    expect(bars).toMatch(/\.shell-nav__slot--more \{ display: block; \}/);
+    // The icon rail is for tablets tall enough to hold every item.
+    expect(css).toContain(
+      '@media (min-width: 640px) and (max-width: 1023px) and (min-height: 480px) {\n  .shell-side { width: 88px;',
+    );
+  });
+
+  it('sizes sheets and menus to their contents, up to the full detent', () => {
+    const css = globalCss();
+    expect(css).toMatch(
+      /\.ui-dialog \{ width: 100%; max-width: 100%; margin: auto 0 0; max-height: var\(--map-chrome-sheet-max\);/,
+    );
+    expect(rulesUnder(css, SHELL_BARS_QUERY)).toContain(
+      '.shell-account .ui-popover__panel, .shell-club .ui-popover__panel.shell-club__panel {\n    max-height: calc(var(--map-chrome-sheet-max) - calc(56px + env(safe-area-inset-top, 0px)) - var(--space-2)); overflow-y: auto;',
+    );
+  });
+
+  it('keeps each segment of a filter on one line, as wide as its words', () => {
+    expect(globalCss()).toContain(
+      '.ui-segment { flex: 1 1 auto; padding-inline: var(--space-2); white-space: nowrap; }',
     );
   });
 });
