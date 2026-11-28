@@ -1,7 +1,7 @@
 // The club plan's stylesheet (ClubMap.tsx). The ground, grid, property line and map text use
 // the map's own colours (the same in both themes, like the picture); stands and their plates
 // are chrome, so they follow the theme.
-import { boundary, fontWidth, opacity, sizes, themeVar } from '@huntclub/design';
+import { boundary, fontFamily, fontWidth, sizes } from '@huntclub/design';
 import {
   color,
   FLOATING,
@@ -31,17 +31,26 @@ export const mapCss = () => `
 .plan__grid { stroke: ${mapColor('mapGrid')}; stroke-opacity: 0.12; stroke-width: 1; fill: none; }
 .plan__area { fill: ${mapColor('text')}; fill-opacity: 0.06; stroke: ${mapColor('text')}; stroke-width: 1.5;
   stroke-dasharray: 2 5; stroke-linecap: round; }
-.plan__line { fill: none; stroke: ${boundary.stroke}; stroke-width: 4; stroke-linejoin: round; }
+.plan__line { fill: none; stroke: ${boundary.stroke}; stroke-width: ${boundary.width}; stroke-linejoin: round; }
 .plan__line-inner { fill: none; stroke: ${boundary.innerLine}; stroke-width: ${boundary.innerLineWidth};
   stroke-linejoin: round; }
+.plan__line-halo { display: none; fill: none; stroke: ${boundary.onLight.halo}; stroke-width: ${boundary.onLight.haloWidth};
+  stroke-linejoin: round; }
+/* On Topo's light paper the white line would vanish: wider and solid, over a dark halo. */
+.plan--light .plan__line-halo { display: inline; }
+.plan--light .plan__line { stroke: ${boundary.onLight.stroke}; stroke-width: ${boundary.onLight.width}; }
+.plan--light .plan__line-inner { stroke-width: ${boundary.onLight.innerLineWidth}; }
+.plan--light .plan__area { stroke: ${boundary.onLight.halo}; fill: ${boundary.onLight.halo}; }
 .plan__label { ${text('markerDetail')}; font-weight: 750; fill: ${mapColor('text')}; ${halo} }
 .plan__stand-box { fill: ${color('plate')}; stroke: ${color('borderControl')}; stroke-width: var(--control-border); }
 .plan__stand-icon { color: ${color('text')}; }
 .plan__stand--closed .plan__stand-icon { color: ${color('textSecondary')}; }
-.plan__plate { fill: ${color('plate')}; fill-opacity: ${opacity.markerPlate}; stroke: ${mapColor('mapHalo')};
-  stroke-opacity: 0.5; stroke-width: 1; }
-.plan__plate-name { ${text('markerName')}; fill: ${color('text')}; }
-.plan__stand--closed .plan__plate-name { fill: ${color('textSecondary')}; }
+/* A stand's name: no box, 13 px semibold on a 2 px themed halo (mapChrome.labels.text). */
+.plan__stand-label { font-family: '${fontFamily}', sans-serif; font-size: var(--map-chrome-label-size);
+  font-weight: var(--map-chrome-label-weight); fill: var(--map-chrome-label-color);
+  stroke: var(--map-chrome-label-halo-color); stroke-width: calc(2 * var(--map-chrome-label-halo));
+  stroke-linejoin: round; paint-order: stroke; }
+.plan__stand--closed .plan__stand-label { fill: ${color('textSecondary')}; }
 .plan__scale-bar { fill: none; stroke: ${mapColor('text')}; stroke-width: 2; ${halo} }
 .plan__scale-label { ${text('markerDetail')}; fill: ${mapColor('text')}; ${halo} }
 .plan__credit { ${text('markerDetail')}; font-weight: 600; fill: ${mapColor('text')}; ${halo} }
@@ -112,8 +121,11 @@ ${chromeCss}
  * Everything marked map-fade fades while the map moves and comes back when it is still.
  */
 const chromeCss = `
-.map-fade { transition: opacity var(--map-chrome-fade) var(--motion-easing); }
-.plan--moving .map-fade { opacity: 0; pointer-events: none; }
+/* Fully gone while the map moves (or under a full sheet), not dimmed: hidden once faded, so
+   nothing under it is blocked and nothing faded takes a tap. */
+.map-fade { transition: opacity var(--map-chrome-fade) var(--motion-easing), visibility 0s; }
+.plan--moving .map-fade, .plan--covered .map-fade { opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity var(--map-chrome-fade) var(--motion-easing), visibility 0s linear var(--map-chrome-fade); }
 .map-stack { position: absolute; z-index: 2; top: ${INSET}; right: ${INSET}; display: flex; flex-direction: column;
   align-items: flex-end; gap: var(--map-chrome-stack-gap); }
 .map-stack .map-stack__button, .map-stack__zoom .ui-button { width: var(--map-chrome-stack-button);
@@ -130,30 +142,28 @@ const chromeCss = `
 ${DESKTOP} { .map-stack__zoom { display: flex; } }
 .map-stack__note { ${text('caption')}; width: min(260px, calc(100vw - 4 * var(--map-chrome-inset))); margin: 0;
   padding: ${gap(2)} ${gap(3)}; color: ${color('text')}; ${FLOATING} }
-.map-layers.ui-popover__panel:not([hidden]) { display: grid; gap: ${gap(3)}; width: min(300px, calc(100vw - 2 * ${INSET}));
-  min-width: 0; padding: ${gap(3)}; }
+/* Layers opens beside the stack, never over it: the basemap, two switches and Fit property. */
+.map-layers.ui-popover__panel:not([hidden]) { display: grid; gap: ${gap(2)}; min-width: 0; padding: ${gap(2)};
+  width: min(220px, calc(100vw - 3 * ${INSET} - var(--map-chrome-stack-button) - ${gap(2)})); }
 .map-layers .ui-choice-group { margin: 0; }
-.map-layers__switches { display: grid; gap: ${gap(1)}; padding: ${gap(1)} 0; border-top: ${HAIR}; border-bottom: ${HAIR}; }
-.map-layers__pack { ${text('label')}; color: ${color('textSecondary')}; margin: 0; }
-/* The top pill: the name over the next time, a tap dropping the conditions card. */
-.map-pill { position: absolute; z-index: 2; top: ${INSET}; left: ${INSET}; width: max-content;
+.map-layers__switches { display: grid; border-top: ${HAIR}; border-bottom: ${HAIR}; }
+.map-layers .ui-button { justify-self: stretch; }
+/* The top pill: the next time only, one line, 48 by about 200. On phones and tablets it is a
+   button whose tap drops the conditions card; on a desktop plain text (no hover, no pointer). */
+.map-pill { position: absolute; z-index: 2; top: ${INSET}; left: ${INSET}; box-sizing: border-box;
+  width: max-content; min-width: var(--map-chrome-pill-width);
   max-width: min(var(--map-chrome-pill-max-width), calc(100% - 3 * ${INSET} - var(--map-chrome-stack-button)));
-  overflow: hidden; ${FLOATING} }
-.map-pill__face { position: relative; display: grid; align-content: center; height: var(--map-chrome-pill-height);
-  padding: 0 ${gap(10)} 0 ${gap(3)}; }
-.map-pill--static .map-pill__face { padding-right: ${gap(3)}; }
-.map-pill__name { ${text('label')}; font-weight: 750; line-height: 1.25rem; margin: 0; overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap; }
-.map-pill__name:focus { outline: none; }
-.map-pill__next { ${text('caption')}; display: flex; align-items: center; gap: ${gap(1)}; margin: 0;
-  color: ${color('textSecondary')}; white-space: nowrap; overflow: hidden; }
-.map-pill__next svg { flex: none; }
-.map-pill__toggle { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end;
-  width: 100%; margin: 0; padding: 0 ${gap(3)}; border: 0; border-radius: var(--radius-lg); background: transparent;
-  color: ${color('textSecondary')}; cursor: pointer; }
+  margin: 0; overflow: hidden; color: ${color('text')}; ${FLOATING} }
+.map-pill--open { width: min(var(--map-chrome-pill-max-width), calc(100% - 3 * ${INSET} - var(--map-chrome-stack-button))); }
+.map-pill__face { display: flex; align-items: center; gap: ${gap(2)}; box-sizing: border-box;
+  height: var(--map-chrome-pill-height); padding: 0 ${gap(3)}; }
+.map-pill__icon { flex: none; color: ${color('textSecondary')}; }
+.map-pill__next { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.map-pill__toggle { width: 100%; margin: 0; border: 0; border-radius: var(--radius-lg); background: transparent; font: inherit;
+  color: inherit; text-align: left; cursor: pointer; }
 .map-pill__toggle:hover { background: color-mix(in srgb, ${color('raised')} 50%, transparent); }
 .map-pill__toggle:focus-visible { outline: 3px solid ${color('focusRing')}; outline-offset: -3px; }
-.map-pill__chevron { transition: rotate var(--motion-fast) var(--motion-easing); }
+.map-pill__chevron { flex: none; color: ${color('textSecondary')}; transition: rotate var(--motion-fast) var(--motion-easing); }
 .map-pill__toggle[aria-expanded='true'] .map-pill__chevron { rotate: 180deg; }
 .map-pill__card { border-top: ${HAIR}; }
 .map-pill__card[hidden] { display: none; }
@@ -166,8 +176,11 @@ ${DESKTOP} { .map-stack__zoom { display: flex; } }
 .map-pill--edit .ui-button { flex: none; border-radius: 0; }
 .map-pill--edit .ui-button--primary { padding: 0 ${gap(3)}; }
 .map-pill--edit .ui-button--secondary { border: 0; background: transparent; }
-/* The footer line's credit is never covered: it sits left, above the sheet. */
-.plan__footer { pointer-events: none; }
+/* The footer line's credit is never covered: it sits left, its clearance above the sheet, and
+   rides the sheet (--map-footer-lift, set by MapSheet; live, with no easing, while dragging). */
+.plan__footer { pointer-events: none; translate: 0 calc(-1 * var(--map-footer-lift, 0px));
+  transition: opacity var(--map-chrome-fade) var(--motion-easing), visibility 0s, translate var(--motion-base) var(--motion-easing); }
+*:has(> .map-sheet--dragging) .plan__footer { transition: none; }
 /* The bottom sheet (phones and tablets): peek, half, full; the handle zone drags it. */
 .map-sheet { position: absolute; z-index: 3; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column;
   background: ${color('plate')}; border-radius: var(--radius-xl) var(--radius-xl) 0 0; box-shadow: ${color('shadowPlate')};
@@ -178,7 +191,9 @@ ${DESKTOP} { .map-stack__zoom { display: flex; } }
 .map-sheet--dragging { height: var(--sheet-drag); transition: none; }
 .map-sheet__handle { position: relative; flex: none; display: flex; align-items: center; gap: ${gap(2)};
   min-height: var(--map-chrome-sheet-handle); padding: ${gap(3)} 0 ${gap(1)} ${gap(4)}; touch-action: none;
-  cursor: grab; }
+  cursor: grab; user-select: none; -webkit-user-select: none; }
+.map-sheet--full .map-sheet__handle { border-bottom: ${HAIR}; }
+.map-sheet__title { ${text('title3')}; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .map-sheet__grabber { position: absolute; top: 6px; left: 50%; translate: -50% 0; width: ${sizes.grabberWidth}px;
   height: ${sizes.grabberHeight}px; border-radius: var(--radius-full); background: ${color('borderControl')}; }
 .map-sheet__summary { flex: 1; min-width: 0; }

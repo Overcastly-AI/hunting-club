@@ -37,8 +37,9 @@ describe('color tokens', () => {
   });
 
   it('draws the club boundary in white at 85% with a 1 px accent inner line', () => {
-    expect(boundary).toEqual({
+    expect(boundary).toMatchObject({
       stroke: 'rgba(255, 255, 255, 0.85)',
+      width: 4,
       innerLine: colors.accent,
       innerLineWidth: 1,
     });

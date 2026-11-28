@@ -57,6 +57,7 @@ export function mapChromeVariables(): Record<string, string> {
     '--map-chrome-inset': px(inset),
     '--map-chrome-pill-height': px(pill.height),
     '--map-chrome-pill-max-width': px(pill.maxWidth),
+    '--map-chrome-pill-width': px(pill.width),
     '--map-chrome-stack-button': px(stack.button),
     '--map-chrome-stack-gap': px(stack.gap),
     '--map-chrome-zoom-width': px(stack.zoomWidth),
@@ -69,6 +70,11 @@ export function mapChromeVariables(): Record<string, string> {
     '--map-chrome-fade': `${autoHide.fadeMs}ms`,
     '--map-chrome-label-max-width': px(labels.maxWidth),
     '--map-chrome-label-max-height': px(labels.maxHeight),
+    '--map-chrome-label-size': px(labels.text.size),
+    '--map-chrome-label-weight': String(labels.text.weight),
+    '--map-chrome-label-halo': px(labels.text.halo),
+    '--map-chrome-label-color': themeVar(labels.text.color),
+    '--map-chrome-label-halo-color': themeVar(labels.text.haloColor),
   };
 }
 

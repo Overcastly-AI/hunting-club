@@ -46,8 +46,15 @@ export const colors = {
 /** Club property line: white at 85% plus a 1 px accent inner line. */
 export const boundary = {
   stroke: 'rgba(255, 255, 255, 0.85)',
+  width: 4,
   innerLine: colors.accent,
   innerLineWidth: 1,
+  /**
+   * On a light basemap (USGS Topo, near-white paper) the white line all but vanishes: it is
+   * drawn wider and solid over a dark halo, with a wider inner line. The halo is the map's own
+   * text halo, so the line reads at better than 3:1 on paper and on the aerial alike.
+   */
+  onLight: { stroke: '#FFFFFF', width: 5, halo: colors.mapHalo, haloWidth: 9, innerLineWidth: 2 },
 } as const;
 
 export type ColorToken = keyof typeof colors;

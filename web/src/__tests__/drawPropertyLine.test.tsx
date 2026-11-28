@@ -269,6 +269,8 @@ describe('drawing the property line on My club', () => {
     expect(screen.getByText(PROPERTY_LINE_PROBLEMS.crosses)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect((await screen.findByRole('alert')).textContent).toBe(PROPERTY_LINE_PROBLEMS.crosses);
+    // Said once, not once as what is still needed and again as the error.
+    expect(screen.getAllByText(PROPERTY_LINE_PROBLEMS.crosses)).toHaveLength(1);
     expect(save).not.toHaveBeenCalled();
     // An open shape says how to finish it.
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
@@ -286,7 +288,7 @@ describe('drawing the property line on My club', () => {
     expect(save).not.toHaveBeenCalled();
     expect(screen.queryByRole('group', { name: 'Property line corners' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Draw property line' })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 1 }).closest('.map-pill')).toBeTruthy();
+    expect(document.querySelector('.map-pill:not(.map-pill--edit)')).toBeTruthy();
     expect(ground().querySelectorAll('.plan__line')).toHaveLength(0);
   });
 
@@ -319,7 +321,12 @@ describe('drawing the property line on My club', () => {
     const data = sampleData();
     const { boundary: _none, ...club } = data.club!;
     const view = await renderSignedIn({ ...data, club, areas: [], stands: [] });
-    const row = (await screen.findByText(/^Draw your property line/)).closest('li')!;
+    const needs = (await screen.findByRole('heading', { level: 2, name: /^Needs you/ })).closest(
+      'section',
+    )!;
+    const row = within(needs)
+      .getByText(/^Draw your property line/)
+      .closest('li')!;
     fireEvent.click(within(row).getByRole('button', { name: 'Draw' }));
     expect(screen.getByRole('group', { name: 'Property line corners' })).toBeTruthy();
     for (let i = 0; i < 12; i++) fireEvent.keyDown(ground(), { key: '+' });
@@ -361,10 +368,12 @@ describe('drawing is its own mode', () => {
     expect(bar.getByText('0 corners')).toBeTruthy();
     expect(sheet.querySelector('.map-sheet__handle .draw-bar')).toBeTruthy();
     expect(sheet.classList.contains('map-sheet--peek')).toBe(true);
-    // The footer line (scale bar and credit) sits above the peek.
+    // The footer line (scale bar and credit) rides the sheet, its clearance above the peek.
     const footer = ground().querySelector('.plan__footer')!.getAttribute('transform')!;
-    expect(Number(footer.match(/ ([-\d.]+)\)$/)![1])).toBeLessThanOrEqual(
-      724 - mapChrome.sheet.detents.peek,
+    const lift = parseFloat(sheet.parentElement!.style.getPropertyValue('--map-footer-lift'));
+    expect(lift).toBe(mapChrome.sheet.detents.peek);
+    expect(Number(footer.match(/ ([-\d.]+)\)$/)![1]) - lift).toBeLessThanOrEqual(
+      724 - mapChrome.sheet.detents.peek - mapChrome.footer.clearance,
     );
     // Draw from the keyboard with the bar's tools.
     const add = () => fireEvent.click(bar.getByRole('button', { name: 'Add corner' }));

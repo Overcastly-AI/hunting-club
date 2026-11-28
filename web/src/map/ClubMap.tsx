@@ -10,6 +10,7 @@ import {
   breakpoints,
   fontSize,
   fontWidth,
+  ICON_SIZE,
   mapChrome,
   radii,
   sizes,
@@ -112,20 +113,26 @@ const AREA_LABEL_DROP = 20;
 const SCALE_MAX_PX = 96;
 /** Gaps on the footer line: bar to its length, length to the credit, in px. */
 const FOOTER_GAP = { label: 6, credit: 12 };
-/** Where the footer line's baseline sits above its bottom, in px. */
-const FOOTER_BASELINE = 7;
-/** Stand marker, icon and plate geometry (packages/design sizes and radii). */
-const STAND = sizes.standMarker;
+/**
+ * Where the footer line's baseline sits above the map's bottom (or the sheet's top), in px: the
+ * clearance, then room for the text's descenders and its halo.
+ */
+const FOOTER_BASELINE =
+  mapChrome.footer.clearance + Math.ceil(fontSize.mapLabelMin * 0.25 + sizes.mapHaloWidth / 2);
+/** Stand marker and label geometry (mapChrome.labels). */
+const LABEL = mapChrome.labels;
+const STAND = LABEL.marker;
 /** A stand that opens its details is tapped over a 48 px square around the marker. */
 const HIT = sizes.minTapTarget;
-const ICON = sizes.icon;
+const ICON = ICON_SIZE.md;
+/** Padding around an area name's tap target. */
 const PLATE_PAD = 8;
-const PLATE_PAD_Y = 6;
-const PLATE_GAP = 6;
-const PLATE_LINE = { name: fontSize.markerName };
-/** A stand's label: its name on one line, within the label cap (mapChrome.labels). */
-const PLATE_HEIGHT = Math.min(mapChrome.labels.maxHeight, PLATE_LINE.name + 2 * PLATE_PAD_Y);
-const PLATE_MAX_WIDTH = mapChrome.labels.maxWidth;
+/** A stand's label: its name on one line over its halo, within the label cap. */
+const LABEL_HEIGHT = Math.min(
+  LABEL.maxHeight,
+  Math.ceil(LABEL.text.size * 1.25) + 2 * LABEL.text.halo,
+);
+const LABEL_FROM_CENTRE = STAND / 2 + LABEL.gap;
 /** A press that moves less than this many px is a tap, not a drag. */
 export const TAP_SLOP = 4;
 /** Arrow keys move the map this many px (ten times that with Shift). */
@@ -140,17 +147,17 @@ export function fitText(text: string, maxPx: number, size: number, width: FontWi
   return `${text.slice(0, chars).trimEnd()}…`;
 }
 
-/** A stand's label on the map: its name as shown, and the plate's size and side. */
+/** A stand's label on the map: its name as shown, its width (with the halo) and its side. */
 function standLabel(stand: PlanStand, x: number, mapWidth: number) {
-  const room = PLATE_MAX_WIDTH - 2 * PLATE_PAD;
-  const name = fitText(stand.name, room, PLATE_LINE.name, fontWidth.marker);
+  const halo = LABEL.text.halo;
+  const name = fitText(stand.name, LABEL.maxWidth - 2 * halo, LABEL.text.size, fontWidth.normal);
   const width = Math.min(
-    PLATE_MAX_WIDTH,
-    2 * PLATE_PAD + textWidth(name, PLATE_LINE.name, fontWidth.marker),
+    LABEL.maxWidth,
+    2 * halo + textWidth(name, LABEL.text.size, fontWidth.normal),
   );
   // Right of the stand, or left of it where the right would run off the map.
-  const side = plateSide(x, STAND / 2 + PLATE_GAP, width, mapWidth);
-  const offset = side === 'right' ? STAND / 2 + PLATE_GAP : -(STAND / 2 + PLATE_GAP + width);
+  const side = plateSide(x, LABEL_FROM_CENTRE, width, mapWidth);
+  const offset = side === 'right' ? LABEL_FROM_CENTRE : -(LABEL_FROM_CENTRE + width);
   return { name, width, side, offset };
 }
 
@@ -169,9 +176,9 @@ function labelledStands(
       marker: { x: x - HIT / 2, y: y - HIT / 2, width: HIT, height: HIT },
       label: {
         x: x + label.offset,
-        y: y - PLATE_HEIGHT / 2,
+        y: y - LABEL_HEIGHT / 2,
         width: label.width,
-        height: PLATE_HEIGHT,
+        height: LABEL_HEIGHT,
       },
     };
   });
@@ -234,10 +241,10 @@ export function ClubMap(props: {
    * halfway between `top` px (a plate's bottom) and the footer. `top` 0 waits for it.
    */
   focus?: { key: string; at: [number, number]; top: number } | null;
-  /** More rows for the Layers popover (with `interactive`), after the basemap and the layers. */
-  layers?: (close: () => void) => ReactNode;
   /** Editing on the map (docs/DESIGN.md "Map chrome" 7): the icon stack hides. */
   editing?: boolean;
+  /** A sheet covers the map (its full detent): the pill, the stack and the footer line hide. */
+  covered?: boolean;
   /** The chrome never fades while the map moves (an alert, a quiet mesh, near an overdue time). */
   pinned?: boolean;
 }) {
@@ -268,6 +275,19 @@ export function ClubMap(props: {
   // Auto-hide (docs/DESIGN.md "Map chrome" 5): moving the map fades the chrome; it comes back
   // once the map has been still a moment, or at once on a tap or when focus reaches it.
   const [moving, setMoving] = useState(false);
+  // The Layers popover: a tap on the map or Esc anywhere closes it.
+  const [layersOpen, setLayersOpen] = useState(false);
+  useEffect(() => {
+    if (!layersOpen) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') setLayersOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [layersOpen]);
+  useEffect(() => {
+    if (props.editing || props.covered) setLayersOpen(false);
+  }, [props.editing, props.covered]);
   const idle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const moved = () => {
     clearTimeout(idle.current);
@@ -323,12 +343,15 @@ export function ClubMap(props: {
     props.basemap && (!props.live || props.basemap.basemap.id === props.live)
       ? props.basemap
       : null;
+  // A light basemap (Topo's paper) needs the property line's stronger stroke.
+  const light = (props.live ?? pack?.basemap.id) === 'topo';
 
   const move = (next: View) => setView(next);
   const drag = useRef<{ x: number; y: number; from: View; moved: boolean } | null>(null);
   const onPointerDown = (e: PointerEvent<SVGSVGElement>) => {
     if (!projection || (!interactive && !props.onMapClick)) return;
     if (e.button !== 0) return;
+    setLayersOpen(false);
     drag.current = { x: e.clientX, y: e.clientY, from: projection.view, moved: false };
     e.currentTarget.setPointerCapture?.(e.pointerId);
   };
@@ -392,6 +415,8 @@ export function ClubMap(props: {
         'plan',
         interactive && 'plan--interactive',
         moving && !props.pinned && 'plan--moving',
+        props.covered && 'plan--covered',
+        light && 'plan--light',
         props.className,
       )}
       // Focus reaching the chrome (Tab from the map) brings it back.
@@ -406,6 +431,7 @@ export function ClubMap(props: {
         height={height}
         viewBox={`0 0 ${width} ${height}`}
         role="img"
+        data-zoom={projection?.view.zoom.toFixed(2)}
         aria-label={
           interactive
             ? `${props.label} Arrow keys move the map; plus and minus zoom in and out.`
@@ -470,7 +496,8 @@ export function ClubMap(props: {
           onLocate={(lon, lat) => move({ lon, lat, zoom: LOCATION_ZOOM })}
           shown={shownLayers}
           onShownChange={setShownLayers}
-          layers={props.layers}
+          open={layersOpen}
+          onOpenChange={setLayersOpen}
         />
       ) : null}
       {/* After the plates, so its heading follows the page's own in the outline. */}
@@ -484,9 +511,9 @@ const canLocate = () => typeof navigator !== 'undefined' && 'geolocation' in nav
 
 /**
  * The map's own controls (docs/DESIGN.md "Map chrome" 3): one stack of 48 px icon buttons at the
- * right edge, each with a name and a tooltip. Layers opens the basemap, Fit property, the layers'
- * show and hide, and the page's own rows; then, on a desktop, the split zoom; then Find me (the
- * admin's own location, used here only and never sent).
+ * right edge, each with a name and a tooltip. Layers opens beside the stack (never over it): the
+ * basemap, the stands' and areas' show and hide, and Fit property. Then, on a desktop, the split
+ * zoom; then Find me (the admin's own location, used here only and never sent).
  */
 function MapStack(props: {
   live: BasemapId | null;
@@ -496,7 +523,8 @@ function MapStack(props: {
   onLocate: (lon: number, lat: number) => void;
   shown: ShownLayers;
   onShownChange: (shown: ShownLayers) => void;
-  layers?: ((close: () => void) => ReactNode) | undefined;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
   const [locating, setLocating] = useState<'idle' | 'busy' | 'failed'>('idle');
   const locate = () => {
@@ -523,10 +551,12 @@ function MapStack(props: {
         label="Map layers"
         tooltip="Layers"
         trigger={<Layers size={sizes.icon} aria-hidden />}
-        placement="bottom-end"
+        placement="left-start"
         className="map-stack__layers"
         triggerClassName="map-stack__button"
         panelClassName="map-layers"
+        open={props.open}
+        onOpenChange={props.onOpenChange}
       >
         {(close) => (
           <>
@@ -556,7 +586,6 @@ function MapStack(props: {
                 Fit property
               </Button>
             ) : null}
-            {props.layers?.(close)}
           </>
         )}
       </Popover>
@@ -632,12 +661,7 @@ function Drawing(
           d={ringsPath(polygonRings(area.boundary), projection)}
         />
       ))}
-      {boundary.length > 0 ? (
-        <>
-          <path className="plan__line" d={ringsPath(boundary, projection)} />
-          <path className="plan__line-inner" d={ringsPath(boundary, projection)} />
-        </>
-      ) : null}
+      {boundary.length > 0 ? <PropertyLine d={ringsPath(boundary, projection)} /> : null}
       {/* Small maps leave names to the lists beside them: labels would sit on the stands. Areas
           that open for editing are buttons, drawn on the layer above (AreaButtons). */}
       {!props.areaNames || props.onAreaSelect
@@ -671,9 +695,10 @@ function Drawing(
             />
           ))}
       {/* The footer line (docs/DESIGN.md "Map chrome" 6): the scale bar, its length and the credit,
-          bottom left, above whatever takes the map's bottom edge (the sheet's peek). */}
+          bottom left. A sheet over the map lifts it by --map-footer-lift (MapSheet sets it, live
+          while dragging), so it rides the sheet's top with the clearance under it. */}
       <g
-        transform={`translate(${mapChrome.inset} ${height - props.footer - FOOTER_BASELINE})`}
+        transform={`translate(${mapChrome.inset} ${height - FOOTER_BASELINE})`}
         className="plan__footer map-fade"
       >
         <g className="plan__scale">
@@ -698,6 +723,20 @@ function Drawing(
         ) : null}
       </g>
     </g>
+  );
+}
+
+/**
+ * The club's property line: the white line with its orange inner line, over a dark halo that
+ * only shows on a light basemap (`.plan--light`, Topo), where the white alone would vanish.
+ */
+export function PropertyLine(props: { d: string }) {
+  return (
+    <>
+      <path className="plan__line-halo" d={props.d} />
+      <path className="plan__line" d={props.d} />
+      <path className="plan__line-inner" d={props.d} />
+    </>
   );
 }
 
@@ -857,9 +896,10 @@ function StandButtons(props: {
 }
 
 /**
- * A stand: the rounded square with its type's icon and, where there is room (`labelled`), its
- * name on a plate capped at mapChrome.labels. Open or Closed is read out with the name and
- * shown in the stand's details; a closed stand's icon and name are drawn quieter.
+ * A stand: the 32 px rounded square with its type's icon (a 48 px target when it is a button)
+ * and, where there is room (`labelled`), its name beside it: no box, 13 px semibold text on a
+ * 2 px themed halo (mapChrome.labels), capped at 140 px. Open or Closed is read out with the
+ * name and shown in the stand's details; a closed stand's icon and name are drawn quieter.
  */
 function Stand(props: {
   stand: PlanStand;
@@ -915,24 +955,14 @@ function Stand(props: {
       />
       <Icon x={-ICON / 2} y={-ICON / 2} size={ICON} className="plan__stand-icon" />
       {props.labelled ? (
-        <g
-          transform={`translate(${label.offset.toFixed(1)} ${-PLATE_HEIGHT / 2})`}
-          className={`plan__plate-group plan__plate-group--${label.side}`}
+        <text
+          className={`plan__stand-label plan__stand-label--${label.side}`}
+          x={(label.offset + LABEL.text.halo).toFixed(1)}
+          y={(LABEL.text.size * 0.35).toFixed(1)}
+          data-width={label.width.toFixed(1)}
         >
-          <rect
-            className="plan__plate"
-            width={label.width}
-            height={PLATE_HEIGHT}
-            rx={radii.markerPlate}
-          />
-          <text
-            className="plan__plate-name"
-            x={PLATE_PAD}
-            y={PLATE_HEIGHT / 2 + PLATE_LINE.name * 0.35}
-          >
-            {label.name}
-          </text>
-        </g>
+          {label.name}
+        </text>
       ) : null}
     </g>
   );

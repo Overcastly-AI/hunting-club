@@ -41,6 +41,12 @@ export const BUILD_VERSION_URL = `${ADMIN_PATH}${BUILD_VERSION_FILE}`;
 /** Privacy and Terms pages (copy in ./legal), linked from the web sign-in footer. */
 export const LEGAL_PATHS = { privacy: '/privacy', terms: '/terms' } as const;
 
+/**
+ * The public site's page for getting the phone app (on the same domain as the admin), linked
+ * from the admin wherever it sends someone to the app.
+ */
+export const DOWNLOAD_PATH = '/download';
+
 /** Path of the join page that club and party invite links open. */
 export const JOIN_PATH = '/join';
 

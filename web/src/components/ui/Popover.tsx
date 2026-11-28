@@ -3,7 +3,8 @@ import { cx } from './cx';
 import { Tooltip } from './Tooltip';
 import { useDismiss } from './useDismiss';
 
-export type PopoverPlacement = 'bottom-start' | 'bottom-end' | 'top-start' | 'right-end';
+export type PopoverPlacement =
+  'bottom-start' | 'bottom-end' | 'top-start' | 'right-end' | 'left-start';
 
 /**
  * A button that shows and hides a floating panel under it (a disclosure; the account menu,
@@ -25,8 +26,16 @@ export function Popover(props: {
   className?: string;
   triggerClassName?: string;
   panelClassName?: string;
+  /** Controlled: whether the panel is open (with `onOpenChange`), e.g. so a map tap closes it. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [own, setOwn] = useState(false);
+  const open = props.open ?? own;
+  const setOpen = (next: boolean) => {
+    setOwn(next);
+    props.onOpenChange?.(next);
+  };
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const id = useId();
@@ -45,7 +54,7 @@ export function Popover(props: {
             aria-label={props.tooltip}
             aria-expanded={open}
             aria-controls={id}
-            onClick={() => setOpen((o) => !o)}
+            onClick={() => setOpen(!open)}
           >
             {props.trigger}
           </button>

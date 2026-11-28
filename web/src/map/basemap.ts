@@ -17,6 +17,7 @@ import {
 } from '@huntclub/pmtiles/reader';
 
 import {
+  BASEMAP_IDS,
   BASEMAPS,
   basemapBySource,
   mapPackPath,
@@ -32,6 +33,28 @@ import {
 } from '@huntclub/shared';
 import { useEffect, useState } from 'react';
 import type { Projection } from './plan';
+
+/** Where this browser remembers the live basemap last chosen (per browser, never sent). */
+export const BASEMAP_STORAGE_KEY = 'hcm-basemap';
+
+/** The basemap this browser last chose, else `fallback` (also when storage is blocked). */
+export function storedBasemap(fallback: BasemapId): BasemapId {
+  try {
+    const stored = localStorage.getItem(BASEMAP_STORAGE_KEY);
+    return BASEMAP_IDS.find((id) => id === stored) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/** Remembers the chosen basemap for the next visit; a browser that refuses storage just forgets. */
+export function storeBasemap(id: BasemapId): void {
+  try {
+    localStorage.setItem(BASEMAP_STORAGE_KEY, id);
+  } catch {
+    // Private mode or blocked storage: the choice lasts for this visit only.
+  }
+}
 
 /** At most this many tiles under the plan: enough for a square mile at the deepest level. */
 export const BASEMAP_MAX_TILES = 64;

@@ -9,6 +9,8 @@ import {
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { OVERDUE_ALERT_LABEL } from '@huntclub/shared';
 import { SAMPLE_PROPERTY } from '@huntclub/shared/sample';
+import { DOWNLOAD_PATH } from '@huntclub/shared/app';
+import { BASEMAP_STORAGE_KEY } from '../map/basemap';
 import { MAP_EMPTY, NEEDS_YOU_EMPTY, NO_LINE, OUT_NOW_EMPTY } from '../pages/MyClub';
 import { renderSignedIn } from '../testing/app';
 import { sampleData } from '../testing/fakeClubApi';
@@ -77,7 +79,10 @@ describe('My club', () => {
     expect(await needsYou()).toEqual([
       { text: expect.stringMatching(/^Draw your property line/), to: undefined },
     ]);
-    const row = screen.getByText(/^Draw your property line/).closest('li')!;
+    const needs = screen.getByRole('heading', { level: 2, name: /^Needs you/ }).closest('section')!;
+    const row = within(needs)
+      .getByText(/^Draw your property line/)
+      .closest('li')!;
     expect(within(row).getByRole('button', { name: 'Draw' })).toBeTruthy();
     // The map goes anywhere, under the club's pill, with no empty plate in the way.
     expect(screen.getByText(NO_LINE)).toBeTruthy();
@@ -119,7 +124,7 @@ describe('My club', () => {
     await screen.findByRole('heading', { level: 1, name: 'Oak Ridge Hunt Club' });
     // Not on the map until asked for: a tap on the pill drops the card.
     expect(screen.queryByRole('list', { name: 'Conditions today' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Today at the property' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Today at the property/ }));
     const cells = strip();
     expect(cells.map((c) => c!.replace(/\d.*$/, ''))).toEqual([
       READOUT_LABELS.sunrise,
@@ -144,16 +149,17 @@ describe('My club', () => {
     expect(document.body.textContent).not.toMatch(/shooting|first light|last light/i);
   });
 
-  it('says live positions are in the app, never a blank or made-up Out now list', async () => {
+  it('says in one line that live positions are in the app, never a blank or made-up Out now list', async () => {
     await renderSignedIn();
     const section = (await screen.findByRole('heading', { level: 2, name: 'Out now' })).closest(
       'section',
     )!;
+    const lines = section.querySelectorAll('p');
+    expect(lines).toHaveLength(1);
+    expect(lines[0]!.textContent).toBe(`${OUT_NOW_EMPTY.line} ${OUT_NOW_EMPTY.link}`);
     expect(
-      within(section).getByRole('heading', { level: 3, name: OUT_NOW_EMPTY.title }),
-    ).toBeTruthy();
-    expect(within(section).getByText(OUT_NOW_EMPTY.line)).toBeTruthy();
-    expect(section.querySelector('.ui-empty__icon svg')).toBeTruthy();
+      within(section).getByRole('link', { name: OUT_NOW_EMPTY.link }).getAttribute('href'),
+    ).toBe(DOWNLOAD_PATH);
     expect(within(section).queryByRole('listitem')).toBeNull();
   });
 
@@ -169,7 +175,6 @@ describe('My club', () => {
       const map = await screen.findByRole('img', { name: /^Map of Oak Ridge Hunt Club/ });
       // The pack is topo: it shows under live tiles of its own basemap.
       fireEvent.click(screen.getByRole('button', { name: 'Layers' }));
-      expect(screen.getByText('Map pack: Topo, saved for offline')).toBeTruthy();
       fireEvent.click(screen.getByRole('radio', { name: 'Topo' }));
       const packImages = () =>
         map.querySelectorAll('.plan__basemap:not(.plan__basemap--live) image');
@@ -184,6 +189,7 @@ describe('My club', () => {
       expect(live.compareDocumentPosition(packImages()[0]!)).toBe(Node.DOCUMENT_POSITION_PRECEDING);
     } finally {
       vi.unstubAllGlobals();
+      localStorage.removeItem(BASEMAP_STORAGE_KEY); // the Topo choice is remembered
     }
   });
 

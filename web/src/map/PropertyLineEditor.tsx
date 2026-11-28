@@ -19,7 +19,7 @@ import { Pentagon, Plus, Trash2, Undo2, type LucideIcon } from 'lucide-react';
 import { useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import { Button } from '../components/ui';
 import { cx } from '../components/ui/cx';
-import { mapPoint, TAP_SLOP, type MapFrame } from './ClubMap';
+import { mapPoint, PropertyLine, TAP_SLOP, type MapFrame } from './ClubMap';
 import { InSlot, useEditSlots } from './editSlots';
 import { EditPill } from './MapPill';
 import { canClose, drawnPolygon, drawProblem, type DrawAction, type DrawState } from './draw';
@@ -110,8 +110,7 @@ export function DrawLayer(props: {
     >
       {state.closed ? (
         <g aria-hidden="true">
-          <path className="plan__line" d={ringsPath([state.corners], projection)} />
-          <path className="plan__line-inner" d={ringsPath([state.corners], projection)} />
+          <PropertyLine d={ringsPath([state.corners], projection)} />
         </g>
       ) : (
         <g aria-hidden="true">
@@ -347,7 +346,10 @@ export function DrawControls(props: {
               : 'Click the map to add corners, or move the map and use Add corner. Drag a corner to move it.'}
           </p>
           {props.fields}
-          {state.closed && problem ? <p className="draw__problem">{stillNeeded(problem)}</p> : null}
+          {/* What is still needed, unless the error below already says it: each once. */}
+          {state.closed && problem && error !== stillNeeded(problem) ? (
+            <p className="draw__problem">{stillNeeded(problem)}</p>
+          ) : null}
           {error ? (
             <p className="draw__error" role="alert">
               {error}
