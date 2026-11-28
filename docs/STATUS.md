@@ -21,7 +21,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 | Budget | `hunt-club-mesh-monthly`, $5/month, alerts 50/80/100% |
 | Tags | Project=hunt-club-mesh, Env=dev |
 | Deploys | Grok Bot runs `cdk deploy` from the repo when a request says "deploy" (after synth + diff checks) |
-| Data layer owner | CloudFormation stack `HuntClubMeshDataDev`, built by Grok Bot at the owner's direction (06:32 UTC), Retain policies. **The CDK references these, never defines them.** |
+| Data layer owner | CloudFormation stack `HuntClubMeshDataDev`, built by Grok Bot at the owner's direction (06:32 UTC), Retain policies. **The CDK references these, never defines them.** `HuntClubMeshDataDev` is the stack and CDK construct id, not the table name (corrected 2026-11-28) |
 | DynamoDB table | `hunt-club-mesh-dev` (arn:aws:dynamodb:us-east-1:054825383623:table/hunt-club-mesh-dev), PK/SK (S), GSI1 = GSI1PK/GSI1SK (ALL), on-demand, PITR off, deletion protection on, TTL `expiresAt` (Request #2) |
 | Cognito user pool | `us-east-1_0W2YbjVht` (Essentials, email username, first factors PASSWORD + EMAIL_OTP; the app uses EMAIL_OTP only), default email sender (~50/day; SES later per owner) |
 | Cognito app client | `5dn1jcrnef1v6cfv6da0i7qtne` (public, ALLOW_USER_AUTH + refresh) |
@@ -33,6 +33,7 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 
 | # | Sent | Request | Status | Result |
 |---|---|---|---|---|
+| 12 | 2026-11-28 | Active test plan for the UAT map pack build (UAT 15:09 got 403 club_inactive) | **Done** 16:40 UTC: UAT Test Club 045585cf-5f17-4e03-ae02-8438629189ca in `hunt-club-mesh-dev`: planId club_standard, status active, paidThrough 2026-12-28; Stripe ids marked test_uat_seed. Cost under $0.01. Note: the Request #9 seed is a different "UAT Test Club" (04f40d22-a9c5-4c23-864b-13c69df41aef). Correction: the dev table is `hunt-club-mesh-dev`; `HuntClubMeshDataDev` is the CDK construct and stack id | UAT retest of Billing and the map pack build pending |
 | 11 | 2026-11-26 19:10 | Cognito AuthSessionValidity 3 → 10 min on both clients (codes arrive in 8–11 s; hunters on weak signal) | **Done** 19:41 UTC: AuthSessionValidity 3 → 10 min on both clients = EMAIL_OTP code lifetime (API flow). Template updated | Copy update in club-data PR A |
 | 10 | 2026-11-26 18:10 | Owner rule: long-lived sign-in for hunters out of service. App client refresh token 365 d, web client 30 d (access 60 min unchanged, revocation on) | **Done** 18:36 UTC: app client refresh 365 d, web 30 d, access/ID 1 h, revocation on; Grok Bot's HuntClubMeshDataDev template updated. Existing tokens keep 30 d until next sign-in | |
 | 9 | 2026-11-26 17:08 | Seed dev "UAT Test Club" (seed:dev) for jonesjaycob+uitest@gmail.com once that user exists | BLOCKED 18:09 UTC: +uitest CONFIRMED but seed failed `Invalid UUID` (z.uuid rejects Cognito subs without RFC variant bits) — fix PR #59 merged; **Done 19:04 UTC**: UAT Test Club 04f40d22-a9c5-4c23-864b-13c69df41aef (admin +uitest), area North Timber, stands Creek Bottom / South Field Blind / Ridge Ladder, entitlement to 2027-02-24. Earlier: WAITING: +uitest not yet signed up (UAT signed up +huntclubuat at 17:39 UTC; returning sign-in blocked by 8-digit code bug) | |
@@ -88,6 +89,8 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 | 2026-11-26 | Public marketing site: separate `site/` package, react-dom/server prerender (no new deps), admin moves to `/app/`, real 404s, registry = single source for nav/sitemap/meta/CloudFront allowlist. No analytics vendor without owner approval (zero-cost CloudFront logs default). Invite preview endpoint deferred | Brief from UI Director 2026-11-26 |
 | 2026-11-26 | Map packs public on CloudFront at unguessable UUID URLs | Public-domain USGS tiles; signed URLs not worth the cost yet |
 | 2026-11-26 | Map pack builds: status building/ready/failed, one in flight per club, builder concurrency 1, tile cap derived from rate × timeout | Stay gentle with USGS and inside the 900 s Lambda limit |
+| 2026-11-28 | On touch, the web club map zooms by pinch and double tap; no visible +/- buttons. Fit property in Layers is the one-finger way to zoom out | DESIGN "Map chrome" 3 and the coverage budget (SE at rest 21.1% of 25%) |
+| 2026-11-28 | Map packs stay a paid club feature. The no-plan state says so up front and links to Billing (#115) | SPEC: paid club feature; UAT 15:09 found the 403 copy misleading |
 
 ## Backlog (coordinator)
 
@@ -103,6 +106,12 @@ Coordinator log. Updated by the coordinating session; read this first when resum
 - 2026-11-27: merged and deployed to dev: #98 stand detail drawer (read-only, no coordinates, per SPEC); #99–#101 account-switch fixes from the UAT 18:50 MAJOR (web club keyed to the user, the 403 no-access state, the app hides other accounts' clubs, the radio and paid features follow the signed-in account); #102 display-name prompt (app and web, one shared name rule); #103 renamed names sync to clubs (queued offline). The app-screenshots workflow (`app-screenshots.yml`) is still waiting for the owner to run it from the Actions tab.
 - 2026-11-28: **Merged and deployed:** #104 through #108. **Open owner questions:** the app-screenshots workflow run, Out now positions, the dawn scene, TestFlight or Android, the public theme toggle, Stripe and the older items. **Backlog:** the phone app has no property-line, stand or area editing yet. The web is the editing surface. App drawing tools are a later milestone.
 - 2026-11-28: #109–#112 merged. App rest coverage has 2 points of headroom, so any new phone map chrome must replace something. The app still has no editing for the property line, stands or areas; the web is the editing surface.
+- 2026-11-28 afternoon: **Merged:** #115 at 8c0179a; #116 at 73e791b (Deploy dev run 51 passed with smoke 16:36 UTC). **Open:** #117 (phone map zoom); phone-layout PR in progress.
+- Backlog: app parity with #116: the full sheet hides the chrome; no-box stand labels.
+- Backlog: app editing for the property line, stands and areas.
+- Backlog: public hero seam at 1280.
+- Backlog: iPhone 15 landscape: the Big Oak Ladder stand marker covers the "North 40" area label, so a tap on the label hits the stand. Label hit-testing should give way to markers, or labels should offset.
+- Backlog: `overlays.ts` still has two literal `env(safe-area-inset-bottom)` strings; use the shared `SAFE_AREA` from #117.
 - All workers paused 15:15 UTC (remaining work waits on owner: GitHub dev env/variable, Stripe, Apple Team ID/Android fingerprints, field test).
 - Was in progress: M12 app side (onboarding worker); map packs #41 backend → app (club-data); #41 review then web Map packs admin (web).
 
@@ -119,6 +128,9 @@ Owner rule (2026-11-26): Grok Bot runs UAT and reviews UI decisions by email. Ev
 
 | Date | Thread / subject | Finding | Decision | PR |
 |---|---|---|---|---|
+| 2026-11-28 | UAT iPhone audit 16:09 | 1 Blocker, 3 Major, 6 Minor, 6 Polish | All accepted. B1 no pinch zoom, M1 pinch on a stand zooms the page 5x, M2 draw modes zoom far out, m3 dvh and safe areas, m5 Add stand panel on SE, p5 → #117. M3 public pages have no side margin, m1 sign-in oversized, m2 landscape nav, m4 text-size-adjust, m6 sheet heights, p1–p4 (p4 WebKit CSP stylesheet error), p6 → phone-layout PR (in progress) | #117, phone-layout |
+| 2026-11-28 | UI Director 15:10 | 12 items | Accepted: items 1–5 and 8–12 → #116; item 6 → #115. Item 7 (phone app screenshots) blocked on the owner running the "App screenshots" workflow. Hero seam at 1280 queued. Accepted departures: full sheet at 88%, title3 headings, pill about 200–250 wide | #115, #116 |
+| 2026-11-28 | UAT 15:09 | MAJOR: map pack build 403 (club_inactive; a paid feature with misleading copy). POLISH: errors shown twice, faint Topo line, basemap not remembered; no save progress. Q: legend | Accepted: paid-state UI (#115) plus Request #12 (active test plan). Errors, Topo line, basemap → #116; save progress → #115; legend restored as "Map key" in #116 | #115, #116 |
 | 2026-11-28 | UI Director 02:13 | The map was buried in chrome (owner: "overwhelming with buttons"). The Director set a coverage budget (25% on phones, 15% on desktop) and asked for a pill, an icon stack, a sheet with detents, and auto-hide | Accepted. Pushbacks kept: a 48 handle, not 44; no wind or temperature on the web (CSP); no mesh dot or people toggle on the web. Result: #110 shared spec; #111 web, rest coverage 15.4% / 14.0% / 3.9% at 390 / 500 / 1280; #112 app, rest coverage 23.0% at 390x844. Still pending: phone screenshots, which need the owner to run `app-screenshots.yml` | #110–#112 |
 | 2026-11-27 | Owner | "The maps do not work and you cannot draw property lines." The web map had no basemap, and no surface could draw the line | Fixed: live USGS basemap and property-line drawing on the web (#106), a phone draw bar (#107), and stands and areas editing for admins (#108). The CSP img-src now allows the USGS basemap host only, and geolocation=(self) for Find me | #106–#108 |
 | 2026-11-27 | UAT retest 22:55 | The club-switch Major is fixed and everything passes. The grey dot was the emulator's touch cursor | Closed. The 1024px home strip is to be confirmed on the next pass | — |
