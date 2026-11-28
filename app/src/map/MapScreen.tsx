@@ -72,14 +72,16 @@ const FIT_PADDING = { top: spacing.xl, bottom: spacing.xl, left: spacing.xl, rig
 const FOOTER_ABOVE_PEEK = spacing.xs;
 
 type Panel = 'layers' | 'download' | 'checkOut' | 'askForHand' | 'harvest' | null;
+/** The panels the dev-only screenshot mode can open. */
+export type RequestedPanel = Extract<Panel, 'layers' | 'askForHand'>;
 
 export type MapScreenProps = {
   /** Hunters, open stands and mesh status; defaults to the app store the radio will feed. */
   dataSource?: MapDataSource;
   /** Where the map opens (default: the continental US). */
   initialView?: { center: [number, number]; zoom: number };
-  /** Opens a panel (Layers) or closes any, when it changes (the dev-only screenshot mode). */
-  panel?: 'layers' | null;
+  /** Opens a panel (Layers, Ask for a Hand) or closes any, when it changes (the dev-only screenshot mode). */
+  panel?: RequestedPanel | null;
   /** Moves the sheet to a detent when it changes (the dev-only screenshot mode). */
   detent?: SheetDetent;
 };

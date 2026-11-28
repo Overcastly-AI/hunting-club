@@ -1,4 +1,11 @@
-import { pluralize, STAND_TYPE_LABELS, type Area, type Club, type Stand } from '@huntclub/shared';
+import {
+  pluralize,
+  STAND_TYPE_LABELS,
+  type Area,
+  type Club,
+  type MapPack,
+  type Stand,
+} from '@huntclub/shared';
 import { MapPin } from 'lucide-react';
 import type { ClubApi } from '../api/types';
 import { Loadable } from '../components/Loadable';
@@ -8,6 +15,7 @@ import { isOffline, useAsync } from '../components/useAsync';
 import { StandStatus } from '../components/StandStatus';
 import { DataTable, EmptyState } from '../components/ui';
 import { ICON_SIZE } from '@huntclub/design';
+import { useClubBasemap } from '../map/basemap';
 import { ClubMap } from '../map/ClubMap';
 
 /**
@@ -16,9 +24,15 @@ import { ClubMap } from '../map/ClubMap';
  */
 export function StandsAndAreas(props: { api: ClubApi }) {
   // Both lists together: stand rows show their area's name, area rows count their stands.
+  // The club's map packs only add the offline picture under the map: without them it is live.
   const places = useAsync(
     () =>
-      Promise.all([props.api.listStands(), props.api.listAreas(), props.api.getClub()] as const),
+      Promise.all([
+        props.api.listStands(),
+        props.api.listAreas(),
+        props.api.getClub(),
+        props.api.listMapPacks().catch((): MapPack[] => []),
+      ] as const),
     [props.api],
     { keepLastOn: isOffline },
   );
@@ -33,14 +47,23 @@ export function StandsAndAreas(props: { api: ClubApi }) {
       }
     >
       <Loadable state={places} skeleton="table">
-        {([stands, areas, club]) => <Places stands={stands} areas={areas} club={club} />}
+        {([stands, areas, club, packs]) => (
+          <Places stands={stands} areas={areas} club={club} packs={packs} />
+        )}
       </Loadable>
     </Page>
   );
 }
 
-function Places(props: { stands: readonly Stand[]; areas: readonly Area[]; club: Club | null }) {
+function Places(props: {
+  stands: readonly Stand[];
+  areas: readonly Area[];
+  club: Club | null;
+  packs: readonly MapPack[];
+}) {
   const { stands, areas, club } = props;
+  // The same picture as My club's map: live aerial tiles over the club's own pack.
+  const { live, basemap } = useClubBasemap(props.packs);
   const areaName = (id?: string) => areas.find((a) => a.id === id)?.name ?? '—';
   return (
     <div className="beside-map">
@@ -124,6 +147,8 @@ function Places(props: { stands: readonly Stand[]; areas: readonly Area[]; club:
         areas={areas}
         stands={stands}
         compact
+        live={live}
+        basemap={basemap}
         label={`Map of the club: ${pluralize(areas.length, 'area')} and ${pluralize(stands.length, 'stand')}.`}
         insets={{ top: 24, right: 24, bottom: 40, left: 24 }}
         empty={{

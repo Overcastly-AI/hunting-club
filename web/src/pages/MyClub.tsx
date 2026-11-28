@@ -26,7 +26,6 @@ import {
   SUN,
   sunReadout,
   type Area,
-  type BasemapId,
   type Club,
   type Harvest,
   type Invite,
@@ -50,7 +49,7 @@ import { useMediaQuery } from '../components/useMediaQuery';
 import { DESKTOP_QUERY } from '../components/ui/styles/shared';
 import { standIcon } from '../components/standIcons';
 import { Banner, Button, ButtonLink, EmptyState, Field, Input, Popover } from '../components/ui';
-import { basemapPack, storeBasemap, storedBasemap, useBasemap } from '../map/basemap';
+import { useClubBasemap } from '../map/basemap';
 import { AreaFields, checkAreaName } from '../map/AreaFields';
 import { ClubMap, FIT_PADDING, PropertyLine, type MapFrame } from '../map/ClubMap';
 import { drawReducer, startDrawing, type DrawAction, type DrawState } from '../map/draw';
@@ -182,9 +181,6 @@ export const MAP_EMPTY = {
 /** The Stands and areas line for an admin whose club has no property line yet. */
 export const NO_LINE = 'No property line yet. Find the property on the map, then draw it.';
 
-/** The live basemap My club first opens on: aerial, the picture the design is drawn for. */
-const START_BASEMAP: BasemapId = 'aerial';
-
 /** The peek's chip: how many to-dos need the admin. */
 const needsYouChip = (n: number) => `${n} ${n === 1 ? 'needs' : 'need'} you`;
 
@@ -227,14 +223,8 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
   const sun = sunReadout(place, now);
   const overdue = place ? overdueAt(now, place, club.overdueGraceMinutes, SUN) : undefined;
   const facts = clubFacts(club, loaded);
-  // The basemap this browser chose last time, kept across reloads.
-  const [live, setLiveState] = useState<BasemapId>(() => storedBasemap(START_BASEMAP));
-  const setLive = (id: BasemapId) => {
-    setLiveState(id);
-    storeBasemap(id);
-  };
-  const pack = basemapPack(loaded.mapPacks, live);
-  const basemap = useBasemap(pack);
+  // The shared club-map picture: the basemap this browser chose last, kept across reloads.
+  const { live, setLive, basemap } = useClubBasemap(loaded.mapPacks);
   // The stand whose details are open (tapped on the map).
   const [standId, setStandId] = useState<string | null>(null);
   const stand = stands.find((s) => s.id === standId) ?? null;

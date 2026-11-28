@@ -1,6 +1,6 @@
 import { createClubApiClient, ClubApiRequestError } from '../apiClient';
 import { apiPath, API_PATHS } from '../apiPaths';
-import { entitlementFor, ENTITLEMENT_GRACE_DAYS, hasClubFeatures } from '../api';
+import { clubPlanState, entitlementFor, ENTITLEMENT_GRACE_DAYS, hasClubFeatures } from '../api';
 import { DOWNLOAD_LIMITS } from '../maps';
 import { AREA_PROBLEMS, PROPERTY_LINE_PROBLEMS, propertyLinePolygon } from '../propertyLine';
 import { SAMPLE_PROPERTY } from '../sample';
@@ -301,6 +301,25 @@ describe('hasClubFeatures', () => {
       expect(hasClubFeatures({ featuresUntil }, until - 1)).toBe(true);
       expect(hasClubFeatures({ featuresUntil }, new Date(until))).toBe(false);
     }
+  });
+});
+
+describe('clubPlanState', () => {
+  const until = Date.parse(ISO) + ENTITLEMENT_GRACE_DAYS * DAY_MS;
+
+  it('is none before the club ever checked out (the trial is on offer)', () => {
+    expect(clubPlanState(null, 0)).toBe('none');
+    expect(clubPlanState(undefined, 0)).toBe('none');
+  });
+
+  it('is open exactly while the entitlement opens club features, then lapsed', () => {
+    for (const status of ['trialing', 'active', 'past_due'] as const) {
+      const sub = { status, paidThrough: ISO };
+      expect(clubPlanState(sub, until - 1)).toBe('open');
+      expect(hasClubFeatures(entitlementFor(CLUB, sub), until - 1)).toBe(true);
+      expect(clubPlanState(sub, until)).toBe('lapsed');
+    }
+    expect(clubPlanState({ status: 'canceled', paidThrough: ISO }, 0)).toBe('lapsed');
   });
 });
 

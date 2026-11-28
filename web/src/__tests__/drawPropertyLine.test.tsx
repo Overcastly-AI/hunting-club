@@ -226,6 +226,7 @@ describe('drawing the property line on My club', () => {
     expect(propertyLineProblem(boundary)).toBeNull();
     // Saved: the line is the club's, and the panel offers to edit it.
     expect(await screen.findByRole('button', { name: 'Edit property line' })).toBeTruthy();
+    expect(screen.getByText('Property line saved')).toBeTruthy();
     expect(ground().querySelectorAll('.plan__line')).toHaveLength(1);
     expect(screen.queryByText(/^Draw your property line/)).toBeNull();
   });

@@ -3,7 +3,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { bundleBuildId, newerBuildIsLive } from './buildVersion';
 import type { WebClubServices } from './cloud';
 import { Loading } from './components/Loading';
-import { Banner } from './components/ui';
+import { Banner, ToastProvider } from './components/ui';
 import { SignIn } from './pages/SignIn';
 import { NOT_FOUND_TITLE, NotFound } from './pages/NotFound';
 import { Shell } from './shell/Shell';
@@ -117,13 +117,16 @@ export function App(props: WebClubServices) {
   };
 
   return (
-    <Shell api={api} user={auth.user} path={page ? page.path : null} onSignOut={signOut}>
-      {/* Keyed by page: each page mounts fresh, and its heading takes focus. */}
-      <SignedInUserContext.Provider value={auth.user}>
-        <Suspense key={page?.path ?? ''} fallback={<Loading />}>
-          {page ? page.render(api) : <NotFound signedIn />}
-        </Suspense>
-      </SignedInUserContext.Provider>
-    </Shell>
+    // Toasts outlive the view that raised them (an editor closes once its save went through).
+    <ToastProvider>
+      <Shell api={api} user={auth.user} path={page ? page.path : null} onSignOut={signOut}>
+        {/* Keyed by page: each page mounts fresh, and its heading takes focus. */}
+        <SignedInUserContext.Provider value={auth.user}>
+          <Suspense key={page?.path ?? ''} fallback={<Loading />}>
+            {page ? page.render(api) : <NotFound signedIn />}
+          </Suspense>
+        </SignedInUserContext.Provider>
+      </Shell>
+    </ToastProvider>
   );
 }

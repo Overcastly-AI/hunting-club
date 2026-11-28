@@ -7,6 +7,7 @@ import {
 } from '@huntclub/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { AREA_NAME_PROBLEM } from '../map/AreaFields';
+import { SAVING } from '../map/MapPill';
 import { STAND_PROBLEMS } from '../map/StandEditor';
 import { renderSignedIn } from '../testing/app';
 import { sampleData, type FakeClubData } from '../testing/fakeClubApi';
@@ -70,6 +71,32 @@ describe('stands on My club (admins)', () => {
         name: `Fence Row, Available, ${STAND_TYPE_LABELS.ladder}`,
       }),
     ).toBeTruthy();
+    expect(screen.queryByRole('group', { name: 'Stand being placed' })).toBeNull();
+  });
+
+  it('shows Saving… with a spinner on a disabled Done while the club service saves, then Stand saved', async () => {
+    const { spy, client } = await myClub();
+    // The first save waits until `finish`, then goes through to the fake club service.
+    let finish = () => undefined as void;
+    const held = new Promise<void>((resolve) => (finish = resolve));
+    spy.createStand.mockImplementationOnce(async (...args) => {
+      await held;
+      return client.createStand(...args);
+    });
+    addToMap('stand');
+    fireEvent.change(nameField('Stand name'), { target: { value: 'Fence Row' } });
+    tap(400, 300);
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    const saving = await screen.findByRole('button', { name: SAVING });
+    expect(saving.getAttribute('aria-busy')).toBe('true');
+    expect(saving.getAttribute('aria-disabled')).toBe('true');
+    expect(saving.querySelector('.ui-spinner')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Cancel' }).hasAttribute('disabled')).toBe(true);
+    // A second click while it saves sends nothing more.
+    fireEvent.click(saving);
+    expect(spy.createStand).toHaveBeenCalledTimes(1);
+    finish();
+    expect(await screen.findByText('Stand saved')).toBeTruthy();
     expect(screen.queryByRole('group', { name: 'Stand being placed' })).toBeNull();
   });
 

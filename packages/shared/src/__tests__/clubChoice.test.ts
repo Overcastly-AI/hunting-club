@@ -40,11 +40,13 @@ describe('chooseClub', () => {
 });
 
 describe('isMyClub and isNoClubAccess', () => {
-  it('match listed clubs and 403s only', () => {
+  it('match listed clubs and access 403s only', () => {
     expect(isMyClub([club('c1')], 'c1')).toBe(true);
     expect(isMyClub([club('c1')], 'c2')).toBe(false);
     expect(isNoClubAccess(new ClubApiRequestError('forbidden', 403))).toBe(true);
     expect(isNoClubAccess(new ClubApiRequestError('not_found', 404))).toBe(false);
+    // A paid feature on a club with no plan is a 403 too, but the club is still theirs.
+    expect(isNoClubAccess(new ClubApiRequestError('club_inactive', 403))).toBe(false);
     expect(isNoClubAccess(new Error('403'))).toBe(false);
   });
 });

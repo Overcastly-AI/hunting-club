@@ -274,6 +274,7 @@ describe('the bottom sheet (phones and tablets)', () => {
     phone();
     await renderSignedIn();
     expect(detentOf()).toBe('peek');
+    // The "+" menu shows once the club's places have loaded (after the heading): wait for it.
     (await within(sheet()).findByRole('button', { name: ADD_MENU })).focus();
     await waitFor(() => expect(detentOf()).toBe('half'));
   });

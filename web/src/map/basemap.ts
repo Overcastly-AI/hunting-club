@@ -34,6 +34,9 @@ import {
 import { useEffect, useState } from 'react';
 import type { Projection } from './plan';
 
+/** The live basemap a club map opens on: aerial, the picture the design is drawn for. */
+export const CLUB_MAP_BASEMAP: BasemapId = 'aerial';
+
 /** Where this browser remembers the live basemap last chosen (per browser, never sent). */
 export const BASEMAP_STORAGE_KEY = 'hcm-basemap';
 
@@ -81,7 +84,7 @@ export interface BasemapPicture {
  */
 export function basemapPack(
   packs: readonly MapPack[] | undefined,
-  prefer: BasemapId = 'aerial',
+  prefer: BasemapId = CLUB_MAP_BASEMAP,
 ): ReadyPack | undefined {
   const ready = (packs ?? [])
     .filter((p): p is ReadyPack => p.status === 'ready' && basemapBySource(p.source) !== undefined)
@@ -195,4 +198,24 @@ export function useBasemap(pack: ReadyPack | undefined, deps?: BasemapDeps): Bas
     // The pack's key names its archive; deps are fixed for a page's life.
   }, [key]);
   return picture && picture.key === key ? picture.value : null;
+}
+
+/**
+ * A club map's picture, as My club draws it: live USGS tiles of `live` (pass it to ClubMap's
+ * `live`) over the club's newest ready pack of that basemap (ClubMap's `basemap`), which still
+ * shows when the live tiles cannot load. `live` starts on the basemap this browser chose last
+ * (else CLUB_MAP_BASEMAP), and `setLive` (the Layers popover's Topo or Aerial) remembers the
+ * choice across reloads, so every club map opens on the same picture.
+ */
+export function useClubBasemap(packs: readonly MapPack[] | undefined): {
+  live: BasemapId;
+  setLive: (id: BasemapId) => void;
+  basemap: BasemapPicture | null;
+} {
+  const [live, setLiveState] = useState<BasemapId>(() => storedBasemap(CLUB_MAP_BASEMAP));
+  const setLive = (id: BasemapId) => {
+    setLiveState(id);
+    storeBasemap(id);
+  };
+  return { live, setLive, basemap: useBasemap(basemapPack(packs, live)) };
 }

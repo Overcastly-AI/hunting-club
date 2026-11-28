@@ -20,6 +20,10 @@ Build notes:
   National Weather Service, so they can differ between runs.
 - The Android build steps are shared with CI's Android job
   (`.github/actions/android-debug-build`).
+- Captions: the artifact has `captions.txt`, one line per file. A map shot's caption has its map
+  chrome coverage, measured with the shared `measureCoverage` on the real layout (the screen's
+  `uiautomator dump`, where each testID is a resource-id; `app/src/screenshot/coverage.ts`). A
+  shot whose map is behind a panel's own window says it was not measured.
 
 ## Why
 

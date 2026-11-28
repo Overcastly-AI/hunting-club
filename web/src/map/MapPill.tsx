@@ -63,7 +63,10 @@ export function MapPill(props: {
   );
 }
 
-/** The pill while editing: what is being edited, Done (saves) and Cancel. */
+/** What the save button says while the club service saves (then the editor closes). */
+export const SAVING = 'Saving…';
+
+/** The pill while editing: what is being edited, Done (saves; "Saving…" with a spinner) and Cancel. */
 export function EditPill(props: {
   label: string;
   onDone: () => void;
@@ -73,7 +76,13 @@ export function EditPill(props: {
   return (
     <div className="map-pill map-pill--edit map-fade" role="group" aria-label={props.label}>
       <p className="map-pill__edit-label">{props.label}</p>
-      <Button variant="primary" size="sm" loading={props.busy ?? false} onClick={props.onDone}>
+      <Button
+        variant="primary"
+        size="sm"
+        loading={props.busy ?? false}
+        loadingLabel={SAVING}
+        onClick={props.onDone}
+      >
         Done
       </Button>
       <Button
