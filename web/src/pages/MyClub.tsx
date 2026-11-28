@@ -1,6 +1,8 @@
 import { overdueAt } from '@huntclub/core';
-import { breakpoints, space } from '@huntclub/design';
+import { chromePinned, mapChrome, sheetDetentHeights, type SheetDetent } from '@huntclub/design';
 import {
+  BASEMAPS,
+  basemapBySource,
   CLUB_PRICING,
   ClubCreateRequestSchema,
   DISPLAY_NAME_MAX,
@@ -10,6 +12,7 @@ import {
   INITIALS_MAX,
   INITIALS_PROBLEM,
   needsYou,
+  nextTimeReadout,
   pluralize,
   polygonBounds,
   SUBSCRIPTION_STATUS_LABELS,
@@ -27,20 +30,25 @@ import {
   type Stand,
   type Subscription,
 } from '@huntclub/shared';
-import { CircleCheck, PenLine, Plus, RadioTower } from 'lucide-react';
-import { useMemo, useRef, useState, type FormEvent, type ReactNode, type Ref } from 'react';
+import { AlarmClock, CircleCheck, PenLine, Plus, RadioTower, Sunset } from 'lucide-react';
+import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import type { ClubApi } from '../api/types';
 import { ConditionsStrip } from '../components/ConditionsStrip';
 import { Loadable } from '../components/Loadable';
 import { Page, usePageHeadingFocus } from '../components/Page';
 import { isOffline, useAsync } from '../components/useAsync';
 import { useElementSize } from '../components/useElementSize';
+import { useMediaQuery } from '../components/useMediaQuery';
+import { DESKTOP_QUERY } from '../components/ui/styles/shared';
 import { Banner, Button, ButtonLink, EmptyState, Field, Input } from '../components/ui';
 import { basemapPack, useBasemap } from '../map/basemap';
 import { AreaFields, checkAreaName } from '../map/AreaFields';
 import { ClubMap, FIT_PADDING, type MapFrame } from '../map/ClubMap';
 import { drawReducer, startDrawing, type DrawAction, type DrawState } from '../map/draw';
-import { boundsCentre, DRAW_BAR_HEIGHT, planBounds } from '../map/plan';
+import { EditSlotsContext, type EditSlots } from '../map/editSlots';
+import { MapPill } from '../map/MapPill';
+import { MapSheet } from '../map/MapSheet';
+import { boundsCentre, planBounds } from '../map/plan';
 import { DRAW_SUBJECTS, DrawControls, DrawLayer, saveError } from '../map/PropertyLineEditor';
 import {
   newStand,
@@ -144,8 +152,8 @@ function clubFacts(club: Club, details: ClubDetails): string {
     .join(', ');
 }
 
-/** Where the club's plate floats from the map's top edge, in px (pages/styles.ts). */
-const PLATE_TOP = space[4];
+/** The bottom of the top pill, from the map's top edge, in px: what the plan fits under. */
+const PILL_BOTTOM = mapChrome.inset + mapChrome.pill.height;
 
 /** What the web says in place of live positions, which only ever travel over the mesh. */
 export const OUT_NOW_EMPTY = {
@@ -159,7 +167,7 @@ export const MAP_EMPTY = {
   line: 'The property line, areas and stands show here once a club admin draws them.',
 } as const;
 
-/** The club plate's line for an admin whose club has no property line yet. */
+/** The Stands and areas line for an admin whose club has no property line yet. */
 export const NO_LINE = 'No property line yet. Find the property on the map, then draw it.';
 
 /** The live basemap My club opens on: aerial, the picture the design is drawn for. */
@@ -180,10 +188,10 @@ export const NEEDS_YOU_EMPTY = {
 } as const;
 
 /**
- * The club on its map (docs/DESIGN.md, "Admin, My club"): the property line, areas and stands
- * edge to edge over the club's own map pack, with the club's plate and the conditions strip on
- * it, and beside it what needs the admin. Nobody's position is shown: positions only travel
- * over the mesh, so "Out now" says where to see them.
+ * The club on its map (docs/DESIGN.md "Map chrome"): the property line, areas and stands edge
+ * to edge, with only the top pill, the icon stack and the footer line over it; beside it on a
+ * desktop the side panel, and on phones and tablets the same panel as a bottom sheet. Nobody's
+ * position is shown: positions only travel over the mesh, so "Out now" says where to see them.
  */
 function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
   // The club as last saved here (a new property line), else as loaded.
@@ -192,8 +200,10 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
   const details = useClubDetails(props.api);
   const [now] = useState(() => Date.now());
   const heading = usePageHeadingFocus();
-  const plate = useRef<HTMLDivElement>(null);
-  const plateSize = useElementSize(plate, { width: 0, height: 0 });
+  const wide = useMediaQuery(DESKTOP_QUERY);
+  const [detent, setDetent] = useState<SheetDetent>('peek');
+  const sectionRef = useRef<HTMLElement>(null);
+  const sectionSize = useElementSize(sectionRef, { width: 0, height: 0 });
   const loaded: ClubDetails = details.status === 'ready' ? details.value : {};
   const stands = loaded.stands ?? [];
   const areas = loaded.areas ?? [];
@@ -203,7 +213,8 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
   const overdue = place ? overdueAt(now, place, club.overdueGraceMinutes, SUN) : undefined;
   const facts = clubFacts(club, loaded);
   const [live, setLive] = useState<BasemapId>(START_BASEMAP);
-  const basemap = useBasemap(basemapPack(loaded.mapPacks, live));
+  const pack = basemapPack(loaded.mapPacks, live);
+  const basemap = useBasemap(pack);
   // The stand whose details are open (tapped on the map).
   const [standId, setStandId] = useState<string | null>(null);
   const stand = stands.find((s) => s.id === standId) ?? null;
@@ -216,19 +227,23 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
   // Only club admins change the property line, areas and stands (the club API refuses anyone else too).
   const canDraw = me?.role === 'admin';
   const [edit, setEdit] = useState<Edit | null>(null);
-  // The editor's plate, so what is being edited is brought out from under it.
-  // It mounts only while editing, so it is measured from when it appears (a ref per element).
-  const [editPlateEl, editPlate] = useState<HTMLDivElement | null>(null);
-  const editPlateSize = useElementSize(
-    useMemo(() => ({ current: editPlateEl }), [editPlateEl]),
-    { width: 0, height: 0 },
-  );
-  const section = useRef<HTMLElement>(null);
+  // Where an editor puts its pill, draw bar and fields (map/editSlots.tsx).
+  const [pillSlot, setPillSlot] = useState<HTMLElement | null>(null);
+  const [barSlot, setBarSlot] = useState<HTMLElement | null>(null);
+  const [bodySlot, setBodySlot] = useState<HTMLElement | null>(null);
+  const slots: EditSlots = {
+    pill: pillSlot,
+    bar: barSlot,
+    body: bodySlot,
+    reveal: () => setDetent((d) => (d === 'peek' ? 'half' : d)),
+  };
+  // The sheet's top edge is the map's bottom: the footer line and the plan's fit sit above it.
+  const sheetHeight = wide ? 0 : sheetDetentHeights(sectionSize.height)[detent];
   const begin = (next: Edit) => {
     setStandId(null);
     setEdit(next);
-    // Opened from the list under the map (on a phone): the editor is on the map, so show it.
-    section.current?.scrollIntoView?.({ block: 'start' });
+    // A stand is mostly its fields; a shape is drawn on the map with the sheet down.
+    setDetent(next.kind === 'stand' ? 'half' : 'peek');
   };
   const startDraw = () => begin({ kind: 'line', draw: startDrawing(club.boundary) });
   const startArea = (area: Area | null) =>
@@ -243,19 +258,15 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
     begin({ kind: 'stand', stand: s, draft: s ? standDraft(s) : newStand() });
   const dispatch = (action: DrawAction) =>
     setEdit((e) => (e && e.kind !== 'stand' ? { ...e, draw: drawReducer(e.draw, action) } : e));
-  /** Saved or deleted: the editor closes and the club's places load again. */
-  const done = () => {
+  /** Saved, deleted or cancelled: the editor closes (and after a change, the places load again). */
+  const close = () => {
     setEdit(null);
+    setDetent('peek');
+  };
+  const done = () => {
+    close();
     details.reload();
   };
-  const title = (
-    <div className="clubview__title">
-      <h1 id="club-title" className="text-title-2" tabIndex={-1} ref={heading}>
-        {club.name}
-      </h1>
-      {facts ? <p className="clubview__facts">{facts}</p> : null}
-    </div>
-  );
   // What is being edited is drawn by its editor, not as part of the plan.
   const shownAreas = edit?.kind === 'area' ? areas.filter((a) => a.id !== edit.area?.id) : areas;
   // A saved stand or area is brought into the open map when its editor opens.
@@ -272,84 +283,37 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
 
   const editor = (frame: MapFrame): ReactNode => {
     if (!edit) return null;
-    // On a phone the drawing tools are a bar along the map's bottom: the map keeps the screen.
-    const bar = frame.width < breakpoints.tablet;
     if (edit.kind === 'stand') {
       const move = (to: [number, number]) =>
         setEdit({ ...edit, draft: { ...edit.draft, lon: to[0], lat: to[1] } });
       return (
         <>
           <StandMarkerLayer frame={frame} draft={edit.draft} onMove={move} />
-          <ClubPlate plateRef={editPlate}>
-            {title}
-            <StandFields
-              draft={edit.draft}
-              onChange={(draft) => setEdit({ ...edit, draft })}
-              onPlaceAtCross={() =>
-                move(frame.projection.unproject(frame.width / 2, frame.height / 2))
-              }
-              onSave={async (fields) => {
-                if (edit.stand) await props.api.updateStand(edit.stand.id, fields);
-                else await props.api.createStand(fields);
-                done();
-              }}
-              onDelete={
-                edit.stand
-                  ? async () => {
-                      await props.api.deleteStand(edit.stand!.id);
-                      done();
-                    }
-                  : undefined
-              }
-              onCancel={() => setEdit(null)}
-            />
-          </ClubPlate>
+          <StandFields
+            draft={edit.draft}
+            onChange={(draft) => setEdit({ ...edit, draft })}
+            onPlaceAtCross={() =>
+              move(frame.projection.unproject(frame.width / 2, frame.height / 2))
+            }
+            onSave={async (fields) => {
+              if (edit.stand) await props.api.updateStand(edit.stand.id, fields);
+              else await props.api.createStand(fields);
+              done();
+            }}
+            onDelete={
+              edit.stand
+                ? async () => {
+                    await props.api.deleteStand(edit.stand!.id);
+                    done();
+                  }
+                : undefined
+            }
+            onCancel={close}
+          />
         </>
       );
     }
     const area = edit.kind === 'area' ? edit : null;
-    const controls = (layout: 'plate' | 'bar') => (
-      <DrawControls
-        frame={frame}
-        state={edit.draw}
-        dispatch={dispatch}
-        layout={layout}
-        subject={area ? DRAW_SUBJECTS.area : DRAW_SUBJECTS.line}
-        {...(area
-          ? {
-              validate: () => checkAreaName(area.name),
-              fields: (
-                <AreaFields
-                  name={area.name}
-                  onName={(name) => setEdit({ ...area, name })}
-                  onDelete={
-                    area.area
-                      ? async () => {
-                          await props.api.deleteArea(area.area!.id);
-                          done();
-                        }
-                      : undefined
-                  }
-                  onDeleteError={(e) => setEdit({ ...area, error: saveError(e, 'area') })}
-                  error={area.error}
-                />
-              ),
-            }
-          : {})}
-        onSave={async (boundary) => {
-          if (!area) {
-            setSaved(await props.api.savePropertyLine(boundary));
-            setEdit(null);
-            return;
-          }
-          const fields = { name: area.name, boundary };
-          if (area.area) await props.api.updateArea(area.area.id, fields);
-          else await props.api.createArea(fields);
-          done();
-        }}
-        onCancel={() => setEdit(null)}
-      />
-    );
     return (
       <>
         <DrawLayer
@@ -358,137 +322,236 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
           dispatch={dispatch}
           label={area ? 'Area corners' : 'Property line corners'}
         />
-        <ClubPlate plateRef={editPlate}>
-          {title}
-          {bar ? null : controls('plate')}
-        </ClubPlate>
-        {bar ? controls('bar') : null}
+        <DrawControls
+          frame={frame}
+          state={edit.draw}
+          dispatch={dispatch}
+          subject={area ? DRAW_SUBJECTS.area : DRAW_SUBJECTS.line}
+          {...(area
+            ? {
+                validate: () => checkAreaName(area.name),
+                fields: (
+                  <AreaFields
+                    name={area.name}
+                    onName={(name) => setEdit({ ...area, name })}
+                    onDelete={
+                      area.area
+                        ? async () => {
+                            await props.api.deleteArea(area.area!.id);
+                            done();
+                          }
+                        : undefined
+                    }
+                    onDeleteError={(e) => setEdit({ ...area, error: saveError(e, 'area') })}
+                    error={area.error}
+                  />
+                ),
+              }
+            : {})}
+          onSave={async (boundary) => {
+            if (!area) {
+              setSaved(await props.api.savePropertyLine(boundary));
+              close();
+              return;
+            }
+            const fields = { name: area.name, boundary };
+            if (area.area) await props.api.updateArea(area.area.id, fields);
+            else await props.api.createArea(fields);
+            done();
+          }}
+          onCancel={close}
+        />
       </>
     );
   };
 
-  return (
-    <section
-      ref={section}
-      className={cx('clubview', edit && 'clubview--drawing')}
-      aria-labelledby="club-title"
-    >
-      <ClubMap
-        className="clubview__map"
-        boundary={edit?.kind === 'line' ? undefined : club.boundary}
-        areas={shownAreas}
-        stands={shownStands}
-        label={`Map of ${club.name}: ${club.boundary ? 'the property line' : 'no property line yet'}, ${pluralize(areas.length, 'area')} and ${pluralize(stands.length, 'stand')}.`}
-        basemap={basemap}
-        live={live}
-        onLiveChange={setLive}
-        interactive
-        insets={{ top: PLATE_TOP + plateSize.height + FIT_PADDING }}
-        focus={
-          focusAt && focusKey
-            ? {
-                key: focusKey,
-                at: focusAt,
-                top: editPlateSize.height ? PLATE_TOP + editPlateSize.height : 0,
-              }
-            : null
-        }
-        empty={details.status === 'ready' && !canDraw ? MAP_EMPTY : null}
-        footer={
-          edit && edit.kind !== 'stand'
-            ? (size) => (size.width < breakpoints.tablet ? DRAW_BAR_HEIGHT : 0)
-            : 0
-        }
-        {...(edit
-          ? {
-              onMapClick: (at: [number, number]) =>
-                edit.kind === 'stand'
-                  ? setEdit({ ...edit, draft: { ...edit.draft, lon: at[0], lat: at[1] } })
-                  : dispatch({ type: 'add', at }),
-              overlay: editor,
-            }
-          : {
-              onStandSelect: (s: { id: string }) => setStandId(s.id),
-              selectedStandId: stand?.id ?? null,
-              ...(canDraw
-                ? {
-                    onAreaSelect: (a: { id: string }) =>
-                      startArea(areas.find((x) => x.id === a.id) ?? null),
-                  }
-                : {}),
-            })}
-      >
-        {edit ? null : (
-          <ClubPlate plateRef={plate}>
-            {title}
-            {canDraw ? (
-              <div className="clubview__line">
-                {club.boundary ? null : <p className="clubview__line-note">{NO_LINE}</p>}
-                <Button size="sm" icon={PenLine} onClick={startDraw}>
-                  {club.boundary ? 'Edit property line' : 'Draw property line'}
-                </Button>
-              </div>
-            ) : null}
-            <ConditionsStrip sun={sun} overdueAt={overdue} />
-          </ClubPlate>
+  const lineLabel = club.boundary ? 'Edit property line' : 'Draw property line';
+  const conditions = <ConditionsStrip sun={sun} overdueAt={overdue} />;
+  // The sheet's one line, or the panel's first: what the club holds, or the editor's draw bar.
+  const summary = edit ? (
+    <div ref={setBarSlot} className="clubview__bar" />
+  ) : (
+    <p className="clubview__facts">{facts || club.name}</p>
+  );
+  const panel = (
+    <>
+      <div ref={setBodySlot} className="clubview__editor" hidden={!edit} />
+      {props.created ? (
+        <Banner tone="success" live title="Club created">
+          Start your {CLUB_PRICING.trialDays}-day free trial on{' '}
+          <a href={pageHref('billing')}>Billing</a>.
+        </Banner>
+      ) : null}
+      {askName && me ? (
+        <YourNamePrompt
+          api={props.api}
+          me={me}
+          onDone={() => {
+            setNameDone(true);
+            details.reload();
+            reloadShell(); // the account menu shows the new name
+          }}
+        />
+      ) : null}
+      {wide ? (
+        <section className="side-section" aria-labelledby="today">
+          <h2 id="today" className="side-section__title">
+            Today
+          </h2>
+          {conditions}
+        </section>
+      ) : null}
+      {canDraw ? (
+        <PlacesTools
+          areas={areas}
+          line={
+            <div className="side-section__line">
+              {club.boundary ? null : <p className="side-section__hint">{NO_LINE}</p>}
+              <Button size="sm" icon={PenLine} onClick={startDraw} disabled={edit !== null}>
+                {lineLabel}
+              </Button>
+            </div>
+          }
+          onEditArea={startArea}
+          onAddStand={() => startStand(null)}
+          onAddArea={() => startArea(null)}
+          editing={edit !== null}
+        />
+      ) : null}
+      <OutNow />
+      <Loadable state={details} skeleton="table">
+        {(value) => (
+          <>
+            <NeedsYou
+              items={needsYou({ club, ...value, now })}
+              onDraw={canDraw ? startDraw : undefined}
+              drawing={edit?.kind === 'line'}
+            />
+            {overdue === undefined ? null : (
+              <p className="clubview__overdue">
+                The overdue alert goes to the club if anyone is still checked in at sunset plus{' '}
+                {pluralize(club.overdueGraceMinutes, 'minute')}.
+              </p>
+            )}
+            <ClubSummary details={value} />
+          </>
         )}
-      </ClubMap>
-      <StandDrawer
-        stand={stand}
-        onClose={() => setStandId(null)}
-        areas={loaded.areas}
-        harvests={loaded.harvests}
-        members={loaded.members}
-        onEdit={canDraw ? startStand : undefined}
-      />
-      <div className="clubview__side">
-        {props.created ? (
-          <Banner tone="success" live title="Club created">
-            Start your {CLUB_PRICING.trialDays}-day free trial on{' '}
-            <a href={pageHref('billing')}>Billing</a>.
-          </Banner>
-        ) : null}
-        {askName && me ? (
-          <YourNamePrompt
-            api={props.api}
-            me={me}
-            onDone={() => {
-              setNameDone(true);
-              details.reload();
-              reloadShell(); // the account menu shows the new name
-            }}
-          />
-        ) : null}
-        {canDraw ? (
-          <PlacesTools
-            areas={areas}
-            onEditArea={startArea}
-            onAddStand={() => startStand(null)}
-            onAddArea={() => startArea(null)}
-            editing={edit !== null}
-          />
-        ) : null}
-        <OutNow />
-        <Loadable state={details} skeleton="table">
-          {(value) => (
+      </Loadable>
+    </>
+  );
+
+  return (
+    <EditSlotsContext.Provider value={slots}>
+      <section
+        ref={sectionRef}
+        className={cx('clubview', edit && 'clubview--drawing')}
+        aria-labelledby="club-title"
+      >
+        <ClubMap
+          className="clubview__map"
+          boundary={edit?.kind === 'line' ? undefined : club.boundary}
+          areas={shownAreas}
+          stands={shownStands}
+          label={`Map of ${club.name}: ${club.boundary ? 'the property line' : 'no property line yet'}, ${pluralize(areas.length, 'area')} and ${pluralize(stands.length, 'stand')}.`}
+          basemap={basemap}
+          live={live}
+          onLiveChange={setLive}
+          interactive
+          editing={edit !== null}
+          pinned={chromePinned({ now, overdueAt: overdue })}
+          insets={{ top: PILL_BOTTOM + FIT_PADDING }}
+          footer={sheetHeight}
+          layers={(closeLayers) => (
             <>
-              <NeedsYou
-                items={needsYou({ club, ...value, now })}
-                onDraw={canDraw ? startDraw : undefined}
-                drawing={edit?.kind === 'line'}
-              />
-              {overdue === undefined ? null : (
-                <p className="clubview__overdue">
-                  The overdue alert goes to the club if anyone is still checked in at sunset plus{' '}
-                  {pluralize(club.overdueGraceMinutes, 'minute')}.
-                </p>
-              )}
-              <ClubSummary details={value} />
+              <p className="map-layers__pack">
+                {pack
+                  ? `Map pack: ${basemapBySource(pack.source)?.label ?? BASEMAPS[live].label}, saved for offline`
+                  : 'No map pack yet'}
+              </p>
+              <ButtonLink size="sm" href={pageHref('maps')}>
+                Map packs
+              </ButtonLink>
+              {canDraw ? (
+                <Button
+                  size="sm"
+                  icon={PenLine}
+                  onClick={() => {
+                    closeLayers();
+                    startDraw();
+                  }}
+                >
+                  {lineLabel}
+                </Button>
+              ) : null}
             </>
           )}
-        </Loadable>
-      </div>
-    </section>
+          focus={focusAt && focusKey ? { key: focusKey, at: focusAt, top: PILL_BOTTOM } : null}
+          empty={details.status === 'ready' && !canDraw ? MAP_EMPTY : null}
+          {...(edit
+            ? {
+                onMapClick: (at: [number, number]) =>
+                  edit.kind === 'stand'
+                    ? setEdit({ ...edit, draft: { ...edit.draft, lon: at[0], lat: at[1] } })
+                    : dispatch({ type: 'add', at }),
+                overlay: editor,
+              }
+            : {
+                onStandSelect: (s: { id: string }) => setStandId(s.id),
+                selectedStandId: stand?.id ?? null,
+                ...(canDraw
+                  ? {
+                      onAreaSelect: (a: { id: string }) =>
+                        startArea(areas.find((x) => x.id === a.id) ?? null),
+                    }
+                  : {}),
+              })}
+        >
+          {edit ? (
+            <>
+              <h1 id="club-title" className="visually-hidden" tabIndex={-1} ref={heading}>
+                {club.name}
+              </h1>
+              <div ref={setPillSlot} className="clubview__pill" />
+            </>
+          ) : (
+            <MapPill
+              name={club.name}
+              headingId="club-title"
+              headingRef={heading}
+              next={nextTimeReadout(sun, overdue, now)}
+              icon={
+                sun.untilSunset || overdue === undefined || overdue <= now ? Sunset : AlarmClock
+              }
+              card={wide ? null : conditions}
+            />
+          )}
+        </ClubMap>
+        {wide ? (
+          <aside className="clubview__side" aria-label="Club panel">
+            {summary}
+            {panel}
+          </aside>
+        ) : (
+          <MapSheet
+            label="Club panel"
+            detent={detent}
+            onDetent={setDetent}
+            mapHeight={sectionSize.height}
+            summary={summary}
+          >
+            {panel}
+          </MapSheet>
+        )}
+        <StandDrawer
+          stand={stand}
+          onClose={() => setStandId(null)}
+          areas={loaded.areas}
+          harvests={loaded.harvests}
+          members={loaded.members}
+          onEdit={canDraw ? startStand : undefined}
+        />
+      </section>
+    </EditSlotsContext.Provider>
   );
 }
 
@@ -498,6 +561,8 @@ export const PLACES_HINT = 'To change a stand, tap it on the map. Areas are list
 /** Admins: add a stand or an area; change an area from the list (stands open from the map). */
 function PlacesTools(props: {
   areas: readonly Area[];
+  /** The property line's own row: draw or edit it. */
+  line: ReactNode;
   onAddStand: () => void;
   onAddArea: () => void;
   onEditArea: (area: Area) => void;
@@ -509,6 +574,7 @@ function PlacesTools(props: {
         Stands and areas
       </h2>
       <div className="side-section__tools">
+        {props.line}
         <p className="side-section__hint">{PLACES_HINT}</p>
         <div className="form-plate__actions">
           <Button size="sm" icon={Plus} onClick={props.onAddStand} disabled={props.editing}>
@@ -559,15 +625,6 @@ function OutNow() {
         </EmptyState>
       </div>
     </section>
-  );
-}
-
-/** The club's plate on the map: its name, then the conditions strip or the draw tool. */
-function ClubPlate(props: { children: ReactNode; plateRef?: Ref<HTMLDivElement> }) {
-  return (
-    <div className="clubview__plate" ref={props.plateRef}>
-      {props.children}
-    </div>
   );
 }
 

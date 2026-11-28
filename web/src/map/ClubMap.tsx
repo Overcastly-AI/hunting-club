@@ -10,10 +10,14 @@ import {
   breakpoints,
   fontSize,
   fontWidth,
+  mapChrome,
   radii,
   sizes,
   space,
+  textWidth,
+  visibleLabels,
   type FontWidth,
+  type LabelCandidate,
 } from '@huntclub/design';
 import {
   BASEMAP_IDS,
@@ -24,7 +28,15 @@ import {
   type BasemapId,
   type StandType,
 } from '@huntclub/shared';
-import { LocateFixed, MapPinOff, Maximize, Minus, Plus, type LucideIcon } from 'lucide-react';
+import {
+  Layers,
+  LocateFixed,
+  MapPinOff,
+  Maximize,
+  Minus,
+  Plus,
+  type LucideIcon,
+} from 'lucide-react';
 import {
   useEffect,
   useRef,
@@ -32,9 +44,8 @@ import {
   type KeyboardEvent,
   type PointerEvent,
   type ReactNode,
-  type RefObject,
 } from 'react';
-import { Button, EmptyState, Segmented } from '../components/ui';
+import { Button, EmptyState, Popover, Segmented, Switch } from '../components/ui';
 import { standIcon } from '../components/standIcons';
 import { useElementSize, type Size } from '../components/useElementSize';
 import { cx } from '../components/ui/cx';
@@ -97,17 +108,24 @@ export const FIT_PADDING = space[12];
 const EDGE = FIT_PADDING;
 /** An area's name sits this far inside its north edge, in px. */
 const AREA_LABEL_DROP = 20;
-/** The scale bar's longest length, in px. */
-const SCALE_MAX_PX = 140;
+/** The scale bar's longest length, in px: it shares the footer line with the credit. */
+const SCALE_MAX_PX = 96;
+/** Gaps on the footer line: bar to its length, length to the credit, in px. */
+const FOOTER_GAP = { label: 6, credit: 12 };
+/** Where the footer line's baseline sits above its bottom, in px. */
+const FOOTER_BASELINE = 7;
 /** Stand marker, icon and plate geometry (packages/design sizes and radii). */
 const STAND = sizes.standMarker;
 /** A stand that opens its details is tapped over a 48 px square around the marker. */
 const HIT = sizes.minTapTarget;
 const ICON = sizes.icon;
 const PLATE_PAD = 8;
+const PLATE_PAD_Y = 6;
 const PLATE_GAP = 6;
-const PLATE_LINE = { name: fontSize.markerName, detail: fontSize.mapLabelMin };
-const PLATE_HEIGHT = PLATE_LINE.name + PLATE_LINE.detail + 2 * PLATE_PAD + 4;
+const PLATE_LINE = { name: fontSize.markerName };
+/** A stand's label: its name on one line, within the label cap (mapChrome.labels). */
+const PLATE_HEIGHT = Math.min(mapChrome.labels.maxHeight, PLATE_LINE.name + 2 * PLATE_PAD_Y);
+const PLATE_MAX_WIDTH = mapChrome.labels.maxWidth;
 /** A press that moves less than this many px is a tap, not a drag. */
 export const TAP_SLOP = 4;
 /** Arrow keys move the map this many px (ten times that with Shift). */
@@ -115,13 +133,56 @@ export const KEY_PAN_PX = 64;
 /** One wheel notch (100 px of scroll) zooms this many levels. */
 const WHEEL_ZOOM_PER_PX = 1 / 200;
 
-/**
- * Archivo's average advance width at bold weights, as a share of the font size; with the
- * width axis it sizes a plate to its words (SVG text has no layout of its own).
- */
-const AVERAGE_ADVANCE = 0.56;
-const textWidth = (text: string, size: number, width: FontWidth) =>
-  text.length * size * AVERAGE_ADVANCE * (width / 100);
+/** `text`, cut with an ellipsis where it would run past `maxPx`. */
+export function fitText(text: string, maxPx: number, size: number, width: FontWidth): string {
+  if (textWidth(text, size, width) <= maxPx) return text;
+  const chars = Math.max(1, Math.floor(maxPx / textWidth('m', size, width)) - 1);
+  return `${text.slice(0, chars).trimEnd()}…`;
+}
+
+/** A stand's label on the map: its name as shown, and the plate's size and side. */
+function standLabel(stand: PlanStand, x: number, mapWidth: number) {
+  const room = PLATE_MAX_WIDTH - 2 * PLATE_PAD;
+  const name = fitText(stand.name, room, PLATE_LINE.name, fontWidth.marker);
+  const width = Math.min(
+    PLATE_MAX_WIDTH,
+    2 * PLATE_PAD + textWidth(name, PLATE_LINE.name, fontWidth.marker),
+  );
+  // Right of the stand, or left of it where the right would run off the map.
+  const side = plateSide(x, STAND / 2 + PLATE_GAP, width, mapWidth);
+  const offset = side === 'right' ? STAND / 2 + PLATE_GAP : -(STAND / 2 + PLATE_GAP + width);
+  return { name, width, side, offset };
+}
+
+/** Which stands show their name (mapChrome.labels): the rest are icons until tapped or zoomed. */
+function labelledStands(
+  stands: readonly PlanStand[],
+  projection: Projection,
+  mapWidth: number,
+  selected: string | null,
+): Set<string> {
+  const candidates: LabelCandidate[] = stands.map((stand) => {
+    const [x, y] = projection.project(stand.lon, stand.lat);
+    const label = standLabel(stand, x, mapWidth);
+    return {
+      id: stand.id,
+      marker: { x: x - HIT / 2, y: y - HIT / 2, width: HIT, height: HIT },
+      label: {
+        x: x + label.offset,
+        y: y - PLATE_HEIGHT / 2,
+        width: label.width,
+        height: PLATE_HEIGHT,
+      },
+    };
+  });
+  return visibleLabels(candidates, projection.view.zoom, selected);
+}
+
+/** What the Layers popover shows or hides on the map. */
+export interface ShownLayers {
+  stands: boolean;
+  areas: boolean;
+}
 
 /** A pointer's position in the map's own px. */
 export const mapPoint = (box: DOMRect | undefined, e: { clientX: number; clientY: number }) =>
@@ -170,9 +231,15 @@ export function ClubMap(props: {
   onAreaSelect?: (area: PlanArea) => void;
   /**
    * Brings a point into the open map once per `key` (what an editor opened): across the middle,
-   * halfway between `top` px (a plate's bottom) and the controls. `top` 0 waits for it.
+   * halfway between `top` px (a plate's bottom) and the footer. `top` 0 waits for it.
    */
   focus?: { key: string; at: [number, number]; top: number } | null;
+  /** More rows for the Layers popover (with `interactive`), after the basemap and the layers. */
+  layers?: (close: () => void) => ReactNode;
+  /** Editing on the map (docs/DESIGN.md "Map chrome" 7): the icon stack hides. */
+  editing?: boolean;
+  /** The chrome never fades while the map moves (an alert, a quiet mesh, near an overdue time). */
+  pinned?: boolean;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const size = useElementSize(box, FALLBACK_SIZE);
@@ -183,19 +250,35 @@ export function ClubMap(props: {
   // Under the tablet width stand names stay, but area names would sit on the stands.
   const areaNames = !compact && width >= breakpoints.tablet;
   const bounds = planBounds(props);
-  // The map's controls float at the bottom: from the tablet width up, the plan fits above them
-  // (on a phone that would leave the plan a sliver; it can be moved out from under them).
-  const controls = useRef<HTMLDivElement>(null);
-  const controlsSize = useElementSize(controls, { width: 0, height: 0 });
+  // The layers the Layers popover shows (all of them until it hides one).
+  const [shownLayers, setShownLayers] = useState<ShownLayers>({ stands: true, areas: true });
+  const areas = shownLayers.areas ? props.areas : [];
+  const stands = shownLayers.stands ? props.stands : [];
+  // The plan fits clear of the icon stack and above the footer line.
   const given = typeof props.insets === 'function' ? props.insets(size) : props.insets;
-  const clearControls = interactive && width >= breakpoints.tablet ? controlsSize.height + EDGE : 0;
+  const stackRoom = interactive ? mapChrome.stack.button + 2 * mapChrome.inset : EDGE;
+  const footerRoom = footer + mapChrome.footer.height + mapChrome.inset;
   const insets: Insets = {
     top: EDGE,
-    right: EDGE,
+    right: Math.max(EDGE, stackRoom),
     left: EDGE,
     ...given,
-    bottom: Math.max(given?.bottom ?? EDGE, clearControls),
+    bottom: Math.max(given?.bottom ?? EDGE, footerRoom),
   };
+  // Auto-hide (docs/DESIGN.md "Map chrome" 5): moving the map fades the chrome; it comes back
+  // once the map has been still a moment, or at once on a tap or when focus reaches it.
+  const [moving, setMoving] = useState(false);
+  const idle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const moved = () => {
+    clearTimeout(idle.current);
+    setMoving(true);
+    idle.current = setTimeout(() => setMoving(false), mapChrome.autoHide.idleMs);
+  };
+  const still = () => {
+    clearTimeout(idle.current);
+    setMoving(false);
+  };
+  useEffect(() => () => clearTimeout(idle.current), []);
   // The view the admin moved to; until then, the plan's own fit (or the lower 48).
   const [view, setView] = useState<View | null>(null);
   // While something is drawn by tapping, the map holds still where it was (what it draws may
@@ -225,11 +308,15 @@ export function ClubMap(props: {
     }
     if (focus.top <= 0 || focused.current === focus.key || !shown.current) return;
     focused.current = focus.key;
-    const bottom = height - footer - (interactive ? controlsSize.height + EDGE : EDGE);
+    const bottom = height - footerRoom;
     const centred = { ...shown.current, lon: focus.at[0], lat: focus.at[1] };
     setView(panView(centred, 0, (focus.top + bottom) / 2 - height / 2));
   }, [focus?.key, focus?.top]);
   const frame = (): DOMRect | undefined => box.current?.getBoundingClientRect();
+  const labelled =
+    projection && !compact
+      ? labelledStands(stands, projection, width, props.selectedStandId ?? null)
+      : new Set<string>();
   const live = props.live && projection ? liveBasemap(props.live, projection, width, height) : null;
   // The pack shows under live tiles of its own basemap only, so the credit is always one.
   const pack =
@@ -252,11 +339,13 @@ export function ClubMap(props: {
     const dy = e.clientY - d.y;
     if (!d.moved && Math.hypot(dx, dy) < TAP_SLOP) return;
     d.moved = true;
+    moved();
     move(panView(d.from, dx, dy));
   };
   const onPointerUp = (e: PointerEvent<SVGSVGElement>) => {
     const d = drag.current;
     drag.current = null;
+    if (d && !d.moved) still();
     if (!d || d.moved || !projection || !props.onMapClick) return;
     props.onMapClick(projection.unproject(...mapPoint(frame(), e)));
   };
@@ -274,6 +363,7 @@ export function ClubMap(props: {
     else if (e.key === '+' || e.key === '=') move(zoomView(projection.view, 1, width, height));
     else if (e.key === '-' || e.key === '_') move(zoomView(projection.view, -1, width, height));
     else return;
+    moved();
     e.preventDefault(); // arrows would scroll the page
   };
   // The wheel zooms around the pointer; React's wheel listener is passive, so this one is not.
@@ -288,6 +378,7 @@ export function ClubMap(props: {
       if (!p) return;
       e.preventDefault();
       const delta = Math.max(-1, Math.min(1, -e.deltaY * WHEEL_ZOOM_PER_PX));
+      moved();
       setView(zoomView(p.view, delta, w, h, mapPoint(frame(), e)));
     };
     element.addEventListener('wheel', onWheel, { passive: false });
@@ -295,7 +386,19 @@ export function ClubMap(props: {
   }, [interactive]);
 
   return (
-    <div ref={box} className={cx('plan', interactive && 'plan--interactive', props.className)}>
+    <div
+      ref={box}
+      className={cx(
+        'plan',
+        interactive && 'plan--interactive',
+        moving && !props.pinned && 'plan--moving',
+        props.className,
+      )}
+      // Focus reaching the chrome (Tab from the map) brings it back.
+      onFocus={(e) => {
+        if ((e.target as Element) !== svg.current) still();
+      }}
+    >
       <svg
         ref={svg}
         className={cx('plan__svg', (interactive || props.onMapClick) && 'plan__svg--ground')}
@@ -319,6 +422,9 @@ export function ClubMap(props: {
         {projection ? (
           <Drawing
             {...props}
+            areas={areas}
+            stands={stands}
+            labelled={labelled}
             basemap={pack}
             live={live}
             compact={compact}
@@ -333,7 +439,7 @@ export function ClubMap(props: {
       {/* Like the names they are, only where there is room beside the stands (tablet up). */}
       {projection && props.onAreaSelect && areaNames ? (
         <AreaButtons
-          areas={props.areas}
+          areas={areas}
           projection={projection}
           width={width}
           height={height}
@@ -342,11 +448,11 @@ export function ClubMap(props: {
       ) : null}
       {projection && props.onStandSelect ? (
         <StandButtons
-          stands={props.stands}
+          stands={stands}
           projection={projection}
           width={width}
           height={height}
-          compact={compact}
+          labelled={labelled}
           onSelect={props.onStandSelect}
           selectedId={props.selectedStandId ?? null}
         />
@@ -355,15 +461,16 @@ export function ClubMap(props: {
         ? props.overlay({ projection, width, height, box: frame })
         : null}
       {props.children}
-      {interactive && projection ? (
-        <MapControls
-          lift={footer}
-          plateRef={controls}
+      {interactive && projection && !props.editing ? (
+        <MapStack
           live={props.live ?? null}
           onLiveChange={props.onLiveChange}
           onZoom={(delta) => move(zoomView(projection.view, delta, width, height))}
           onFit={bounds ? () => setView(null) : undefined}
           onLocate={(lon, lat) => move({ lon, lat, zoom: LOCATION_ZOOM })}
+          shown={shownLayers}
+          onShownChange={setShownLayers}
+          layers={props.layers}
         />
       ) : null}
       {/* After the plates, so its heading follows the page's own in the outline. */}
@@ -376,18 +483,20 @@ export function ClubMap(props: {
 const canLocate = () => typeof navigator !== 'undefined' && 'geolocation' in navigator;
 
 /**
- * The map's own controls, on one plate at the right edge (docs/DESIGN.md): the basemap, the
- * admin's own location (used here only, never sent), zoom, and back to the property.
+ * The map's own controls (docs/DESIGN.md "Map chrome" 3): one stack of 48 px icon buttons at the
+ * right edge, each with a name and a tooltip. Layers opens the basemap, Fit property, the layers'
+ * show and hide, and the page's own rows; then, on a desktop, the split zoom; then Find me (the
+ * admin's own location, used here only and never sent).
  */
-function MapControls(props: {
-  /** px of bar under the controls (footer). */
-  lift: number;
-  plateRef: RefObject<HTMLDivElement | null>;
+function MapStack(props: {
   live: BasemapId | null;
   onLiveChange?: ((basemap: BasemapId) => void) | undefined;
   onZoom: (delta: number) => void;
   onFit?: (() => void) | undefined;
   onLocate: (lon: number, lat: number) => void;
+  shown: ShownLayers;
+  onShownChange: (shown: ShownLayers) => void;
+  layers?: ((close: () => void) => ReactNode) | undefined;
 }) {
   const [locating, setLocating] = useState<'idle' | 'busy' | 'failed'>('idle');
   const locate = () => {
@@ -401,40 +510,73 @@ function MapControls(props: {
       { maximumAge: 60_000, timeout: 15_000 },
     );
   };
+  const toggle = (layer: keyof ShownLayers, label: string) => (
+    <Switch
+      label={label}
+      checked={props.shown[layer]}
+      onChange={(e) => props.onShownChange({ ...props.shown, [layer]: e.target.checked })}
+    />
+  );
   return (
-    <div
-      className={cx('plan__controls', props.lift > 0 && 'plan__controls--lifted')}
-      ref={props.plateRef}
-      role="group"
-      aria-label="Map controls"
-    >
-      {props.live && props.onLiveChange ? (
-        <Segmented
-          legend="Basemap"
-          hideLegend
-          options={BASEMAP_IDS.map((id) => ({ value: id, label: BASEMAPS[id].label }))}
-          value={props.live}
-          onChange={props.onLiveChange}
+    <div className="map-stack map-fade" role="group" aria-label="Map controls">
+      <Popover
+        label="Map layers"
+        tooltip="Layers"
+        trigger={<Layers size={sizes.icon} aria-hidden />}
+        placement="bottom-end"
+        className="map-stack__layers"
+        triggerClassName="map-stack__button"
+        panelClassName="map-layers"
+      >
+        {(close) => (
+          <>
+            {props.live && props.onLiveChange ? (
+              <Segmented
+                legend="Basemap"
+                hideLegend
+                block
+                options={BASEMAP_IDS.map((id) => ({ value: id, label: BASEMAPS[id].label }))}
+                value={props.live}
+                onChange={props.onLiveChange}
+              />
+            ) : null}
+            <div className="map-layers__switches">
+              {toggle('stands', 'Stands')}
+              {toggle('areas', 'Areas')}
+            </div>
+            {props.onFit ? (
+              <Button
+                size="sm"
+                icon={Maximize}
+                onClick={() => {
+                  props.onFit!();
+                  close();
+                }}
+              >
+                Fit property
+              </Button>
+            ) : null}
+            {props.layers?.(close)}
+          </>
+        )}
+      </Popover>
+      <div className="map-stack__zoom" role="group" aria-label="Zoom">
+        <Button size="sm" iconOnly label="Zoom in" icon={Plus} onClick={() => props.onZoom(1)} />
+        <Button size="sm" iconOnly label="Zoom out" icon={Minus} onClick={() => props.onZoom(-1)} />
+      </div>
+      {canLocate() ? (
+        <Button
+          size="sm"
+          iconOnly
+          label="Find me"
+          icon={LocateFixed}
+          loading={locating === 'busy'}
+          onClick={locate}
+          className="map-stack__button"
         />
       ) : null}
-      {canLocate() ? (
-        <Button size="sm" icon={LocateFixed} loading={locating === 'busy'} onClick={locate}>
-          Find me
-        </Button>
-      ) : null}
-      <Button size="sm" icon={Plus} onClick={() => props.onZoom(1)}>
-        Zoom in
-      </Button>
-      <Button size="sm" icon={Minus} onClick={() => props.onZoom(-1)}>
-        Zoom out
-      </Button>
-      {props.onFit ? (
-        <Button size="sm" icon={Maximize} onClick={props.onFit}>
-          Fit property
-        </Button>
-      ) : null}
       {locating === 'failed' ? (
-        <p className="plan__controls-note" role="status">
+        <p className="map-stack__note" role="status">
           Location is off for this site. Turn it on in the browser, or move the map by hand.
         </p>
       ) : null}
@@ -460,6 +602,7 @@ function MapEmptyPlate(props: MapEmpty) {
 function Drawing(
   props: Omit<Parameters<typeof ClubMap>[0], 'live' | 'footer'> & {
     footer: number;
+    labelled: ReadonlySet<string>;
     live: BasemapPicture | null;
     projection: Projection;
     width: number;
@@ -523,29 +666,37 @@ function Drawing(
               key={stand.id}
               stand={stand}
               at={projection.project(stand.lon, stand.lat)}
-              compact={compact}
+              labelled={props.labelled.has(stand.id)}
               mapWidth={width}
             />
           ))}
+      {/* The footer line (docs/DESIGN.md "Map chrome" 6): the scale bar, its length and the credit,
+          bottom left, above whatever takes the map's bottom edge (the sheet's peek). */}
       <g
-        transform={`translate(${EDGE / 2} ${height - props.footer - EDGE / 2})`}
-        className="plan__scale"
+        transform={`translate(${mapChrome.inset} ${height - props.footer - FOOTER_BASELINE})`}
+        className="plan__footer map-fade"
       >
-        <path className="plan__scale-bar" d={`M0 -8 V0 H${scale.px.toFixed(1)} V-8`} />
-        <text className="plan__scale-label" x={scale.px / 2} y={-6} textAnchor="middle">
-          {scale.label}
-        </text>
+        <g className="plan__scale">
+          <path className="plan__scale-bar" d={`M0 -8 V0 H${scale.px.toFixed(1)} V-8`} />
+          <text className="plan__scale-label" x={scale.px + FOOTER_GAP.label} y={0}>
+            {scale.label}
+          </text>
+        </g>
+        {credit ? (
+          <text
+            className="plan__credit"
+            x={
+              scale.px +
+              FOOTER_GAP.label +
+              textWidth(scale.label, fontSize.mapLabelMin, fontWidth.markerDetail) +
+              FOOTER_GAP.credit
+            }
+            y={0}
+          >
+            {credit}
+          </text>
+        ) : null}
       </g>
-      {credit ? (
-        <text
-          className="plan__credit"
-          x={width - EDGE / 2}
-          y={height - props.footer - EDGE / 2}
-          textAnchor="end"
-        >
-          {credit}
-        </text>
-      ) : null}
     </g>
   );
 }
@@ -669,7 +820,7 @@ function StandButtons(props: {
   projection: Projection;
   width: number;
   height: number;
-  compact: boolean;
+  labelled: ReadonlySet<string>;
   onSelect: (stand: PlanStand) => void;
   selectedId: string | null;
 }) {
@@ -695,7 +846,7 @@ function StandButtons(props: {
             key={stand.id}
             stand={stand}
             at={props.projection.project(stand.lon, stand.lat)}
-            compact={props.compact}
+            labelled={props.labelled.has(stand.id)}
             mapWidth={width}
             button={{ onClick: open, onKeyDown, selected: stand.id === props.selectedId }}
           />
@@ -705,11 +856,15 @@ function StandButtons(props: {
   );
 }
 
-/** A stand: the rounded square with its type's icon, and its plate (name; Open or Closed). */
+/**
+ * A stand: the rounded square with its type's icon and, where there is room (`labelled`), its
+ * name on a plate capped at mapChrome.labels. Open or Closed is read out with the name and
+ * shown in the stand's details; a closed stand's icon and name are drawn quieter.
+ */
 function Stand(props: {
   stand: PlanStand;
   at: [number, number];
-  compact?: boolean | undefined;
+  labelled: boolean;
   mapWidth: number;
   /** A stand that opens its details (StandButtons). */
   button?: { onClick: () => void; onKeyDown: (e: KeyboardEvent) => void; selected: boolean };
@@ -718,15 +873,7 @@ function Stand(props: {
   const [x, y] = props.at;
   const Icon = standIcon(stand.type);
   const status = STAND_STATUS_LABELS[stand.active ? 'open' : 'closed'];
-  const plateWidth =
-    2 * PLATE_PAD +
-    Math.max(
-      textWidth(stand.name, PLATE_LINE.name, fontWidth.marker),
-      textWidth(status, PLATE_LINE.detail, fontWidth.markerDetail),
-    );
-  // Right of the stand, or left of it where the right would run off the map.
-  const side = plateSide(x, STAND / 2 + PLATE_GAP, plateWidth, props.mapWidth);
-  const plateX = side === 'right' ? STAND / 2 + PLATE_GAP : -(STAND / 2 + PLATE_GAP + plateWidth);
+  const label = standLabel(stand, x, props.mapWidth);
   return (
     <g
       transform={`translate(${x.toFixed(1)} ${y.toFixed(1)})`}
@@ -740,7 +887,7 @@ function Stand(props: {
         ? {
             role: 'button',
             tabIndex: 0,
-            // The plate's words first, in order (what a voice-control user says), then the type.
+            // The name first (what a voice-control user says), then its status and type.
             'aria-label': `${stand.name}, ${status}, ${STAND_TYPE_LABELS[stand.type]}`,
             'aria-haspopup': 'dialog' as const,
             onClick: button.onClick,
@@ -767,30 +914,26 @@ function Stand(props: {
         rx={radii.standMarker}
       />
       <Icon x={-ICON / 2} y={-ICON / 2} size={ICON} className="plan__stand-icon" />
-      {props.compact ? null : (
+      {props.labelled ? (
         <g
-          transform={`translate(${plateX.toFixed(1)} ${-PLATE_HEIGHT / 2})`}
-          className={`plan__plate-group plan__plate-group--${side}`}
+          transform={`translate(${label.offset.toFixed(1)} ${-PLATE_HEIGHT / 2})`}
+          className={`plan__plate-group plan__plate-group--${label.side}`}
         >
           <rect
             className="plan__plate"
-            width={plateWidth}
+            width={label.width}
             height={PLATE_HEIGHT}
             rx={radii.markerPlate}
           />
-          <text className="plan__plate-name" x={PLATE_PAD} y={PLATE_PAD + PLATE_LINE.name - 2}>
-            {stand.name}
-          </text>
-          {/* A space between the lines, so the stand button's words read "Name Status". */}{' '}
           <text
-            className={cx('plan__plate-detail', stand.active && 'plan__plate-detail--open')}
+            className="plan__plate-name"
             x={PLATE_PAD}
-            y={PLATE_HEIGHT - PLATE_PAD - 1}
+            y={PLATE_HEIGHT / 2 + PLATE_LINE.name * 0.35}
           >
-            {status}
+            {label.name}
           </text>
         </g>
-      )}
+      ) : null}
     </g>
   );
 }

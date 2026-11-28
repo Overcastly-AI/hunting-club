@@ -6,17 +6,14 @@ import { opacity, sizes } from '@huntclub/design';
 import { MOBILE_TAB_BAR_HEIGHT, SHELL } from '../components/ui/sizes';
 import {
   color,
+  FLOATING,
   DESKTOP,
   gap,
   HAIR,
   PHONE,
-  TABLET_UP,
   TAP,
   text,
 } from '../components/ui/styles/shared';
-
-/** A plate floating over the map: the plate tone and the floating shadow (over imagery only). */
-const floating = `background: ${color('plate')}; border-radius: var(--radius-lg); box-shadow: ${color('shadowPlate')};`;
 
 const common = `
 .page-pad { padding: ${gap(6)} ${gap(8)}; max-width: calc(${SHELL.contentMaxWidth}px + 2 * ${gap(8)}); margin: 0 auto; }
@@ -56,7 +53,7 @@ const signin = `
 .signin__map .plan__basemap { opacity: ${opacity.backdrop}; }
 /* Sized to its contents and centred on the map's height: no empty slab under the form. */
 .signin__door { position: relative; display: flex; flex-direction: column; gap: ${gap(4)}; width: 440px;
-  padding: ${gap(8)} ${gap(8)} ${gap(5)}; ${floating} }
+  padding: ${gap(8)} ${gap(8)} ${gap(5)}; ${FLOATING} }
 /* The field on the plate: the plate fill inside the control edge (the placeholder is textTertiary, 4.5:1 on it). */
 .signin__door .ui-input { background: ${color('plate')}; }
 .signin__brand { display: flex; align-items: center; gap: ${gap(3)}; }
@@ -76,7 +73,7 @@ const signin = `
 .signin__legal a { ${text('label')}; display: inline-flex; align-items: center; min-height: ${TAP};
   color: ${color('accentText')}; }
 .signin__sample { position: absolute; right: ${gap(6)}; top: ${gap(6)}; margin: 0; padding: ${gap(2)} ${gap(3)};
-  ${text('label')}; ${floating} }
+  ${text('label')}; ${FLOATING} }
 ${PHONE} {
   .signin { flex-direction: column; align-items: stretch; padding: 0; }
   .signin__map { position: relative; inset: auto; z-index: 0; order: -1; height: 300px; flex: none; }
@@ -88,23 +85,21 @@ ${PHONE} {
 `;
 
 /**
- * My club: the map edge to edge with the club's plate on it, and the side panel (a sheet rising
- * over the map on phones and tablets).
+ * My club: the map fills the page (between the top bar and the tab bar on a phone), with the
+ * map chrome on it (map/styles.ts); the side panel beside it on a desktop, and below that the
+ * same panel as the bottom sheet over the map (docs/DESIGN.md "Map chrome" 9).
  */
 const clubview = `
-.clubview { display: grid; }
-.clubview__map { height: ${SHELL.phoneMapHeight}px; }
-.clubview__plate { position: absolute; top: ${gap(3)}; left: ${gap(3)}; right: ${gap(3)}; overflow: hidden; ${floating} }
-.clubview__plate .ui-stat-grid { border: 0; border-top: ${HAIR}; border-radius: 0; }
-.clubview__title { padding: ${gap(3)} ${gap(4)}; }
-.clubview__title h1 { margin: 0; }
-.clubview__facts { ${text('body')}; color: ${color('textSecondary')}; margin: 2px 0 0; }
-.clubview__line { display: flex; flex-wrap: wrap; align-items: center; gap: ${gap(2)} ${gap(3)};
-  padding: ${gap(3)} ${gap(4)}; border-top: ${HAIR}; }
-.clubview__line-note { ${text('body')}; flex: 1 1 14rem; margin: 0; }
-.clubview__side { position: relative; z-index: 1; display: grid; align-content: start; gap: ${gap(6)};
-  margin-top: -${gap(4)}; padding: ${gap(5)} ${gap(4)} ${gap(8)}; background: ${color('plate')};
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
+.clubview { position: relative; display: grid; height: 100vh; overflow: hidden; isolation: isolate; }
+.clubview > .clubview__map { position: absolute; inset: 0; }
+.clubview__pill { display: contents; }
+.clubview__facts { ${text('label')}; color: ${color('textSecondary')}; margin: 0; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+.clubview__editor[hidden] { display: none; }
+.clubview__side > *, .map-sheet__body > * { flex: none; }
+/* A column that scrolls: flex, so no row shrinks under its contents (grid rows would). */
+.clubview__side { display: flex; flex-direction: column; gap: ${gap(6)}; min-height: 0; overflow-y: auto;
+  padding: ${gap(5)} ${gap(5)} ${gap(8)}; background: ${color('plate')}; border-left: ${HAIR}; }
 .clubview__overdue { ${text('body')}; color: ${color('textSecondary')}; margin: 0; padding-top: ${gap(3)};
   border-top: ${HAIR}; }
 .side-section__title { ${text('title2')}; display: flex; justify-content: space-between; align-items: baseline;
@@ -126,17 +121,12 @@ const clubview = `
   padding: 0 ${gap(1)}; color: ${color('text')}; text-decoration: none; border-radius: var(--radius-sm); }
 .row-link:hover { background: ${color('raised')}; }
 .row-link__label { ${text('body')}; color: ${color('textSecondary')}; }
-/* Drawing on a phone: the map fills the screen between the top bar and the tab bar (and an
-   editor opened from below the map scrolls it to just under the top bar). */
-${PHONE} { .clubview { scroll-margin-top: ${SHELL.topBarHeight}px; } }
-${PHONE} { .clubview--drawing .clubview__map { height: calc(100dvh - ${SHELL.topBarHeight + MOBILE_TAB_BAR_HEIGHT}px);
-  min-height: ${SHELL.phoneMapHeight}px; } }
-${TABLET_UP} { .clubview__plate { right: auto; width: min(460px, calc(100% - 2 * ${gap(4)})); top: ${gap(4)}; left: ${gap(4)}; } }
+${PHONE} { .clubview { height: calc(100dvh - ${SHELL.topBarHeight}px - ${MOBILE_TAB_BAR_HEIGHT}px - env(safe-area-inset-bottom)); } }
 ${DESKTOP} {
-  .clubview { grid-template-columns: minmax(0, 1fr) ${SHELL.sidePanelWidth}px; height: 100vh; }
-  .clubview__map { height: auto; min-height: 0; }
-  .clubview__side { margin: 0; border-radius: 0; border-left: ${HAIR}; overflow-y: auto; padding: ${gap(5)} ${gap(5)} ${gap(8)}; }
+  .clubview { grid-template-columns: minmax(0, 1fr) ${SHELL.sidePanelWidth}px; }
+  .clubview > .clubview__map { position: relative; inset: auto; min-height: 0; }
 }
+.side-section__line { display: grid; gap: ${gap(2)}; justify-items: start; }
 `;
 
 /** Lists beside a small map: the map on top on phones, to the right (sticky) from desktop. */

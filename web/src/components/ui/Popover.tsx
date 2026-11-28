@@ -1,5 +1,7 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useId, useRef, useState, type ReactNode } from 'react';
 import { cx } from './cx';
+import { Tooltip } from './Tooltip';
+import { useDismiss } from './useDismiss';
 
 export type PopoverPlacement = 'bottom-start' | 'bottom-end' | 'top-start' | 'right-end';
 
@@ -17,6 +19,8 @@ export function Popover(props: {
   children: (close: () => void) => ReactNode;
   /** Names the panel for screen readers. */
   label: string;
+  /** An icon-only trigger's name: its aria-label, also shown as a tooltip. */
+  tooltip?: string;
   placement?: PopoverPlacement;
   className?: string;
   triggerClassName?: string;
@@ -28,40 +32,26 @@ export function Popover(props: {
   const id = useId();
   const close = () => setOpen(false);
 
-  useEffect(() => {
-    if (!open) return;
-    const outside = (e: Event) => {
-      if (!root.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('pointerdown', outside);
-    document.addEventListener('focusin', outside);
-    return () => {
-      document.removeEventListener('pointerdown', outside);
-      document.removeEventListener('focusin', outside);
-    };
-  }, [open]);
+  const onKeyDown = useDismiss(open, close, root, button);
 
   return (
-    <div
-      ref={root}
-      className={cx('ui-popover', props.className)}
-      onKeyDown={(e) => {
-        if (e.key !== 'Escape' || !open) return;
-        e.stopPropagation();
-        setOpen(false);
-        button.current?.focus();
-      }}
-    >
-      <button
-        ref={button}
-        type="button"
-        className={cx('ui-popover__trigger', props.triggerClassName)}
-        aria-expanded={open}
-        aria-controls={id}
-        onClick={() => setOpen((o) => !o)}
-      >
-        {props.trigger}
-      </button>
+    <div ref={root} className={cx('ui-popover', props.className)} onKeyDown={onKeyDown}>
+      {(() => {
+        const trigger = (
+          <button
+            ref={button}
+            type="button"
+            className={cx('ui-popover__trigger', props.triggerClassName)}
+            aria-label={props.tooltip}
+            aria-expanded={open}
+            aria-controls={id}
+            onClick={() => setOpen((o) => !o)}
+          >
+            {props.trigger}
+          </button>
+        );
+        return props.tooltip ? <Tooltip content={props.tooltip}>{trigger}</Tooltip> : trigger;
+      })()}
       <div
         id={id}
         role="group"

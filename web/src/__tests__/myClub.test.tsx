@@ -7,7 +7,7 @@ import {
   type Member,
 } from '@huntclub/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { OVERDUE_ALERT_LABEL } from '../components/ConditionsStrip';
+import { OVERDUE_ALERT_LABEL } from '@huntclub/shared';
 import { SAMPLE_PROPERTY } from '@huntclub/shared/sample';
 import { MAP_EMPTY, NEEDS_YOU_EMPTY, NO_LINE, OUT_NOW_EMPTY } from '../pages/MyClub';
 import { renderSignedIn } from '../testing/app';
@@ -30,7 +30,7 @@ async function needsYou() {
     }));
 }
 
-/** The conditions strip's cells as "Label value". */
+/** The conditions strip's cells as "Label value" (in the card the top pill drops). */
 const strip = () =>
   within(screen.getByRole('list', { name: 'Conditions today' }))
     .getAllByRole('listitem')
@@ -79,7 +79,7 @@ describe('My club', () => {
     ]);
     const row = screen.getByText(/^Draw your property line/).closest('li')!;
     expect(within(row).getByRole('button', { name: 'Draw' })).toBeTruthy();
-    // The map goes anywhere, under the club's plate, with no empty plate in the way.
+    // The map goes anywhere, under the club's pill, with no empty plate in the way.
     expect(screen.getByText(NO_LINE)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Draw property line' })).toBeTruthy();
     expect(screen.queryByRole('heading', { level: 3, name: MAP_EMPTY.title })).toBeNull();
@@ -117,6 +117,9 @@ describe('My club', () => {
   it('reads out sunrise, sunset and the overdue alert time at the property, never shooting hours, and no wind or temperature', async () => {
     await renderSignedIn();
     await screen.findByRole('heading', { level: 1, name: 'Oak Ridge Hunt Club' });
+    // Not on the map until asked for: a tap on the pill drops the card.
+    expect(screen.queryByRole('list', { name: 'Conditions today' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Today at the property' }));
     const cells = strip();
     expect(cells.map((c) => c!.replace(/\d.*$/, ''))).toEqual([
       READOUT_LABELS.sunrise,
@@ -165,6 +168,8 @@ describe('My club', () => {
       await renderSignedIn(data);
       const map = await screen.findByRole('img', { name: /^Map of Oak Ridge Hunt Club/ });
       // The pack is topo: it shows under live tiles of its own basemap.
+      fireEvent.click(screen.getByRole('button', { name: 'Layers' }));
+      expect(screen.getByText('Map pack: Topo, saved for offline')).toBeTruthy();
       fireEvent.click(screen.getByRole('radio', { name: 'Topo' }));
       const packImages = () =>
         map.querySelectorAll('.plan__basemap:not(.plan__basemap--live) image');
