@@ -1,6 +1,6 @@
-import { darkTheme, lightTheme, type Theme } from '@huntclub/design';
+import { darkTheme, lightTheme, mapChrome, type Theme } from '@huntclub/design';
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { Users } from 'lucide-react-native';
+import { Hand, Users } from 'lucide-react-native';
 import { AccessibilityInfo, Platform, StyleSheet, Text } from 'react-native';
 
 import { migrate } from '../../db/migrate';
@@ -8,7 +8,7 @@ import { migrations } from '../../db/migrations';
 import { saveThemePreference } from '../../db/appState';
 import { a11yProblems, setLargeText } from '../../test-utils/a11yAudit';
 import { createTestDatabase } from '../../test-utils/nodeSqlite';
-import { BUTTON_HEIGHT, STATUS_TONE_COLORS, ThemeProvider, sizes } from '../../theme';
+import { BUTTON_HEIGHT, STATUS_TONE_COLORS, ThemeProvider } from '../../theme';
 import { Badge } from '../Badge';
 import { Banner } from '../Banner';
 import { BUTTON_VARIANTS, Button } from '../Button';
@@ -39,10 +39,27 @@ describe('Button', () => {
   it.each([
     ['md', BUTTON_HEIGHT.md],
     ['lg', BUTTON_HEIGHT.lg],
-    ['hero', sizes.primaryButtonMinHeight],
+    ['sheet', mapChrome.sheet.actionRow],
   ] as const)('is %s: %i px tall', async (size, height) => {
     await render(<Button size={size} label="Go" onPress={jest.fn()} />);
     expect(flat(button('Go').props.style).minHeight).toBe(height);
+  });
+
+  it('is a square of its height with the icon only, the label and detail still spoken', async () => {
+    await render(
+      <Button
+        size="sheet"
+        iconOnly
+        icon={Hand}
+        variant="help"
+        label="Ask for a Hand"
+        detail="Pings your party"
+        onPress={jest.fn()}
+      />,
+    );
+    const style = flat(button('Ask for a Hand. Pings your party').props.style);
+    expect([style.width, style.height]).toEqual([56, 56]);
+    expect(screen.queryByText('Ask for a Hand')).toBeNull();
   });
 
   it('speaks the label and detail together, and presses', async () => {

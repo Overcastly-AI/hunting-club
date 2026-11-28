@@ -29,12 +29,11 @@ const iconColors = (name: string): unknown[] =>
   icons(name).map((icon) => icon.props.stroke ?? icon.props.color);
 
 describe('bottom tab bar', () => {
-  it('lists Map, Chat, Check In and Party/Club with Lucide icons', () => {
+  it('lists Map, Chat and Club with Lucide icons (Check In opens from the map)', () => {
     expect(TABS.map((t) => [t.name, t.title, t.icon.displayName])).toEqual([
       ['index', 'Map', 'Map'],
       ['chat', 'Chat', 'MessageSquare'],
-      ['check-in', 'Check In', 'CircleCheck'],
-      ['party', 'Party/Club', 'Users'],
+      ['party', 'Club', 'Users'],
     ]);
   });
 

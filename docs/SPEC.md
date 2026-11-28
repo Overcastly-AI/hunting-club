@@ -260,7 +260,7 @@ The look is the map-first direction, approved by the owner on 2026-11-27: docs/D
 
 ## Screens
 
-The app has four tabs (Map, Chat, Check In, Party/Club) plus onboarding and the clubhouse board. Only the Map screen has an approved mockup. Build the other screens in the same style, using the content from Designs A–C on the canvas. Free users see the same screens with party content instead of club content.
+The app has three tabs (Map, Chat, Club) plus Check In (opened from the map's sheet), onboarding and the clubhouse board. Only the Map screen has an approved mockup. Build the other screens in the same style, using the content from Designs A–C on the canvas. Free users see the same screens with party content instead of club content.
 
 **1. Map (approved: Design D)**
 

@@ -1,7 +1,9 @@
 name: App screenshots
 
-# Screenshots of the phone app on an Android emulator (docs/redesign/m3-screenshots.md): Map,
-# Layers, Chat and Check In at 390 dp, in the dark and daylight themes, uploaded as an artifact.
+# Screenshots of the phone app on an Android emulator (docs/redesign/m3-screenshots.md): the Map
+# at rest, checked in, with the sheet half open and with Layers open, then Chat and Check In, at
+# 390 dp in the dark and daylight themes, uploaded as an artifact. The list is
+# app/src/screenshot/shots.ts.
 # Manual only (Actions > App screenshots > Run workflow), so it spends free minutes only when
 # someone runs it: about 23 minutes on a cold cache, 12 once the Gradle and AVD caches are warm.
 # The app runs in its dev-only screenshot mode (app/src/screenshot): sample club, stand-in radio,

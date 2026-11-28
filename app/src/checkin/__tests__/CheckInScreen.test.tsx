@@ -1,4 +1,4 @@
-// The Check In tab in the map-first design: the four modes, stands nearest first, the overdue
+// The Check In screen in the map-first design: the four modes, stands nearest first, the overdue
 // line (sunset plus grace) and the slider.
 import { CheckInMode } from '@huntclub/mesh';
 import { fireEvent, render, screen } from '@testing-library/react-native';

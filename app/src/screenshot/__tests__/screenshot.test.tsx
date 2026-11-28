@@ -19,13 +19,21 @@ import { SRC, sourceFiles } from '../../test-utils/sourceFiles';
 import { screenshotMode } from '../index';
 import { fixClock, standInChat, standInCheckIn } from '../mode';
 import {
+  SCREENSHOT_CHECK_IN_STAND,
   SCREENSHOT_CLUB,
   SCREENSHOT_HERE,
   SCREENSHOT_NOW,
   screenshotChat,
   screenshotMapData,
 } from '../sample';
-import { SCREENSHOT_FRAME, SCREENSHOT_SHOTS, SCREENSHOT_THEMES, shotFile, shotUrl } from '../shots';
+import {
+  MAP_SHOTS,
+  SCREENSHOT_FRAME,
+  SCREENSHOT_SHOTS,
+  SCREENSHOT_THEMES,
+  shotFile,
+  shotUrl,
+} from '../shots';
 
 jest.mock(
   '@maplibre/maplibre-react-native',
@@ -118,18 +126,36 @@ describe('the stand-in radio', () => {
 });
 
 describe('the shots', () => {
-  it('are Map, Layers, Chat and Check In in dark and daylight at 390 dp, opened by deep link', () => {
+  it('are the map at rest, checked in, the sheet half open, Layers, Chat and Check In, in dark and daylight at 390 dp, opened by deep link', () => {
     expect(SCREENSHOT_FRAME.widthPx / (SCREENSHOT_FRAME.density / 160)).toBe(390);
     const files = Object.keys(SCREENSHOT_THEMES).flatMap((theme) =>
       SCREENSHOT_SHOTS.map((shot) => shotFile(shot, theme as keyof typeof SCREENSHOT_THEMES)),
     );
-    expect(new Set(files).size).toBe(8);
+    expect(new Set(files).size).toBe(12);
     expect(files).toContain('phone-layers-390-daylight.png');
+    expect(files).toContain('phone-checked-in-390-dark.png');
     expect(SCREENSHOT_SHOTS.map(shotUrl)).toEqual([
       `${URL_SCHEME}:///?shot=map`,
+      `${URL_SCHEME}:///?shot=checked-in`,
+      `${URL_SCHEME}:///?shot=sheet-half`,
       `${URL_SCHEME}:///?shot=layers`,
       `${URL_SCHEME}:///chat`,
       `${URL_SCHEME}:///check-in`,
     ]);
+  });
+
+  it('checks the stand-in radio in at the open stand for the checked-in shot only', () => {
+    const radio = standInCheckIn();
+    const changed = jest.fn();
+    radio.checkIns.on('change', changed);
+    radio.setCheckedIn(true);
+    expect(radio.checkIns.current?.placement).toMatchObject({
+      standId: SCREENSHOT_CHECK_IN_STAND.meshId,
+    });
+    radio.setCheckedIn(false);
+    expect(radio.checkIns.current).toBeNull();
+    expect(changed).toHaveBeenCalledTimes(2);
+    expect(MAP_SHOTS['checked-in']).toEqual({ checkedIn: true });
+    expect(MAP_SHOTS['sheet-half']).toEqual({ detent: 'half' });
   });
 });

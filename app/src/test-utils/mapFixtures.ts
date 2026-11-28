@@ -1,5 +1,11 @@
 import { HOUR_MS, MINUTE_MS, untilSunset } from '@huntclub/shared';
+import type { MapBottomSheetProps } from '../map/components/MapBottomSheet';
 import type { HunterOnMap, OpenStandOnMap } from '../map/types';
+
+type SheetCommon = Omit<
+  Extract<MapBottomSheetProps, { state: 'notCheckedIn' }>,
+  'state' | 'onCheckIn'
+>;
 
 export const NOW = Date.UTC(2026, 10, 26, 12, 0, 0);
 
@@ -28,3 +34,22 @@ export const openStandFixture: OpenStandOnMap = {
 
 /** "2 h 14 min until sunset", counted from NOW. */
 export const UNTIL_SUNSET_FIXTURE = untilSunset(new Date(NOW + 2 * HOUR_MS + 14 * MINUTE_MS), NOW);
+
+/** The props every MapBottomSheet takes, for a 390 x 701 map; override any. */
+export function sheetFixture(overrides: Partial<SheetCommon> = {}): SheetCommon {
+  return {
+    mapTop: 47,
+    mapHeight: 701,
+    detent: 'peek',
+    onDetent: jest.fn(),
+    reduceMotion: true,
+    audience: 'party',
+    onAskForHand: jest.fn(),
+    onLogHarvest: jest.fn(),
+    nearestStand: null,
+    onShowStand: jest.fn(),
+    hunters: [],
+    now: NOW,
+    ...overrides,
+  };
+}

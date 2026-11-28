@@ -2,7 +2,8 @@
  * The screens restyled in the redesign (P5b: Map controls and bottom sheet, Chat, Check In;
  * P5c: onboarding states, sign-in, Join club, the Clubhouse board, Legal, the map's layer and
  * download sheets, Pair your radio; map-first M3: the top plate and readout strip, hunter and
- * stand markers, the bottom sheet's states, Check In for a club) at 200 % text: the shared
+ * stand markers, the bottom sheet's states, Check In for a club; map chrome: the top pill and its
+ * card, the icon stack, the sheet with detents) at 200 % text: the shared
  * audit (48 px targets, spoken labels, nothing clipped) and the spoken labels each screen had
  * before. Then the same screens in the light theme, where every colour must come from the
  * light theme's tokens (or the basemap pictures, which are imagery and the same in both).
@@ -16,8 +17,6 @@ import {
 } from '@huntclub/shared';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { getPermissionsAsync, requestPermissionsAsync } from 'expo-notifications';
-import { readFileSync } from 'node:fs';
-import { relative } from 'node:path';
 import type { ReactElement } from 'react';
 import type { TestInstance } from 'test-renderer';
 
@@ -33,14 +32,13 @@ import { ClubEntitlementContext } from '../club/entitlement';
 import { JoinClubScreen } from '../club/JoinClubScreen';
 import { SignInScreen } from '../club/SignInScreen';
 import { DownloadAreaSheet } from '../map/components/DownloadAreaSheet';
-import { LayersSheet, SAVED_ON_THIS_PHONE } from '../map/components/LayersSheet';
-import { MapBottomSheet, NOT_CHECKED_IN } from '../map/components/MapBottomSheet';
-import { MapControls } from '../map/components/MapControls';
+import { FIT_PROPERTY, LayersSheet, SAVED_ON_THIS_PHONE } from '../map/components/LayersSheet';
+import { MapBottomSheet } from '../map/components/MapBottomSheet';
+import { CONTROL_LABELS, MapControls } from '../map/components/MapControls';
 import { HunterMarker } from '../map/components/HunterMarker';
+import { MapPill, PARTY_LINK } from '../map/components/MapPill';
 import { OpenStandMarker } from '../map/components/OpenStandMarker';
-import { TopPlate } from '../map/components/TopPlate';
 import { ALL_LAYERS_ON, MAP_LAYER_LABELS } from '../map/layers';
-import { MESH_QUIET_DETAIL } from '../map/meshStatus';
 import type { MapPack } from '../map/mapPacks';
 import { onboardingCopy } from '../onboarding/copy';
 import { nameCopy } from '../profile/copy';
@@ -65,10 +63,10 @@ import {
   UNTIL_SUNSET_FIXTURE,
   hunterFixture,
   openStandFixture,
+  sheetFixture,
 } from '../test-utils/mapFixtures';
 import { renderWithRadio } from '../test-utils/renderWithRadio';
 import { resetBluetoothForTests } from '../test-utils/resetBluetooth';
-import { SRC, sourceFiles } from '../test-utils/sourceFiles';
 import { inTheme, offThemeColors } from '../test-utils/themeAudit';
 
 jest.mock(
@@ -92,6 +90,8 @@ beforeEach(() => {
   resetBluetoothForTests();
   setLargeText();
 });
+
+const NEAR = { lat: 40.8, lon: -77.85 };
 
 const signedOut = () => ({
   session: fakeSession(false),
@@ -125,8 +125,8 @@ const overdue: BoardEntry = {
 type Case = {
   /** The screen, before any theme wraps it. */
   ui: () => ReactElement | Promise<ReactElement>;
-  /** Text that shows once the screen has drawn (the theme loads first). */
-  ready: string | RegExp;
+  /** Text that shows once the screen has drawn (the theme loads first); unset: a button. */
+  ready: string | RegExp | undefined;
   /** Presses and typing that bring the screen to the state under test. */
   then?: () => Promise<void>;
   /** Needs a radio (RadioProvider with the fake radio). */
@@ -138,68 +138,64 @@ type Case = {
 };
 
 const CASES: Record<string, Case> = {
-  'map controls': {
-    ui: () => <MapControls onLayers={jest.fn()} onNorthUp={jest.fn()} onCenterOnMe={jest.fn()} />,
-    ready: 'Layers',
-    buttons: ['Map layers and downloads', 'Turn the map north up', 'Center the map on me'],
+  'map controls, turned (the compass shows)': {
+    ui: () => (
+      <MapControls
+        onLayers={jest.fn()}
+        onCenterOnMe={jest.fn()}
+        bearing={30}
+        onNorthUp={jest.fn()}
+      />
+    ),
+    ready: undefined,
+    buttons: [CONTROL_LABELS.layers, CONTROL_LABELS.findMe, CONTROL_LABELS.northUp],
   },
-  'map bottom sheet, checked in': {
+  'map bottom sheet, checked in, half open': {
     ui: () => (
       <MapBottomSheet
+        {...sheetFixture({
+          detent: 'half',
+          hunters: [hunterFixture(2)],
+          nearestStand: {
+            stand: { meshId: 1, name: 'Ridge Ladder', position: NEAR },
+            distance: null,
+          },
+        })}
         state="checkedIn"
         place={{ kind: 'moving' }}
         checkedInAt={0}
         now={60_000}
-        untilSunset={UNTIL_SUNSET_FIXTURE}
-        audience="party"
-        onAskForHand={jest.fn()}
         onCheckOut={jest.fn()}
-        onChangeMode={jest.fn()}
-        onLogHarvest={jest.fn()}
+        onChangeSpot={jest.fn()}
       />
     ),
     ready: 'Check Out',
     buttons: [
       'Ask for a Hand. Pings your party',
       'Check Out',
-      'Change mode',
+      'Change spot',
       'Log a harvest. Private',
+      'Nearest stand: Ridge Ladder',
     ],
   },
   'map bottom sheet, not checked in (no stand needed)': {
     ui: () => (
       <MapBottomSheet
+        {...sheetFixture({ audience: 'club' })}
         state="notCheckedIn"
-        untilSunset={UNTIL_SUNSET_FIXTURE}
-        audience="club"
-        onAskForHand={jest.fn()}
         onCheckIn={jest.fn()}
       />
     ),
     ready: 'Check In',
     buttons: ['Check In', 'Ask for a Hand. Pings club members'],
   },
-  'map bottom sheet, after sunset': {
+  'map pill, mesh heard, card open with the full readout': {
     ui: () => (
-      <MapBottomSheet
-        state="notCheckedIn"
-        untilSunset={null}
-        audience="party"
-        onAskForHand={jest.fn()}
-        onCheckIn={jest.fn()}
-      />
-    ),
-    ready: NOT_CHECKED_IN,
-    buttons: ['Check In', 'Ask for a Hand. Pings your party'],
-  },
-  'map top plate, mesh heard, full readout': {
-    ui: () => (
-      <TopPlate
+      <MapPill
         groupLabel="Pine Ridge Hunt Club"
-        onGroupPress={jest.fn()}
         mesh={{ radioConnected: true, radioCount: 3, lastHeardAt: NOW - 12_000 }}
         now={NOW}
-        onMeshPress={jest.fn()}
+        next={UNTIL_SUNSET_FIXTURE!}
         readout={conditionsReadout({
           place: { lat: 46, lon: -94 },
           now: NOW,
@@ -208,24 +204,33 @@ const CASES: Record<string, Case> = {
           temperatureF: 34,
         })}
         weatherUpdated={{ short: 'Updated 3 hr ago', spoken: 'forecast updated 3 hours ago' }}
+        overdueAt={{ short: '5:08 PM', spoken: '5:08 PM' }}
+        open
+        onToggle={jest.fn()}
+        onParty={jest.fn()}
       />
     ),
     ready: 'Pine Ridge Hunt Club',
-    buttons: ['Pine Ridge Hunt Club', 'Mesh: 3 radios, heard 12s ago'],
+    buttons: [
+      `Pine Ridge Hunt Club. ${UNTIL_SUNSET_FIXTURE!.spoken}. Mesh: 3 radios, heard 12s ago`,
+      PARTY_LINK,
+    ],
   },
-  'map top plate, mesh gone quiet, nothing known': {
+  'map pill, mesh gone quiet, nothing known': {
     ui: () => (
-      <TopPlate
+      <MapPill
         groupLabel="Party"
-        onGroupPress={jest.fn()}
         mesh={{ radioConnected: true, radioCount: 2, lastHeardAt: NOW - 15 * 60_000 }}
         now={NOW}
-        onMeshPress={jest.fn()}
+        next={{ short: 'Sunset —', spoken: 'Sunset not known' }}
         readout={conditionsReadout({ place: null, now: NOW })}
+        open
+        onToggle={jest.fn()}
+        onParty={jest.fn()}
       />
     ),
     ready: 'Party',
-    buttons: ['Party', `No radios heard for 15 min. ${MESH_QUIET_DETAIL}`],
+    buttons: ['Party. Sunset not known. No radios heard for 15 min', PARTY_LINK],
   },
   'hunter and stand markers, fresh, stale and faded': {
     ui: () => (
@@ -368,8 +373,9 @@ const CASES: Record<string, Case> = {
       <LayersSheet
         visible
         basemap="topo"
-        layers={{ stands: true, hunters: false, scent: true }}
+        layers={{ stands: true, areas: true, hunters: false, scent: true }}
         onLayerChange={jest.fn()}
+        onFitProperty={jest.fn()}
         packs={[pack('a', 'complete'), pack('b', 'downloading'), pack('c', 'failed')]}
         progress={{ b: 40 }}
         onSelect={jest.fn()}
@@ -379,7 +385,15 @@ const CASES: Record<string, Case> = {
       />
     ),
     ready: SAVED_ON_THIS_PHONE,
-    buttons: ['Aerial', 'Topo', 'Hybrid', 'Download the map for this area', 'Delete', 'Close'],
+    buttons: [
+      'Aerial',
+      'Topo',
+      'Hybrid',
+      FIT_PROPERTY,
+      'Download the map for this area',
+      'Delete',
+      'Close',
+    ],
     switches: Object.values(MAP_LAYER_LABELS),
   },
   'map layers, none downloaded': {
@@ -437,7 +451,8 @@ async function show(c: Case, theme?: ThemePreference): Promise<TestInstance> {
   const container = c.radio
     ? (await renderWithRadio(themed)).view.container
     : (await render(themed)).container;
-  await screen.findAllByText(c.ready);
+  if (c.ready !== undefined) await screen.findAllByText(c.ready);
+  else await screen.findAllByRole('button');
   await c.then?.();
   return container;
 }
@@ -474,22 +489,6 @@ describe('restyled screens in the light theme', () => {
     );
     expect(offThemeColors(leftover, lightTheme)).toEqual([
       `View backgroundColor ${darkTheme.colors.plate}`,
-    ]);
-  });
-});
-
-describe('the 62 px hero size', () => {
-  it('is used only for Check Out and Ask for a Hand', () => {
-    const uses = sourceFiles(SRC, /\.tsx$/).flatMap((file) => {
-      const source = readFileSync(file, 'utf8');
-      return [...source.matchAll(/<Button\b[^>]*size="hero"[^>]*\/>/gs)].map((m) => ({
-        file: relative(SRC, file),
-        label: /label="([^"]+)"/.exec(m[0])?.[1],
-      }));
-    });
-    expect(uses).toEqual([
-      { file: 'map/components/MapBottomSheet.tsx', label: 'Ask for a Hand' },
-      { file: 'map/components/MapBottomSheet.tsx', label: 'Check Out' },
     ]);
   });
 });

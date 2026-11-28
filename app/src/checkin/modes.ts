@@ -12,7 +12,7 @@ export type CheckInChoice = {
 };
 
 /**
- * The modes on the Check In tab, in the design's order (docs/DESIGN.md, Check In): At a stand,
+ * The modes on the Check In screen, in the design's order (docs/DESIGN.md, Check In): At a stand,
  * In an area, Right here, On the move. Stands are optional: free parties get the last two.
  */
 const ALL_CHOICES: readonly CheckInChoice[] = [

@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { mapChrome } from '@huntclub/design';
+
 import { makeStyles, opacity, radii, sizes, spacing, textStyles } from '../../theme';
+import { LABEL_GAP, LABEL_PAD } from '../standLabels';
 
 /**
  * A marker sits on its point inside a box padded to the 48 px tap minimum, with its plate to
@@ -35,19 +38,26 @@ type PlateProps = {
   detail?: string;
   /** "Available" is fresh green; everything else is second-line grey. */
   detailTone?: 'quiet' | 'fresh';
+  /**
+   * The Map tab's stand label (docs/DESIGN.md "Map chrome" 8): the title alone on one line,
+   * within the 140 px label width, cut with an ellipsis; the full name is in the spoken label.
+   */
+  cap?: boolean;
 };
 
 /**
  * The name plate beside a marker (docs/DESIGN.md "The one memorable element"): the plate
  * colour at 94% over the imagery, so busy aerial never shows through its text.
  */
-export function MarkerPlate({ title, detail, detailTone = 'quiet' }: PlateProps) {
+export function MarkerPlate({ title, detail, detailTone = 'quiet', cap }: PlateProps) {
   const styles = useStyles();
   return (
-    <View style={styles.plate}>
+    <View style={[styles.plate, cap && styles.capped]}>
       <View style={styles.backing} />
-      <Text style={styles.title}>{title}</Text>
-      {detail ? (
+      <Text style={styles.title} {...(cap ? { numberOfLines: 1 } : {})}>
+        {title}
+      </Text>
+      {detail && !cap ? (
         <Text style={[styles.detail, detailTone === 'fresh' && styles.fresh]}>{detail}</Text>
       ) : null}
     </View>
@@ -62,14 +72,16 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: 'center',
   },
   plate: {
-    marginLeft: spacing.xs / 2,
-    paddingHorizontal: spacing.sm,
+    marginLeft: LABEL_GAP,
+    paddingHorizontal: LABEL_PAD,
     paddingTop: spacing.xs,
     paddingBottom: spacing.xs + 1,
     borderRadius: radii.markerPlate,
     borderWidth: 1,
     borderColor: theme.colors.borderSubtle,
   },
+  // One line, so at the default text size the plate is within the 32 px label height too.
+  capped: { maxWidth: mapChrome.labels.maxWidth },
   backing: {
     ...StyleSheet.absoluteFill,
     borderRadius: radii.markerPlate,

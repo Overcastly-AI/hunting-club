@@ -13,7 +13,7 @@ export const TAB_BAR_PADDING = spacing.xs;
 /** Tab icons sit above the labels at Lucide's 24 px size (docs/UI_REDESIGN.md section 4). */
 export const TAB_ICON_SIZE = 24;
 
-/** Long labels ("Party/Club") wrap onto a second line at large text sizes instead of clipping. */
+/** Long labels wrap onto a second line at large text sizes instead of clipping. */
 export const TAB_LABEL_MAX_LINES = 2;
 
 /** The text size the tab labels actually render at: the system scale, capped at `maxFontScale`. */

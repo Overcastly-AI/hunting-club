@@ -11,7 +11,7 @@ import type { Audience } from '../domain/audience';
 import type { ClubArea, ClubStand } from './placement';
 
 /**
- * What the Check In tab and the map's bottom sheet need from the radio.
+ * What the Check In screen and the map's bottom sheet need from the radio.
  * RadioProvider (Milestone 2) provides it with `<CheckInRadioContext.Provider>`;
  * until then the context is null and the UI says to connect a radio.
  */

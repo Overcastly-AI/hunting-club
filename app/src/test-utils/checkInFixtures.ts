@@ -18,7 +18,7 @@ export const CLUB_STANDS: readonly ClubStand[] = [
 ];
 
 /**
- * A radio for the Check In tab with nobody checked in: a club member's (stands and an area)
+ * A radio for the Check In screen with nobody checked in: a club member's (stands and an area)
  * or a free party's. `checkIn` is a mock so tests can see what was sent.
  */
 export function checkInRadio(audience: 'club' | 'party'): CheckInRadio {

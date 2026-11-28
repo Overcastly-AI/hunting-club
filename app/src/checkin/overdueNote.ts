@@ -4,6 +4,19 @@ import type { LatLon } from '@huntclub/mesh';
 import { formatClockTime } from '@huntclub/shared';
 import { OVERDUE_ALERT_TEXT, type Audience } from '../domain/audience';
 
+/**
+ * When the overdue alert goes out for a check-in at `place` (sunset plus the grace time, from
+ * core; or the extension, if later). Undefined while the phone does not know where.
+ */
+export function overdueTime(
+  checkedInAt: number,
+  place: LatLon | undefined,
+  graceMinutes: number,
+  until?: number,
+): number | undefined {
+  return place ? overdueAt(checkedInAt, place, graceMinutes, SUN, until) : undefined;
+}
+
 /** The overdue line, and the clock time in it (drawn in ink), when the phone knows it. */
 export type OverdueNote = { text: string; time: string | null };
 
@@ -18,7 +31,7 @@ export function overdueNote(
   graceMinutes: number,
   audience: Audience,
 ): OverdueNote {
-  const at = place ? overdueAt(checkedInAt, place, graceMinutes, SUN) : undefined;
+  const at = overdueTime(checkedInAt, place, graceMinutes);
   const sunsetPlus = `sunset plus ${graceMinutes} minutes`;
   if (!at) {
     return {

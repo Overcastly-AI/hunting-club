@@ -168,15 +168,18 @@ export const OVERDUE_ALERT_LABEL = 'Overdue at';
 /**
  * The one next time for the map's top pill (docs/DESIGN.md "Map chrome"): the sunset countdown
  * while the sun is up, then the overdue time while it is still ahead, then the sunset time.
- * Sunrise and sunset only, never legal shooting hours.
+ * `overdueFirst` (the phone while you are checked in) puts your overdue time ahead of the
+ * countdown. Sunrise and sunset only, never legal shooting hours.
  */
 export function nextTimeReadout(
   sun: SunReadout,
   overdueAt: number | undefined,
   now: number,
+  { overdueFirst = false }: { overdueFirst?: boolean } = {},
 ): Wording {
-  if (sun.untilSunset) return sun.untilSunset;
-  if (overdueAt !== undefined && overdueAt > now) {
+  const overdueAhead = overdueAt !== undefined && overdueAt > now;
+  if (sun.untilSunset && !(overdueFirst && overdueAhead)) return sun.untilSunset;
+  if (overdueAhead) {
     const at = clockReadout(overdueAt);
     return {
       short: `${OVERDUE_ALERT_LABEL} ${at.short}`,

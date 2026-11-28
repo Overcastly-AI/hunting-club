@@ -42,7 +42,7 @@ type Props = {
   onSkip?: () => void;
 };
 
-/** Onboarding step 1 and Party/Club settings: find, pair and connect a radio. */
+/** Onboarding step 1 and Club tab settings: find, pair and connect a radio. */
 export function PairRadioScreen({ onDone, onSkip }: Props) {
   const styles = useStyles();
   const theme = useTheme();

@@ -17,7 +17,7 @@ import { SIGN_IN_ROUTE } from './routes';
 
 const copy = clubCopy.section;
 
-/** Club mode on the Party/Club tab: the clubs on this phone, sign-in and sync. */
+/** Club mode on the Club tab: the clubs on this phone, sign-in and sync. */
 export function ClubSection({ now = Date.now }: { now?: () => number }) {
   const styles = useStyles();
   const { clubs, signedIn, cloudAvailable, sync, session, reload } = useClub();

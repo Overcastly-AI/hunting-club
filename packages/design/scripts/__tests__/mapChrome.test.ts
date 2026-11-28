@@ -179,6 +179,18 @@ describe('the sheet', () => {
     expect(sheetDetentHeights(50).half).toBe(mapChrome.sheet.detents.peek);
   });
 
+  it("has one peek per surface: the app's holds the grabber zone and the action row", () => {
+    const { peekBySurface, handleZone, actionRow, detents } = mapChrome.sheet;
+    expect(detents.peek).toBe(peekBySurface.web);
+    expect(peekBySurface.app).toBe(handleZone + actionRow);
+    expect(actionRow).toBeGreaterThanOrEqual(sizes.minTapTarget);
+    expect(sheetDetentHeights(700, 'app')).toEqual({
+      peek: peekBySurface.app,
+      half: 350,
+      full: 616,
+    });
+  });
+
   it('snaps a slow release to the nearest detent', () => {
     expect(snapDetent(heights, 'peek', 100, 0)).toBe('peek');
     expect(snapDetent(heights, 'peek', 300, 0.1)).toBe('half');

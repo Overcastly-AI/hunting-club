@@ -29,7 +29,7 @@ export function harvestSummary(h: LocalHarvest): string {
     .join(' · ');
 }
 
-/** My harvests (Party/Club tab): private unless shared, with a share button for private ones. */
+/** My harvests (Club tab): private unless shared, with a share button for private ones. */
 export function HarvestList() {
   const styles = useStyles();
   const db = useSQLiteContext();

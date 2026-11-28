@@ -153,3 +153,30 @@ export function boundsAround(points: readonly LatLon[]): Bounds | undefined {
 export function boundsAroundPoint(center: LatLon, radius: number): Bounds {
   return boundsAround([0, 90, 180, 270].map((bearing) => destination(center, bearing, radius)))!;
 }
+
+/** Where the map's camera is: its centre, zoom (MapLibre's 512 px based) and bearing. */
+export type CameraView = { center: LatLon; zoom: number; bearing: number };
+
+/**
+ * Where `point` is drawn on a map `size` points big showing `view` (Web Mercator, the map's
+ * own projection), in points from the map's top left. Pure, so stand labels can be placed
+ * without asking the native map.
+ */
+export function screenPoint(
+  point: LatLon,
+  view: CameraView,
+  size: { width: number; height: number },
+): { x: number; y: number } {
+  const world = 512 * 2 ** view.zoom;
+  const mercX = (lon: number) => ((lon + 180) / 360) * world;
+  const mercY = (lat: number) =>
+    ((1 - Math.log(Math.tan(Math.PI / 4 + (lat * DEG) / 2)) / Math.PI) / 2) * world;
+  const dx = mercX(point.lon) - mercX(view.center.lon);
+  const dy = mercY(point.lat) - mercY(view.center.lat);
+  // The map turned `bearing` degrees clockwise turns the ground the other way on screen.
+  const b = view.bearing * DEG;
+  return {
+    x: size.width / 2 + dx * Math.cos(b) + dy * Math.sin(b),
+    y: size.height / 2 - dx * Math.sin(b) + dy * Math.cos(b),
+  };
+}
