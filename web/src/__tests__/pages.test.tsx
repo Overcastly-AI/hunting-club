@@ -11,6 +11,7 @@ import {
   INITIALS_MAX,
   LEGAL_PATHS,
   ClubApiRequestError,
+  SUBSCRIPTION_STATUS_LABELS,
   WEB_DOMAINS,
 } from '@huntclub/shared';
 import {
@@ -39,8 +40,11 @@ import {
 } from '../testing/fakeClubApi';
 import { go, renderSignedIn } from '../testing/app';
 import { accountButton, requestCode, signIn } from '../testing/shell';
+import { statCells, statGrid } from '../testing/stats';
 import { tableRows } from '../testing/tables';
 import { SAMPLE_CAPTION } from '../pages/SignIn';
+import { SUBSCRIPTION_STRIP } from '../pages/Billing';
+import { SEASON_AT_A_GLANCE } from '../pages/Harvests';
 import { DRAW_LINE_FIRST, PLAN_NEEDED } from '../pages/MapPacks';
 import {
   COPY_INVITE,
@@ -49,6 +53,12 @@ import {
   NO_OTHER_MEMBERS,
   NO_RADIO,
 } from '../pages/Roster';
+
+/**
+ * The Stands page's stands table, once it shows. A stand's name is also drawn on the map
+ * beside it, so a test reads names from the table.
+ */
+const standsTable = () => screen.findByRole('table', { name: /^Stands \(\d+\)$/ });
 
 /** The roster's invite section (which makes nothing until asked). */
 const inviteSection = () => screen.findByRole('region', { name: INVITE_TITLE });
@@ -411,8 +421,9 @@ describe('club pages', () => {
     renderApp();
     await signIn();
     go('#/stands');
-    expect(await screen.findByText('Big Oak Ladder')).toBeTruthy();
-    expect(screen.getByText('Tree stand')).toBeTruthy();
+    const stands = within(await standsTable());
+    expect(stands.getByText('Big Oak Ladder')).toBeTruthy();
+    expect(stands.getByText('Tree stand')).toBeTruthy();
     expect(screen.getAllByText('North 40').length).toBeGreaterThan(0);
     // The web edits them now: the page says where, not "in the app" alone.
     const heading = screen.getByRole('heading', { level: 1, name: 'Stands and areas' });
@@ -449,11 +460,16 @@ describe('club pages', () => {
       fireEvent.change(screen.getByLabelText('Season ends'), { target: { value: '2027-01-31' } });
     }
     const rows = (title: string) => tableRows(screen.getByRole('region', { name: title }));
+    /** Waits for the season's Harvests cell to read `count` (a bare number shows elsewhere too). */
+    const expectHarvestCount = (count: number) =>
+      vi.waitFor(async () =>
+        expect(await statCells(SEASON_AT_A_GLANCE)).toContain(`Harvests${count}`),
+      );
 
     it('summarizes the shared harvests of the season the admin picks', async () => {
       await openHarvests();
       // 7 sample harvests: one private and one from March are left out.
-      expect(await screen.findByText('5')).toBeTruthy();
+      await expectHarvestCount(5);
       expect(rows('By species')).toEqual([
         ['Deer', '4'],
         ['Turkey', '1'],
@@ -513,7 +529,7 @@ describe('club pages', () => {
         session: new ClubSession(fakeCognitoAuth(), memoryTokenStore()),
         api: adminApi(client),
       });
-      expect(await screen.findByText('5')).toBeTruthy();
+      await expectHarvestCount(5);
       vi.spyOn(client, 'listHarvests').mockRejectedValue(new ClubApiRequestError('network', 0));
       fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
       expect((await screen.findByRole('status')).textContent).toMatch(/No connection/);
@@ -669,12 +685,14 @@ describe('club pages', () => {
     renderApp({ ...data, subscription: { ...data.subscription!, interval: 'year' } });
     await signIn();
     go('#/billing');
-    expect(await screen.findByText('Active')).toBeTruthy();
+    // The shell's club block shows the same status pill: read the Billing strip's own.
+    const strip = within(await statGrid(SUBSCRIPTION_STRIP));
+    expect(strip.getByText(SUBSCRIPTION_STATUS_LABELS.active)).toBeTruthy();
     const yearly = CLUB_PRICING.intervals.year;
-    expect(screen.getByText(yearly.price)).toBeTruthy();
-    expect(screen.getByText('Club plan, billed yearly')).toBeTruthy();
-    expect(screen.getByText('Renews on')).toBeTruthy();
-    expect(screen.getByText('August 1, 2027')).toBeTruthy();
+    expect(strip.getByText(yearly.price)).toBeTruthy();
+    expect(strip.getByText('Club plan, billed yearly')).toBeTruthy();
+    expect(strip.getByText('Renews on')).toBeTruthy();
+    expect(strip.getByText('August 1, 2027')).toBeTruthy();
     // The grace period is said only once a payment is past due.
     expect(screen.queryByText(/grace period/i)).toBeNull();
     expect(screen.queryByRole('button', { name: CLUB_PRICING.cta })).toBeNull();
@@ -688,7 +706,8 @@ describe('club pages', () => {
     renderApp({ ...data, subscription: { ...data.subscription!, ...change } });
     await signIn();
     go('#/billing');
-    expect(await screen.findByText(label)).toBeTruthy();
+    const strip = within(await statGrid(SUBSCRIPTION_STRIP));
+    expect(strip.getByText(label)).toBeTruthy();
     expect(screen.queryByText('Renews on')).toBeNull();
   });
 
@@ -878,7 +897,7 @@ describe('errors, empty states and navigation', () => {
     const list = vi.spyOn(client, 'listStands').mockRejectedValueOnce(offline());
     go('#/stands');
     fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
-    expect(await screen.findByText('Big Oak Ladder')).toBeTruthy();
+    expect(within(await standsTable()).getByText('Big Oak Ladder')).toBeTruthy();
     expect(list).toHaveBeenCalledTimes(2);
   });
 

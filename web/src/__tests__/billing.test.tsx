@@ -7,9 +7,10 @@ import {
 } from '@huntclub/shared';
 import { screen, within } from '@testing-library/react';
 import { formatDate } from '../format';
-import { MESH_STAYS_FREE, NO_INVOICES } from '../pages/Billing';
+import { MESH_STAYS_FREE, NO_INVOICES, SUBSCRIPTION_STRIP } from '../pages/Billing';
 import { renderSignedIn } from '../testing/app';
 import { sampleData } from '../testing/fakeClubApi';
+import { statCells } from '../testing/stats';
 
 const iso = (ms: number) => new Date(ms).toISOString();
 
@@ -25,10 +26,7 @@ async function billing(change: Partial<Subscription> | null, data = sampleData()
 }
 
 /** The subscription strip's cells as "Label value". */
-const cells = async () =>
-  within(await screen.findByRole('list', { name: 'Subscription' }))
-    .getAllByRole('listitem')
-    .map((li) => li.textContent);
+const cells = () => statCells(SUBSCRIPTION_STRIP);
 
 /** A banner's title (the strip may say the same word in its Status cell). */
 const bannerTitle = (title: string) =>

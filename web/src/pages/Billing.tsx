@@ -37,6 +37,9 @@ import { pageHref } from '../shell/routes';
 export const MESH_STAYS_FREE =
   'The radio, chat and Ask for a Hand keep working whatever the billing status.';
 
+/** The subscription strip's name (Status, Plan and the next date). */
+export const SUBSCRIPTION_STRIP = 'Subscription';
+
 /** The invoice list's empty state: invoices are not listed on the web yet. */
 export const NO_INVOICES = {
   title: 'No invoices yet',
@@ -192,7 +195,7 @@ function Status(props: { subscription: Subscription | null; plans: readonly Plan
   return (
     <>
       {attention(subscription, featuresUntil)}
-      <StatGrid aria-label="Subscription" three>
+      <StatGrid aria-label={SUBSCRIPTION_STRIP} three>
         <StatTile
           label="Status"
           value={
