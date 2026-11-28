@@ -1,11 +1,15 @@
 // Browser checks and screenshots of the admin over sample data (the dev-only demo, src/demo),
 // served from the kit build with the real security headers (infra/src/security-headers.ts).
-// For every page at 1280 and 390 px wide (My club also at 500), in the dark and daylight themes, it checks:
+// For every page at 1280 and 390 px wide (My club also at 500, and on the iPhone audit's phones
+// with touch: SE portrait, iPhone 15 portrait and landscape), in the dark and daylight themes (the
+// phones dark only), it checks:
 // no Content-Security-Policy violation, no horizontal scroll, axe with no serious or critical
 // issue, and that the phone's More sheet takes focus and gives it back to the More tab. On My
 // club it measures the map chrome's real rects against the coverage budget (docs/DESIGN.md
 // "Map chrome" 1, the shared measureCoverage) and fails above it at rest and while drawing;
-// every My club shot's coverage is printed. On phones (PHONE_VIEWPORTS, from the iPhone audit)
+// every My club shot's coverage is printed. On the touch phones My club is also pinched (one finger
+// on a stand) and double tapped with real touch events: the map must zoom and the page must not.
+// On phones (PHONE_VIEWPORTS, from the iPhone audit)
 // it checks that the sign-in email field is in the first screen on an SE, the "Sample property"
 // label is clear of the form in landscape, every page plus the club switcher and More are on
 // screen in landscape, the More sheet, account menu and stand drawer stay within the sheet's
@@ -48,10 +52,31 @@ const WEB = process.cwd();
 const DIST = resolve(WEB, 'dist-kit');
 const [FOLDER = 'm2', ONLY_SHOTS] = process.argv.slice(2);
 const OUT = resolve(WEB, '../docs/redesign', FOLDER);
-const WIDTHS = [1280, 500, 390] as const;
-/** 500 px is the map-chrome review's in-between width: My club only. */
-const widthsFor = (shot: Shot) => WIDTHS.filter((w) => w !== 500 || shot.hash === '#/club');
-const HEIGHT: Record<(typeof WIDTHS)[number], number> = { 1280: 860, 500: 844, 390: 844 };
+interface Viewport {
+  /** In the file name: the width, or the phone's name. */
+  name: string;
+  width: number;
+  height: number;
+  /** A phone with touch (isMobile: the page can be pinch-zoomed, as Safari can). */
+  touch?: boolean;
+  /** Only My club is shot here. */
+  myClubOnly?: boolean;
+}
+const VIEWPORTS: readonly Viewport[] = [
+  { name: '1280', width: 1280, height: 860 },
+  // The map-chrome review's in-between width.
+  { name: '500', width: 500, height: 844, myClubOnly: true },
+  { name: '390', width: 390, height: 844 },
+  // The iPhone audit (2026-11-28): CSS px of each phone's browser viewport.
+  { name: 'se', width: 375, height: 667, touch: true, myClubOnly: true },
+  { name: 'iphone15', width: 393, height: 852, touch: true, myClubOnly: true },
+  { name: 'iphone15-landscape', width: 852, height: 393, touch: true, myClubOnly: true },
+];
+const viewportsFor = (shot: Shot) =>
+  VIEWPORTS.filter((v) => !v.myClubOnly || shot.hash === '#/club').filter(
+    // `only` names widths of the main three; the phones take every My club shot that has none.
+    (v) => !v.touch || !shot.only,
+  );
 /** File name word for each stored theme preference. */
 const THEMES = { dark: 'dark', light: 'daylight' } as const;
 
@@ -74,6 +99,7 @@ interface Shot {
 /** The Playwright surface used here (the package is loaded from NODE_PATH at run time). */
 interface Page {
   goto(url: string): Promise<unknown>;
+  touchscreen: { tap(x: number, y: number): Promise<void> };
   waitForLoadState(state: 'networkidle'): Promise<void>;
   mouse: { click(x: number, y: number): Promise<void> };
   waitForSelector(selector: string): Promise<unknown>;
@@ -86,6 +112,11 @@ interface Page {
   ): { click(): Promise<void>; fill(value: string): Promise<void> };
   keyboard: { press(key: string): Promise<void> };
   close(): Promise<void>;
+}
+
+/** A Chrome DevTools Protocol session (real touch events). */
+interface Cdp {
+  send(method: string, params: object): Promise<unknown>;
 }
 
 const openInvite = async (page: Page) => {
@@ -174,7 +205,11 @@ const editArea = async (page: Page) => {
   const onMap = await page.evaluate<boolean>(
     `!!document.querySelector('.plan__area-button[aria-label^="North 40"]')`,
   );
-  if (onMap) await page.getByRole('button', { name: /^North 40, area/ }).click();
+  // (A dispatched click: on a phone on its side a stand's marker sits over the name.)
+  if (onMap)
+    await page.evaluate(
+      `document.querySelector('.plan__area-button[aria-label^="North 40"]').dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))`,
+    );
   else {
     await sheetHalf(page);
     await page.getByRole('button', { name: 'Edit North 40' }).click();
@@ -186,6 +221,81 @@ const openClubSwitcher = async (page: Page) => {
   await page.getByRole('button', { name: /Club:/ }).click();
   await page.waitForTimeout(250);
 };
+/** My club with a new stand being placed (the "+" menu beside Stands and areas, Add stand). */
+const addStand = async (page: Page) => {
+  // From the panel or the sheet (at its peek on a phone), as drawLine does.
+  await page.evaluate(`document.querySelector('.side-section__add').click()`);
+  await page.waitForSelector('.add-menu:not([hidden])');
+  await page.evaluate(
+    `[...document.querySelectorAll('.add-menu .ui-button')].find((b) => b.textContent === 'Add stand').click()`,
+  );
+  await page.waitForSelector('.draw__cross');
+  await settle(page);
+};
+/** My club with its property line open in the editor (the panel's or sheet's text action). */
+const editLine = async (page: Page) => {
+  await page.evaluate(
+    `[...document.querySelectorAll('.side-section__quiet')].find((b) => b.textContent === 'Edit property line').click()`,
+  );
+  await page.waitForSelector('.draw__corner');
+  await settle(page);
+};
+/** The map's zoom (the ground's data-zoom) and the page's own pinch zoom. */
+const zooms = (page: Page) =>
+  page.evaluate<{ map: number; page: number }>(
+    `({ map: Number(document.querySelector('.plan__svg--ground').dataset.zoom), page: visualViewport.scale })`,
+  );
+/**
+ * Real touch on My club (CDP touch events, as a phone sends them): a pinch with one finger on a
+ * stand and one beside it, then a double tap on open ground. The map zooms in each time; the page
+ * never zooms and no stand opens.
+ */
+async function touchChecks(page: Page, cdp: Cdp, label: string, problems: string[]) {
+  const at = await page.evaluate<{ stand: [number, number]; ground: [number, number] }>(
+    `(() => {
+      const s = document.querySelector('.plan__stand--button .plan__stand-hit').getBoundingClientRect();
+      const m = document.querySelector('.clubview__map').getBoundingClientRect();
+      return { stand: [s.left + s.width / 2, s.top + s.height / 2], ground: [m.left + 24, m.top + m.height * 0.45] };
+    })()`,
+  );
+  const touch = (type: string, points: readonly (readonly [number, number])[]) =>
+    cdp.send('Input.dispatchTouchEvent', {
+      type,
+      touchPoints: points.map(([x, y], id) => ({ x, y, id })),
+    });
+  const [x, y] = at.stand;
+  const before = await zooms(page);
+  await touch('touchStart', [[x, y]]);
+  await touch('touchStart', [
+    [x, y],
+    [x + 60, y],
+  ]);
+  for (let i = 1; i <= 6; i++)
+    await touch('touchMove', [
+      [x - 10 * i, y],
+      [x + 60 + 10 * i, y],
+    ]);
+  await touch('touchEnd', []);
+  await page.waitForTimeout(300);
+  const pinched = await zooms(page);
+  const opened = await page.evaluate<boolean>(`!!document.querySelector('.ui-dialog--side[open]')`);
+  await page.touchscreen.tap(...at.ground);
+  await page.waitForTimeout(80);
+  await page.touchscreen.tap(...at.ground);
+  await page.waitForTimeout(300);
+  const tapped = await zooms(page);
+  touchReport.push(
+    `${label}: pinch from a stand ${before.map.toFixed(2)} → ${pinched.map.toFixed(2)}, double tap → ${tapped.map.toFixed(2)}; page scale ${tapped.page}`,
+  );
+  if (!(pinched.map > before.map + 0.5)) problems.push(`${label}: a pinch did not zoom the map`);
+  if (!(tapped.map > pinched.map + 0.5))
+    problems.push(`${label}: a double tap did not zoom the map`);
+  if (pinched.page !== 1 || tapped.page !== 1)
+    problems.push(`${label}: the page zoomed (scale ${tapped.page})`);
+  if (opened) problems.push(`${label}: a pinch opened the stand under it`);
+}
+const touchReport: string[] = [];
+
 /** The middle of the sample property: where "My location" puts the browser for the draw shot. */
 const [west, south, east, north] = polygonBounds(SAMPLE_PROPERTY.boundary);
 const AT_THE_PROPERTY = { latitude: (south + north) / 2, longitude: (west + east) / 2 };
@@ -282,6 +392,20 @@ const SHOTS: readonly Shot[] = [
   { name: 'my-club-topo', scenario: 'trial', hash: '#/club', act: topo, only: ONCE_EACH },
   { name: 'my-club-stand', scenario: 'trial', hash: '#/club', act: openStand },
   { name: 'my-club-stand-edit', scenario: 'trial', hash: '#/club', act: editStand },
+  {
+    name: 'my-club-stand-add',
+    scenario: 'trial',
+    hash: '#/club',
+    act: addStand,
+    coverage: 'report',
+  },
+  {
+    name: 'my-club-line-edit',
+    scenario: 'trial',
+    hash: '#/club',
+    act: editLine,
+    coverage: 'budget',
+  },
   {
     name: 'my-club-area-edit',
     scenario: 'trial',
@@ -532,6 +656,7 @@ async function main() {
   };
   interface Context {
     addInitScript(script: string): Promise<void>;
+    newCDPSession(page: Page): Promise<Cdp>;
     newPage(): Promise<
       Page & { on(event: string, fn: (m: { text(): string; type(): string }) => void): void }
     >;
@@ -574,12 +699,15 @@ async function main() {
     }
     for (const shot of SHOTS) {
       if (only && !only.includes(shot.name)) continue;
-      for (const width of widthsFor(shot)) {
+      for (const viewport of viewportsFor(shot)) {
+        const { width } = viewport;
         for (const theme of Object.keys(THEMES) as (keyof typeof THEMES)[]) {
           if (shot.only && !shot.only.some(([w, t]) => w === width && t === theme)) continue;
+          if (viewport.touch && theme !== 'dark') continue;
           const context = await browser.newContext({
-            viewport: { width, height: HEIGHT[width] },
+            viewport: { width, height: viewport.height },
             deviceScaleFactor: 1,
+            ...(viewport.touch ? { isMobile: true, hasTouch: true } : {}),
             reducedMotion: 'reduce',
             // The sample club is in Illinois: its sunrise and sunset read in its own time.
             timezoneId: 'America/Chicago',
@@ -597,7 +725,7 @@ async function main() {
           page.on('console', (m) => {
             if (m.type() === 'error') errors.push(m.text());
           });
-          const label = `${shot.name} ${width} ${THEMES[theme]}`;
+          const label = `${shot.name} ${viewport.name} ${THEMES[theme]}`;
           await page.goto(`${origin}${ADMIN_PATH}?demo=${shot.scenario}${shot.hash}`);
           await page.waitForSelector(shot.ready ?? 'h1');
           await page.waitForTimeout(400);
@@ -650,9 +778,11 @@ async function main() {
             if (back !== 'false') problems.push(`${label}: Esc did not return focus to More`);
           }
           await page.screenshot({
-            path: join(OUT, `${shot.name}-${width}-${THEMES[theme]}.png`),
+            path: join(OUT, `${shot.name}-${viewport.name}-${THEMES[theme]}.png`),
             fullPage: true,
           });
+          if (viewport.touch && shot.name === 'my-club')
+            await touchChecks(page, await context.newCDPSession(page), label, problems);
           count += 1;
           await context.close();
         }
@@ -664,6 +794,7 @@ async function main() {
   }
   console.log(`${count} screenshots in ${OUT}`);
   if (coverage.length) console.log(['Map chrome coverage:', ...coverage].join('\n'));
+  if (touchReport.length) console.log(['Touch (map zoom):', ...touchReport].join('\n'));
   if (problems.length) {
     console.error(problems.join('\n'));
     process.exit(1);

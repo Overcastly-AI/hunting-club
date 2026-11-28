@@ -1,6 +1,7 @@
 // Dialog (native <dialog>), Toast and Tooltip (Radix), Popover (a disclosure), Tabs (Radix), in the
 // map-first look (docs/DESIGN.md). Things that float over the page are plates with the floating shadow; a
 // tooltip is inverted (plate on ink); tabs are words with the orange bar under the chosen one.
+import { SAFE_AREA } from '@huntclub/design';
 import { MOBILE_TAB_BAR_HEIGHT, SHELL } from '../sizes';
 import {
   color,
@@ -48,7 +49,7 @@ ${TABLET_UP} {
 ${PHONE} {
   .ui-dialog { width: 100%; max-width: 100%; margin: auto 0 0; max-height: var(--map-chrome-sheet-max);
     border-radius: var(--radius-xl) var(--radius-xl) 0 0; border-bottom: 0;
-    padding-bottom: env(safe-area-inset-bottom); }
+    padding-bottom: ${SAFE_AREA.bottom}; }
   .ui-dialog__header { padding-left: ${gap(4)}; }
   .ui-dialog__body, .ui-dialog__footer { padding-left: ${gap(4)}; padding-right: ${gap(4)}; }
   .ui-dialog__footer { flex-direction: column-reverse; }
@@ -61,7 +62,7 @@ const toast = `
   width: min(420px, calc(100vw - 2 * ${gap(4)})); margin: 0; padding: 0; list-style: none; outline: none; }
 ${SHELL_BARS} {
   .ui-toast-viewport { left: ${gap(3)}; right: ${gap(3)}; width: auto;
-    bottom: calc(${MOBILE_TAB_BAR_HEIGHT}px + env(safe-area-inset-bottom) + ${gap(3)}); }
+    bottom: calc(${MOBILE_TAB_BAR_HEIGHT}px + ${SAFE_AREA.bottom} + ${gap(3)}); }
 }
 .ui-toast { ${popover} display: flex; align-items: flex-start; gap: ${gap(3)}; padding: ${gap(1)} ${gap(1)} ${gap(1)} ${gap(4)};
   border-radius: var(--radius-lg); }

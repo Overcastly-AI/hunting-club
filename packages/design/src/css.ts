@@ -36,6 +36,18 @@ export const SHORT_MEDIA = `(max-width: ${breakpoints.desktop - 1}px) and (max-h
 /** A phone held either way: narrower than `breakpoints.phone`, or on its side (SHORT_MEDIA). */
 export const PHONE_MEDIA = `(max-width: ${breakpoints.phone - 1}px), ${SHORT_MEDIA}`;
 
+/**
+ * The iPhone's notch, rounded corners and home indicator, for CSS: what each edge of a web page
+ * keeps clear once the viewport is viewport-fit=cover (VIEWPORT_META, @huntclub/shared); 0 on
+ * screens without them. The club admin and the public site both pad with these.
+ */
+export const SAFE_AREA = {
+  top: 'env(safe-area-inset-top, 0px)',
+  right: 'env(safe-area-inset-right, 0px)',
+  bottom: 'env(safe-area-inset-bottom, 0px)',
+  left: 'env(safe-area-inset-left, 0px)',
+} as const;
+
 /** CSS custom properties for every design token, e.g. `--color-surface-raised`. */
 export function tokenVariables(): Record<string, string> {
   const vars: Record<string, string> = {};

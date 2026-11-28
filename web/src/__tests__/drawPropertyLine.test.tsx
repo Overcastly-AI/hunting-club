@@ -8,13 +8,13 @@ import {
   type Polygon,
 } from '@huntclub/shared';
 import { SAMPLE_PROPERTY } from '@huntclub/shared/sample';
-import { mapChrome } from '@huntclub/design';
+import { mapChrome, sizes } from '@huntclub/design';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { useState } from 'react';
 import { liveBasemap } from '../map/basemap';
-import { ClubMap } from '../map/ClubMap';
+import { ClubMap, DRAW_PADDING } from '../map/ClubMap';
 import { canClose, drawProblem, drawReducer, startDrawing, type DrawState } from '../map/draw';
-import { DEFAULT_VIEW, panView, viewProjection, zoomView } from '../map/plan';
+import { DEFAULT_VIEW, panView, VIEW_ZOOM, viewProjection, zoomView } from '../map/plan';
 import { SAMPLE_PLAN } from '../map/sampleProperty';
 import { renderSignedIn } from '../testing/app';
 import { sampleData } from '../testing/fakeClubApi';
@@ -109,8 +109,8 @@ describe('the map view', () => {
     expect(under[0]).toBeCloseTo(100, 6);
     expect(under[1]).toBeCloseTo(100, 6);
     // Never past the deepest or widest view.
-    expect(zoomView({ ...view, zoom: 20 }, 3, W, H).zoom).toBe(20);
-    expect(zoomView({ ...view, zoom: 3 }, -3, W, H).zoom).toBe(3);
+    expect(zoomView({ ...view, zoom: VIEW_ZOOM.max }, 3, W, H).zoom).toBe(VIEW_ZOOM.max);
+    expect(zoomView({ ...view, zoom: VIEW_ZOOM.min }, -3, W, H).zoom).toBe(VIEW_ZOOM.min);
   });
 });
 
@@ -293,23 +293,31 @@ describe('drawing the property line on My club', () => {
     expect(ground().querySelectorAll('.plan__line')).toHaveLength(0);
   });
 
-  it("edits the club's own line where it lies, without moving the map", async () => {
+  it("edits the club's own line with the property filling the open map, however far out it was", async () => {
     const view = await renderSignedIn();
     const edit = await screen.findByRole('button', { name: 'Edit property line' });
-    const line = ground().querySelector('.plan__line')!.getAttribute('d')!;
-    const [x0, y0] = line
-      .match(/^M([-\d.]+) ([-\d.]+)/)!
-      .slice(1)
-      .map(Number) as [number, number];
+    // Far out first (the audit's refit to 1,000 ft): the editor brings the property back.
+    for (let i = 0; i < 3; i++) fireEvent.keyDown(ground(), { key: '-' });
     const save = vi.spyOn(view.client, 'updateClub');
     fireEvent.click(edit);
-    // The line is closed and its corners sit where it was drawn.
-    expect(corners().getAllByRole('button')).toHaveLength(
-      SAMPLE_PROPERTY.boundary.coordinates[0]!.length - 1,
-    );
-    const [x, y] = cornerAt(corners().getByRole('button', { name: /^Corner 1 of 6/ }));
-    expect(x).toBeCloseTo(x0, 0);
-    expect(y).toBeCloseTo(y0, 0);
+    // The line is closed, and its corners fill the open map: within the padding under the pill
+    // and at the sides, touching it on the side that binds, never closer than a 48 px target.
+    const points = corners()
+      .getAllByRole('button')
+      .map((c) => cornerAt(c));
+    expect(points).toHaveLength(SAMPLE_PROPERTY.boundary.coordinates[0]!.length - 1);
+    const xs = points.map((p) => p[0]);
+    const ys = points.map((p) => p[1]);
+    const top = mapChrome.inset + mapChrome.pill.height + DRAW_PADDING;
+    expect(Math.min(...xs)).toBeGreaterThanOrEqual(DRAW_PADDING - 0.5);
+    expect(Math.max(...xs)).toBeLessThanOrEqual(W - DRAW_PADDING + 0.5);
+    expect(Math.min(...ys)).toBeGreaterThanOrEqual(top - 0.5);
+    const fills =
+      Math.abs(Math.min(...xs) - DRAW_PADDING) < 0.5 || Math.abs(Math.min(...ys) - top) < 0.5;
+    expect(fills).toBe(true);
+    for (const [i, a] of points.entries())
+      for (const b of points.slice(i + 1))
+        expect(Math.hypot(a[0] - b[0], a[1] - b[1])).toBeGreaterThanOrEqual(sizes.minTapTarget);
     expect(screen.queryByRole('button', { name: 'Close shape' })).toBeNull();
     // Remove a corner of the L: still a good line, saved without it.
     fireEvent.keyDown(corners().getByRole('button', { name: /^Corner 4 of 6/ }), { key: 'Delete' });

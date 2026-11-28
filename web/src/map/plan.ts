@@ -7,6 +7,7 @@ import {
   mercatorLonLat,
   mercatorXY,
   polygonRings,
+  USGS_MAX_TILE_ZOOM,
   USGS_TILE_SIZE,
   type Bounds,
   type Ring,
@@ -40,8 +41,17 @@ export interface View {
   zoom: number;
 }
 
-/** How far out and in the map goes: a few states across, down to past the deepest USGS level. */
-export const VIEW_ZOOM = { min: 3, max: 20 } as const;
+/**
+ * Levels the map goes past the basemap's deepest cached tiles (USGS_MAX_TILE_ZOOM), drawing
+ * them larger: enough to set a corner on a fence line, before the picture is only blur.
+ */
+const MAX_OVERZOOM = 3;
+
+/**
+ * How far out and in the map goes (every zoom, from the buttons, keys, wheel, pinch or double
+ * tap, is clamped here): a few states across, down to a few levels past the basemap's deepest.
+ */
+export const VIEW_ZOOM = { min: 3, max: USGS_MAX_TILE_ZOOM + MAX_OVERZOOM } as const;
 
 /** Where a club with nothing drawn yet starts: the lower 48 states. */
 export const DEFAULT_VIEW: View = { lon: -96, lat: 38.5, zoom: 4 };
@@ -158,6 +168,30 @@ export function zoomView(
   const before = viewProjection(view, width, height).unproject(...at);
   const after = viewProjection({ ...view, zoom }, width, height).project(...before);
   return panView({ ...view, zoom }, at[0] - after[0], at[1] - after[1]);
+}
+
+/** Two fingers on the map, in px. */
+export type Pinch = readonly [[number, number], [number, number]];
+
+const midpoint = ([a, b]: Pinch): [number, number] => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+const spread = ([a, b]: Pinch) => Math.max(1, Math.hypot(a[0] - b[0], a[1] - b[1]));
+
+/**
+ * The view a pinch has made of `start`: zoomed by how far the fingers spread from `from` to
+ * `to` (twice as far apart is one level in), about the ground under the fingers' midpoint,
+ * which then follows the midpoint as it moves (two fingers pan too). Clamped like any zoom.
+ */
+export function pinchView(
+  start: View,
+  width: number,
+  height: number,
+  from: Pinch,
+  to: Pinch,
+): View {
+  const at = midpoint(from);
+  const next = midpoint(to);
+  const zoomed = zoomView(start, Math.log2(spread(to) / spread(from)), width, height, at);
+  return panView(zoomed, next[0] - at[0], next[1] - at[1]);
 }
 
 /** An SVG path for rings of [lon, lat] points. */

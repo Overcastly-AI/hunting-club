@@ -61,6 +61,14 @@ export const translateOf = (el: Element) =>
     .slice(1)
     .map(Number) as [number, number];
 
+/** Where the cross (Add corner, Put at the cross) is drawn: its middle, from its path. */
+export function crossAt(): [number, number] {
+  const d = document.querySelector('.draw__cross')!.getAttribute('d')!;
+  // "M{left} {y} H{right} M{x} {top} V{bottom}"
+  const [, y, x] = d.match(/^M[-\d.]+ ([-\d.]+) H[-\d.]+ M([-\d.]+)/)!;
+  return [Number(x), Number(y)];
+}
+
 /** My club's "+" menu beside Stands and areas (admins). */
 export const ADD_MENU = 'Add a stand or area';
 

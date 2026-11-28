@@ -5,6 +5,7 @@ import {
   type Polygon,
   type Stand,
 } from '@huntclub/shared';
+import { mapChrome } from '@huntclub/design';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { AREA_NAME_PROBLEM } from '../map/AreaFields';
 import { SAVING } from '../map/MapPill';
@@ -14,6 +15,7 @@ import { sampleData, type FakeClubData } from '../testing/fakeClubApi';
 import {
   ADD_MENU,
   addToMap,
+  crossAt,
   drag,
   ground,
   MAP_H,
@@ -103,9 +105,14 @@ describe('stands on My club (admins)', () => {
   it('places a stand from the keyboard, refuses a blank name with the shared rule, and cancels', async () => {
     const { spy } = await myClub();
     addToMap('stand');
+    // The cross is in the middle of the open map: under the pill, above the sheet or footer.
+    const cross = crossAt();
+    expect(cross[0]).toBe(MAP_W / 2);
+    expect(cross[1]).toBeGreaterThan(mapChrome.inset + mapChrome.pill.height);
     fireEvent.click(screen.getByRole('button', { name: 'Put at the cross' }));
     const marker = placing().getByRole('button', { name: /^New stand: drag it/ });
-    expect(translateOf(marker)).toEqual([MAP_W / 2, MAP_H / 2]);
+    expect(translateOf(marker)[0]).toBeCloseTo(cross[0], 6);
+    expect(translateOf(marker)[1]).toBeCloseTo(cross[1], 6);
     fireEvent.keyDown(marker, { key: 'ArrowRight', shiftKey: true });
     expect(translateOf(placing().getByRole('button'))[0]).toBeCloseTo(MAP_W / 2 + 40, 0);
     fireEvent.change(nameField('Stand name'), { target: { value: '   ' } });

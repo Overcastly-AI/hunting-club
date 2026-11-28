@@ -11,6 +11,13 @@ export const APP_NAME = 'Hunt Club Mesh';
 export const APP_DESCRIPTION =
   'Off-grid hunting for your party and club: a shared map, chat and check-in over small radios, with no cell service.';
 
+/**
+ * The viewport meta of every web page (the club admin and the public site). `viewport-fit=cover`
+ * lets a page run under the iPhone's notch and home indicator, so the env(safe-area-inset-*)
+ * padding each page sets is real; zoom stays allowed (only the club map takes pinches itself).
+ */
+export const VIEWPORT_META = 'width=device-width, initial-scale=1, viewport-fit=cover';
+
 /** iOS bundle identifier and Android package name. */
 export const APP_ID = 'com.overcastly.huntclub';
 

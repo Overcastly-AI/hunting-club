@@ -5,6 +5,7 @@ import {
   THEME_PREFERENCES,
   THEME_STORAGE_KEY,
 } from '@huntclub/design';
+import { SAFE_AREA } from '@huntclub/design';
 import { globalCss } from '../theme/css';
 import { SHELL_BARS_QUERY } from '../components/ui/styles/shared';
 import { ADMIN_PATH, emailStandInName, LEGAL_PATHS, signInCopy } from '@huntclub/shared';
@@ -174,7 +175,7 @@ describe('phone layout', () => {
       /\.ui-dialog \{ width: 100%; max-width: 100%; margin: auto 0 0; max-height: var\(--map-chrome-sheet-max\);/,
     );
     expect(rulesUnder(css, SHELL_BARS_QUERY)).toContain(
-      '.shell-account .ui-popover__panel, .shell-club .ui-popover__panel.shell-club__panel {\n    max-height: calc(var(--map-chrome-sheet-max) - 64px); overflow-y: auto;',
+      '.shell-account .ui-popover__panel, .shell-club .ui-popover__panel.shell-club__panel {\n    max-height: calc(var(--map-chrome-sheet-max) - calc(56px + env(safe-area-inset-top, 0px)) - var(--space-2)); overflow-y: auto;',
     );
   });
 
@@ -184,6 +185,46 @@ describe('phone layout', () => {
     );
   });
 });
+
+describe('the notch and the home indicator (viewport-fit=cover)', () => {
+  it('keeps every width clear of the safe-area insets, not only phones', () => {
+    const css = globalCss();
+    const media = (query: string) =>
+      css
+        .split(`@media ${query}`)
+        .slice(1)
+        .map((block) => block.slice(0, block.indexOf('\n}')))
+        .join('');
+    const tablet = media('(min-width: 640px) and (max-width: 1023px)');
+    const desktop = media('(min-width: 1024px)');
+    const phone = media('(max-width: 639px)');
+    for (const [name, block] of [
+      ['tablet', tablet],
+      ['desktop', desktop],
+    ] as const) {
+      // The rail or sidebar widens by the left inset; the content keeps clear of the right one.
+      expect(block, name).toContain(`.shell-side { width: calc(`);
+      expect(block, name).toContain(SAFE_AREA.left);
+      expect(block, name).toMatch(
+        new RegExp(
+          `\\.shell-main--bleed \\{ padding: 0 ${escape(SAFE_AREA.right)} ${escape(SAFE_AREA.bottom)} 0; \\}`,
+        ),
+      );
+    }
+    expect(phone).toContain(`padding-top: ${SAFE_AREA.top}`);
+  });
+
+  it("sizes My club's map to the visible height (dvh, with a vh fallback) at every width", () => {
+    const css = globalCss();
+    expect(css).toContain(
+      `height: calc(100vh - ${SAFE_AREA.bottom}); height: calc(100dvh - ${SAFE_AREA.bottom}); }`,
+    );
+    expect(css).not.toMatch(/\.clubview \{[^}]*height: 100vh;/);
+  });
+});
+
+/** `text` for a RegExp. */
+const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 describe('signing out', () => {
   it('goes back to sign in with no hash and no "session expired", and revokes the session', async () => {
