@@ -51,7 +51,7 @@ import { standIcon } from '../components/standIcons';
 import { Banner, Button, ButtonLink, EmptyState, Field, Input, Popover } from '../components/ui';
 import { useClubBasemap } from '../map/basemap';
 import { AreaFields, checkAreaName } from '../map/AreaFields';
-import { ClubMap, FIT_PADDING, PropertyLine, type MapFrame } from '../map/ClubMap';
+import { ClubMap, DRAW_PADDING, FIT_PADDING, PropertyLine, type MapFrame } from '../map/ClubMap';
 import { drawReducer, startDrawing, type DrawAction, type DrawState } from '../map/draw';
 import { EditSlotsContext, type EditSlots } from '../map/editSlots';
 import { MapPill } from '../map/MapPill';
@@ -292,6 +292,11 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
         : null;
   const focusKey =
     edit?.kind === 'stand' ? edit.stand?.id : edit?.kind === 'area' ? edit.area?.id : undefined;
+  // Each editor opens with the property filling the open map (else everything drawn; with
+  // nothing drawn yet, the map stays where the admin found the property).
+  const fitBounds = club.boundary ? polygonBounds(club.boundary) : bounds;
+  const fit =
+    edit && fitBounds ? { key: `${edit.kind}:${focusKey ?? 'new'}`, bounds: fitBounds } : null;
   const shownStands =
     edit?.kind === 'stand' ? stands.filter((s) => s.id !== edit.stand?.id) : stands;
 
@@ -306,9 +311,7 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
           <StandFields
             draft={edit.draft}
             onChange={(draft) => setEdit({ ...edit, draft })}
-            onPlaceAtCross={() =>
-              move(frame.projection.unproject(frame.width / 2, frame.height / 2))
-            }
+            onPlaceAtCross={() => move(frame.projection.unproject(...frame.cross))}
             onSave={async (fields) => {
               if (edit.stand) await props.api.updateStand(edit.stand.id, fields);
               else await props.api.createStand(fields);
@@ -503,9 +506,19 @@ function ClubView(props: { api: ClubApi; club: Club; created: boolean }) {
           interactive
           editing={edit !== null}
           pinned={chromePinned({ now, overdueAt: overdue })}
-          insets={{ top: PILL_BOTTOM + FIT_PADDING }}
+          insets={
+            edit
+              ? {
+                  top: PILL_BOTTOM + DRAW_PADDING,
+                  right: DRAW_PADDING,
+                  bottom: DRAW_PADDING,
+                  left: DRAW_PADDING,
+                }
+              : { top: PILL_BOTTOM + FIT_PADDING }
+          }
           footer={sheetHeight}
           covered={covered}
+          fit={fit}
           focus={focusAt && focusKey ? { key: focusKey, at: focusAt, top: PILL_BOTTOM } : null}
           empty={details.status === 'ready' && !canDraw ? MAP_EMPTY : null}
           {...(edit

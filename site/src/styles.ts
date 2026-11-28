@@ -6,6 +6,7 @@ import {
   radii,
   rem,
   rootVariablesCss,
+  SAFE_AREA,
   sizes,
   textScale,
   textStyleCss,
@@ -269,5 +270,9 @@ p a { color: var(--theme-accent-text); font-weight: 650; }
   .compare .yes .ic { width: 18px; height: 18px; }
 }
 ${mapCss()}
+/* The iPhone's notch and home indicator (viewport-fit=cover, VIEWPORT_META), at every width: the
+   page keeps clear of them (a phone on its side), the canvas tone running under them. */
+body { padding: 0 ${SAFE_AREA.right} ${SAFE_AREA.bottom} ${SAFE_AREA.left}; }
+#${MENU_SHEET_ID} { left: ${SAFE_AREA.left}; right: ${SAFE_AREA.right}; }
 `;
 }

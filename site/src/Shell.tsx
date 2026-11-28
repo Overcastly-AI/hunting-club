@@ -1,5 +1,5 @@
 import { FAVICON_ICO, FAVICON_SVG, logoMarkSvg } from '@huntclub/design';
-import { APP_NAME, SAFETY_NOTE } from '@huntclub/shared';
+import { APP_NAME, SAFETY_NOTE, VIEWPORT_META } from '@huntclub/shared';
 import type { ReactNode } from 'react';
 import { MENU_LABELS, MENU_SHEET_ID, MENU_TOGGLE_CLASS } from './menu/menu';
 import { jsonLd } from './structuredData';
@@ -62,7 +62,7 @@ export function Document(props: { meta: PageMeta; assets: PageAssets; children: 
     <html lang="en">
       <head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content={VIEWPORT_META} />
         {meta.noReferrer ? <meta name="referrer" content="no-referrer" /> : null}
         <title>{meta.title}</title>
         <meta name="description" content={meta.description} />

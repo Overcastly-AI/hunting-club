@@ -2,7 +2,7 @@
 // sign-in and My club, with plates floating on it; away from the map, content is tables and
 // rows divided by hairlines, never boxes around each part. Components draw themselves
 // (components/ui/styles); this file only places them. Theme tokens only.
-import { opacity, sizes } from '@huntclub/design';
+import { opacity, SAFE_AREA, sizes } from '@huntclub/design';
 import { MOBILE_TAB_BAR_HEIGHT, SHELL } from '../components/ui/sizes';
 import {
   color,
@@ -89,8 +89,14 @@ ${PHONE} {
  * map chrome on it (map/styles.ts); the side panel beside it on a desktop, and below that the
  * same panel as the bottom sheet over the map (docs/DESIGN.md "Map chrome" 9).
  */
+/** On a phone My club's map is the viewport less the top bar and the tab bar, and the insets they grow by. */
+const CLUBVIEW_PHONE_BARS = `${SHELL.topBarHeight}px - ${MOBILE_TAB_BAR_HEIGHT}px - ${SAFE_AREA.top} - ${SAFE_AREA.bottom}`;
+
 const clubview = `
-.clubview { position: relative; display: grid; height: 100vh; overflow: hidden; isolation: isolate; }
+.clubview { position: relative; display: grid; overflow: hidden; isolation: isolate;
+  /* The visible height (dvh: not under Safari's toolbar), less the home indicator; vh before it
+     for browsers without dvh. */
+  height: calc(100vh - ${SAFE_AREA.bottom}); height: calc(100dvh - ${SAFE_AREA.bottom}); }
 .clubview > .clubview__map { position: absolute; inset: 0; }
 .clubview__pill { display: contents; }
 .clubview__facts { ${text('body')}; color: ${color('textSecondary')}; margin: 0 0 ${gap(2)}; }
@@ -168,7 +174,9 @@ button.place-row:disabled { cursor: default; color: ${color('textTertiary')}; ba
   padding: 0 ${gap(1)}; color: ${color('text')}; text-decoration: none; border-radius: var(--radius-sm); }
 .row-link:hover { background: ${color('raised')}; }
 .row-link__label { ${text('body')}; color: ${color('textSecondary')}; }
-${PHONE} { .clubview { height: calc(100dvh - ${SHELL.topBarHeight}px - ${MOBILE_TAB_BAR_HEIGHT}px - env(safe-area-inset-bottom)); } }
+${PHONE} {
+  .clubview { height: calc(100vh - ${CLUBVIEW_PHONE_BARS}); height: calc(100dvh - ${CLUBVIEW_PHONE_BARS}); }
+}
 ${DESKTOP} {
   .clubview { grid-template-columns: minmax(0, 1fr) ${SHELL.sidePanelWidth}px; }
   .clubview > .clubview__map { position: relative; inset: auto; min-height: 0; }

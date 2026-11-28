@@ -66,7 +66,10 @@ export const mapCss = () => `
 .plan__stand--selected .plan__stand-box { stroke: ${color('accentBorder')}; stroke-width: ${sizes.selectedBorder}px;
   fill: ${color('accent')}; }
 .plan__stand--selected .plan__stand-icon { color: ${color('onAccent')}; }
-/* A map that pans and zooms: the ground takes drags (no page scroll or browser zoom over it). */
+/* A map that pans and zooms owns every finger on it, on any layer (the ground, a stand, a name, a
+   corner) and its chrome: a pinch zooms the map, never the page, and no drag scrolls the page. */
+.plan--interactive, .plan--interactive * { touch-action: none; }
+/* A map that takes taps: the ground takes drags (no page scroll or browser zoom over it). */
 .plan__svg--ground { touch-action: none; cursor: crosshair; }
 .plan--interactive .plan__svg--ground { cursor: grab; }
 .plan--interactive .plan__svg--ground:active { cursor: grabbing; }
@@ -76,7 +79,7 @@ export const mapCss = () => `
 .plan__draw { pointer-events: none; }
 .draw__line { fill: none; stroke: ${boundary.stroke}; stroke-width: 3; stroke-dasharray: 8 6; stroke-linejoin: round; }
 .draw__cross { stroke: ${mapColor('text')}; stroke-width: 2; ${halo} }
-.draw__corner { pointer-events: auto; cursor: move; touch-action: none; }
+.draw__corner { pointer-events: auto; cursor: move; }
 .draw__corner:focus { outline: none; }
 .draw__hit { fill: transparent; }
 .draw__corner:focus-visible .draw__hit { stroke: ${color('focusRing')}; stroke-width: 3; }
@@ -168,9 +171,10 @@ ${DESKTOP} { .map-stack__zoom { display: flex; } }
 .map-pill__card { border-top: ${HAIR}; }
 .map-pill__card[hidden] { display: none; }
 .map-pill__card .ui-stat-grid { border: 0; border-radius: 0; }
-/* Editing: one line, what is being edited, then Done and Cancel. */
+/* Editing: one line, what is being edited, then Done and Cancel. The stack hides while editing,
+   so the pill may run the map's width ("Drawing property line" whole on an iPhone SE). */
 .map-pill--edit { display: flex; align-items: center; gap: ${gap(1)}; height: var(--map-chrome-pill-height);
-  padding: 0 0 0 ${gap(3)}; }
+  padding: 0 0 0 ${gap(3)}; max-width: calc(100% - 2 * ${INSET}); }
 .map-pill__edit-label { ${text('label')}; font-weight: 750; font-stretch: ${fontWidth.title}%; flex: 1; min-width: 0; margin: 0 ${gap(1)} 0 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .map-pill--edit .ui-button { flex: none; border-radius: 0; }

@@ -70,6 +70,12 @@ export const mapChrome = {
     /** Chrome stays pinned from this long before an overdue time. */
     pinBeforeOverdueMs: 30 * 60 * 1000,
   },
+  /**
+   * Touch on the web's own map (the app's native map has its own gestures). Two fingers pinch
+   * to zoom about their midpoint; a second tap within `doubleTapMs` of the first and within
+   * `doubleTapSlop` px of it zooms one level in about it.
+   */
+  gestures: { doubleTapMs: 300, doubleTapSlop: 24 },
   /** Stand labels on the map. */
   labels: {
     maxWidth: 140,
