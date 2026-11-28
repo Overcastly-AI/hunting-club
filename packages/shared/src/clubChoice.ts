@@ -57,6 +57,10 @@ export function clubsForAccount<T extends SavedClubOwner>(
   );
 }
 
-/** The club API refused this club to the signed-in account (403): not theirs, or no longer. */
+/**
+ * The club API refused this club to the signed-in account (403): not theirs, or no longer.
+ * `club_inactive` is also a 403, but it is about the club's plan (a paid feature without a
+ * subscription), not about access: the club stays chosen and the page says what the plan opens.
+ */
 export const isNoClubAccess = (error: unknown): boolean =>
-  error instanceof ClubApiRequestError && error.status === 403;
+  error instanceof ClubApiRequestError && error.status === 403 && error.code !== 'club_inactive';

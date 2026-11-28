@@ -17,7 +17,7 @@ import {
 } from '@huntclub/shared';
 import { Pentagon, Plus, Trash2, Undo2, type LucideIcon } from 'lucide-react';
 import { useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
-import { Button } from '../components/ui';
+import { Button, useToast, type ToastMessage } from '../components/ui';
 import { cx } from '../components/ui/cx';
 import { mapPoint, TAP_SLOP, type MapFrame } from './ClubMap';
 import { InSlot, useEditSlots } from './editSlots';
@@ -193,6 +193,12 @@ export const DRAW_SUBJECTS = {
   area: { noun: 'area', rule: areaProblem, problems: AREA_PROBLEMS },
 } as const satisfies Record<string, DrawSubject>;
 
+/** The toast once a save went through ("Stand saved"); the editor has closed by then. */
+export const savedToast = (noun: string): ToastMessage => ({
+  tone: 'success',
+  title: `${noun.charAt(0).toUpperCase()}${noun.slice(1)} saved`,
+});
+
 /** Plain words for the club API's refusals of a save (of a shape, a stand or a deletion). */
 export function saveError(error: unknown, noun: string): string {
   if (error instanceof ClubApiRequestError) {
@@ -255,6 +261,7 @@ export function DrawControls(props: {
   const stillNeeded = (problem: string) =>
     problem === 'open' ? OPEN : (subject.problems[problem] ?? problem);
   const [busy, setBusy] = useState(false);
+  const toast = useToast();
   const [error, setErrorState] = useState<string | null>(null);
   const setError = (message: string | null) => {
     setErrorState(message);
@@ -275,6 +282,7 @@ export function DrawControls(props: {
     setErrorState(null);
     try {
       await props.onSave(drawnPolygon(state));
+      toast(savedToast(subject.noun));
     } catch (e) {
       setError(saveError(e, subject.noun));
       setBusy(false);

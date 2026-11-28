@@ -16,12 +16,12 @@ import {
 import { Crosshair } from 'lucide-react';
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { standIcon } from '../components/standIcons';
-import { Button, Field, Input, Select } from '../components/ui';
+import { Button, Field, Input, Select, useToast } from '../components/ui';
 import { mapPoint, TAP_SLOP, type MapFrame } from './ClubMap';
 import { DeleteConfirm } from './DeleteConfirm';
 import { InSlot, useEditSlots } from './editSlots';
 import { EditPill } from './MapPill';
-import { Cross, KEY_MOVE_PX, saveError } from './PropertyLineEditor';
+import { Cross, KEY_MOVE_PX, saveError, savedToast } from './PropertyLineEditor';
 
 /** The stand as it is being edited: an existing one (with its id) or a new one. */
 export interface StandDraft {
@@ -173,6 +173,7 @@ export function StandFields(props: {
   const { draft } = props;
   const slots = useEditSlots();
   const [busy, setBusy] = useState(false);
+  const toast = useToast();
   const [error, setError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const failed = (e: unknown) => {
@@ -193,6 +194,7 @@ export function StandFields(props: {
     setError(null);
     try {
       await props.onSave(checked);
+      toast(savedToast('stand'));
     } catch (e) {
       failed(e);
       setBusy(false);

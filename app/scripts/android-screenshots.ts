@@ -1,7 +1,9 @@
 // Takes the app's screenshots on a running Android emulator (the manual-only workflow
 // .github/workflows/app-screenshots.yml). Expects the debug build installed and Metro serving
 // the app with EXPO_PUBLIC_SCREENSHOT_MODE=1 on port 8081. For each theme it restarts the app
-// in that appearance, opens each shot by deep link and saves `adb exec-out screencap -p`.
+// in that appearance, opens each shot by deep link and saves `adb exec-out screencap -p`. Each
+// shot's caption goes to captions.txt beside the PNGs; a map shot's caption has its chrome
+// coverage, measured on the screen's real layout (src/screenshot/coverage.ts).
 //
 //   cd app && node ../scripts/run-ts.mjs scripts/android-screenshots.ts <out-dir>
 import { APP_ID, URL_SCHEME } from '@huntclub/shared/app';
@@ -9,8 +11,10 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
+import { chromeCoverage, shotCaption } from '../src/screenshot/coverage';
 import { SCREENSHOT_HERE } from '../src/screenshot/sample';
 import {
+  CAPTIONS_FILE,
   SCREENSHOT_FRAME,
   SCREENSHOT_SHOTS,
   SCREENSHOT_THEMES,
@@ -33,6 +37,16 @@ const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
 const view = (url: string) =>
   shell('am', 'start', '-W', '-a', 'android.intent.action.VIEW', '-d', `'${url}'`, APP_ID);
 
+/** The screen's layout (`uiautomator dump`), or null when it cannot be read (best effort). */
+function layoutDump(): string | null {
+  try {
+    shell('uiautomator', 'dump', '/sdcard/hc-layout.xml');
+    return execFileSync('adb', ['exec-out', 'cat', '/sdcard/hc-layout.xml'], { encoding: 'utf8' });
+  } catch {
+    return null;
+  }
+}
+
 /** Opens the dev build on the local Metro (no dev-launcher screen, no dev-menu tour). */
 async function launch(waitMs: number) {
   shell('am', 'force-stop', APP_ID);
@@ -54,6 +68,7 @@ async function main() {
   for (const permission of ['ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION', 'POST_NOTIFICATIONS'])
     shell('pm', 'grant', APP_ID, `android.permission.${permission}`);
 
+  const captions: string[] = [];
   let first = true;
   for (const theme of Object.keys(SCREENSHOT_THEMES) as ScreenshotTheme[]) {
     shell('cmd', 'uimode', 'night', SCREENSHOT_THEMES[theme]);
@@ -64,9 +79,19 @@ async function main() {
       await sleep(SETTLE_MS);
       const file = join(OUT, shotFile(shot, theme));
       writeFileSync(file, execFileSync('adb', ['exec-out', 'screencap', '-p']));
-      console.log(file);
+      let caption: string = shot.caption;
+      if (shot.map) {
+        const dump = layoutDump();
+        caption = shotCaption(
+          shot.caption,
+          dump === null ? null : chromeCoverage(dump, SCREENSHOT_FRAME.widthDp),
+        );
+      }
+      captions.push(`${shotFile(shot, theme)}: ${caption}, ${theme}`);
+      console.log(`${file}\n  ${caption}`);
     }
   }
+  writeFileSync(join(OUT, CAPTIONS_FILE), `${captions.join('\n')}\n`);
 }
 
 void main().catch((error: unknown) => {

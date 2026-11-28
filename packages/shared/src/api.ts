@@ -123,17 +123,40 @@ export function hasClubFeatures(
   return +now < (typeof until === 'number' ? until : Date.parse(until));
 }
 
+type PlanFields = Pick<Subscription, 'status' | 'paidThrough'>;
+
+/** When a subscription's club features close: paid through plus the grace days, if entitled. */
+function featuresUntilOf({ status, paidThrough }: PlanFields): string | undefined {
+  if (!paidThrough || !isEntitledStatus(status)) return undefined;
+  return new Date(Date.parse(paidThrough) + ENTITLEMENT_GRACE_DAYS * DAY_MS).toISOString();
+}
+
 /** The one rule turning a subscription into an entitlement (used by the API). */
-export function entitlementFor(
-  clubId: string,
-  subscription: Pick<Subscription, 'status' | 'paidThrough'> | undefined,
-): Entitlement {
+export function entitlementFor(clubId: string, subscription: PlanFields | undefined): Entitlement {
   if (!subscription) return { clubId };
   const { status, paidThrough } = subscription;
-  const base = { clubId, status, ...(paidThrough ? { paidThrough } : {}) };
-  if (!paidThrough || !isEntitledStatus(status)) return base;
-  const until = Date.parse(paidThrough) + ENTITLEMENT_GRACE_DAYS * DAY_MS;
-  return { ...base, featuresUntil: new Date(until).toISOString() };
+  const featuresUntil = featuresUntilOf(subscription);
+  return {
+    clubId,
+    status,
+    ...(paidThrough ? { paidThrough } : {}),
+    ...(featuresUntil ? { featuresUntil } : {}),
+  };
+}
+
+/**
+ * Where a club stands on its plan, from the admin's view of its subscription: `open` while
+ * club features are (the same rule as the entitlement the club service checks), `none` before
+ * the club ever checked out (the free trial is on offer), `lapsed` after it ended.
+ */
+export type ClubPlanState = 'open' | 'none' | 'lapsed';
+
+export function clubPlanState(
+  subscription: PlanFields | null | undefined,
+  now: Date | number,
+): ClubPlanState {
+  if (!subscription) return 'none';
+  return hasClubFeatures({ featuresUntil: featuresUntilOf(subscription) }, now) ? 'open' : 'lapsed';
 }
 
 const basemapIdSchema = z.enum(BASEMAP_IDS as [BasemapId, ...BasemapId[]]);
